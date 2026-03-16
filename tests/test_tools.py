@@ -9,13 +9,11 @@ Strategy:
       interface (validates argument parsing exactly as the MCP runtime would).
     - Assert correct HTTP method/endpoint, payload, and response formatting.
 
-Domains covered (7):
-    Config     — list_cas, create_ca, update_ca
-    Connectors — list_pki_connectors, create_pki_connector
-    Triggers   — list_triggers, create_trigger
-    Profiles   — list_profiles, create_webra_profile
+Domains covered (5 — Phase 1 only):
+    Config     — list_cas (read-only)
+    Profiles   — list_profiles (read-only)
     Lifecycle  — search_certificates, get_certificate, download_certificate
-    Security   — list_roles, create_role
+    Security   — list_roles (read-only)
     Assist     — whoami, decode_x509, validate_hcql
 """
 
@@ -62,37 +60,19 @@ def patched_client(mock_client: AsyncMock):
 
 @pytest.fixture
 def config_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with config tools registered."""
+    """FastMCP with config read-only tools registered."""
     mcp = FastMCP("test-config")
-    from horizon_mcp.tools.config import register_config_tools
-    register_config_tools(mcp)
-    return mcp
-
-
-@pytest.fixture
-def connector_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with connector tools registered."""
-    mcp = FastMCP("test-connectors")
-    from horizon_mcp.tools.connectors import register_connector_tools
-    register_connector_tools(mcp)
-    return mcp
-
-
-@pytest.fixture
-def trigger_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with trigger tools registered."""
-    mcp = FastMCP("test-triggers")
-    from horizon_mcp.tools.triggers import register_trigger_tools
-    register_trigger_tools(mcp)
+    from horizon_mcp.tools.config import register_config_readonly_tools
+    register_config_readonly_tools(mcp)
     return mcp
 
 
 @pytest.fixture
 def profile_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with profile tools registered."""
+    """FastMCP with profile Phase 1 tools registered."""
     mcp = FastMCP("test-profiles")
-    from horizon_mcp.tools.profiles import register_profile_tools
-    register_profile_tools(mcp)
+    from horizon_mcp.tools.profiles import register_profile_phase1_tools
+    register_profile_phase1_tools(mcp)
     return mcp
 
 
@@ -107,10 +87,10 @@ def lifecycle_mcp(patched_client: AsyncMock) -> FastMCP:
 
 @pytest.fixture
 def security_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with security tools registered."""
+    """FastMCP with security read-only tools registered."""
     mcp = FastMCP("test-security")
-    from horizon_mcp.tools.security import register_security_tools
-    register_security_tools(mcp)
+    from horizon_mcp.tools.security import register_security_readonly_tools
+    register_security_readonly_tools(mcp)
     return mcp
 
 
@@ -134,7 +114,7 @@ async def call(mcp: FastMCP, name: str, args: dict | None = None) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. CONFIG TOOLS
+# 1. CONFIG TOOLS (read-only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestConfigListCas:
@@ -180,254 +160,8 @@ class TestConfigListCas:
         assert result["returned"] == 1
 
 
-class TestConfigCreateCa:
-    """create_ca — POST with payload construction."""
-
-    async def test_minimal_create(self, config_mcp, patched_client):
-        patched_client.post.return_value = {"name": "New-CA", "trustedForClientAuth": False}
-        result = await call(config_mcp, "create_ca", {
-            "certificate": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
-        })
-
-        patched_client.post.assert_awaited_once()
-        call_args = patched_client.post.call_args
-        assert call_args[0][0] == "/api/v1/cas"
-        payload = call_args[1]["json"]
-        assert payload["certificate"].startswith("-----BEGIN")
-        assert payload["trustedForClientAuth"] is False
-        assert payload["trustedForServerAuth"] is False
-        assert payload["refresh"] is True
-        assert result["status"] == "created"
-        assert result["kind"] == "ca"
-        assert result["name"] == "New-CA"
-        assert result["data"]["name"] == "New-CA"
-
-    async def test_create_with_all_optional_fields(self, config_mcp, patched_client):
-        patched_client.post.return_value = {"name": "Full-CA"}
-        # Proxy preflight check must succeed
-        patched_client.get.return_value = {"name": "my-proxy"}
-
-        result = await call(config_mcp, "create_ca", {
-            "certificate": "PEM",
-            "trusted_for_client_auth": True,
-            "trusted_for_server_auth": True,
-            "responder_url": "http://ocsp.example.com",
-            "crl_url": "http://crl.example.com",
-            "outdated_revocation_status_policy": "ignore",
-            "timeout": 30,
-            "proxy": "my-proxy",
-        })
-
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload["trustedForClientAuth"] is True
-        assert payload["responderUrl"] == "http://ocsp.example.com"
-        assert payload["proxy"] == "my-proxy"
-        assert result["status"] == "created"
-        assert result["name"] == "Full-CA"
-
-
-class TestConfigUpdateCa:
-    """update_ca — GET->strip->merge->PUT flow."""
-
-    async def test_update_merges_with_existing(self, config_mcp, patched_client):
-        # Existing CA from GET
-        existing = {
-            "_id": "abc123",
-            "name": "My-CA",
-            "trustedForClientAuth": False,
-            "trustedForServerAuth": True,
-            "createdAt": "2024-01-01T00:00:00Z",
-            "updatedAt": "2024-06-01T00:00:00Z",
-            "certificate": "existing-pem",
-        }
-        patched_client.get.return_value = existing
-        patched_client.put.return_value = {
-            "name": "My-CA",
-            "trustedForClientAuth": True,
-            "trustedForServerAuth": True,
-        }
-
-        result = await call(config_mcp, "update_ca", {
-            "name": "My-CA",
-            "trusted_for_client_auth": True,
-        })
-
-        # Verify GET was called
-        patched_client.get.assert_awaited_once_with("/api/v1/cas/My-CA")
-
-        # Verify PUT payload
-        put_call = patched_client.put.call_args
-        assert put_call[0][0] == "/api/v1/cas/"
-        payload = put_call[1]["json"]
-
-        # Server fields should be stripped
-        assert "_id" not in payload
-        assert "createdAt" not in payload
-        assert "updatedAt" not in payload
-        assert "certificate" not in payload  # stripped for CA domain
-
-        # Override applied
-        assert payload["trustedForClientAuth"] is True
-        # Preserved from existing
-        assert payload["trustedForServerAuth"] is True
-
-        assert result["status"] == "updated"
-        assert result["kind"] == "ca"
-        assert result["name"] == "My-CA"
-
-    async def test_update_clear_fields(self, config_mcp, patched_client):
-        existing = {
-            "name": "My-CA",
-            "trustedForClientAuth": False,
-            "responderUrl": "http://ocsp.example.com",
-        }
-        patched_client.get.return_value = existing
-        patched_client.put.return_value = {"name": "My-CA"}
-
-        await call(config_mcp, "update_ca", {
-            "name": "My-CA",
-            "clear_fields": ["responderUrl"],
-        })
-
-        payload = patched_client.put.call_args[1]["json"]
-        assert payload["responderUrl"] is None
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# 2. CONNECTOR TOOLS
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestConnectorListPki:
-    """list_pki_connectors — GET, client-side filter, truncation."""
-
-    async def test_returns_connectors(self, connector_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "adcs-connector", "type": "msadcs"},
-            {"name": "ejbca-connector", "type": "ejbca"},
-        ]
-        result = await call(connector_mcp, "list_pki_connectors")
-
-        patched_client.get.assert_awaited_once_with("/api/v1/pki/connectors")
-        assert result["count"] == 2
-        assert result["kind"] == "pki_connector"
-        assert result["truncated"] is False
-
-    async def test_name_filter(self, connector_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "adcs-prod", "type": "msadcs"},
-            {"name": "adcs-dev", "type": "msadcs"},
-            {"name": "digicert", "type": "digicert"},
-        ]
-        result = await call(connector_mcp, "list_pki_connectors", {
-            "name_contains": "adcs",
-        })
-        assert result["count"] == 2
-
-
-class TestConnectorCreatePki:
-    """create_pki_connector — type validation + POST."""
-
-    async def test_valid_create(self, connector_mcp, patched_client):
-        patched_client.post.return_value = {
-            "name": "my-adcs",
-            "type": "msadcs",
-            "configuration": {"url": "https://adcs.local"},
-        }
-        result = await call(connector_mcp, "create_pki_connector", {
-            "name": "my-adcs",
-            "type": "msadcs",
-            "configuration": {"url": "https://adcs.local"},
-            "description": "Production ADCS",
-        })
-
-        patched_client.post.assert_awaited_once()
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload["name"] == "my-adcs"
-        assert payload["type"] == "msadcs"
-        assert payload["description"] == "Production ADCS"
-        assert result["name"] == "my-adcs"
-
-    async def test_invalid_type_rejected(self, connector_mcp, patched_client):
-        result = await call(connector_mcp, "create_pki_connector", {
-            "name": "bad",
-            "type": "invalid-type",
-            "configuration": {},
-        })
-        assert "error" in result
-        assert "valid_types" in result
-        # Client POST should never have been called
-        patched_client.post.assert_not_awaited()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 3. TRIGGER TOOLS
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestTriggerList:
-    """list_triggers — GET with client-side filtering."""
-
-    async def test_returns_triggers(self, trigger_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "email-notify", "type": "email"},
-            {"name": "webhook-ci", "type": "webhook"},
-        ]
-        result = await call(trigger_mcp, "list_triggers")
-
-        patched_client.get.assert_awaited_once_with("/api/v1/triggers")
-        assert result["count"] == 2
-        assert result["kind"] == "trigger"
-
-
-class TestTriggerCreate:
-    """create_trigger — type/event validation + POST."""
-
-    async def test_valid_create(self, trigger_mcp, patched_client):
-        patched_client.post.return_value = {
-            "name": "notify-enroll",
-            "type": "email",
-            "events": ["on_enroll"],
-        }
-        result = await call(trigger_mcp, "create_trigger", {
-            "name": "notify-enroll",
-            "type": "email",
-            "events": ["on_enroll"],
-            "configuration": {"to": "admin@example.com"},
-        })
-
-        patched_client.post.assert_awaited_once()
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload["name"] == "notify-enroll"
-        assert payload["type"] == "email"
-        assert payload["events"] == ["on_enroll"]
-        assert payload["retries"] == 0
-        assert payload["runOnRenewed"] is False
-        assert result["name"] == "notify-enroll"
-
-    async def test_invalid_type(self, trigger_mcp, patched_client):
-        result = await call(trigger_mcp, "create_trigger", {
-            "name": "bad",
-            "type": "sms",
-            "events": ["on_enroll"],
-            "configuration": {},
-        })
-        assert "error" in result
-        assert "valid_types" in result
-        patched_client.post.assert_not_awaited()
-
-    async def test_unknown_events(self, trigger_mcp, patched_client):
-        result = await call(trigger_mcp, "create_trigger", {
-            "name": "bad",
-            "type": "email",
-            "events": ["on_enroll", "on_explode"],
-            "configuration": {},
-        })
-        assert "error" in result
-        assert "on_explode" in str(result["error"])
-        patched_client.post.assert_not_awaited()
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 4. PROFILE TOOLS
+# 2. PROFILE TOOLS (read-only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestProfileList:
@@ -486,7 +220,7 @@ class TestProfileCreateWebra:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 5. LIFECYCLE TOOLS
+# 3. LIFECYCLE TOOLS
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestLifecycleSearchCertificates:
@@ -791,7 +525,7 @@ class TestLifecycleCancelRequest:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 6. SECURITY TOOLS
+# 4. SECURITY TOOLS (read-only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestSecurityListRoles:
@@ -820,63 +554,8 @@ class TestSecurityListRoles:
         assert params["search"] == "adm"
 
 
-class TestSecurityCreateRole:
-    """create_role — POST with name, description, permissions."""
-
-    async def test_create_with_permissions(self, security_mcp, patched_client):
-        patched_client.post.return_value = {
-            "name": "cert-viewer",
-            "description": "Can view certificates",
-            "permissions": ["certificates:search:*"],
-        }
-        result = await call(security_mcp, "create_role", {
-            "name": "cert-viewer",
-            "description": "Can view certificates",
-            "permissions": ["certificates:search:*"],
-        })
-
-        patched_client.post.assert_awaited_once()
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload["name"] == "cert-viewer"
-        assert payload["description"] == "Can view certificates"
-        assert payload["permissions"] == ["certificates:search:*"]
-        assert result["name"] == "cert-viewer"
-
-    async def test_create_minimal(self, security_mcp, patched_client):
-        patched_client.post.return_value = {"name": "empty-role"}
-        result = await call(security_mcp, "create_role", {"name": "empty-role"})
-
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload == {"name": "empty-role"}
-        assert result["name"] == "empty-role"
-
-
-class TestSecurityDeleteRole:
-    """delete_role — safety echo check."""
-
-    async def test_delete_with_matching_name(self, security_mcp, patched_client):
-        patched_client.delete.return_value = None
-        result = await call(security_mcp, "delete_role", {
-            "name": "old-role",
-            "expected_name": "old-role",
-        })
-        patched_client.delete.assert_awaited_once_with("/api/v1/security/roles/old-role")
-        assert result["deleted"] == "old-role"
-
-    async def test_delete_with_mismatch_raises(self, security_mcp, patched_client):
-        """Mismatched expected_name raises HorizonError via _delete_guard."""
-        from horizon_mcp.client.errors import HorizonError
-        from mcp.server.fastmcp.exceptions import ToolError
-        with pytest.raises(ToolError):
-            await call(security_mcp, "delete_role", {
-                "name": "role-a",
-                "expected_name": "role-b",
-            })
-        patched_client.delete.assert_not_awaited()
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# 7. ASSIST TOOLS
+# 5. ASSIST TOOLS
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestAssistWhoami:
@@ -995,47 +674,3 @@ class TestConfigErrorHandling:
         )
         with pytest.raises(ToolError, match="Forbidden"):
             await call(config_mcp, "get_ca", {"name": "restricted-ca"})
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# CROSS-CUTTING: Delete safety echo
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestDeleteSafetyEcho:
-    """Delete tools in config domain return error JSON on name mismatch."""
-
-    async def test_ca_delete_mismatch(self, config_mcp, patched_client):
-        from mcp.server.fastmcp.exceptions import ToolError
-        with pytest.raises(ToolError, match="Safety check failed"):
-            await call(config_mcp, "delete_ca", {
-                "name": "Real-CA",
-                "expected_name": "Wrong-CA",
-            })
-        patched_client.delete.assert_not_awaited()
-
-    async def test_ca_delete_success(self, config_mcp, patched_client):
-        patched_client.delete.return_value = None
-        result = await call(config_mcp, "delete_ca", {
-            "name": "Old-CA",
-            "expected_name": "Old-CA",
-        })
-        patched_client.delete.assert_awaited_once_with("/api/v1/cas/Old-CA")
-        assert "deleted successfully" in result["content"]
-
-    async def test_connector_delete_mismatch(self, connector_mcp, patched_client):
-        from mcp.server.fastmcp.exceptions import ToolError
-        with pytest.raises(ToolError, match="Safety check failed"):
-            await call(connector_mcp, "delete_pki_connector", {
-                "name": "conn-a",
-                "expected_name": "conn-b",
-            })
-        patched_client.delete.assert_not_awaited()
-
-    async def test_trigger_delete_mismatch(self, trigger_mcp, patched_client):
-        from mcp.server.fastmcp.exceptions import ToolError
-        with pytest.raises(ToolError, match="Safety check failed"):
-            await call(trigger_mcp, "delete_trigger", {
-                "name": "trg-a",
-                "expected_name": "trg-b",
-            })
-        patched_client.delete.assert_not_awaited()
