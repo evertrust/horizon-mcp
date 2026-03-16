@@ -40,6 +40,7 @@ asyncio_mode = "auto"
 testpaths = ["tests"]
 markers = [
     "integration: marks tests requiring a live Horizon instance",
+    "e2e: end-to-end tests against a live Horizon QA instance",
 ]
 
 [tool.mypy]
