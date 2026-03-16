@@ -41,6 +41,7 @@ testpaths = ["tests"]
 markers = [
     "integration: marks tests requiring a live Horizon instance",
     "e2e: end-to-end tests against a live Horizon QA instance",
+    "llm_evaluation: LLM-in-the-loop tests (requires ANTHROPIC_API_KEY)",
 ]
 
 [tool.mypy]
