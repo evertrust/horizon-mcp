@@ -100,51 +100,130 @@ Functions accept different expression types depending on their signature:
 All functions are case-sensitive and use parentheses for arguments.
 Arguments are separated by commas.
 
+### Null Propagation Rule (CRITICAL)
+
+**Any function that receives a null/None argument propagates null.**
+`Concat("hello", null)` → `null` (NOT `"hello"`). This means:
+- `Concat({{missing_key}}, "-suffix")` → `null` if `missing_key` doesn't exist
+- Use `OrElse` to guard against null: `Concat(OrElse({{key}}, ""), "-suffix")`
+- `OrElse` is the **only** function that absorbs null — it returns the first
+  non-null argument instead of propagating
+
 ### Any Expression Functions (accept single or multi)
 
-These functions accept any expression type and return accordingly.
+These functions accept any expression type. When given a single value, they
+return a single value. When given a list (multi-value), they apply the
+operation to **each element** and return a list.
 
 | Function | Signature | Returns | Description | Example |
 |----------|-----------|---------|-------------|---------|
-| `Upper` | `Upper(expression)` | string or list | Convert to uppercase. Returns None if no value. | `Upper("string")` -> `"STRING"` |
-| `Lower` | `Lower(expression)` | string or list | Convert to lowercase. Returns None if no value. | `Lower("STRING")` -> `"string"` |
-| `Trim` | `Trim(expression)` | string or list | Strip leading/trailing whitespace. Returns None if no value. | `Trim(" STRING")` -> `"STRING"` |
-| `Substr` | `Substr(expression, start)` or `Substr(expression, start, end)` | string or list | Extract substring by start index and optional end index (not length). | `Substr("STRING", 2)` -> `"TRING"` |
-| `Concat` | `Concat(expression, ...expression)` | string | Concatenate variable number of arguments. | `Concat("start", " middle ", "end")` -> `"start middle end"` |
-| `Extract` | `Extract(expression, regex)` or `Extract(expression, regex, group)` | string or list | Regex match with optional capture group number. | `Extract("user@domain", "(.*)@", 1)` -> `"user"` |
-| `Replace` | `Replace(expression, regex, replacement)` | string or list | Regex substitution. | `Replace("abcdATdomain.com", "AT", "@")` -> `"abcd@domain.com"` |
-| `OrElse` | `OrElse(expression, ...expression)` | string or list | Returns the first non-None result from a variable number of arguments. | `OrElse({{missing}}, "fallback")` -> `"fallback"` |
+| `Upper` | `Upper(expression)` | string or list | Convert to uppercase. None if input is None. | `Upper("hello")` → `"HELLO"`, `Upper(["a","b"])` → `["A","B"]` |
+| `Lower` | `Lower(expression)` | string or list | Convert to lowercase. None if input is None. | `Lower("HELLO")` → `"hello"` |
+| `Trim` | `Trim(expression)` | string or list | Strip whitespace. None if input is None. | `Trim(" x ")` → `"x"` |
+| `Substr` | `Substr(expr, start)` or `Substr(expr, start, end)` | string or list | Substring by index range (not length). | `Substr("STRING", 2)` → `"TRING"` |
+| `Concat` | `Concat(expr, ...expr)` | **string or list** | Concatenate. Works on both strings AND arrays — if any argument is a list, the result is a list. **Returns null if ANY argument is null.** | `Concat("a", "-", "b")` → `"a-b"` |
+| `Extract` | `Extract(expr, regex)` or `Extract(expr, regex, group)` | string or list | Regex match. Optional capture group (1-indexed). | `Extract("user@domain", "(.*)@", 1)` → `"user"` |
+| `Replace` | `Replace(expr, regex, replacement)` | string or list | Regex substitution. | `Replace("a.b", "\\.", "-")` → `"a-b"` |
+| `OrElse` | `OrElse(expr, ...expr)` | string or list | First non-null result. **The only function that absorbs null.** | `OrElse({{missing}}, "fallback")` → `"fallback"` |
+
+**Concat with arrays:** `Concat(["a"], ["b"])` → `["a", "b"]` (merges lists).
+`Concat("prefix-", ["a", "b"])` → `["prefix-a", "prefix-b"]` (maps over list).
 
 ### String Functions (accept simpleExpression, return single value)
 
 | Function | Signature | Returns | Description | Example |
 |----------|-----------|---------|-------------|---------|
-| `Match` | `Match(simpleExpression, regex)` | string | Returns expression if it matches regex, None otherwise. | `Match("abcd", "[a-z]+")` -> `"abcd"` |
-| `DateTimeFormat` | `DateTimeFormat(simpleExpression, format)` | string | Format a date using Java DateTimeFormatter syntax. Takes a date value and an output format pattern. | `DateTimeFormat(NOW, "hh:mm:ss")` -> `"10:54:57"` |
-| `Get` | `Get(multiExpression, index)` | string | Element at index from a list. Supports negative indexing. | `Get(["str1", "str2", "str3"], -2)` -> `"str2"` |
-| `First` | `First(multiExpression)` | string | First element of a list. | `First(["str1", "str2"])` -> `"str1"` |
-| `Last` | `Last(multiExpression)` | string | Last element of a list. | `Last(["str1", "str2"])` -> `"str2"` |
-| `Join` | `Join(multiExpression, separator)` | string | Combine list elements with a delimiter. | `Join(["str1", "str2"], ".")` -> `"str1.str2"` |
+| `Match` | `Match(simpleExpr, regex)` | string | Returns value if it matches regex, None otherwise. | `Match("abc", "^a")` → `"abc"` |
+| `DateTimeFormat` | `DateTimeFormat(simpleExpr, format)` | string | Format date using Java DateTimeFormatter pattern. | `DateTimeFormat(NOW, "yyyy-MM-dd")` → `"2026-03-17"` |
+| `Get` | `Get(multiExpr, index)` | string | Element at index (0-based). Supports negative. | `Get(["a","b","c"], -1)` → `"c"` |
+| `First` | `First(multiExpr)` | string | First element. | `First(["a","b"])` → `"a"` |
+| `Last` | `Last(multiExpr)` | string | Last element. | `Last(["a","b"])` → `"b"` |
+| `Join` | `Join(multiExpr, separator)` | string | Join list into string. | `Join(["a","b"], ".")` → `"a.b"` |
 
 ### List Functions (return multi-value)
 
 | Function | Signature | Returns | Description | Example |
 |----------|-----------|---------|-------------|---------|
-| `Filter` | `Filter(multiExpression, regex)` | list | Keep only items matching regex. | `Filter(["string1", "match"], "[a-z]+")` -> `["match"]` |
-| `Slice` | `Slice(multiExpression, start)` or `Slice(multiExpression, start, end)` | list | Sub-list extraction. Optional end index. | `Slice(["a", "b", "c"], 1, 3)` -> `["a", "b", "c"]` |
-| `Sort` | `Sort(multiExpression)` | list | Alphabetical sort. | `Sort(["b", "a"])` -> `["a", "b"]` |
-| `Split` | `Split(singleExpression, separator)` | list | Divide a string into a list by separator. | `Split("str1.str2", ".")` -> `["str1", "str2"]` |
+| `Filter` | `Filter(multiExpr, regex)` | list | Keep items matching regex. | `Filter(["abc","xyz"], "^a")` → `["abc"]` |
+| `Slice` | `Slice(multiExpr, start)` or `Slice(multiExpr, start, end)` | list | Sub-list extraction. | `Slice(["a","b","c"], 1)` → `["b","c"]` |
+| `Sort` | `Sort(multiExpr)` | list | Alphabetical sort. | `Sort(["b","a"])` → `["a","b"]` |
+| `Unique` | `Unique(multiExpr)` | list | Remove duplicates. | `Unique(["a","b","a"])` → `["a","b"]` |
+| `Split` | `Split(singleExpr, separator)` | list | Divide string into list. | `Split("a.b", ".")` → `["a","b"]` |
 
 ### Specialized Parsing Functions
 
 | Function | Signature | Returns | Description | Example |
 |----------|-----------|---------|-------------|---------|
-| `ShortenDNS` | `ShortenDNS(singleExpression)` | string | Extract first DNS label (hostname). | `ShortenDNS("subdomain.domain.com")` -> `"subdomain"` |
-| `DomainDNS` | `DomainDNS(singleExpression)` | string | Extract domain from FQDN. | `DomainDNS("subdomain.domain.com")` -> `"domain.com"` |
-| `EmailUser` | `EmailUser(singleExpression)` | string | Extract username from email address. | `EmailUser("user@domain.com")` -> `"user"` |
-| `EmailDomain` | `EmailDomain(singleExpression)` | string | Extract domain from email address. | `EmailDomain("user@domain.com")` -> `"domain.com"` |
-| `SamAccountNameUser` | `SamAccountNameUser(singleExpression)` | string | Extract user from DOMAIN\user format. | `SamAccountNameUser("DOMAIN\\User")` -> `"User"` |
-| `SamAccountNameDomain` | `SamAccountNameDomain(singleExpression)` | string | Extract domain from DOMAIN\user format. | `SamAccountNameDomain("DOMAIN\\User")` -> `"DOMAIN"` |
+| `ShortenDNS` | `ShortenDNS(singleExpr)` | string | First DNS label (hostname). | `ShortenDNS("web01.corp.com")` → `"web01"` |
+| `DomainDNS` | `DomainDNS(singleExpr)` | string | Domain from FQDN. | `DomainDNS("web01.corp.com")` → `"corp.com"` |
+| `EmailUser` | `EmailUser(singleExpr)` | string | User from email. | `EmailUser("j@x.com")` → `"j"` |
+| `EmailDomain` | `EmailDomain(singleExpr)` | string | Domain from email. | `EmailDomain("j@x.com")` → `"x.com"` |
+| `SamAccountNameUser` | `SamAccountNameUser(singleExpr)` | string | User from DOMAIN\user. | `SamAccountNameUser("CORP\\jdoe")` → `"jdoe"` |
+| `SamAccountNameDomain` | `SamAccountNameDomain(singleExpr)` | string | Domain from DOMAIN\user. | `SamAccountNameDomain("CORP\\jdoe")` → `"CORP"` |
+
+### Encoding and Serialization Functions
+
+| Function | Signature | Returns | Description |
+|----------|-----------|---------|-------------|
+| `URLEncode` | `URLEncode(singleExpr)` | string | Percent-encode for URLs |
+| `URLDecode` | `URLDecode(singleExpr)` | string | Decode percent-encoded string |
+| `EscapeJson` | `EscapeJson(singleExpr)` | string | Escape for JSON embedding |
+| `JsonArray` | `JsonArray(multiExpr)` | string | Serialize list as JSON array string |
+| `DerAsBase64` | `DerAsBase64(singleExpr)` | string | Encode DER binary as Base64 |
+
+---
+
+## Working with Multi-Value Fields (SANs, etc.)
+
+Multi-value fields like `sans.dnsnames`, `sans.rfc822names`, and
+`sans.ipaddresses` hold **lists** of values. Understanding how computation
+rules interact with lists is essential for SAN management.
+
+### Reading multi-value: `[[ ]]` vs `{{ }}`
+
+| Syntax | Returns | Use when |
+|--------|---------|----------|
+| `[[csr.san.dnsname]]` | The full list `["web01.corp.com", "web01"]` | You need all values (setting a SAN list, filtering, sorting) |
+| `{{csr.san.dnsname}}` | First value only `"web01.corp.com"` | You need a single value (setting CN, a label, etc.) |
+| `{{csr.san.dnsname.0}}` | Explicit first `"web01.corp.com"` | Same as above, more explicit |
+| `{{csr.san.dnsname.1}}` | Second value `"web01"` | You need a specific index |
+
+### Writing multi-value: `overwrite` behavior
+
+When the **target** is a multi-value field (e.g., `sans.dnsnames`):
+
+| Source type | `overwrite: true` | `overwrite: false` (default) |
+|-------------|-------------------|------------------------------|
+| Single value `{{csr.subject.cn}}` | Replaces list with `["value"]` | **Appends** value to existing list (if not already present) |
+| Multi-value `[[csr.san.dnsname]]` | Replaces list entirely | **Merges** into existing list |
+
+This is the core mechanism for building SAN lists from multiple sources:
+1. **Rule 1** with `overwrite: true` — initialize the list (copy CSR SANs)
+2. **Rule 2+** with `overwrite: false` — append additional values
+
+### The list accumulation pattern
+
+```json
+[
+  { "source": "[[csr.san.dnsname]]", "target": "sans.dnsnames", "overwrite": true },
+  { "source": "{{csr.subject.cn}}", "target": "sans.dnsnames", "overwrite": false },
+  { "source": "DomainDNS({{csr.subject.cn}})", "target": "sans.dnsnames", "condition": "DomainDNS({{csr.subject.cn}})", "overwrite": false }
+]
+```
+
+Each successive rule with `overwrite: false` appends its value only if not
+already present — providing built-in deduplication for the list accumulation
+pattern.
+
+### Merging lists with Concat
+
+`Concat` can merge two lists: `Concat([[csr.san.dnsname]], [[csr.san.ipaddress]])`
+produces a combined list. But remember the null propagation rule — if either
+list is empty/null, the entire result is null. Guard with `OrElse`:
+
+```
+Concat(OrElse([[csr.san.dnsname]], []), OrElse([[extra_sans]], []))
+```
 
 ---
 
