@@ -278,110 +278,63 @@ async def test_detect_file_with_cert_pem(e2e_mcp):
 # ---------------------------------------------------------------------------
 
 
-async def test_simulate_computation_rule_basic(e2e_mcp):
-    """simulate_computation_rule must evaluate a simple template expression.
-
-    The playground endpoint payload key may differ across Horizon versions.
-    If the tool raises (400 bad request or 404), skip gracefully rather than fail.
-    """
+async def _run_computation(e2e_mcp, rule: str, dictionary: dict) -> dict:
+    """Helper: run a computation rule, skip only on 404 (endpoint missing)."""
     from mcp.server.fastmcp.exceptions import ToolError
     try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule="{{owner}}",
-            dictionary={"owner": "test-user"},
-        )
-        assert result, "simulate_computation_rule returned empty result"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(
-            f"simulate_computation_rule not available on this Horizon instance: {exc}"
-        )
+        return await call_tool(e2e_mcp, "simulate_computation_rule", rule=rule, dictionary=dictionary)
+    except ToolError as exc:
+        if "404" in str(exc):
+            pytest.skip(f"Playground endpoint not available: {exc}")
+        raise
+
+
+def _computed_value(result: dict) -> str:
+    """Extract the computed value from a playground result."""
+    # The API returns {"computedValueSingle": "...", "dictionary": {...}}
+    val = result.get("computedValueSingle", result.get("raw", str(result)))
+    return str(val)
+
+
+async def test_simulate_computation_rule_basic(e2e_mcp):
+    """Simple dictionary lookup: {{owner}} must resolve to the value."""
+    result = await _run_computation(e2e_mcp, "{{owner}}", {"owner": "test-user"})
+    assert "test-user" in _computed_value(result), f"Expected 'test-user' in: {result}"
 
 
 async def test_simulate_computation_rule_with_function(e2e_mcp):
-    """simulate_computation_rule must handle a built-in function (upper).
-
-    The playground endpoint payload key may differ across Horizon versions.
-    If the tool raises (400 bad request or 404), skip gracefully.
-    """
-    from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule="{{upper(cn)}}",
-            dictionary={"cn": "hello"},
-        )
-        assert result, "simulate_computation_rule returned empty result"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(
-            f"simulate_computation_rule not available on this Horizon instance: {exc}"
-        )
+    """Upper({{cn}}) must return uppercase value."""
+    result = await _run_computation(e2e_mcp, "Upper({{cn}})", {"cn": "hello"})
+    assert "HELLO" in _computed_value(result), f"Expected 'HELLO' in: {result}"
 
 
 async def test_simulate_computation_rule_extract_with_group(e2e_mcp):
-    """Extract with capture group: Extract("user@domain.com", "(.*)@", 1) → "user"."""
-    from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule='{{Extract(email, "(.*)@", 1)}}',
-            dictionary={"email": "alice@example.com"},
-        )
-        raw = result.get("raw", str(result))
-        assert "alice" in str(raw).lower(), f"Expected 'alice' in result: {result}"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"simulate_computation_rule not available: {exc}")
+    """Extract with capture group: Extract({{email}}, "(.*)@", 1) → "user"."""
+    result = await _run_computation(
+        e2e_mcp, 'Extract({{email}}, "(.*)@", 1)', {"email": "alice@example.com"},
+    )
+    assert "alice" in _computed_value(result).lower(), f"Expected 'alice' in: {result}"
 
 
 async def test_simulate_computation_rule_domain_dns(e2e_mcp):
-    """DomainDNS: extract parent domain from FQDN."""
-    from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule="{{DomainDNS(fqdn)}}",
-            dictionary={"fqdn": "machine.domain.local"},
-        )
-        raw = result.get("raw", str(result))
-        assert "domain.local" in str(raw).lower(), f"Expected 'domain.local' in result: {result}"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"simulate_computation_rule not available: {exc}")
+    """DomainDNS must extract parent domain from FQDN."""
+    result = await _run_computation(e2e_mcp, "DomainDNS({{fqdn}})", {"fqdn": "machine.domain.local"})
+    assert "domain.local" in _computed_value(result).lower(), f"Expected 'domain.local' in: {result}"
 
 
 async def test_simulate_computation_rule_shorten_dns(e2e_mcp):
-    """ShortenDNS: extract hostname from FQDN."""
-    from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule="{{ShortenDNS(fqdn)}}",
-            dictionary={"fqdn": "web01.corp.example.com"},
-        )
-        raw = result.get("raw", str(result))
-        assert "web01" in str(raw).lower(), f"Expected 'web01' in result: {result}"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"simulate_computation_rule not available: {exc}")
+    """ShortenDNS must extract hostname from FQDN."""
+    result = await _run_computation(e2e_mcp, "ShortenDNS({{fqdn}})", {"fqdn": "web01.corp.example.com"})
+    assert "web01" in _computed_value(result).lower(), f"Expected 'web01' in: {result}"
 
 
 async def test_simulate_computation_rule_concat_and_orelse(e2e_mcp):
-    """Concat + OrElse: build string with fallback."""
-    from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(
-            e2e_mcp,
-            "simulate_computation_rule",
-            rule='{{Concat(OrElse(prefix, "default"), "-", name)}}',
-            dictionary={"name": "server01"},
-        )
-        raw = result.get("raw", str(result))
-        assert "default-server01" in str(raw).lower(), f"Expected 'default-server01' in result: {result}"
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"simulate_computation_rule not available: {exc}")
+    """Concat + OrElse: build string with fallback for missing key."""
+    result = await _run_computation(
+        e2e_mcp, 'Concat(OrElse({{prefix}}, "default"), "-", {{name}})', {"name": "server01"},
+    )
+    computed = _computed_value(result)
+    assert "default-server01" in computed.lower(), f"Expected 'default-server01' in: {computed}"
 
 
 async def test_simulate_datasource_flow_empty_flow(e2e_mcp):
