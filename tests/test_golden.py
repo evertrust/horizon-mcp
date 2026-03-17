@@ -32,11 +32,11 @@ _KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "src" / "horizon_mcp" 
 # ===================================================================
 
 
-def test_tool_count_is_62():
-    """Exactly 62 tools must be registered on the main server —
+def test_tool_count_is_63():
+    """Exactly 63 tools must be registered on the main server —
     any addition or removal is intentional and must update this test."""
-    assert len(_tools) == 62, (
-        f"Expected 62 tools, got {len(_tools)}. "
+    assert len(_tools) == 63, (
+        f"Expected 63 tools, got {len(_tools)}. "
         f"If you added or removed a tool, update this test and the "
         f"EXPECTED_TOOL_NAMES list in test_tool_name_enumeration."
     )
@@ -56,10 +56,11 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     # assist/computation.py (2)
     "simulate_computation_rule",
     "simulate_datasource_flow",
-    # assist/crypto.py (3)
+    # assist/crypto.py (4)
     "decode_x509",
     "decode_csr",
     "detect_file",
+    "fetch_exposed_certificate",
     # assist/query.py (5)
     "validate_hcql",
     "validate_hrql",
