@@ -1,24 +1,20 @@
-"""Tests verifying safety tier enforcement for Phase 1 tools.
+"""Tests verifying safety tier enforcement for registered tools.
 
 Covers:
-    1. Behavior-changing update tools include appropriate warnings in their descriptions
-    2. Phase 1 profile update tools mention safety tiers
+    1. Delete tool enumeration — only dashboard/discovery/report delete tools exist
 """
 
 from __future__ import annotations
 
-import json
 from typing import Any
-from unittest.mock import AsyncMock
 
-import pytest
+from mcp.server.fastmcp import FastMCP
 
-from horizon_mcp.client.errors import HorizonError
-from horizon_mcp.client.state import clear_client, set_client
+from horizon_mcp.tools import register_tools
 
 
 # ---------------------------------------------------------------------------
-# Test infrastructure
+# Test infrastructure (also imported by test_translate.py)
 # ---------------------------------------------------------------------------
 
 class ToolCollector:
@@ -67,57 +63,12 @@ class ToolCollector:
         return set(self.tools.keys())
 
 
-@pytest.fixture
-def mock_client() -> AsyncMock:
-    """An AsyncMock pretending to be a HorizonClient."""
-    client = AsyncMock()
-    client.get = AsyncMock(return_value={})
-    client.post = AsyncMock(return_value={})
-    client.put = AsyncMock(return_value={})
-    client.delete = AsyncMock(return_value={})
-    set_client(client)
-    yield client
-    clear_client()
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# Phase 1 profile update tools mention behavior-changing
+# Delete tool enumeration
 # ═══════════════════════════════════════════════════════════════════════════
 
-class TestUpdateProfileToolWarnings:
-    """Phase 1 update_*_profile tools should be marked behavior-changing."""
-
-    def test_update_profile_tools_mention_behavior_changing(self):
-        """All 5 Phase 1 update_*_profile tools should be marked behavior-changing."""
-        from horizon_mcp.tools.profiles import register_profile_phase1_tools
-
-        collector = ToolCollector()
-        register_profile_phase1_tools(collector)
-
-        update_profile_tools = [
-            name for name in collector.tool_names()
-            if name.startswith("update_") and name.endswith("_profile")
-        ]
-        # Phase 1 has 5 update_*_profile tools (webra, acme, scep, est, monitored)
-        assert len(update_profile_tools) == 5, (
-            f"Expected 5 update_*_profile tools, found {len(update_profile_tools)}: "
-            f"{sorted(update_profile_tools)}"
-        )
-
-        for tool_name in sorted(update_profile_tools):
-            desc = collector.get_description(tool_name)
-            assert "behavior-changing" in desc.lower() or "mutating-destructive" in desc.lower(), (
-                f"{tool_name} should mention 'behavior-changing' or 'mutating-destructive' "
-                f"in its description, but got: {desc[:200]}"
-            )
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# Phase 1 delete tool enumeration
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestPhase1DeleteToolEnumeration:
-    """Verify the complete set of delete_* tools in Phase 1."""
+class TestDeleteToolEnumeration:
+    """Verify the complete set of delete_* tools."""
 
     EXPECTED_DELETE_TOOLS = sorted([
         "delete_discovery_campaign",
@@ -126,13 +77,10 @@ class TestPhase1DeleteToolEnumeration:
         "delete_report",
     ])
 
-    def test_phase1_delete_tools(self):
-        """Phase 1 should only contain dashboard/discovery/report delete tools."""
-        from horizon_mcp.tools import register_phase1_tools
-        from mcp.server.fastmcp import FastMCP
-
+    def test_delete_tools(self):
+        """Only dashboard/discovery/report delete tools should be registered."""
         mcp = FastMCP("test")
-        register_phase1_tools(mcp)
+        register_tools(mcp)
         registered_delete_tools = sorted(
             t.name for t in mcp._tool_manager.list_tools() if t.name.startswith("delete_")
         )

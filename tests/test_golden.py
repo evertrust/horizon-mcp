@@ -32,11 +32,11 @@ _KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "src" / "horizon_mcp" 
 # ===================================================================
 
 
-def test_tool_count_is_96():
-    """Exactly 96 Phase 1 tools must be registered on the main server —
+def test_tool_count_is_62():
+    """Exactly 62 tools must be registered on the main server —
     any addition or removal is intentional and must update this test."""
-    assert len(_tools) == 96, (
-        f"Expected 96 Phase 1 tools, got {len(_tools)}. "
+    assert len(_tools) == 62, (
+        f"Expected 62 tools, got {len(_tools)}. "
         f"If you added or removed a tool, update this test and the "
         f"EXPECTED_TOOL_NAMES list in test_tool_name_enumeration."
     )
@@ -47,7 +47,7 @@ def test_tool_count_is_96():
 # ===================================================================
 
 EXPECTED_TOOL_NAMES: list[str] = sorted([
-    # --- Phase 1 tools (96) ---
+    # --- 62 tools ---
     # assist/system.py (4)
     "whoami",
     "get_license_info",
@@ -86,44 +86,9 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     "export_events_csv",
     "aggregate_certificates",
     "aggregate_requests",
-    # config.py — readonly (19)
-    "list_cas",
-    "get_ca",
-    "get_crl_cache",
-    "list_trust_chains",
-    "get_trust_chain",
-    "list_labels",
-    "get_label",
-    "list_http_proxies",
-    "get_http_proxy",
-    "list_datasources",
-    "get_datasource",
-    "simulate_datasource",
-    "list_password_policies",
-    "get_password_policy",
-    "generate_password",
-    "list_grading_policies",
-    "get_grading_policy",
-    "list_grading_rulesets",
-    "get_grading_ruleset",
-    # profiles.py — phase1 (12)
+    # profiles.py — readonly (2)
     "list_profiles",
     "get_profile",
-    "create_webra_profile",
-    "update_webra_profile",
-    "create_acme_profile",
-    "update_acme_profile",
-    "create_scep_profile",
-    "update_scep_profile",
-    "create_est_profile",
-    "update_est_profile",
-    "create_monitored_profile",
-    "update_monitored_profile",
-    # security.py — readonly (4)
-    "list_roles",
-    "get_role",
-    "list_credentials",
-    "get_credential",
     # discovery.py (6)
     "list_discovery_campaigns",
     "get_discovery_campaign",
@@ -157,8 +122,6 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     "list_reports",
     "download_report",
     "delete_report",
-    # analytics.py (1)
-    "get_analytics",
 ])
 
 
@@ -237,19 +200,6 @@ class TestCriticalToolSchemas:
             f"search_certificates missing params: {expected - params}"
         )
 
-    def test_create_webra_profile_params(self):
-        params = _get_param_names("create_webra_profile")
-        expected = {
-            "name",
-            "pki_connector",
-            "certificate_template",
-            "authorization_levels",
-            "authorization_mode",
-        }
-        assert expected.issubset(params), (
-            f"create_webra_profile missing params: {expected - params}"
-        )
-
     def test_submit_request_params(self):
         params = _get_param_names("submit_request")
         expected = {"workflow", "profile", "module", "template", "data"}
@@ -272,7 +222,7 @@ class TestToolDescriptionKnowledgeReferences:
     """Verify that representative tools reference the correct knowledge URIs."""
 
     def test_profile_tools_reference_profiles_knowledge(self):
-        for tool_name in ("list_profiles", "get_profile", "create_webra_profile"):
+        for tool_name in ("list_profiles", "get_profile"):
             desc = _get_description(tool_name)
             assert "horizon://knowledge/profiles" in desc, (
                 f"{tool_name} description should reference horizon://knowledge/profiles"
@@ -290,13 +240,6 @@ class TestToolDescriptionKnowledgeReferences:
             desc = _get_description(tool_name)
             assert "horizon://knowledge/workflows" in desc, (
                 f"{tool_name} description should reference horizon://knowledge/workflows"
-            )
-
-    def test_security_tools_reference_rbac(self):
-        for tool_name in ("list_roles", "get_role"):
-            desc = _get_description(tool_name)
-            assert "horizon://knowledge/rbac" in desc, (
-                f"{tool_name} description should reference horizon://knowledge/rbac"
             )
 
     def test_computation_tools_reference_computation_knowledge(self):
@@ -346,30 +289,6 @@ def test_knowledge_file_non_empty(filename: str):
 class TestKnowledgeFieldAlignment:
     """Verify that key field names mentioned in knowledge resources appear
     in the corresponding tool parameter schemas."""
-
-    def test_profiles_knowledge_mentions_certificate_template(self):
-        """The profiles knowledge doc mentions 'certificateTemplate', and the
-        create_webra_profile tool accepts a certificate_template parameter."""
-        knowledge_text = (_KNOWLEDGE_DIR / "profiles.md").read_text(encoding="utf-8")
-        assert "certificateTemplate" in knowledge_text
-        params = _get_param_names("create_webra_profile")
-        assert "certificate_template" in params
-
-    def test_profiles_knowledge_mentions_authorization_levels(self):
-        """The profiles knowledge doc mentions 'authorizationLevels', and the
-        create_webra_profile tool accepts an authorization_levels parameter."""
-        knowledge_text = (_KNOWLEDGE_DIR / "profiles.md").read_text(encoding="utf-8")
-        assert "authorizationLevels" in knowledge_text
-        params = _get_param_names("create_webra_profile")
-        assert "authorization_levels" in params
-
-    def test_profiles_knowledge_mentions_crypto_policy(self):
-        """The profiles knowledge doc mentions 'cryptoPolicy', and managed
-        profile tools accept a crypto_policy parameter."""
-        knowledge_text = (_KNOWLEDGE_DIR / "profiles.md").read_text(encoding="utf-8")
-        assert "cryptoPolicy" in knowledge_text
-        params = _get_param_names("create_acme_profile")
-        assert "crypto_policy" in params
 
     def test_workflows_knowledge_mentions_workflow_types(self):
         """The workflows knowledge doc mentions the 7 workflow types, and the

@@ -1,6 +1,6 @@
 # horizon-mcp
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **96 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **62 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
 
 ## Why knowledge-first?
 
@@ -125,7 +125,7 @@ Create `.mcp.json` in your project root:
 }
 ```
 
-Start Claude Code from that directory. The 96 tools are available immediately.
+Start Claude Code from that directory. The 62 tools are available immediately.
 
 ### Claude Desktop
 
@@ -193,7 +193,7 @@ export HORIZON_API_KEY=your-api-key
 npx @modelcontextprotocol/inspector .venv/bin/horizon-mcp
 ```
 
-Opens a browser UI showing all 96 tools and 12 knowledge resources.
+Opens a browser UI showing all 62 tools and 12 knowledge resources.
 
 ---
 
@@ -205,10 +205,6 @@ These natural language prompts work with any connected LLM.
 
 ```
 What profiles are configured on this Horizon instance?
-```
-
-```
-List all certificate authorities and show which ones are trusted for client authentication.
 ```
 
 ```
@@ -247,21 +243,7 @@ Download certificate abc123 in PKCS12 format with password "changeit".
 Revoke the certificate with ID xyz789 — reason: keyCompromise.
 ```
 
-### Profile management
-
-```
-Create a new WebRA profile called "API-Servers" with auto-validation and a 365-day renewal period.
-```
-
-```
-Update the EST-Devices profile to require approval for enrollment.
-```
-
-```
-What ACME profiles exist and what authorization methods do they support?
-```
-
-### Dashboards and analytics
+### Dashboards
 
 ```
 Create a dashboard showing certificate status distribution by profile.
@@ -269,10 +251,6 @@ Create a dashboard showing certificate status distribution by profile.
 
 ```
 List my saved queries and show me the one named "expiring-soon".
-```
-
-```
-What is the current analytics sync status for certificates?
 ```
 
 ### Diagnostics
@@ -318,12 +296,11 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 
 ## Tool reference
 
-96 tools in 11 domains. Safety tiers:
+62 tools in 8 domains. Safety tiers:
 
 - `read-only` — no side effects
 - `mutating-safe` — creates or modifies data, safe to retry
 - `mutating-destructive` — deletes data or changes active behavior; requires confirmation
-- `security-sensitive` — affects access control
 
 ### Assist (15 tools)
 
@@ -362,7 +339,7 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 | `get_event` | read-only | Get audit event details by ID |
 | `export_events_csv` | read-only | Export audit events to CSV |
 | `get_request_template` | read-only | Get request template for a workflow |
-| `submit_request` | mutating-safe | Submit a lifecycle request (enroll, renew, revoke, …) |
+| `submit_request` | mutating-safe | Submit a lifecycle request (enroll, renew, revoke, ...) |
 | `approve_request` | mutating-safe | Approve a pending request |
 | `deny_request` | mutating-safe | Deny a pending request |
 | `cancel_request` | mutating-safe | Cancel a pending request |
@@ -391,7 +368,7 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 | `list_discovery_campaigns` | read-only | List campaigns with optional name filter |
 | `get_discovery_campaign` | read-only | Get a campaign by name |
 | `create_discovery_campaign` | mutating-safe | Create a campaign with hosts, ports, and grading policies |
-| `update_discovery_campaign` | mutating-safe | Update campaign settings (GET → strip → merge → PUT) |
+| `update_discovery_campaign` | mutating-safe | Update campaign settings (GET -> strip -> merge -> PUT) |
 | `delete_discovery_campaign` | mutating-destructive | Delete a campaign (requires name confirmation) |
 | `flush_discovery_campaign` | mutating-destructive | Purge all events from a campaign (requires confirmation) |
 
@@ -420,79 +397,12 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 | `download_report` | read-only | Fetch raw CSV content by report UUID |
 | `delete_report` | mutating-destructive | Delete a report (requires UUID confirmation) |
 
-### Analytics (1 tool)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `get_analytics` | read-only | Get analytics sync status for a domain (certificates, events, discovery) |
-
-### Config — read-only (19 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_cas` | read-only | List certificate authorities |
-| `get_ca` | read-only | Get CA details by name |
-| `get_crl_cache` | read-only | Get CRL cache status for a CA |
-| `list_trust_chains` | read-only | List trust chains |
-| `get_trust_chain` | read-only | Get trust chain details by name |
-| `list_labels` | read-only | List labels |
-| `get_label` | read-only | Get label details by name |
-| `list_http_proxies` | read-only | List HTTP proxies |
-| `get_http_proxy` | read-only | Get proxy details by name |
-| `list_datasources` | read-only | List datasources |
-| `get_datasource` | read-only | Get datasource details by name |
-| `simulate_datasource` | read-only | Test a datasource with optional context |
-| `list_password_policies` | read-only | List password policies |
-| `get_password_policy` | read-only | Get password policy details by name |
-| `generate_password` | read-only | Generate a password from a policy |
-| `list_grading_policies` | read-only | List grading policies |
-| `get_grading_policy` | read-only | Get grading policy details by name |
-| `list_grading_rulesets` | read-only | List grading rulesets |
-| `get_grading_ruleset` | read-only | Get grading ruleset details by name |
-
-### Profiles (12 tools)
+### Profiles — read-only (2 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
 | `list_profiles` | read-only | List profiles with optional name and module filter |
 | `get_profile` | read-only | Get full profile details by name |
-| `create_webra_profile` | mutating-safe | Create a WebRA profile |
-| `update_webra_profile` | mutating-destructive | Update a WebRA profile |
-| `create_acme_profile` | mutating-safe | Create an ACME profile |
-| `update_acme_profile` | mutating-destructive | Update an ACME profile |
-| `create_scep_profile` | mutating-safe | Create a SCEP profile |
-| `update_scep_profile` | mutating-destructive | Update a SCEP profile |
-| `create_est_profile` | mutating-safe | Create an EST profile |
-| `update_est_profile` | mutating-destructive | Update an EST profile |
-| `create_monitored_profile` | mutating-safe | Create a Monitored profile |
-| `update_monitored_profile` | mutating-destructive | Update a Monitored profile |
-
-### Security — read-only (4 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_roles` | read-only | List roles with optional name filter |
-| `get_role` | read-only | Get role details and permissions by name |
-| `list_credentials` | read-only | List credential metadata (no secrets returned) |
-| `get_credential` | read-only | Get credential metadata by name (no secrets returned) |
-
----
-
-## Update semantics
-
-All `update_*` tools use a **GET → strip → merge → PUT** pattern:
-
-1. Fetch current object state from Horizon
-2. Strip server-populated fields (IDs, timestamps, computed state)
-3. Merge provided parameters — only non-null values override
-4. Apply `clear_fields` — explicitly sets named fields to null
-5. PUT the merged payload
-
-**Rules:**
-
-- Omitted parameter = preserve existing value
-- Provided parameter = override existing value
-- `clear_fields=["description"]` = explicitly null the `description` field
 
 ---
 
@@ -516,16 +426,16 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 
 The following capabilities require direct Horizon API calls or the Horizon UI. They are intentionally outside this server's scope:
 
+- **Configuration object administration** — creating, updating, or deleting CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets (read access is available via the Horizon API directly)
+- **Profile management** — creating, updating, or deleting profiles (read-only listing and inspection are supported)
 - **Credential management** — creating, updating, or deleting stored credentials (private keys, API tokens, etc.)
 - **PKI and third-party connector management** — creating, updating, or deleting connectors to ADCS, EJBCA, HashiCorp Vault, etc.
 - **Trigger management** — creating, updating, or deleting email/webhook/script triggers
 - **Role, team, IDP, and principal administration** — creating or modifying users, teams, identity providers, and access control assignments
-- **CA import and trust chain management** — importing CAs or modifying trust anchor configuration
-- **Label, proxy, datasource, and policy administration** — creating or modifying configuration objects
+- **Analytics** — analytics sync status and reindex operations
 - **SMTP and notification server configuration**
 - **Intune, Jamf, and MDM integration setup** — device management connector configuration
 - **Scheduler and system-level automation** — cron-based jobs and system task configuration
-- **Analytics reindex and reset operations** — rebuilding search indices
 
 ---
 

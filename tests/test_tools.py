@@ -9,11 +9,9 @@ Strategy:
       interface (validates argument parsing exactly as the MCP runtime would).
     - Assert correct HTTP method/endpoint, payload, and response formatting.
 
-Domains covered (5 — Phase 1 only):
-    Config     — list_cas (read-only)
+Domains covered (3):
     Profiles   — list_profiles (read-only)
     Lifecycle  — search_certificates, get_certificate, download_certificate
-    Security   — list_roles (read-only)
     Assist     — whoami, decode_x509, validate_hcql
 """
 
@@ -59,20 +57,11 @@ def patched_client(mock_client: AsyncMock):
 
 
 @pytest.fixture
-def config_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with config read-only tools registered."""
-    mcp = FastMCP("test-config")
-    from horizon_mcp.tools.config import register_config_readonly_tools
-    register_config_readonly_tools(mcp)
-    return mcp
-
-
-@pytest.fixture
 def profile_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with profile Phase 1 tools registered."""
+    """FastMCP with profile readonly tools registered."""
     mcp = FastMCP("test-profiles")
-    from horizon_mcp.tools.profiles import register_profile_phase1_tools
-    register_profile_phase1_tools(mcp)
+    from horizon_mcp.tools.profiles import register_profile_readonly_tools
+    register_profile_readonly_tools(mcp)
     return mcp
 
 
@@ -82,15 +71,6 @@ def lifecycle_mcp(patched_client: AsyncMock) -> FastMCP:
     mcp = FastMCP("test-lifecycle")
     from horizon_mcp.tools.lifecycle import register_lifecycle_tools
     register_lifecycle_tools(mcp)
-    return mcp
-
-
-@pytest.fixture
-def security_mcp(patched_client: AsyncMock) -> FastMCP:
-    """FastMCP with security read-only tools registered."""
-    mcp = FastMCP("test-security")
-    from horizon_mcp.tools.security import register_security_readonly_tools
-    register_security_readonly_tools(mcp)
     return mcp
 
 
@@ -114,54 +94,7 @@ async def call(mcp: FastMCP, name: str, args: dict | None = None) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 1. CONFIG TOOLS (read-only)
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestConfigListCas:
-    """list_cas — read-only GET → client-side filter → JSON response."""
-
-    async def test_returns_all_cas(self, config_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "Root-CA"},
-            {"name": "Issuing-CA"},
-        ]
-        result = await call(config_mcp, "list_cas")
-
-        patched_client.get.assert_awaited_once_with("/api/v1/cas")
-        assert result["total"] == 2
-        assert result["returned"] == 2
-        assert result["truncated"] is False
-        assert "Root-CA" in result["content"]
-
-    async def test_name_filter(self, config_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "Root-CA"},
-            {"name": "Issuing-CA"},
-            {"name": "Test-CA"},
-        ]
-        result = await call(config_mcp, "list_cas", {"name_contains": "root"})
-
-        assert result["returned"] == 1
-        assert result["items"][0]["name"] == "Root-CA"
-
-    async def test_truncation(self, config_mcp, patched_client):
-        patched_client.get.return_value = [{"name": f"CA-{i}"} for i in range(60)]
-        result = await call(config_mcp, "list_cas", {"max_items": 5})
-
-        assert result["truncated"] is True
-        assert result["returned"] == 5
-        assert result["total"] == 60
-        assert "hint" in result
-
-    async def test_dict_response_envelope(self, config_mcp, patched_client):
-        """API sometimes returns {items: [...]} instead of a bare list."""
-        patched_client.get.return_value = {"items": [{"name": "CA-1"}]}
-        result = await call(config_mcp, "list_cas")
-        assert result["returned"] == 1
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 2. PROFILE TOOLS (read-only)
+# 1. PROFILE TOOLS (read-only)
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestProfileList:
@@ -189,38 +122,8 @@ class TestProfileList:
         assert all(i["module"] == "webra" for i in result["items"])
 
 
-class TestProfileCreateWebra:
-    """create_webra_profile — payload assembly + preflight + POST."""
-
-    async def test_minimal_create(self, profile_mcp, patched_client):
-        api_response = {"name": "My-WebRA", "module": "webra", "enabled": True}
-        patched_client.post.return_value = api_response
-        # Preflight checks PKI connector existence
-        patched_client.get.return_value = {"name": "my-pki-conn", "type": "msadcs"}
-
-        result = await call(profile_mcp, "create_webra_profile", {
-            "name": "My-WebRA",
-            "pki_connector": "my-pki-conn",
-            "certificate_template": {"subject": {"cn": {"mode": "required"}}},
-            "authorization_levels": {"enroll": "authenticated"},
-        })
-
-        # POST should have been called with the correct payload
-        patched_client.post.assert_awaited_once()
-        payload = patched_client.post.call_args[1]["json"]
-        assert payload["module"] == "webra"
-        assert payload["name"] == "My-WebRA"
-        assert payload["pkiConnector"] == "my-pki-conn"
-        assert payload["enabled"] is True
-        assert payload["authorizationMode"] == "authorized"  # default
-        assert result["status"] == "created"
-        assert result["kind"] == "profile"
-        assert result["name"] == "My-WebRA"
-        assert result["data"]["name"] == "My-WebRA"
-
-
 # ═══════════════════════════════════════════════════════════════════════════
-# 3. LIFECYCLE TOOLS
+# 2. LIFECYCLE TOOLS
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestLifecycleSearchCertificates:
@@ -525,37 +428,7 @@ class TestLifecycleCancelRequest:
 
 
 # ═══════════════════════════════════════════════════════════════════════════
-# 4. SECURITY TOOLS (read-only)
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestSecurityListRoles:
-    """list_roles — delegated to _fetch_list helper."""
-
-    async def test_returns_roles(self, security_mcp, patched_client):
-        patched_client.get.return_value = [
-            {"name": "admin", "permissions": ["*"]},
-            {"name": "operator", "permissions": ["certificates:*"]},
-        ]
-        result = await call(security_mcp, "list_roles")
-
-        patched_client.get.assert_awaited_once()
-        call_args = patched_client.get.call_args
-        assert call_args[0][0] == "/api/v1/security/roles"
-        # _list_params passes size = max_items + 1
-        assert call_args[1]["params"]["size"] == 51
-        assert result["count"] == 2
-        assert len(result["items"]) == 2
-
-    async def test_name_filter_passed_as_search(self, security_mcp, patched_client):
-        patched_client.get.return_value = [{"name": "admin"}]
-        await call(security_mcp, "list_roles", {"name_contains": "adm"})
-
-        params = patched_client.get.call_args[1]["params"]
-        assert params["search"] == "adm"
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# 5. ASSIST TOOLS
+# 3. ASSIST TOOLS
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestAssistWhoami:
@@ -644,33 +517,3 @@ class TestAssistDescribeQueryFields:
         })
         assert "error" in result
         assert "valid_types" in result
-
-
-# ═══════════════════════════════════════════════════════════════════════════
-# CROSS-CUTTING: Error handling
-# ═══════════════════════════════════════════════════════════════════════════
-
-class TestConfigErrorHandling:
-    """Verify that HorizonError from the client propagates as ToolError."""
-
-    async def test_horizon_error_formatted(self, config_mcp, patched_client):
-        from mcp.server.fastmcp.exceptions import ToolError
-        from horizon_mcp.client.errors import HorizonError
-        patched_client.get.side_effect = HorizonError(
-            status_code=404,
-            error_code="CA-003",
-            message="CA not found",
-        )
-        with pytest.raises(ToolError, match="CA not found"):
-            await call(config_mcp, "list_cas")
-
-    async def test_get_ca_error(self, config_mcp, patched_client):
-        from mcp.server.fastmcp.exceptions import ToolError
-        from horizon_mcp.client.errors import HorizonError
-        patched_client.get.side_effect = HorizonError(
-            status_code=403,
-            error_code="SecPerm001",
-            message="Forbidden",
-        )
-        with pytest.raises(ToolError, match="Forbidden"):
-            await call(config_mcp, "get_ca", {"name": "restricted-ca"})
