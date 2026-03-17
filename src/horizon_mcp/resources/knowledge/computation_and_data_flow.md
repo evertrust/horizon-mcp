@@ -698,231 +698,422 @@ the available entries vary by context (e.g., email templates have access to
 
 ---
 
-## Common Patterns
+## How to Build Computation Rules — Decision Guide
 
-### Force uppercase CN from CSR
+When asked to create computation rules, follow this reasoning process:
+
+### Step 1: Identify the goal
+
+| Goal type | Approach |
+|-----------|----------|
+| Transform a single field value | One rule: `source` = function expression, `target` = field |
+| Set a field with fallback | One rule: `OrElse(primary, fallback)` |
+| Conditionally set a field | One rule with `condition` — rule only fires when condition resolves non-empty |
+| Build up a multi-value list (SANs) | Multiple rules in sequence, each with `overwrite: false` to append |
+| Enforce naming policy | Rule with `overwrite: true` to force computed value |
+| Enrich from external data | Datasource flow first, then rules referencing `ds.0.*` results |
+
+### Step 2: Choose between `overwrite: true` and `overwrite: false`
+
+| Behavior | When to use |
+|----------|-------------|
+| `overwrite: true` | Enforce a policy — the computed value always wins, regardless of what the CSR contains |
+| `overwrite: false` (default) | Augment — add the computed value only if the field is currently empty or the value is not already in the list |
+
+For multi-value fields like `sans.dnsnames`, `overwrite: false` **appends** to
+the existing list. Combined with ordered rules, this enables building up a SAN
+list incrementally from multiple sources without losing any values.
+
+### Step 3: Order rules correctly
+
+Rules execute **in order**. Later rules can reference values set by earlier rules.
+For list accumulation patterns:
+1. First rule: copy existing values from CSR (`overwrite: true` to initialize)
+2. Subsequent rules: add computed values (`overwrite: false` to append)
+
+### Common Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| Function call returns raw template text | You're using `templateString` mode — switch to `computationRule` mode, or use `{{Function({{key}})}}` syntax inside template strings |
+| SAN list gets overwritten instead of appended | Use `overwrite: false` for all rules after the first |
+| Rule fires when source is empty | Add a `condition` that mirrors the source expression — prevents setting empty values |
+| Multi-value target only gets one value | Use `[[ ]]` syntax for the source: `[[ csr.san.dnsname ]]` not `{{ csr.san.dnsname }}` |
+| LDAP lookup results are empty | Check datasource flow `inputs` mapping — key must match the datasource's expected parameter name |
+
+---
+
+## Real-World PKI Patterns
+
+Organized by certificate use case, from simple to complex. Each pattern includes
+the **business requirement**, the **computation rules**, and an explanation of
+**why** each rule is structured the way it is.
+
+### TLS Server Certificate — Basic Web Server
+
+**Requirement:** Internal web servers get certificates with:
+- CN forced to lowercase FQDN
+- Organization and OU from corporate policy (not from CSR)
+- DNS SANs preserved from CSR
+- Contact email from the requesting user
 
 ```json
-{ "source": "{{ Upper(csr.subject.cn) }}", "target": "subject.commonName" }
+[
+  { "source": "Lower({{csr.subject.cn}})", "target": "subject.commonName", "overwrite": true },
+  { "source": "\"Acme Corp\"", "target": "subject.organization", "overwrite": true },
+  { "source": "\"IT Infrastructure\"", "target": "subject.organizationalUnit", "overwrite": true },
+  { "source": "[[ csr.san.dnsname ]]", "target": "sans.dnsnames", "overwrite": true },
+  { "source": "OrElse({{webra.enroll.mail}}, {{principal.mail}})", "target": "contactEmail" }
+]
 ```
 
-### Default OU when CSR has none
+**Why:** `overwrite: true` on subject fields enforces corporate naming policy
+regardless of what the CSR contains. DNS SANs are preserved as-is from the CSR.
+The contact email falls back to the authenticated user's email if not provided.
+
+### TLS Server Certificate — Ensure CN in DNS SANs
+
+**Requirement:** Some TLS clients (notably older Java and .NET) require the
+server's FQDN to appear in the DNS SANs, not just the CN. Ensure the CN is
+always present as a DNS SAN without duplicating it if it's already there.
 
 ```json
-{ "source": "{{ OrElse(csr.subject.ou, \"IT Department\") }}", "target": "subject.organizationalUnit" }
+[
+  { "source": "[[ csr.san.dnsname ]]", "target": "sans.dnsnames", "overwrite": true },
+  {
+    "source": "{{csr.subject.cn}}",
+    "target": "sans.dnsnames",
+    "condition": "{{csr.subject.cn}}",
+    "overwrite": false
+  }
+]
 ```
 
-### Extract hostname from FQDN for SAN
+**Why:** Rule 1 copies all DNS SANs from the CSR. Rule 2 adds the CN with
+`overwrite: false` — if the CN is already in the list (because the CSR
+included it as a SAN), this is a no-op. If the CN was missing, it gets
+appended. The `condition` prevents adding an empty value if the CN is unset.
+
+### TLS Server Certificate — Domain Controller (LDAPS)
+
+**Requirement:** Active Directory domain controllers need the **parent domain**
+as a DNS SAN for LDAPS connectivity. For `dc01.corp.example.com`, the cert
+must include `corp.example.com` as a SAN so that LDAP clients connecting to
+`ldaps://corp.example.com:636` can validate the certificate.
 
 ```json
-{ "source": "{{ ShortenDNS(csr.subject.cn) }}", "target": "sans.dnsnames", "overwrite": false }
+[
+  { "source": "[[ csr.san.dnsname ]]", "target": "sans.dnsnames", "overwrite": true },
+  {
+    "source": "{{csr.subject.cn}}",
+    "target": "sans.dnsnames",
+    "condition": "{{csr.subject.cn}}",
+    "overwrite": false
+  },
+  {
+    "source": "DomainDNS({{csr.subject.cn}})",
+    "target": "sans.dnsnames",
+    "condition": "DomainDNS({{csr.subject.cn}})",
+    "overwrite": false
+  }
+]
 ```
 
-### Combine LDAP lookup with fallback
+**Result for `CN=dc01.corp.example.com`:**
+- DNS SANs: all from CSR + `dc01.corp.example.com` + `corp.example.com`
 
+**Why:** `DomainDNS("dc01.corp.example.com")` extracts `"corp.example.com"`.
+The `overwrite: false` ensures no duplication. The `condition` mirrors the
+source so the rule is skipped if the CN doesn't contain a domain part.
+
+### TLS Server Certificate — Full SAN Expansion (FQDN + hostname + domain)
+
+**Requirement:** Some environments need the certificate to contain all three
+forms: the FQDN, the short hostname, and the parent domain. Common for servers
+that are accessed by different names depending on context (FQDN from DNS,
+hostname from local network, domain for service discovery).
+
+```json
+[
+  { "source": "[[ csr.san.dnsname ]]", "target": "sans.dnsnames", "overwrite": true },
+  { "source": "{{csr.subject.cn}}", "target": "sans.dnsnames", "overwrite": false },
+  {
+    "source": "ShortenDNS({{csr.subject.cn}})",
+    "target": "sans.dnsnames",
+    "condition": "ShortenDNS({{csr.subject.cn}})",
+    "overwrite": false
+  },
+  {
+    "source": "DomainDNS({{csr.subject.cn}})",
+    "target": "sans.dnsnames",
+    "condition": "DomainDNS({{csr.subject.cn}})",
+    "overwrite": false
+  }
+]
+```
+
+**Result for `CN=web01.corp.example.com`:**
+- DNS SANs: original CSR SANs + `web01.corp.example.com` + `web01` + `corp.example.com`
+
+### TLS Server Certificate — SAN Restriction (Security Policy)
+
+**Requirement:** Only allow DNS SANs within the corporate domain. Reject or
+strip SANs pointing to external domains. This prevents a server from getting a
+cert valid for `evil.com` through an internal CA.
+
+```json
+[
+  {
+    "source": "[[ Filter(csr.san.dnsname, \".*\\.corp\\.example\\.com$\") ]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  }
+]
+```
+
+**Why:** `Filter` with a regex keeps only SANs matching `*.corp.example.com`.
+`overwrite: true` replaces whatever the CSR requested with only the allowed SANs.
+External SANs like `evil.com` or `other.example.net` are silently dropped.
+
+### TLS Client Certificate — User Identity from LDAP
+
+**Requirement:** Enrich client certificates with user attributes from
+corporate LDAP. The CN comes from the CSR, but the organization, department,
+and email are looked up in LDAP using the requesting user's identifier.
+
+**Datasource flow:**
 ```json
 {
   "dataSourceFlows": [
-    { "ds": "primary-ldap", "stopOnSuccess": true, "inputs": [{"key": "cn", "value": "${csr.subject.cn}"}] },
-    { "ds": "fallback-ldap", "stopOnSuccess": false, "inputs": [{"key": "cn", "value": "${csr.subject.cn}"}] }
+    {
+      "ds": "corporate-ldap",
+      "stopOnSuccess": true,
+      "inputs": [{"key": "uid", "value": "${principal.identifier}"}]
+    }
   ]
 }
 ```
 
-### Multi-value SAN from split string
-
+**Computation rules:**
 ```json
-{ "source": "[[ Split(http.request.header.x-san-list, \",\") ]]", "target": "sans.dnsnames" }
+[
+  { "source": "{{csr.subject.cn}}", "target": "subject.commonName" },
+  { "source": "OrElse({{ds.0.o}}, \"Acme Corp\")", "target": "subject.organization" },
+  { "source": "{{ds.0.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.0.department}}" },
+  { "source": "{{ds.0.mail}}", "target": "sans.rfc822names", "condition": "{{ds.0.mail}}" },
+  { "source": "OrElse({{ds.0.mail}}, {{principal.mail}})", "target": "contactEmail" },
+  { "source": "{{ds.0.department}}", "target": "label.department", "condition": "{{ds.0.department}}" }
+]
 ```
 
-### Filter SANs to only .corp.com domains
+**Why:** The datasource flow runs first, querying LDAP with the authenticated
+user's ID. Results populate `ds.0.*` entries. Computation rules then map those
+values into certificate fields. `OrElse` provides fallbacks. The `condition`
+on OU and email prevents setting empty values if the LDAP lookup returned
+nothing for those attributes.
 
-```json
-{ "source": "[[ Filter(csr.san.dnsname, \".*\\.corp\\.com$\") ]]", "target": "sans.dnsnames", "overwrite": true }
-```
+### TLS Client Certificate — Smart Card / PIV
 
-### Set a label from a datasource lookup
+**Requirement:** Smart card certificates need the UPN (User Principal Name) as
+an `otherName` SAN, the user's email as an RFC822 SAN, and the CN in
+`LastName.FirstName` format derived from LDAP attributes.
 
-```json
-{ "source": "{{ ds.0.department }}", "target": "label.department" }
-```
-
-### Conditional rule: only set OU if principal has a specific role
-
+**Datasource flow:**
 ```json
 {
-  "source": "\"Security Team\"",
-  "target": "subject.organizationalUnit",
-  "condition": "{{ Match(Join(principal.team, \",\"), \".*security-admin.*\") }}"
+  "dataSourceFlows": [
+    {
+      "ds": "corporate-ldap",
+      "stopOnSuccess": true,
+      "inputs": [{"key": "uid", "value": "${principal.identifier}"}]
+    }
+  ]
 }
 ```
 
-### Format current date for a label
-
+**Computation rules:**
 ```json
-{ "source": "{{ DateTimeFormat(NOW, \"yyyy-MM-dd\") }}", "target": "label.issuedDate" }
+[
+  {
+    "source": "Concat({{ds.0.sn}}, \".\", {{ds.0.givenName}})",
+    "target": "subject.commonName",
+    "condition": "{{ds.0.sn}}"
+  },
+  { "source": "{{ds.0.mail}}", "target": "sans.rfc822names", "condition": "{{ds.0.mail}}" },
+  { "source": "{{ds.0.userPrincipalName}}", "target": "sans.othername_upn", "condition": "{{ds.0.userPrincipalName}}" },
+  { "source": "OrElse({{ds.0.o}}, \"Acme Corp\")", "target": "subject.organization" },
+  { "source": "{{ds.0.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.0.department}}" },
+  { "source": "{{ds.0.mail}}", "target": "contactEmail", "condition": "{{ds.0.mail}}" }
+]
 ```
 
-### Extract username from email in CSR subject
+### ACME Certificate — Contact Email Mapping
+
+**Requirement:** ACME certificates should set the contact email from the ACME
+account's contact information, and tag the certificate with the requesting
+IP for audit.
 
 ```json
-{ "source": "{{ EmailUser(csr.subject.e) }}", "target": "label.username" }
+[
+  { "source": "{{acme.account.contact.0}}", "target": "contactEmail", "condition": "{{acme.account.contact.0}}" },
+  { "source": "{{acme.order.initialip}}", "target": "label.requestingIP", "condition": "{{acme.order.initialip}}" }
+]
 ```
 
-### Use OrElse with multiple fallbacks
+### EST Certificate — Mutual TLS Renewal
+
+**Requirement:** EST re-enrollment uses mutual TLS. Copy the authenticated
+client certificate's CN to the new certificate's CN, and preserve the original
+subject organization. This ensures certificate continuity during renewal.
 
 ```json
-{ "source": "{{ OrElse(webra.enroll.mail, principal.mail, \"default@corp.com\") }}", "target": "contactEmail" }
+[
+  { "source": "{{principal.certificate.subject.cn}}", "target": "subject.commonName", "condition": "{{principal.certificate.subject.cn}}" },
+  { "source": "{{principal.certificate.subject.o}}", "target": "subject.organization", "condition": "{{principal.certificate.subject.o}}" },
+  { "source": "[[ csr.san.dnsname ]]", "target": "sans.dnsnames" }
+]
 ```
 
-### Extract regex capture group from CN
+**Why:** During EST re-enrollment, `principal.certificate.*` contains the
+attributes from the existing (expiring) client certificate used for mTLS
+authentication. This copies them to the new certificate.
+
+### SCEP Certificate — Device Identity with LDAP Enrichment
+
+**Requirement:** SCEP device certificates (e.g., for network equipment, printers)
+should map the SCEP challenge to a device identity, look up the device in LDAP,
+and populate the certificate with the device's assigned department and location.
+
+**Datasource flow:**
+```json
+{
+  "dataSourceFlows": [
+    {
+      "ds": "device-inventory-ldap",
+      "stopOnSuccess": true,
+      "inputs": [{"key": "cn", "value": "${csr.subject.cn}"}]
+    }
+  ]
+}
+```
+
+**Computation rules:**
+```json
+[
+  { "source": "Lower({{csr.subject.cn}})", "target": "subject.commonName", "overwrite": true },
+  { "source": "OrElse({{ds.0.l}}, \"Unknown Site\")", "target": "subject.locality" },
+  { "source": "OrElse({{ds.0.department}}, \"IT\")", "target": "subject.organizationalUnit" },
+  { "source": "\"Acme Corp\"", "target": "subject.organization", "overwrite": true },
+  { "source": "{{ds.0.managedBy}}", "target": "contactEmail", "condition": "{{ds.0.managedBy}}" },
+  { "source": "{{ds.0.location}}", "target": "label.site", "condition": "{{ds.0.location}}" }
+]
+```
+
+### WCCE Certificate — Active Directory User Mapping
+
+**Requirement:** Windows Certificate Client Enrollment (WCCE) certificates
+should map the caller's Active Directory identity to certificate fields.
+The caller identity is provided by the WCCE connector from the AD account.
 
 ```json
-{ "source": "{{ Extract(csr.subject.cn, \"^([a-z]+)-\", 1) }}", "target": "label.environment" }
+[
+  { "source": "{{calleridentity.cn}}", "target": "subject.commonName" },
+  { "source": "{{calleridentity.mail}}", "target": "sans.rfc822names", "condition": "{{calleridentity.mail}}" },
+  { "source": "{{calleridentity.msupn}}", "target": "sans.othername_upn", "condition": "{{calleridentity.msupn}}" },
+  { "source": "{{calleridentity.o}}", "target": "subject.organization", "condition": "{{calleridentity.o}}" },
+  { "source": "{{calleridentity.department}}", "target": "subject.organizationalUnit", "condition": "{{calleridentity.department}}" },
+  { "source": "{{calleridentity.samaccountname}}", "target": "owner" },
+  { "source": "{{calleridentity.mail}}", "target": "contactEmail", "condition": "{{calleridentity.mail}}" }
+]
 ```
 
-### Get domain from first DNS SAN
+### Environment-Based Subject Naming
 
-```json
-{ "source": "{{ DomainDNS(First(csr.san.dnsname)) }}", "target": "label.domain" }
-```
-
-### Sort and join SANs for display
-
-```json
-{ "source": "{{ Join(Sort(csr.san.dnsname), \", \") }}", "target": "label.allSans" }
-```
-
-### Set owner from WCCE caller identity
-
-```json
-{ "source": "{{ calleridentity.samaccountname }}", "target": "owner" }
-```
-
-### Map ACME account contact to certificate email
-
-```json
-{ "source": "{{ acme.account.contact.0 }}", "target": "contactEmail" }
-```
-
----
-
-## Advanced Multi-Rule Patterns
-
-These patterns require **multiple computation rules executed in order**.
-Rules execute sequentially — later rules can reference values set by earlier ones.
-
-### Ensure CN is present in DNS SANs (no duplication)
-
-Goal: if the CSR's CN is already a DNS SAN, keep SANs as-is. If not, add the
-CN as an extra DNS SAN. This prevents duplication while guaranteeing coverage.
-
-**Strategy:** Use two rules. Rule 1 copies all existing DNS SANs from the CSR.
-Rule 2 adds the CN with `overwrite: false` so it only appends if not already
-present. The `[[ ]]` multi-value syntax ensures lists are handled correctly.
+**Requirement:** Server names follow a pattern like `env-service-index.domain.com`
+(e.g., `prod-web-01.corp.example.com`). Extract the environment from the CN
+and use it to set the OU and a label for filtering.
 
 ```json
 [
   {
-    "source": "[[ csr.san.dnsname ]]",
-    "target": "sans.dnsnames",
-    "overwrite": true
+    "source": "Extract({{csr.subject.cn}}, \"^([a-z]+)-\", 1)",
+    "target": "label.environment",
+    "condition": "Extract({{csr.subject.cn}}, \"^([a-z]+)-\", 1)"
   },
   {
-    "source": "{{ csr.subject.cn }}",
-    "target": "sans.dnsnames",
-    "condition": "{{ csr.subject.cn }}",
+    "source": "Upper(Extract({{csr.subject.cn}}, \"^([a-z]+)-\", 1))",
+    "target": "subject.organizationalUnit",
+    "condition": "Extract({{csr.subject.cn}}, \"^([a-z]+)-\", 1)"
+  }
+]
+```
+
+**Result for `CN=prod-web-01.corp.example.com`:**
+- `label.environment` = `prod`
+- OU = `PROD`
+
+**Why:** `Extract` with capture group 1 isolates the environment prefix.
+The nested `Upper(Extract(...))` demonstrates composing functions.
+The `condition` ensures the rule is skipped if the CN doesn't match the pattern.
+
+### Conditional Team Assignment
+
+**Requirement:** Certificates requested by members of the "infra-team" should
+be owned by the "Infrastructure" team. All others get the default "PKI-Ops" team.
+
+```json
+[
+  {
+    "source": "\"Infrastructure\"",
+    "target": "owner",
+    "condition": "Match(Join({{principal.team}}, \",\"), \".*infra-team.*\")"
+  },
+  {
+    "source": "\"PKI-Ops\"",
+    "target": "owner",
     "overwrite": false
   }
 ]
 ```
 
-**How it works:**
-1. Rule 1 copies all DNS SANs from the CSR (overwrites any existing value)
-2. Rule 2 adds the CN to `sans.dnsnames` with `overwrite: false` — if the CN
-   is already in the list (because the CSR included it as a SAN), this is a
-   no-op. If the CN was missing from the SANs, it gets appended.
+**Why:** Rule 1 sets owner to "Infrastructure" only if the principal belongs to
+"infra-team" (checked via Join + Match). Rule 2 sets "PKI-Ops" with
+`overwrite: false` — it only fires if Rule 1 didn't set the owner (because the
+condition was false). This implements an if/else pattern.
 
-### Always add parent domain as DNS SAN (LDAPS compatibility)
+### Notification Template String — Certificate Expiry Email
 
-Goal: for a certificate with CN `machine.domain.local`, automatically add
-`domain.local` as a DNS SAN. This enables LDAPS connectivity to Active
-Directory domain controllers, which require the domain name in the cert SANs.
+**Requirement:** Send an expiry warning email with certificate details embedded
+in the body. This uses **template string** syntax (free text with embedded
+`{{ }}` placeholders), not computation rules.
 
-**Strategy:** Use `DomainDNS` to extract the parent domain from the CN, then
-add it to DNS SANs with `overwrite: false` to avoid replacing existing SANs.
+```
+Subject: Certificate {{certificate.dn}} expires on {{certificate.not_after}}
 
-```json
-[
-  {
-    "source": "[[ csr.san.dnsname ]]",
-    "target": "sans.dnsnames",
-    "overwrite": true
-  },
-  {
-    "source": "{{ csr.subject.cn }}",
-    "target": "sans.dnsnames",
-    "condition": "{{ csr.subject.cn }}",
-    "overwrite": false
-  },
-  {
-    "source": "{{ DomainDNS(csr.subject.cn) }}",
-    "target": "sans.dnsnames",
-    "condition": "{{ DomainDNS(csr.subject.cn) }}",
-    "overwrite": false
-  }
-]
+Body:
+Hello {{certificate.owner}},
+
+Your certificate for {{certificate.dn}} (serial: {{certificate.serial}})
+issued by profile {{certificate.profile}} will expire on
+{{certificate.not_after}}.
+
+Please renew it before expiry. You can access your certificate at:
+{{request.my.url}}
+
+Regards,
+PKI Operations Team
 ```
 
-**How it works:**
-1. Rule 1 copies all existing DNS SANs from the CSR
-2. Rule 2 adds the CN if missing (same pattern as above)
-3. Rule 3 extracts the parent domain (`DomainDNS("machine.domain.local")`
-   → `"domain.local"`) and adds it if not already present
+### Notification Template String — REST Webhook with Functions
 
-For `CN=dc01.corp.example.com`, the resulting DNS SANs would include:
-- All original SANs from the CSR
-- `dc01.corp.example.com` (the CN, if not already a SAN)
-- `corp.example.com` (the parent domain, for LDAPS)
+**Requirement:** Call a Palo Alto Panorama API to commit a configuration change
+when a certificate is enrolled. Uses functions inside template string `{{ }}`.
 
-### Combine CN, hostname, and domain in SANs
-
-Goal: ensure the certificate has the FQDN, short hostname, and parent domain
-all present as DNS SANs — common for web servers and domain controllers.
-
-```json
-[
-  {
-    "source": "[[ csr.san.dnsname ]]",
-    "target": "sans.dnsnames",
-    "overwrite": true
-  },
-  {
-    "source": "{{ csr.subject.cn }}",
-    "target": "sans.dnsnames",
-    "overwrite": false
-  },
-  {
-    "source": "{{ ShortenDNS(csr.subject.cn) }}",
-    "target": "sans.dnsnames",
-    "condition": "{{ ShortenDNS(csr.subject.cn) }}",
-    "overwrite": false
-  },
-  {
-    "source": "{{ DomainDNS(csr.subject.cn) }}",
-    "target": "sans.dnsnames",
-    "condition": "{{ DomainDNS(csr.subject.cn) }}",
-    "overwrite": false
-  }
-]
+```
+key={{credential.raw}}&cmd={{OrElse(Concat("<commit-all><template-stack><n>", {{label.panos_template_stack}}, "</n><admin><member>certadmin</member></admin></template-stack></commit-all>&type=commit&action=all"), "<show><s><info></info></s></show>&type=op")}}
 ```
 
-For `CN=web01.corp.example.com`, resulting DNS SANs:
-`web01.corp.example.com`, `web01`, `corp.example.com` + original CSR SANs
-
-### Key principle: `overwrite: false` for list accumulation
-
-When the target is a multi-value field (like `sans.dnsnames`), setting
-`overwrite: false` **appends** to the existing list rather than replacing it.
-Combined with ordered rules, this enables building up a SAN list incrementally
-from multiple sources without losing any values.
+**Why:** This template string embeds `OrElse(Concat(...), fallback)` inside
+`{{ }}`. If the label `panos_template_stack` exists, it builds a commit command.
+Otherwise, it falls back to a harmless show command. Functions inside template
+strings use the nested `{{Function({{key}})}}` syntax.
