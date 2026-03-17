@@ -73,4 +73,47 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         expected_resources=["query-languages"],
         description="Query language comparison",
     ),
+    # --- Computation rule scenarios ---
+    Scenario(
+        question="Write a computation rule that uppercases the CN from the CSR",
+        expected_tools=["simulate_computation_rule"],
+        expected_resources=["computation-and-data-flow"],
+        description="Simple computation rule: uppercase CN",
+    ),
+    Scenario(
+        question=(
+            "Build a template string that extracts the domain from an email "
+            "address found in the certificate subject"
+        ),
+        expected_tools=["simulate_computation_rule"],
+        expected_resources=["computation-and-data-flow"],
+        description="Template string: extract email domain",
+    ),
+    Scenario(
+        question="What dictionary entries are available during WebRA enrollment?",
+        expected_tools=[],  # Knowledge question
+        expected_resources=["computation-and-data-flow"],
+        description="Knowledge: WebRA dictionary entries",
+    ),
+    Scenario(
+        question=(
+            "Write a computation rule that ensures the CSR's CN is always present "
+            "as a DNS SAN. If the CN is already in the DNS SANs from the CSR, don't "
+            "duplicate it. But if the CSR does not contain the CN as a DNS SAN, add it."
+        ),
+        expected_tools=["simulate_computation_rule"],
+        expected_resources=["computation-and-data-flow"],
+        description="Complex computation: CN in DNS SANs without duplication",
+    ),
+    Scenario(
+        question=(
+            "Write a computation rule that always adds the parent domain as a DNS SAN. "
+            "For example, if my FQDN is machine.domain.local, the rule should add an "
+            "extra DNS SAN containing 'domain.local' to ensure compatibility for LDAPS "
+            "connectivity to domain controllers."
+        ),
+        expected_tools=["simulate_computation_rule"],
+        expected_resources=["computation-and-data-flow"],
+        description="Complex computation: add parent domain as DNS SAN for LDAPS",
+    ),
 ]
