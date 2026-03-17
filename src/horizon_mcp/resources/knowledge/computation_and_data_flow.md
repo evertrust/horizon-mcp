@@ -14,28 +14,65 @@ that go through a manual approval queue).
 
 ---
 
-## Template String Syntax
+## Two Expression Types
 
-Horizon uses two template delimiters:
+Horizon has two distinct expression types. Understanding the difference is
+critical for the `simulate_computation_rule` tool and for profile configuration.
 
-| Syntax          | Resolves to     | Use case |
-|-----------------|-----------------|----------|
-| `{{ key }}`     | Single string value | Most fields: subject, SANs, extensions |
-| `[[ key ]]`     | Multi-value (list) | SAN lists (dnsnames, ipaddresses), multi-valued attributes |
+### Computation Rules
 
-Templates can contain literal text mixed with variable references:
+A **computation rule** is a full expression with functions. Used in profile
+certificate templates to compute field values (subject, SANs, labels, owner).
 
+- Dictionary lookups use `{{key}}` syntax: `{{csr.subject.cn}}`
+- Multi-value lookups use `[[key]]` syntax: `[[csr.san.dnsname]]`
+- Functions wrap around dictionary lookups: `Upper({{cn}})`, `DomainDNS({{fqdn}})`
+- Functions can be nested: `Concat(OrElse({{prefix}}, "default"), "-", {{name}})`
+- The expression itself is NOT wrapped in `{{ }}`
+
+**Examples of computation rules:**
 ```
-"web-{{ csr.subject.cn }}-{{ principal.name }}"
-->  "web-myserver.example.com-jdoe"
+Upper({{csr.subject.cn}})                              → "MYSERVER.EXAMPLE.COM"
+DomainDNS({{csr.subject.cn}})                          → "example.com"
+Concat({{csr.subject.cn}}, ".", {{csr.subject.o}})     → "myserver.example.com.MyOrg"
+OrElse({{csr.subject.ou}}, "Default")                  → "Default" (if ou is empty)
+Extract({{email}}, "(.*)@", 1)                         → "user" (from "user@domain.com")
 ```
 
-Templates can also nest function calls (see below):
+When using `simulate_computation_rule` with `mode="computation_rule"` (default),
+pass the expression directly: `rule="Upper({{cn}})"`.
 
+### Template Strings
+
+A **template string** is free text with embedded `{{ }}` placeholders. Used in
+email templates, webhook URLs, notification bodies, REST API call payloads.
+
+- The text around `{{ }}` is preserved as-is
+- Simple variables: `{{key}}` resolves to the dictionary value
+- **Functions work inside `{{ }}`**: `{{Upper({{cn}})}}` — note the nested braces
+- Multi-value: `[[key]]` resolves to all values
+
+**Examples of template strings:**
 ```
-"{{ Upper(csr.subject.cn) }}"
-->  "MYSERVER.EXAMPLE.COM"
+"Hello {{principal.name}}, your cert expires on {{certificate.not_after}}"
+"key={{credential.raw}}&cmd={{OrElse(Concat("commit", {{label.stack}}), "show")}}"
+"https://api.example.com/v1/{{certificate.serial}}"
+"web-{{csr.subject.cn}}-{{principal.name}}"  →  "web-myserver.example.com-jdoe"
 ```
+
+When using `simulate_computation_rule` with `mode="template_string"`,
+pass the full text: `rule="Hello {{Upper({{cn}})}}"`.
+
+### Key Difference
+
+| Aspect | Computation Rule | Template String |
+|--------|-----------------|-----------------|
+| **Purpose** | Compute a single field value | Build a text string with embedded values |
+| **Outer wrapper** | None — bare expression | Free text around `{{ }}` blocks |
+| **Function syntax** | `Upper({{key}})` | `{{Upper({{key}})}}` |
+| **Multi-value** | `[[key]]` returns list | `[[key]]` returns comma-separated |
+| **API field** | `computationRule` | `templateString` |
+| **Profile usage** | Certificate template `source` field | Email/webhook/notification templates |
 
 ### Expression Types
 

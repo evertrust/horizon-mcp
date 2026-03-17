@@ -25,34 +25,57 @@ def register_computation_tools(mcp: FastMCP) -> None:
     from horizon_mcp.client.state import get_client
 
     @mcp.tool()
-    async def simulate_computation_rule(rule: str, dictionary: dict) -> str:
-        """Test a computation rule expression against a dictionary of values.
+    async def simulate_computation_rule(
+        rule: str,
+        dictionary: dict,
+        mode: str = "computation_rule",
+    ) -> str:
+        """Test a computation rule or template string against a dictionary.
 
         See horizon://knowledge/computation-and-data-flow for syntax and
         available functions.
 
         Safety tier: read-only
 
-        Evaluates a Horizon computation rule template string using the
-        provided dictionary as the variable context. Useful for verifying
-        that DN templates, label expressions, or validation rules produce
-        the expected output before embedding them in a profile.
+        Horizon has two expression types:
+
+        **computation_rule** (default): Full expression language with functions.
+        Used in profile certificate templates to compute field values.
+        Examples:
+            - ``Upper({{cn}})`` — uppercase the cn dictionary value
+            - ``DomainDNS({{fqdn}})`` — extract parent domain
+            - ``Concat({{a}}, "-", {{b}})`` — concatenate values
+            - ``{{owner}}`` — simple dictionary lookup
+            - ``OrElse({{prefix}}, "default")`` — fallback chain
+
+        **template_string**: Simple text interpolation with ``{{key}}`` placeholders.
+        Used in email templates, webhook URLs, notification bodies.
+        Examples:
+            - ``Hello {{name}}, your cert expires on {{certificate.not_after}}``
+            - ``https://api.example.com/v1/{{certificate.serial}}``
 
         Args:
-            rule: The computation rule expression to evaluate
-                  (e.g., ``{{subject.cn}}`` or ``{{upper(owner)}}``).
-            dictionary: Key-value pairs available as variables during
-                        evaluation.
+            rule: The expression to evaluate. For computation rules, use
+                  function calls with ``{{key}}`` for dictionary lookups.
+                  For template strings, use free text with ``{{key}}`` placeholders.
+            dictionary: Key-value pairs available as variables during evaluation.
+                        All values must be strings.
+            mode: Expression type — "computation_rule" (default) or "template_string".
 
         Returns:
-            JSON with the computed result from the Horizon template engine.
+            JSON with the computed result including computedValueSingle,
+            optionally computedValueMulti (for computation rules), and
+            the merged dictionary used during evaluation.
         """
+        valid_modes = {"computation_rule", "template_string"}
+        if mode not in valid_modes:
+            return json.dumps({
+                "error": True,
+                "content": f"Invalid mode '{mode}'. Must be one of: {', '.join(sorted(valid_modes))}.",
+            })
+
         client = get_client()
-        # The Horizon API distinguishes between templateString (Mustache-like
-        # syntax e.g. {{owner}}) and computationRule (expression syntax).
-        # Template strings contain {{ }} delimiters; computation rules do not.
-        is_template = "{{" in rule
-        key = "templateString" if is_template else "computationRule"
+        key = "computationRule" if mode == "computation_rule" else "templateString"
         result = await client.post(
             "/api/v1/templatestring/playground",
             json={key: rule, "dictionary": dictionary},
