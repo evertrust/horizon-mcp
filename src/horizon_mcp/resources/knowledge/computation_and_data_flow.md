@@ -1,5 +1,29 @@
 # Computation Rules, Template Syntax, and Datasource Flows
 
+## IMPORTANT — Read this before writing any computation rule
+
+**DO NOT invent functions or syntax.** Only the functions listed in this document
+exist. There is no `ShortName()`, `Map()`, `Append()`, `SortUnique()`, `ForEach()`,
+`#collect`, `#block`, or Python/Mustache/Handlebars-style syntax. If a function is
+not listed below, it does not exist in Horizon.
+
+**The COMPLETE function list is** (nothing else exists):
+- String: `Upper`, `Lower`, `Trim`, `Substr`, `Concat`, `Extract`, `Replace`, `OrElse`
+- List: `Filter`, `Slice`, `Sort`, `Split`, `Unique`
+- Parsing: `ShortenDNS`, `DomainDNS`, `EmailUser`, `EmailDomain`, `SamAccountNameUser`, `SamAccountNameDomain`
+- Access: `Get`, `First`, `Last`, `Join`, `Match`
+- Date: `DateTimeFormat`
+- Encoding: `URLEncode`, `URLDecode`, `EscapeJson`, `JsonArray`, `DerAsBase64`
+- Special values: `NULL`, `NOW`
+
+**ShortenDNS extracts the hostname** (first DNS label): `ShortenDNS("web01.corp.com")` → `"web01"`.
+It is NOT called `ShortName`, `SubDomain`, `Hostname`, or anything else.
+
+**Sort and Unique exist and work on lists**: `Sort([[sans]])`, `Unique([[sans]])`,
+`Sort(Unique([[sans]]))`. They are NOT called `SortUnique` or `Deduplicate`.
+
+---
+
 ## Overview
 
 Horizon's computation engine transforms and enriches certificate request data
@@ -1196,3 +1220,68 @@ action={{OrElse(Concat("deploy-", {{label.target_env}}), "noop")}}&host={{certif
 `{{ }}`. If the label `target_env` exists, it builds a deploy action like
 `deploy-prod`. Otherwise, it falls back to `noop`. Functions inside template
 strings use the nested `{{Function({{key}})}}` syntax.
+
+---
+
+## WebRA SAN DNS — Shortnames from CN + Request SANs (Sorted, Unique)
+
+**Requirement:** For a WebRA profile, compute the DNS SANs as the shortnames
+(first DNS label) of the CN plus all DNS SANs from the WebRA enrollment
+request (not the CSR). Ensure the result is deduplicated and sorted.
+
+**Why this is needed:** Internal servers are often accessed by shortname
+(`web01`) in addition to FQDN (`web01.corp.example.com`). Having the
+shortnames as DNS SANs ensures TLS clients using the short form can validate.
+
+**Strategy:** Use multiple rules to build up the list, apply `ShortenDNS` to
+extract the hostname part, then `Unique` and `Sort` for deduplication and ordering.
+
+```json
+[
+  {
+    "source": "[[webra.enroll.san.dnsname]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  },
+  {
+    "source": "{{webra.enroll.subject.cn}}",
+    "target": "sans.dnsnames",
+    "condition": "{{webra.enroll.subject.cn}}",
+    "overwrite": false
+  },
+  {
+    "source": "ShortenDNS({{webra.enroll.subject.cn}})",
+    "target": "sans.dnsnames",
+    "condition": "ShortenDNS({{webra.enroll.subject.cn}})",
+    "overwrite": false
+  },
+  {
+    "source": "[[Sort(Unique([[sans.dnsnames]]))]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  }
+]
+```
+
+**How it works step by step:**
+
+1. **Rule 1:** Copy all DNS SANs from the WebRA request form (`webra.enroll.san.dnsname`,
+   NOT `csr.san.dnsname`) into the certificate's SAN list. `overwrite: true` initializes.
+2. **Rule 2:** Add the CN from the WebRA request. `overwrite: false` appends without
+   replacing. The `condition` prevents adding empty if CN is unset.
+3. **Rule 3:** Add the **shortname** of the CN using `ShortenDNS`. For
+   `CN=web01.corp.example.com`, this adds `web01`. Again `overwrite: false` appends.
+4. **Rule 4:** Read back the accumulated `sans.dnsnames` list (rules execute in order,
+   so previous rules' results are available), apply `Unique` to deduplicate, then
+   `Sort` to alphabetize. `overwrite: true` replaces the list with the cleaned version.
+
+**Result for CN=`web01.corp.example.com`, WebRA SANs=`["web01.corp.example.com", "api.corp.example.com"]`:**
+- After Rule 1: `["web01.corp.example.com", "api.corp.example.com"]`
+- After Rule 2: `["web01.corp.example.com", "api.corp.example.com", "web01.corp.example.com"]` (dup OK for now)
+- After Rule 3: `[..., "web01"]`
+- After Rule 4: `["api.corp.example.com", "web01", "web01.corp.example.com"]` (sorted, unique)
+
+**Note:** `ShortenDNS` works on **single values**. To compute shortnames for
+ALL SANs (not just the CN), you need one rule per SAN source, or use a
+datasource flow to iterate. For the CN shortname alone (the most common case),
+the pattern above is sufficient.
