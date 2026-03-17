@@ -34,7 +34,7 @@ def test_tool_selection(scenario: Scenario, mcp_config_path) -> None:
         "DO NOT create, modify, or delete anything. "
         "Just explain what tools and steps you would use. "
     )
-    result = ask_claude(prefix + scenario.question, mcp_config_path, timeout=120)
+    result = ask_claude(prefix + scenario.question, mcp_config_path, timeout=300)
 
     assert result["exit_code"] == 0, f"claude -p failed: {result.get('raw', '')[:500]}"
 
