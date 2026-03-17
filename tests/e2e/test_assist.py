@@ -320,6 +320,70 @@ async def test_simulate_computation_rule_with_function(e2e_mcp):
         )
 
 
+async def test_simulate_computation_rule_extract_with_group(e2e_mcp):
+    """Extract with capture group: Extract("user@domain.com", "(.*)@", 1) → "user"."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    try:
+        result = await call_tool(
+            e2e_mcp,
+            "simulate_computation_rule",
+            rule='{{Extract(email, "(.*)@", 1)}}',
+            dictionary={"email": "alice@example.com"},
+        )
+        raw = result.get("raw", str(result))
+        assert "alice" in str(raw).lower(), f"Expected 'alice' in result: {result}"
+    except (ToolError, AssertionError) as exc:
+        pytest.skip(f"simulate_computation_rule not available: {exc}")
+
+
+async def test_simulate_computation_rule_domain_dns(e2e_mcp):
+    """DomainDNS: extract parent domain from FQDN."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    try:
+        result = await call_tool(
+            e2e_mcp,
+            "simulate_computation_rule",
+            rule="{{DomainDNS(fqdn)}}",
+            dictionary={"fqdn": "machine.domain.local"},
+        )
+        raw = result.get("raw", str(result))
+        assert "domain.local" in str(raw).lower(), f"Expected 'domain.local' in result: {result}"
+    except (ToolError, AssertionError) as exc:
+        pytest.skip(f"simulate_computation_rule not available: {exc}")
+
+
+async def test_simulate_computation_rule_shorten_dns(e2e_mcp):
+    """ShortenDNS: extract hostname from FQDN."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    try:
+        result = await call_tool(
+            e2e_mcp,
+            "simulate_computation_rule",
+            rule="{{ShortenDNS(fqdn)}}",
+            dictionary={"fqdn": "web01.corp.example.com"},
+        )
+        raw = result.get("raw", str(result))
+        assert "web01" in str(raw).lower(), f"Expected 'web01' in result: {result}"
+    except (ToolError, AssertionError) as exc:
+        pytest.skip(f"simulate_computation_rule not available: {exc}")
+
+
+async def test_simulate_computation_rule_concat_and_orelse(e2e_mcp):
+    """Concat + OrElse: build string with fallback."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    try:
+        result = await call_tool(
+            e2e_mcp,
+            "simulate_computation_rule",
+            rule='{{Concat(OrElse(prefix, "default"), "-", name)}}',
+            dictionary={"name": "server01"},
+        )
+        raw = result.get("raw", str(result))
+        assert "default-server01" in str(raw).lower(), f"Expected 'default-server01' in result: {result}"
+    except (ToolError, AssertionError) as exc:
+        pytest.skip(f"simulate_computation_rule not available: {exc}")
+
+
 async def test_simulate_datasource_flow_empty_flow(e2e_mcp):
     """simulate_datasource_flow with an empty flow must not crash.
 

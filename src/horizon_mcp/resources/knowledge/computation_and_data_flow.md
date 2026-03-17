@@ -767,3 +767,125 @@ the available entries vary by context (e.g., email templates have access to
 ```json
 { "source": "{{ acme.account.contact.0 }}", "target": "contactEmail" }
 ```
+
+---
+
+## Advanced Multi-Rule Patterns
+
+These patterns require **multiple computation rules executed in order**.
+Rules execute sequentially — later rules can reference values set by earlier ones.
+
+### Ensure CN is present in DNS SANs (no duplication)
+
+Goal: if the CSR's CN is already a DNS SAN, keep SANs as-is. If not, add the
+CN as an extra DNS SAN. This prevents duplication while guaranteeing coverage.
+
+**Strategy:** Use two rules. Rule 1 copies all existing DNS SANs from the CSR.
+Rule 2 adds the CN with `overwrite: false` so it only appends if not already
+present. The `[[ ]]` multi-value syntax ensures lists are handled correctly.
+
+```json
+[
+  {
+    "source": "[[ csr.san.dnsname ]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  },
+  {
+    "source": "{{ csr.subject.cn }}",
+    "target": "sans.dnsnames",
+    "condition": "{{ csr.subject.cn }}",
+    "overwrite": false
+  }
+]
+```
+
+**How it works:**
+1. Rule 1 copies all DNS SANs from the CSR (overwrites any existing value)
+2. Rule 2 adds the CN to `sans.dnsnames` with `overwrite: false` — if the CN
+   is already in the list (because the CSR included it as a SAN), this is a
+   no-op. If the CN was missing from the SANs, it gets appended.
+
+### Always add parent domain as DNS SAN (LDAPS compatibility)
+
+Goal: for a certificate with CN `machine.domain.local`, automatically add
+`domain.local` as a DNS SAN. This enables LDAPS connectivity to Active
+Directory domain controllers, which require the domain name in the cert SANs.
+
+**Strategy:** Use `DomainDNS` to extract the parent domain from the CN, then
+add it to DNS SANs with `overwrite: false` to avoid replacing existing SANs.
+
+```json
+[
+  {
+    "source": "[[ csr.san.dnsname ]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  },
+  {
+    "source": "{{ csr.subject.cn }}",
+    "target": "sans.dnsnames",
+    "condition": "{{ csr.subject.cn }}",
+    "overwrite": false
+  },
+  {
+    "source": "{{ DomainDNS(csr.subject.cn) }}",
+    "target": "sans.dnsnames",
+    "condition": "{{ DomainDNS(csr.subject.cn) }}",
+    "overwrite": false
+  }
+]
+```
+
+**How it works:**
+1. Rule 1 copies all existing DNS SANs from the CSR
+2. Rule 2 adds the CN if missing (same pattern as above)
+3. Rule 3 extracts the parent domain (`DomainDNS("machine.domain.local")`
+   → `"domain.local"`) and adds it if not already present
+
+For `CN=dc01.corp.example.com`, the resulting DNS SANs would include:
+- All original SANs from the CSR
+- `dc01.corp.example.com` (the CN, if not already a SAN)
+- `corp.example.com` (the parent domain, for LDAPS)
+
+### Combine CN, hostname, and domain in SANs
+
+Goal: ensure the certificate has the FQDN, short hostname, and parent domain
+all present as DNS SANs — common for web servers and domain controllers.
+
+```json
+[
+  {
+    "source": "[[ csr.san.dnsname ]]",
+    "target": "sans.dnsnames",
+    "overwrite": true
+  },
+  {
+    "source": "{{ csr.subject.cn }}",
+    "target": "sans.dnsnames",
+    "overwrite": false
+  },
+  {
+    "source": "{{ ShortenDNS(csr.subject.cn) }}",
+    "target": "sans.dnsnames",
+    "condition": "{{ ShortenDNS(csr.subject.cn) }}",
+    "overwrite": false
+  },
+  {
+    "source": "{{ DomainDNS(csr.subject.cn) }}",
+    "target": "sans.dnsnames",
+    "condition": "{{ DomainDNS(csr.subject.cn) }}",
+    "overwrite": false
+  }
+]
+```
+
+For `CN=web01.corp.example.com`, resulting DNS SANs:
+`web01.corp.example.com`, `web01`, `corp.example.com` + original CSR SANs
+
+### Key principle: `overwrite: false` for list accumulation
+
+When the target is a multi-value field (like `sans.dnsnames`), setting
+`overwrite: false` **appends** to the existing list rather than replacing it.
+Combined with ordered rules, this enables building up a SAN list incrementally
+from multiple sources without losing any values.
