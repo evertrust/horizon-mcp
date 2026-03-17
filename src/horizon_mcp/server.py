@@ -131,10 +131,10 @@ mcp = FastMCP(
 # -- Register all tools and resources --------------------------------------
 
 def _register_all() -> None:
-    """Import and register Phase 1 tools + all resources."""
-    from horizon_mcp.tools import register_phase1_tools
+    """Import and register core tools + all resources."""
+    from horizon_mcp.tools import register_tools
     from horizon_mcp.resources import register_all_resources
-    register_phase1_tools(mcp)
+    register_tools(mcp)
     register_all_resources(mcp)
 
 

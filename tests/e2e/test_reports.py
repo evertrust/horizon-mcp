@@ -1,9 +1,8 @@
-"""E2E tests for the 3 report tools and 1 analytics tool.
+"""E2E tests for the 3 report tools.
 
 Covers:
   - list_reports — read-only listing with optional filters
   - download_report — CSV download by UUID (skipped if no reports)
-  - get_analytics — analytics sync status for each valid domain
 
 The delete_report tool is NOT tested here (mutating-destructive; it requires
 a real UUID to confirm and would permanently remove a report from the QA
@@ -90,53 +89,3 @@ async def test_download_report(e2e_mcp: FastMCP) -> None:
     assert result["rows"] >= 0
 
 
-# ---------------------------------------------------------------------------
-# get_analytics
-# ---------------------------------------------------------------------------
-
-
-async def test_get_analytics_certificates(e2e_mcp: FastMCP) -> None:
-    result = await call_tool(e2e_mcp, "get_analytics", domain="certificates")
-    assert "content" in result
-    assert "data" in result
-
-
-async def test_get_analytics_events(e2e_mcp: FastMCP) -> None:
-    result = await call_tool(e2e_mcp, "get_analytics", domain="events")
-    assert "content" in result
-    assert "data" in result
-
-
-async def test_get_analytics_discovery(e2e_mcp: FastMCP) -> None:
-    result = await call_tool(e2e_mcp, "get_analytics", domain="discovery")
-    assert "content" in result
-    assert "data" in result
-
-
-async def test_get_analytics_invalid_domain(e2e_mcp: FastMCP) -> None:
-    """An invalid domain must return an error payload rather than raising an exception.
-
-    get_analytics validates the domain locally and returns a JSON error envelope
-    rather than raising an exception. The response is:
-        {"error": true, "content": "Invalid analytics domain '...' ..."}
-    We bypass call_tool (which asserts no error key) and read the raw response.
-    """
-    import json
-    from tests.e2e.conftest import call_tool_raw
-
-    # Use call_tool_raw so we get the plain text back without error-asserting
-    raw = await call_tool_raw(e2e_mcp, "get_analytics", domain="requests")
-    assert raw, "get_analytics returned empty response for invalid domain"
-
-    try:
-        data = json.loads(raw)
-    except json.JSONDecodeError:
-        pytest.fail(
-            f"get_analytics returned non-JSON for invalid domain. Raw: {raw[:200]!r}"
-        )
-    assert data.get("error") is True, (
-        f"Expected error=True for invalid domain 'requests', got: {data}"
-    )
-    assert "content" in data, (
-        f"Expected 'content' key in error response, got keys: {list(data.keys())}"
-    )

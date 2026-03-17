@@ -24,7 +24,7 @@ from horizon_mcp.auth.apikey import ApiKeyAuthProvider
 from horizon_mcp.client.http import HorizonClient
 from horizon_mcp.client.state import clear_client, set_client
 from horizon_mcp.settings import HorizonSettings
-from horizon_mcp.tools import register_phase1_tools
+from horizon_mcp.tools import register_tools
 from horizon_mcp.resources import register_all_resources
 
 
@@ -75,9 +75,9 @@ async def e2e_client() -> AsyncIterator[HorizonClient]:
 
 @pytest.fixture(scope="session")
 def e2e_mcp(e2e_client: HorizonClient) -> FastMCP:
-    """FastMCP instance with Phase 1 tools + all resources registered."""
+    """FastMCP instance with all tools + all resources registered."""
     mcp = FastMCP("e2e-test")
-    register_phase1_tools(mcp)
+    register_tools(mcp)
     register_all_resources(mcp)
     return mcp
 

@@ -1,7 +1,7 @@
 """Tool registration hub — wires all tool modules to the MCP server.
 
 Provides one entry point:
-    register_phase1_tools  — 96 tools for daily CLM operations + read-only visibility
+    register_tools  — core CLM tools for certificate lifecycle operations
 """
 
 from __future__ import annotations
@@ -12,10 +12,11 @@ if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
 
 
-def register_phase1_tools(mcp: FastMCP) -> None:
-    """Register Phase 1 tools: daily CLM operations + read-only config/security.
+def register_tools(mcp: FastMCP) -> None:
+    """Register core CLM tools.
 
-    96 tools across 11 domains — what a certificate operator/consumer needs.
+    62 tools across 8 domains — certificate lifecycle, discovery, dashboards,
+    assist, profiles (read-only), reports.
     """
     # Assist (15 tools)
     from horizon_mcp.tools.assist import register_assist_tools
@@ -52,22 +53,7 @@ def register_phase1_tools(mcp: FastMCP) -> None:
 
     register_report_tools(mcp)
 
-    # Analytics (1 tool)
-    from horizon_mcp.tools.analytics import register_analytics_tools
+    # Profiles — read-only (2 tools)
+    from horizon_mcp.tools.profiles import register_profile_readonly_tools
 
-    register_analytics_tools(mcp)
-
-    # Config — read-only subset (19 tools)
-    from horizon_mcp.tools.config import register_config_readonly_tools
-
-    register_config_readonly_tools(mcp)
-
-    # Profiles — Phase 1 subset (12 tools)
-    from horizon_mcp.tools.profiles import register_profile_phase1_tools
-
-    register_profile_phase1_tools(mcp)
-
-    # Security — read-only subset (4 tools)
-    from horizon_mcp.tools.security import register_security_readonly_tools
-
-    register_security_readonly_tools(mcp)
+    register_profile_readonly_tools(mcp)

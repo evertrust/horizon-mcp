@@ -33,11 +33,6 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         description="Dashboard creation",
     ),
     Scenario(
-        question="What CAs are available in my Horizon instance?",
-        expected_tools=["list_cas"],
-        description="Simple CA listing",
-    ),
-    Scenario(
         question="Set up a discovery campaign to scan my network",
         expected_tools=["create_discovery_campaign"],
         expected_resources=["discovery"],
@@ -45,9 +40,9 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
     ),
     Scenario(
         question="Who am I and what permissions do I have?",
-        expected_tools=["whoami", "list_roles"],
+        expected_tools=["whoami"],
         expected_resources=["rbac"],
-        description="Identity and permissions",
+        description="Identity check",
     ),
     Scenario(
         question="Translate 'expiring in 30 days' to HCQL",
@@ -60,12 +55,6 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         expected_tools=[],  # Knowledge question, no tools needed
         expected_resources=["profiles", "integrations"],
         description="Knowledge-only question",
-    ),
-    Scenario(
-        question="Create a monitored profile to track external certs",
-        expected_tools=["create_monitored_profile"],
-        expected_resources=["profiles"],
-        description="Monitored profile creation",
     ),
     Scenario(
         question="What's the difference between HCQL and HRQL?",
