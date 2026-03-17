@@ -127,7 +127,14 @@ mcp = FastMCP(
         "is exposed, deployed, live, or reachable on a server, use the "
         "fetch_exposed_certificate tool to connect to the target host and retrieve "
         "the actual TLS certificate. Then compare its thumbprint or serial with "
-        "what Horizon manages. This is the only way to verify real-world deployment."
+        "what Horizon manages. This is the only way to verify real-world deployment.\n"
+        "6. PKCS#12 / PFX RETRIEVAL: The PKCS#12 bundle (certificate + private key) "
+        "is NEVER on the certificate object. It is only available in the enrollment "
+        "REQUEST response. When the user asks for a PKCS#12, PFX, or private key: "
+        "(1) find the enrollment request via search_requests, "
+        "(2) use get_request to retrieve it — the pkcs12/keyStore field contains "
+        "the base64-encoded PKCS#12. Do NOT say it's impossible — it IS available "
+        "through the request."
     ),
     lifespan=lifespan,
 )
