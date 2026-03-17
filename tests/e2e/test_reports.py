@@ -114,19 +114,29 @@ async def test_get_analytics_discovery(e2e_mcp: FastMCP) -> None:
 
 
 async def test_get_analytics_invalid_domain(e2e_mcp: FastMCP) -> None:
-    """An invalid domain must return an error payload rather than raising an exception."""
-    # call_tool asserts data.get("error") is falsy — so we call the tool manager
-    # directly to inspect the raw response.
-    from mcp.server.fastmcp import FastMCP as _FastMCP
-    import json
+    """An invalid domain must return an error payload rather than raising an exception.
 
-    result_list = await e2e_mcp._tool_manager.call_tool(
-        "get_analytics", {"domain": "requests"}
-    )
-    assert result_list and len(result_list) > 0
-    text = result_list[0].text if hasattr(result_list[0], "text") else str(result_list[0])
-    data = json.loads(text)
+    get_analytics validates the domain locally and returns a JSON error envelope
+    rather than raising an exception. The response is:
+        {"error": true, "content": "Invalid analytics domain '...' ..."}
+    We bypass call_tool (which asserts no error key) and read the raw response.
+    """
+    import json
+    from tests.e2e.conftest import call_tool_raw
+
+    # Use call_tool_raw so we get the plain text back without error-asserting
+    raw = await call_tool_raw(e2e_mcp, "get_analytics", domain="requests")
+    assert raw, "get_analytics returned empty response for invalid domain"
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        pytest.fail(
+            f"get_analytics returned non-JSON for invalid domain. Raw: {raw[:200]!r}"
+        )
     assert data.get("error") is True, (
-        "Expected error=True for invalid domain 'requests'"
+        f"Expected error=True for invalid domain 'requests', got: {data}"
     )
-    assert "content" in data
+    assert "content" in data, (
+        f"Expected 'content' key in error response, got keys: {list(data.keys())}"
+    )

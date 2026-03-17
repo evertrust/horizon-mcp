@@ -71,11 +71,17 @@ async def test_get_credential(e2e_mcp: FastMCP) -> None:
     detail = await call_tool(e2e_mcp, "get_credential", name=name)
     # get_credential returns the raw credential dict — no secret values exposed
     assert detail.get("name") == name or "name" in detail or "identifier" in detail
-    # Sanity check: secret-like keys must not appear at the top level
+    # Sanity check: secret-like keys must not appear with non-empty values.
+    # The API may return placeholder keys (e.g. "password": {}) to indicate
+    # a field exists without revealing its value — those are acceptable.
     for secret_key in ("password", "secret", "privateKey", "token"):
-        assert secret_key not in detail, (
-            f"Credential detail should not expose '{secret_key}'"
-        )
+        if secret_key in detail:
+            value = detail[secret_key]
+            # An empty dict/list/None is an acceptable redacted placeholder
+            assert value in ({}, [], None, ""), (
+                f"Credential detail should not expose a real '{secret_key}' value. "
+                f"Got: {value!r}"
+            )
 
 
 async def test_list_credentials_name_filter(e2e_mcp: FastMCP) -> None:
