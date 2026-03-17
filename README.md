@@ -26,10 +26,10 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Verify:
+Verify the module is importable:
 
 ```bash
-.venv/bin/python -m horizon_mcp.server --help
+.venv/bin/python -c "from horizon_mcp.server import mcp; print(f'{len(mcp._tool_manager._tools)} tools registered')"
 ```
 
 Note the **absolute path** to the Python binary in the venv — you'll need it
@@ -50,7 +50,7 @@ playwright install chromium
 
 ## Authentication
 
-Three authentication modes are supported. The server auto-detects which mode to use based on which environment variables are set. Priority: **mTLS > API Key > OIDC browser**.
+Four authentication modes are supported. The server auto-detects which mode to use based on which environment variables are set. Priority: **mTLS > API Key > OIDC browser**.
 
 ### Mode 1: API Key
 
@@ -117,7 +117,7 @@ cp .env.example .env
 ### Claude Code
 
 Create `.mcp.json` in your project root. Replace `/absolute/path/to/horizon-mcp`
-with the actual path where you cloned the repo (the output of `echo "$(pwd)/.venv/bin/horizon-mcp"` from the installation step):
+with the actual path where you cloned the repo (the output of `echo "$(pwd)/.venv/bin/python"` from the installation step):
 
 ```json
 {
@@ -440,7 +440,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 
 The following capabilities require direct Horizon API calls or the Horizon UI. They are intentionally outside this server's scope:
 
-- **Configuration object administration** — creating, updating, or deleting CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets (read access is available via the Horizon API directly)
+- **Configuration objects** — CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets (use the Horizon UI or API directly for both reading and writing)
 - **Profile management** — creating, updating, or deleting profiles (read-only listing and inspection are supported)
 - **Credential management** — creating, updating, or deleting stored credentials (private keys, API tokens, etc.)
 - **PKI and third-party connector management** — creating, updating, or deleting connectors to ADCS, EJBCA, HashiCorp Vault, etc.
@@ -457,9 +457,18 @@ The following capabilities require direct Horizon API calls or the Horizon UI. T
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -v          # run the test suite
-ruff check src/           # lint
-mypy src/                 # type check
+pytest tests/ -m "not e2e and not llm_evaluation" -v   # unit tests (no external deps)
+ruff check src/                                         # lint
+mypy src/                                               # type check
+```
+
+To run E2E tests against a live Horizon instance:
+
+```bash
+export HORIZON_E2E_URL=https://your-qa-instance.evertrust.io
+export HORIZON_E2E_API_ID=your-api-id
+export HORIZON_E2E_API_KEY=your-api-key
+pytest -m e2e -v
 ```
 
 ---
