@@ -122,7 +122,12 @@ mcp = FastMCP(
         "LOWERCASE — never camelCase. Common mistakes: contactEmail→contactemail, "
         "keyType→keytype, notAfter→valid.until, registrationDate→registration.date, "
         "certificateId→certificateid. Using camelCase causes HQL-001 parse errors. "
-        "Note: groupBy and sortedBy fields ARE camelCase (API context, not query context)."
+        "Note: groupBy and sortedBy fields ARE camelCase (API context, not query context).\n"
+        "5. CERTIFICATE EXPOSURE CHECK: When the user asks to check if a certificate "
+        "is exposed, deployed, live, or reachable on a server, use the "
+        "fetch_exposed_certificate tool to connect to the target host and retrieve "
+        "the actual TLS certificate. Then compare its thumbprint or serial with "
+        "what Horizon manages. This is the only way to verify real-world deployment."
     ),
     lifespan=lifespan,
 )
