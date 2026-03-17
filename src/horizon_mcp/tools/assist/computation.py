@@ -32,27 +32,41 @@ def register_computation_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Test a computation rule or template string against a dictionary.
 
-        See horizon://knowledge/computation-and-data-flow for syntax and
-        available functions.
+        MANDATORY: Before writing ANY computation rule, you MUST read the
+        knowledge resource horizon://knowledge/computation-and-data-flow.
+        It contains the COMPLETE list of available functions, the exact syntax,
+        and real-world PKI examples. DO NOT invent functions or syntax — only
+        use what is documented in that resource.
 
         Safety tier: read-only
 
-        Horizon has two expression types:
+        Available functions (exhaustive list — no others exist):
+            String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse
+            List: Filter, Slice, Sort, Split, Unique
+            Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain,
+                     SamAccountNameUser, SamAccountNameDomain
+            Date: DateTimeFormat
+            Access: Get, First, Last, Join, Match
+            Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64
+            Special: NULL, NOW
+
+        Syntax rules:
+            - Dictionary lookups: ``{{key}}`` for single, ``[[key]]`` for multi
+            - Functions wrap lookups: ``Upper({{cn}})``, NOT ``{{Upper(cn)}}``
+            - Concat on arrays merges them: ``Concat([[a]], [[b]])`` → combined list
+            - Concat with null returns null: use ``OrElse({{key}}, "")`` to guard
+            - ``ShortenDNS`` extracts hostname: ``ShortenDNS({{fqdn}})`` → first DNS label
+            - ``DomainDNS`` extracts domain: ``DomainDNS({{fqdn}})`` → parent domain
+            - ``Sort`` alphabetically sorts a list
+            - ``Unique`` deduplicates a list
+
+        Two expression modes:
 
         **computation_rule** (default): Full expression language with functions.
-        Used in profile certificate templates to compute field values.
-        Examples:
-            - ``Upper({{cn}})`` — uppercase the cn dictionary value
-            - ``DomainDNS({{fqdn}})`` — extract parent domain
-            - ``Concat({{a}}, "-", {{b}})`` — concatenate values
-            - ``{{owner}}`` — simple dictionary lookup
-            - ``OrElse({{prefix}}, "default")`` — fallback chain
+            ``Upper({{cn}})`` — ``DomainDNS({{fqdn}})`` — ``Sort(Unique([[sans]]))``
 
-        **template_string**: Simple text interpolation with ``{{key}}`` placeholders.
-        Used in email templates, webhook URLs, notification bodies.
-        Examples:
-            - ``Hello {{name}}, your cert expires on {{certificate.not_after}}``
-            - ``https://api.example.com/v1/{{certificate.serial}}``
+        **template_string**: Text interpolation with embedded ``{{ }}`` blocks.
+            ``Hello {{name}}, cert expires {{certificate.not_after}}``
 
         Args:
             rule: The expression to evaluate. For computation rules, use
