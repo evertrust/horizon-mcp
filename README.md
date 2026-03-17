@@ -1,6 +1,6 @@
 # horizon-mcp
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **62 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **63 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
 
 ## Why knowledge-first?
 
@@ -125,7 +125,7 @@ Create `.mcp.json` in your project root:
 }
 ```
 
-Start Claude Code from that directory. The 62 tools are available immediately.
+Start Claude Code from that directory. The 63 tools are available immediately.
 
 ### Claude Desktop
 
@@ -193,7 +193,7 @@ export HORIZON_API_KEY=your-api-key
 npx @modelcontextprotocol/inspector .venv/bin/horizon-mcp
 ```
 
-Opens a browser UI showing all 62 tools and 12 knowledge resources.
+Opens a browser UI showing all 63 tools and 12 knowledge resources.
 
 ---
 
@@ -296,13 +296,13 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 
 ## Tool reference
 
-62 tools in 8 domains. Safety tiers:
+63 tools in 8 domains. Safety tiers:
 
 - `read-only` — no side effects
 - `mutating-safe` — creates or modifies data, safe to retry
 - `mutating-destructive` — deletes data or changes active behavior; requires confirmation
 
-### Assist (15 tools)
+### Assist (16 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
@@ -319,6 +319,7 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 | `decode_x509` | read-only | Decode a PEM X.509 certificate |
 | `decode_csr` | read-only | Decode a PEM PKCS#10 CSR |
 | `detect_file` | read-only | Auto-detect and parse a cryptographic file |
+| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server. Params: `uri` (e.g. `https://host:port`, `ldaps://dc:636`), `timeout` |
 | `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary |
 | `simulate_datasource_flow` | read-only | Test a datasource flow pipeline against sample context |
 

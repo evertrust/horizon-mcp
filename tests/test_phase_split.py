@@ -39,7 +39,7 @@ class TestToolRegistrationBoundary:
 
     def test_tool_count(self) -> None:
         mcp = _make_mcp(register_tools)
-        assert len(_tool_names(mcp)) == 62
+        assert len(_tool_names(mcp)) == 63
 
     def test_excludes_admin_tools(self) -> None:
         names = _tool_names(_make_mcp(register_tools))
