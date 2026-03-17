@@ -1106,14 +1106,14 @@ PKI Operations Team
 
 ### Notification Template String — REST Webhook with Functions
 
-**Requirement:** Call a Palo Alto Panorama API to commit a configuration change
-when a certificate is enrolled. Uses functions inside template string `{{ }}`.
+**Requirement:** Call an external API with a payload that varies based on
+certificate labels. Uses functions inside template string `{{ }}`.
 
 ```
-key={{credential.raw}}&cmd={{OrElse(Concat("<commit-all><template-stack><n>", {{label.panos_template_stack}}, "</n><admin><member>certadmin</member></admin></template-stack></commit-all>&type=commit&action=all"), "<show><s><info></info></s></show>&type=op")}}
+action={{OrElse(Concat("deploy-", {{label.target_env}}), "noop")}}&host={{certificate.san.dnsname.0}}&serial={{certificate.serial}}
 ```
 
 **Why:** This template string embeds `OrElse(Concat(...), fallback)` inside
-`{{ }}`. If the label `panos_template_stack` exists, it builds a commit command.
-Otherwise, it falls back to a harmless show command. Functions inside template
+`{{ }}`. If the label `target_env` exists, it builds a deploy action like
+`deploy-prod`. Otherwise, it falls back to `noop`. Functions inside template
 strings use the nested `{{Function({{key}})}}` syntax.
