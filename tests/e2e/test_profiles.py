@@ -1,13 +1,9 @@
-"""E2E tests for the 12 Phase 1 profile tools.
+"""E2E tests for the 2 read-only profile tools.
 
 Covers:
   - list_profiles (read-only)
   - list_profiles with module filter (read-only)
   - get_profile (read-only)
-  - Monitored profile lifecycle (create → get → update → delete via direct API)
-
-The monitored profile tests create a real profile on the QA instance and
-clean it up via the HorizonClient directly (delete_profile is Phase 2).
 
 All tests are automatically skipped when E2E environment variables are absent
 (enforced by the pytestmark in conftest.py).
@@ -16,11 +12,9 @@ All tests are automatically skipped when E2E environment variables are absent
 from __future__ import annotations
 
 import pytest
-import pytest_asyncio
 from mcp.server.fastmcp import FastMCP
 
-from horizon_mcp.client.http import HorizonClient
-from tests.e2e.conftest import E2E_PREFIX, call_tool
+from tests.e2e.conftest import call_tool
 
 pytestmark = pytest.mark.e2e
 
@@ -74,121 +68,3 @@ async def test_get_profile(e2e_mcp: FastMCP) -> None:
     detail = await call_tool(e2e_mcp, "get_profile", name=name)
     # get_profile returns the raw profile dict
     assert detail.get("name") == name or "name" in detail
-
-
-# ---------------------------------------------------------------------------
-# Mutating: monitored profile lifecycle
-# ---------------------------------------------------------------------------
-
-_MONITORED_NAME = f"{E2E_PREFIX}-monitored"
-
-# Monitored profiles do NOT accept subject/sans/extensions in certificate_template
-_CERT_TEMPLATE: dict = {}
-
-# Minimal authorization_levels required by the API — monitored profiles need
-# all the standard access-control slots; the API validates their presence.
-_AUTH_LEVELS: dict = {
-    "enroll": {"accessLevel": "authenticated"},
-    "enrollApi": {"accessLevel": "authenticated"},
-    "requestEnroll": {"accessLevel": "authenticated"},
-    "approveEnroll": {"accessLevel": "authenticated"},
-    "revoke": {"accessLevel": "authorized"},
-    "requestRevoke": {"accessLevel": "authorized"},
-    "approveRevoke": {"accessLevel": "authorized"},
-    "search": {"accessLevel": "authenticated"},
-    "update": {"accessLevel": "authorized"},
-    "requestUpdate": {"accessLevel": "authorized"},
-    "approveUpdate": {"accessLevel": "authorized"},
-    "recover": {"accessLevel": "authorized"},
-}
-
-# Minimal cryptoPolicy for monitored profiles
-_CRYPTO_POLICY: dict = {
-    "escrow": False,
-    "p12passwordMode": "random",
-    "p12storeEncryptionType": "DES_AVERAGE",
-    "showP12PasswordOnRecover": True,
-    "showP12OnRecover": True,
-}
-
-# Minimal selfPermissions
-_SELF_PERMISSIONS: dict = {
-    "selfRecover": False,
-    "selfUpdate": False,
-    "selfRevoke": False,
-    "selfRenew": False,
-    "selfPopRenew": False,
-    "selfPopRevoke": False,
-    "selfPopUpdate": False,
-    "selfPopImport": False,
-}
-
-# Minimal requestsPolicy
-_REQUESTS_POLICY: dict = {
-    "recover": "7 days",
-    "update": "7 days",
-    "migrate": "7 days",
-    "import": "7 days",
-}
-
-
-async def test_create_monitored_profile(
-    e2e_mcp: FastMCP,
-    e2e_client: HorizonClient,
-) -> None:
-    """Create a monitored profile, verify it exists, update it, then delete it."""
-    # --- CREATE ---
-    # description must be a list (array) per the Horizon API schema, not a string.
-    create_result = await call_tool(
-        e2e_mcp,
-        "create_monitored_profile",
-        name=_MONITORED_NAME,
-        certificate_template=_CERT_TEMPLATE,
-        authorization_levels=_AUTH_LEVELS,
-        crypto_policy=_CRYPTO_POLICY,
-        self_permissions=_SELF_PERMISSIONS,
-        requests_policy=_REQUESTS_POLICY,
-        enabled=True,
-    )
-    assert create_result.get("status") == "created", (
-        f"Expected status='created', got: {create_result}"
-    )
-    assert create_result.get("kind") == "profile"
-    assert create_result.get("name") == _MONITORED_NAME
-
-    try:
-        # --- GET (verify creation) ---
-        fetched = await call_tool(e2e_mcp, "get_profile", name=_MONITORED_NAME)
-        assert fetched.get("name") == _MONITORED_NAME
-        assert fetched.get("module", "").lower() == "monitored"
-
-        # --- UPDATE (enable/disable toggle) ---
-        # NOTE: The Horizon API stores description as an array, not a plain string.
-        # The update_monitored_profile tool passes description as-is to the API.
-        # To avoid schema validation issues, we test a simple boolean field update
-        # (enabled=False) which is less fragile than description.
-        update_result = await call_tool(
-            e2e_mcp,
-            "update_monitored_profile",
-            name=_MONITORED_NAME,
-            enabled=False,
-        )
-        assert update_result.get("status") == "updated", (
-            f"Expected status='updated', got: {update_result}"
-        )
-        assert update_result.get("name") == _MONITORED_NAME
-
-        # Verify the update was persisted
-        after_update = await call_tool(e2e_mcp, "get_profile", name=_MONITORED_NAME)
-        assert after_update.get("enabled") is False, (
-            f"enabled was not updated to False. Got: {after_update.get('enabled')}"
-        )
-
-    finally:
-        # --- CLEANUP (direct API call; delete_profile is Phase 2) ---
-        try:
-            await e2e_client.delete(
-                f"/api/v1/certificate/profiles/{_MONITORED_NAME}"
-            )
-        except Exception:
-            pass  # Best-effort cleanup — do not mask test failures

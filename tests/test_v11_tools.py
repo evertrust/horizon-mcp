@@ -1,4 +1,4 @@
-"""Unit tests for the v1.1 tool layer — 12 new domains, 81 tools.
+"""Unit tests for the v1.1 tool layer.
 
 Strategy:
     - Mock ``get_client()`` in ``horizon_mcp.client.state`` to return an
@@ -9,19 +9,12 @@ Strategy:
       interface (validates argument parsing exactly as the MCP runtime would).
     - Assert correct HTTP method/endpoint, payload, and response formatting.
 
-Domains covered (12):
+Domains covered:
     Discovery campaigns — list, get, create, update, delete, flush
     Discovery events    — search, get, export CSV
     Discovery feed      — start session, feed cert, register event, end session
     Dashboards          — CRUD + chart ops + saved queries
     Reports             — list, download, delete
-    Archives            — list, get, create, download, delete, retry, cancel, count
-    Automation          — policies CRUD, execution policies CRUD, lifecycle
-    Local identities    — CRUD + password management
-    WCCE                — forest CRUD + enroll + exchange certificate
-    Scheduler           — shared CRUD + thirdparty + report task creation
-    System config       — system config CRUD + import/export
-    Analytics           — get analytics status
 """
 
 from __future__ import annotations
@@ -105,14 +98,6 @@ def report_mcp(patched_client):
     mcp = FastMCP("test-reports")
     from horizon_mcp.tools.reports import register_report_tools
     register_report_tools(mcp)
-    return mcp
-
-
-@pytest.fixture
-def analytics_mcp(patched_client):
-    mcp = FastMCP("test-analytics")
-    from horizon_mcp.tools.analytics import register_analytics_tools
-    register_analytics_tools(mcp)
     return mcp
 
 
@@ -505,15 +490,15 @@ class TestDashboardGet:
 
 class TestDashboardCreate:
     async def test_create_blank_dashboard(self, dashboard_mcp, patched_client):
-        patched_client.put.return_value = {
+        patched_client.post.return_value = {
             "name": "new-dash", "type": "certificate", "charts": [],
         }
         result = await call(dashboard_mcp, "create_dashboard", {
             "name": "new-dash",
             "dashboard_type": "certificate",
         })
-        patched_client.put.assert_awaited_once()
-        payload = patched_client.put.call_args[1]["json"]
+        patched_client.post.assert_awaited_once()
+        payload = patched_client.post.call_args[1]["json"]
         assert payload["name"] == "new-dash"
         assert payload["type"] == "certificate"
         assert payload["charts"] == []
@@ -751,40 +736,6 @@ class TestReportDelete:
                 "expected_uuid": "uuid-b",
             })
         patched_client.delete.assert_not_awaited()
-
-
-# =========================================================================
-
-
-# 12. ANALYTICS (1 tool)
-# =========================================================================
-
-class TestAnalyticsGet:
-    async def test_valid_domain(self, analytics_mcp, patched_client):
-        patched_client.get.return_value = {"synced": True, "lastSync": "2025-01-01T00:00:00Z"}
-        result = await call(analytics_mcp, "get_analytics", {"domain": "certificates"})
-        patched_client.get.assert_awaited_once_with("/api/v1/analytics/certificates")
-        assert result["data"]["synced"] is True
-        assert "certificates" in result["content"]
-
-    async def test_discovery_domain_path(self, analytics_mcp, patched_client):
-        patched_client.get.return_value = {}
-        await call(analytics_mcp, "get_analytics", {"domain": "discovery"})
-        patched_client.get.assert_awaited_once_with(
-            "/api/v1/analytics/discovery/events",
-        )
-
-    async def test_invalid_domain(self, analytics_mcp, patched_client):
-        result = await call(analytics_mcp, "get_analytics", {"domain": "requests"})
-        assert result["error"] is True
-        assert "certificates" in result["content"]
-        patched_client.get.assert_not_awaited()
-
-    async def test_events_domain(self, analytics_mcp, patched_client):
-        patched_client.get.return_value = {"synced": False}
-        result = await call(analytics_mcp, "get_analytics", {"domain": "events"})
-        patched_client.get.assert_awaited_once_with("/api/v1/analytics/events")
-        assert result["data"]["synced"] is False
 
 
 # =========================================================================
