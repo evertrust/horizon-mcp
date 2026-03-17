@@ -48,9 +48,14 @@ def register_computation_tools(mcp: FastMCP) -> None:
             JSON with the computed result from the Horizon template engine.
         """
         client = get_client()
+        # The Horizon API distinguishes between templateString (Mustache-like
+        # syntax e.g. {{owner}}) and computationRule (expression syntax).
+        # Template strings contain {{ }} delimiters; computation rules do not.
+        is_template = "{{" in rule
+        key = "templateString" if is_template else "computationRule"
         result = await client.post(
             "/api/v1/templatestring/playground",
-            json={"template": rule, "dictionary": dictionary},
+            json={key: rule, "dictionary": dictionary},
         )
         return json.dumps(result)
 
