@@ -21,21 +21,29 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 ```bash
 git clone https://github.com/evertrust/horizon-mcp
 cd horizon-mcp
-python -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
 Verify:
 
 ```bash
-horizon-mcp --help
+.venv/bin/python -m horizon_mcp.server --help
 ```
 
-For OIDC browser authentication, install the optional dependency:
+Note the **absolute path** to the Python binary in the venv — you'll need it
+for the MCP configuration below:
+
+```bash
+echo "$(pwd)/.venv/bin/python"
+```
+
+For OIDC browser authentication, install Playwright and its browser:
 
 ```bash
 pip install -e ".[oidc]"
+playwright install chromium
 ```
 
 ---
@@ -108,13 +116,15 @@ cp .env.example .env
 
 ### Claude Code
 
-Create `.mcp.json` in your project root:
+Create `.mcp.json` in your project root. Replace `/absolute/path/to/horizon-mcp`
+with the actual path where you cloned the repo (the output of `echo "$(pwd)/.venv/bin/horizon-mcp"` from the installation step):
 
 ```json
 {
   "mcpServers": {
     "horizon": {
-      "command": "/path/to/horizon-mcp/.venv/bin/horizon-mcp",
+      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
+      "args": ["-m", "horizon_mcp.server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -135,7 +145,8 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "horizon": {
-      "command": "/path/to/horizon-mcp/.venv/bin/horizon-mcp",
+      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
+      "args": ["-m", "horizon_mcp.server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -160,7 +171,8 @@ Add to `opencode.json`:
 {
   "mcp": {
     "horizon": {
-      "command": "/path/to/horizon-mcp/.venv/bin/horizon-mcp",
+      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
+      "args": ["-m", "horizon_mcp.server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -177,11 +189,12 @@ ChatGPT does not natively support MCP. Use a bridge such as [mcphost](https://gi
 
 ```bash
 pip install mcphost
-mcphost --mcp-server "horizon=/path/to/horizon-mcp/.venv/bin/horizon-mcp" \
+HORIZON_URL=https://horizon.example.com \
+HORIZON_API_ID=your-api-id \
+HORIZON_API_KEY=your-api-key \
+mcphost --mcp-server "horizon=/absolute/path/to/horizon-mcp/.venv/bin/python -m horizon_mcp.server" \
         --provider openai --model gpt-4o
 ```
-
-Set the Horizon environment variables in your shell before running.
 
 ### MCP Inspector (debugging and exploration)
 
@@ -190,7 +203,7 @@ export HORIZON_URL=https://horizon.example.com
 export HORIZON_API_ID=your-api-id
 export HORIZON_API_KEY=your-api-key
 
-npx @modelcontextprotocol/inspector .venv/bin/horizon-mcp
+npx @modelcontextprotocol/inspector /absolute/path/to/horizon-mcp/.venv/bin/python -- -m horizon_mcp.server
 ```
 
 Opens a browser UI showing all 63 tools and 12 knowledge resources.
