@@ -57,11 +57,38 @@ They do NOT work on numeric values.
 
 **Symbolic aliases**: `<=` for `lower than`, `>=` for `greater than`, `<` for `strictly lower than`, `>` for `strictly greater than`.
 
-### Existence Operator
+### Existence Operators
 
-| Operator  | Syntax            | Description                        |
-|-----------|-------------------|------------------------------------|
-| `exists`  | `field exists`    | Field has a non-null value         |
+| Operator      | Syntax                | Description                        |
+|---------------|-----------------------|------------------------------------|
+| `exists`      | `field exists`        | Field has a non-null value         |
+| `not exists`  | `field not exists`    | Field is null or absent            |
+
+### Negation
+
+Negate any comparison operator by placing `not` **between the field and the operator**:
+
+```
+field not operator value
+```
+
+**Examples:**
+```
+dn not contains "test"              -- DN does NOT contain "test"
+profile not equals "WebRA-Prod"     -- profile is NOT "WebRA-Prod"
+module not in ("monitored", "acme") -- module is neither monitored nor acme
+san.dnsname not matches ".*\\.dev$" -- no DNS SAN ends with .dev
+serial not exists                   -- certificate has no serial (same as not exists)
+```
+
+**CRITICAL**: The syntax is `field not operator value`, NOT any of these WRONG forms:
+- ~~`not(field operator value)`~~ — INVALID
+- ~~`not field operator value`~~ — INVALID
+- ~~`(not (field operator value))`~~ — INVALID
+- ~~`!(field operator value)`~~ — INVALID
+
+The `not` keyword goes BETWEEN the field name and the operator. It is part of the
+operator itself (`not contains`, `not equals`, `not matches`, `not in`, `not exists`).
 
 ---
 
@@ -102,6 +129,11 @@ Valid values: `archived`, `escrowed`, `trusted`, `selfsigned`, `discovered`.
 
 **IMPORTANT**: There is NO `certificate is expired`. To check for expired certificates,
 use `status is expired` instead.
+
+**IMPORTANT**: `certificate is discovered` is NOT the same as `module equals "discovery"`.
+There is no module called "discovery". The `module` field refers to the **profile module
+type** (webra, acme, scep, est, monitored). Discovered certificates may have ANY module
+or no module at all. To find discovered certificates, always use `certificate is discovered`.
 
 ### Trigger Results
 
@@ -413,6 +445,55 @@ NOT HCQL query field names (`valid.until`, `valid.from`).
 
 ---
 
+## HCQL vs API Field Names (CRITICAL)
+
+HCQL query fields and API response/request fields use **different naming conventions**.
+Do NOT confuse them — using the wrong convention causes errors.
+
+| Context | Convention | Examples |
+|---------|-----------|----------|
+| **HCQL `query` parameter** | lowercase, dot-separated | `dn`, `san`, `keytype`, `contactemail`, `valid.until`, `valid.from` |
+| **API `fields` parameter** | camelCase | `dn`, `subjectAlternateNames`, `keyType`, `contactEmail`, `notAfter`, `notBefore` |
+| **API `sortedBy` elements** | camelCase | `notAfter`, `keyType`, `signingAlgorithm` |
+
+### Common HCQL → API field mapping
+
+| HCQL query field | API `fields` / response field | Notes |
+|-----------------|-------------------------------|-------|
+| `dn` | `dn` | Same |
+| `san` | `subjectAlternateNames` | HCQL: `san`, API: `subjectAlternateNames` |
+| `serial` | `serial` | Same |
+| `issuer` | `issuer` | Same |
+| `profile` | `profile` | Same |
+| `module` | `module` | Same |
+| `owner` | `owner` | Same |
+| `team` | `team` | Same |
+| `keytype` | `keyType` | HCQL lowercase, API camelCase |
+| `signingalgorithm` | `signingAlgorithm` | HCQL lowercase, API camelCase |
+| `contactemail` | `contactEmail` | HCQL lowercase, API camelCase |
+| `holderid` | `holderId` | HCQL lowercase, API camelCase |
+| `valid.until` | `notAfter` | Completely different names |
+| `valid.from` | `notBefore` | Completely different names |
+| `thumbprint` | `thumbprint` | Same |
+| `publickeythumbprint` | `publicKeyThumbprint` | HCQL lowercase, API camelCase |
+| (no HCQL field) | `certificate` | Full PEM — only in API response |
+| (no HCQL field) | `discoveryData` | Discovery metadata — only in API response |
+| `grade` | `grades` | HCQL singular, API plural |
+| `label.<key>` | `label.<key>` | Same pattern |
+| `metadata.<key>` | `metadata.<key>` | Same pattern |
+
+### Usable API `fields` values for certificate search
+
+`_id`, `certificate`, `contactEmail`, `discoveredTrusted`, `discoveryData`,
+`discoveryInfo`, `dn`, `escrowed`, `grade.<policy>`, `grades`, `holderId`,
+`issuer`, `keyType`, `label.<key>`, `labels`, `metadata`, `metadata.<key>`,
+`module`, `notAfter`, `notBefore`, `owner`, `profile`, `publicKeyThumbprint`,
+`removeAt`, `revocationDate`, `revocationReason`, `selfSigned`, `serial`,
+`signingAlgorithm`, `subjectAlternateNames`, `team`, `team.displayname.<lang>`,
+`thirdPartyData`, `thumbprint`, `triggerResults`
+
+---
+
 ## Aggregate Queries (HCQL and HRQL)
 
 HCQL and HRQL support aggregate queries for dashboarding and reporting:
@@ -502,6 +583,15 @@ label.environment equals "production" and status is valid
 ```
 discoverydata.ip matches "^10\.0\.1\." and certificate is discovered
 ```
+
+### HCQL -- Valid discovered certificates with SANs, excluding test certs
+
+```
+status is valid and certificate is discovered and dn not contains "test" and san exists
+```
+
+Note: `certificate is discovered` (NOT `module equals "discovery"`), `dn not contains`
+(NOT `not dn contains` or `not(dn contains ...)`), and `san exists` to require SANs.
 
 ### HCQL -- Expiring certificates that have NOT been renewed yet
 
