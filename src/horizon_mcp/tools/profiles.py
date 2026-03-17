@@ -226,7 +226,7 @@ async def _do_update(
     # Preflight the merged payload
     warnings = await _preflight_deps(client, payload, "profile")
 
-    result = await client.put(f"{_PROFILE_BASE}/", json=payload)
+    result = await client.put(_PROFILE_BASE, json=payload)
     return build_mutate_response(
         action="updated",
         kind="profile",

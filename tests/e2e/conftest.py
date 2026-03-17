@@ -10,10 +10,11 @@ All E2E tests are skipped if these are not set.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import uuid
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, Iterator
 
 import pytest
 import pytest_asyncio
@@ -72,8 +73,8 @@ async def e2e_client() -> AsyncIterator[HorizonClient]:
         clear_client()
 
 
-@pytest_asyncio.fixture(scope="session")
-async def e2e_mcp(e2e_client: HorizonClient) -> FastMCP:
+@pytest.fixture(scope="session")
+def e2e_mcp(e2e_client: HorizonClient) -> FastMCP:
     """FastMCP instance with Phase 1 tools + all resources registered."""
     mcp = FastMCP("e2e-test")
     register_phase1_tools(mcp)
@@ -85,19 +86,33 @@ async def e2e_mcp(e2e_client: HorizonClient) -> FastMCP:
 # Tool / resource call helpers
 # ---------------------------------------------------------------------------
 
+def _extract_text(result: Any) -> str:
+    """Extract text from a tool_manager.call_tool result.
+
+    The return type varies by FastMCP version:
+    - str: the raw JSON string returned by the tool function
+    - list[TextContent]: a list with .text attributes
+    """
+    if isinstance(result, str):
+        return result
+    if isinstance(result, list) and len(result) > 0:
+        item = result[0]
+        return item.text if hasattr(item, "text") else str(item)
+    return str(result)
+
+
 async def call_tool(mcp: FastMCP, tool_name: str, **kwargs: Any) -> dict[str, Any]:
     """Invoke an MCP tool and return the parsed JSON response.
 
     Raises AssertionError if the tool returns an error or unparseable content.
     """
     result = await mcp._tool_manager.call_tool(tool_name, kwargs)
-    assert result and len(result) > 0, f"Tool '{tool_name}' returned empty result"
+    assert result, f"Tool '{tool_name}' returned empty result"
 
-    text = result[0].text if hasattr(result[0], "text") else str(result[0])
+    text = _extract_text(result)
     try:
         data = json.loads(text)
     except json.JSONDecodeError:
-        # Some tools return plain text
         return {"raw": text}
 
     assert not data.get("error"), f"Tool '{tool_name}' returned error: {data}"
@@ -107,16 +122,25 @@ async def call_tool(mcp: FastMCP, tool_name: str, **kwargs: Any) -> dict[str, An
 async def call_tool_raw(mcp: FastMCP, tool_name: str, **kwargs: Any) -> str:
     """Invoke an MCP tool and return the raw text response."""
     result = await mcp._tool_manager.call_tool(tool_name, kwargs)
-    assert result and len(result) > 0, f"Tool '{tool_name}' returned empty result"
-    return result[0].text if hasattr(result[0], "text") else str(result[0])
+    assert result, f"Tool '{tool_name}' returned empty result"
+    return _extract_text(result)
 
 
 async def read_resource(mcp: FastMCP, uri: str) -> str:
-    """Read an MCP resource by URI and return the text content."""
-    result = await mcp._resource_manager.read_resource(uri)
+    """Read an MCP resource by URI and return the text content.
+
+    Uses get_resource() + .read() since ResourceManager has no read_resource()
+    method in the current FastMCP version.
+    """
+    resource = await mcp._resource_manager.get_resource(uri)
+    assert resource is not None, f"Resource '{uri}' not found"
+    result = await resource.read()
     assert result, f"Resource '{uri}' returned empty result"
-    if isinstance(result, list):
-        return result[0].text if hasattr(result[0], "text") else str(result[0])
+    if isinstance(result, str):
+        return result
+    if isinstance(result, list) and len(result) > 0:
+        item = result[0]
+        return item.text if hasattr(item, "text") else str(item)
     return str(result)
 
 
@@ -127,8 +151,14 @@ async def read_resource(mcp: FastMCP, uri: str) -> str:
 @pytest_asyncio.fixture
 async def e2e_dashboard(e2e_mcp: FastMCP) -> AsyncIterator[dict[str, Any]]:
     """Create a test dashboard, yield it, then delete it."""
-    name = f"{E2E_PREFIX}-dash"
-    result = await call_tool(e2e_mcp, "create_dashboard", name=name)
+    name = f"{E2E_PREFIX}-dash-{uuid.uuid4().hex[:4]}"
+    result = await call_tool(
+        e2e_mcp, "create_dashboard", name=name, dashboard_type="certificate",
+    )
+    # The Horizon API has eventual consistency: after a POST creates the dashboard,
+    # the GET /principals/self may not immediately reflect it.  A brief pause
+    # ensures the dashboard is visible before tests use it.
+    await asyncio.sleep(1.0)
     yield {"name": name, **result}
     try:
         await call_tool(e2e_mcp, "delete_dashboard", name=name, expected_name=name)
@@ -143,7 +173,7 @@ async def e2e_saved_query(e2e_mcp: FastMCP) -> AsyncIterator[dict[str, Any]]:
     result = await call_tool(
         e2e_mcp, "upsert_saved_query",
         name=name,
-        query_type="HCQL",
+        query_type="hcql",
         query="profile exists",
     )
     yield {"name": name, **result}
@@ -163,8 +193,12 @@ async def e2e_discovery_campaign(
     result = await call_tool(
         e2e_mcp, "create_discovery_campaign",
         name=name,
-        campaign_type="TLSSCAN",
-        configuration={"targets": ["127.0.0.1:443"]},
+        authorization_levels={
+            "search": {"accessLevel": "authenticated"},
+            "feed": {"accessLevel": "authorized"},
+        },
+        hosts=["127.0.0.1"],
+        ports=[443],
     )
     yield {"name": name, **result}
     try:

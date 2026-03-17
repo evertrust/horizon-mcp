@@ -224,7 +224,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         if description is not None:
             payload["description"] = description
 
-        result = await client.put(_DASHBOARD_BASE, json=payload)
+        result = await client.post(_DASHBOARD_BASE, json=payload)
         return build_mutate_response(action="created", kind="dashboard", name=name, data=result)
 
     @mcp.tool()

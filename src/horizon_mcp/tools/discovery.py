@@ -211,7 +211,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         if hosts is not None:
             payload["hosts"] = hosts
         if ports is not None:
-            payload["ports"] = ports
+            payload["ports"] = [str(p) for p in ports]
         if grading_policies is not None:
             payload["gradingPolicies"] = grading_policies
 
@@ -278,13 +278,13 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         if hosts is not None:
             overrides["hosts"] = hosts
         if ports is not None:
-            overrides["ports"] = ports
+            overrides["ports"] = [str(p) for p in ports]
         if grading_policies is not None:
             overrides["gradingPolicies"] = grading_policies
 
         result = await get_strip_merge_put(
             f"{_CAMPAIGN_BASE}/{name}",
-            f"{_CAMPAIGN_BASE}/",
+            _CAMPAIGN_BASE,
             "discovery_campaign",
             overrides,
             clear_fields,
