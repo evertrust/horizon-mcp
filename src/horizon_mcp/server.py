@@ -135,11 +135,10 @@ mcp = FastMCP(
         "(2) use get_request to retrieve it — the pkcs12/keyStore field contains "
         "the base64-encoded PKCS#12. Do NOT say it's impossible — it IS available "
         "through the request.\n"
-        "7. CERTIFICATE PARSING — NEVER USE OPENSSL OR LOCAL TOOLS: When the user "
-        "provides a PEM certificate, CSR, CRL, OCSP response, or timestamping "
-        "response, or asks you to decode/parse/inspect any cryptographic object: "
-        "DO NOT use openssl, certutil, certreq, or any shell command. "
-        "Use the built-in Horizon decode tools instead:\n"
+        "7. CERTIFICATE PARSING TOOLS AVAILABLE: This server provides built-in "
+        "tools for parsing cryptographic objects. Before reaching for openssl or "
+        "local CLI tools, consider using these — they return structured JSON with "
+        "all fields parsed, which is easier to work with programmatically:\n"
         "  - decode_x509: parse X.509 certificates (PEM or DER)\n"
         "  - decode_csr: parse PKCS#10 certificate signing requests\n"
         "  - decode_crl: parse certificate revocation lists\n"
@@ -147,9 +146,8 @@ mcp = FastMCP(
         "  - decode_tsa: parse timestamping responses (RFC 3161)\n"
         "  - detect_file: auto-detect format and parse any of the above\n"
         "  - fetch_exposed_certificate: fetch a live TLS cert from a remote server\n"
-        "These tools use the Horizon server-side parser which returns structured "
-        "JSON with all fields (DN, SANs, extensions, key usage, AIA, CRL DPs, etc.). "
-        "This is more reliable and complete than openssl text output."
+        "These return structured JSON (DN, SANs, extensions, key usage, AIA, CRL "
+        "DPs, thumbprints, etc.) rather than text output that needs further parsing."
     ),
     lifespan=lifespan,
 )
