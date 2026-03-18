@@ -144,10 +144,10 @@ def test_tool_name_enumeration():
 # ===================================================================
 
 
-def test_resource_count_is_12():
-    """Exactly 12 knowledge resources must be registered."""
-    assert len(_resources) == 12, (
-        f"Expected 12 resources, got {len(_resources)}."
+def test_resource_count_is_13():
+    """Exactly 13 knowledge resources must be registered."""
+    assert len(_resources) == 13, (
+        f"Expected 13 resources, got {len(_resources)}."
     )
 
 
@@ -169,11 +169,12 @@ EXPECTED_RESOURCE_URIS: list[str] = sorted([
     # v1.1 knowledge resources
     "horizon://knowledge/dashboards",
     "horizon://knowledge/system-admin",
+    "horizon://knowledge/discovery-workflows",
 ])
 
 
 def test_resource_uris():
-    """All 12 resource URIs must match the expected list exactly."""
+    """All 13 resource URIs must match the expected list exactly."""
     actual = sorted(_resources.keys())
     assert actual == EXPECTED_RESOURCE_URIS, (
         f"Resource URI drift detected.\n"
