@@ -217,60 +217,114 @@ async def test_describe_query_fields_returns_metadata(e2e_mcp, query_type):
 # ---------------------------------------------------------------------------
 
 
-async def test_decode_x509_with_test_cert(e2e_mcp):
-    """decode_x509 must parse the bundled test certificate without error.
+async def _get_live_cert_pem(e2e_mcp) -> str:
+    """Fetch a real PEM from google.com for decode tests."""
+    result = await call_tool(e2e_mcp, "fetch_exposed_certificate", uri="https://www.google.com")
+    return result["pem"]
 
-    The decode endpoint may not be available on all Horizon instances (404).
-    If unavailable, skip gracefully.
-    """
+
+async def test_decode_x509_response_structure(e2e_mcp):
+    """decode_x509 must return all expected RFC 5280 fields."""
+    pem = await _get_live_cert_pem(e2e_mcp)
+    result = await call_tool(e2e_mcp, "decode_x509", pem=pem)
+    # Core fields must be present
+    assert "dn" in result, f"Missing 'dn'. Keys: {list(result.keys())}"
+    assert "issuerDn" in result, f"Missing 'issuerDn'"
+    assert "serial" in result, f"Missing 'serial'"
+    assert "notBefore" in result, f"Missing 'notBefore'"
+    assert "notAfter" in result, f"Missing 'notAfter'"
+    assert "keyType" in result, f"Missing 'keyType'"
+    assert "signingAlgorithm" in result, f"Missing 'signingAlgorithm'"
+    assert "pem" in result, f"Missing 'pem'"
+    assert "certificateThumbprint" in result, f"Missing 'certificateThumbprint'"
+    assert "selfSigned" in result, f"Missing 'selfSigned'"
+    # dnElements should be a list of {type, value} objects
+    assert "dnElements" in result
+    assert isinstance(result["dnElements"], list)
+    assert all("type" in e and "value" in e for e in result["dnElements"])
+
+
+async def test_decode_x509_san_parsing(e2e_mcp):
+    """decode_x509 must parse SANs into typed entries."""
+    pem = await _get_live_cert_pem(e2e_mcp)
+    result = await call_tool(e2e_mcp, "decode_x509", pem=pem)
+    assert "sans" in result, "Google cert should have SANs"
+    sans = result["sans"]
+    assert isinstance(sans, list)
+    assert all("sanType" in s and "value" in s for s in sans), (
+        f"SAN entries should have sanType + value. Got: {sans[:2]}"
+    )
+
+
+async def test_decode_x509_key_usages(e2e_mcp):
+    """decode_x509 must return key usage fields."""
+    pem = await _get_live_cert_pem(e2e_mcp)
+    result = await call_tool(e2e_mcp, "decode_x509", pem=pem)
+    assert "keyUsages" in result
+    assert isinstance(result["keyUsages"], list)
+    assert "isKeyUsagesCritical" in result
+
+
+async def test_decode_x509_aia_and_crldps(e2e_mcp):
+    """decode_x509 must return AIA and CRL distribution points for non-root certs."""
+    pem = await _get_live_cert_pem(e2e_mcp)
+    result = await call_tool(e2e_mcp, "decode_x509", pem=pem)
+    # Google certs have both
+    if not result.get("selfSigned"):
+        assert "aias" in result, "Non-root cert should have AIA"
+        assert "crldps" in result, "Non-root cert should have CRL DPs"
+
+
+async def test_decode_csr_with_invalid_data_raises(e2e_mcp):
+    """decode_csr with invalid data must raise a ToolError, not return garbage."""
     from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(e2e_mcp, "decode_x509", pem=_TEST_CERT_PEM)
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"decode_x509 not available on this Horizon instance: {exc}")
-    assert result, "decode_x509 returned empty result"
-    # A decoded cert should contain subject or DN-related fields
-    if "raw" not in result:
-        cert_keys = {"subject", "issuer", "dn", "notBefore", "notAfter", "serial"}
-        assert cert_keys & set(result.keys()), (
-            f"decode_x509 response lacks certificate fields. Got keys: {list(result.keys())}"
-        )
+    with pytest.raises(ToolError, match="400|Invalid"):
+        await call_tool(e2e_mcp, "decode_csr", pem="not-a-csr")
 
 
-async def test_decode_csr_with_invalid_data_returns_error(e2e_mcp):
-    """decode_csr with clearly non-CSR data must return an error, not crash.
+async def test_detect_file_identifies_certificate(e2e_mcp):
+    """detect_file must identify a PEM certificate as type='certificate'."""
+    pem = await _get_live_cert_pem(e2e_mcp)
+    result = await call_tool(e2e_mcp, "detect_file", data=pem)
+    assert result.get("type") == "certificate", (
+        f"Expected type='certificate', got type='{result.get('type')}'"
+    )
+    assert "value" in result, "detect_file should return decoded value"
 
-    The decode endpoint may not be available on all Horizon instances (404).
-    If it raises a ToolError, that is acceptable — the tool does not swallow it.
-    """
+
+async def test_decode_crl_with_invalid_data_raises(e2e_mcp):
+    """decode_crl with invalid data must raise a ToolError."""
     from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        raw = await call_tool_raw(e2e_mcp, "decode_csr", pem="not-a-csr")
-        # We expect either an error JSON or an error message
-        assert raw, "decode_csr returned empty raw response"
-    except ToolError:
-        # Endpoint unavailable (404) or other server error — skip
-        pytest.skip("decode_csr endpoint not available on this Horizon instance")
+    with pytest.raises(ToolError):
+        await call_tool(e2e_mcp, "decode_crl", data="not-a-crl")
 
 
-async def test_detect_file_with_cert_pem(e2e_mcp):
-    """detect_file must correctly identify the test PEM certificate format.
-
-    The detect endpoint may not be available on all Horizon instances (404).
-    If unavailable, skip gracefully.
-    """
+async def test_decode_ocsp_with_invalid_data_raises(e2e_mcp):
+    """decode_ocsp with invalid data must raise a ToolError."""
     from mcp.server.fastmcp.exceptions import ToolError
-    try:
-        result = await call_tool(e2e_mcp, "detect_file", data=_TEST_CERT_PEM)
-    except (ToolError, AssertionError) as exc:
-        pytest.skip(f"detect_file not available on this Horizon instance: {exc}")
-    assert result, "detect_file returned empty result"
-    if "raw" not in result:
-        # The response should include some type/format indicator
-        format_keys = {"type", "format", "contentType", "detected"}
-        assert format_keys & set(result.keys()), (
-            f"detect_file response lacks format keys. Got keys: {list(result.keys())}"
-        )
+    with pytest.raises(ToolError, match="400|Invalid"):
+        await call_tool(e2e_mcp, "decode_ocsp", data="not-an-ocsp-response")
+
+
+async def test_decode_tsa_with_invalid_data_raises(e2e_mcp):
+    """decode_tsa with invalid data must raise a ToolError."""
+    from mcp.server.fastmcp.exceptions import ToolError
+    with pytest.raises(ToolError, match="400|Invalid"):
+        await call_tool(e2e_mcp, "decode_tsa", data="not-a-tsa-response")
+
+
+async def test_fetch_then_decode_workflow(e2e_mcp):
+    """End-to-end: fetch a live cert then decode it via the Horizon API."""
+    # Fetch from google
+    fetch_result = await call_tool(
+        e2e_mcp, "fetch_exposed_certificate", uri="https://www.google.com",
+    )
+    assert "pem" in fetch_result
+
+    # Decode via Horizon
+    decode_result = await call_tool(e2e_mcp, "decode_x509", pem=fetch_result["pem"])
+    assert decode_result["dn"] == f"CN={fetch_result.get('subject', '').split('=')[-1]}" or "google" in decode_result["dn"].lower()
+    assert decode_result["certificateThumbprint"] == fetch_result["thumbprint_sha256"]
 
 
 # ---------------------------------------------------------------------------

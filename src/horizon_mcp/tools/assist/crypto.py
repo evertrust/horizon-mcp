@@ -1,7 +1,16 @@
 """Cryptographic parsing, detection, and remote certificate fetching tools.
 
-4 tools for decoding X.509 certificates, CSRs, auto-detecting
-RFC 5280 file formats, and fetching live certificates from remote TLS endpoints.
+7 tools for decoding X.509 certificates, CSRs, CRLs, OCSP responses,
+TSA responses, auto-detecting cryptographic file formats, and fetching
+live certificates from remote TLS endpoints.
+
+Decode tools use the Horizon RFC 5280/6960/3161 multipart endpoints:
+- ``/api/v1/rfc5280/x509``   — X.509 certificate decode
+- ``/api/v1/rfc5280/pkcs10`` — PKCS#10 CSR decode
+- ``/api/v1/rfc5280/crl``    — CRL decode
+- ``/api/v1/rfc6960``        — OCSP response decode
+- ``/api/v1/rfc3161``        — TSA response decode
+- ``/api/v1/crypto/detect``  — auto-detect and decode any crypto file
 """
 
 from __future__ import annotations
@@ -31,74 +40,273 @@ def register_crypto_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def decode_x509(pem: str) -> str:
-        """Decode a PEM-encoded X.509 certificate and display its fields.
+        """Decode a PEM- or DER-encoded X.509 certificate via Horizon.
 
         Safety tier: read-only
 
-        Parses the certificate server-side and returns structured fields
-        including subject, issuer, validity dates, extensions, key info,
-        and signature algorithm.
+        Sends the certificate to Horizon's RFC 5280 decode endpoint
+        (``POST /api/v1/rfc5280/x509``, multipart/form-data) and returns
+        every parsed field.
+
+        **When to use:** after fetching a PEM with ``fetch_exposed_certificate``,
+        after retrieving a certificate from the Horizon inventory, or when a
+        user pastes a PEM block and wants to understand its contents.
 
         Args:
             pem: PEM-encoded X.509 certificate string (including the
-                 ``-----BEGIN CERTIFICATE-----`` and
-                 ``-----END CERTIFICATE-----`` markers).
+                 ``-----BEGIN CERTIFICATE-----`` / ``-----END CERTIFICATE-----``
+                 markers) **or** base64-encoded DER bytes.
 
         Returns:
-            JSON with parsed certificate fields.
+            JSON object with the following fields:
+
+            - ``dn`` (str): subject distinguished name.
+            - ``dnElements`` (list): ordered list of DN attribute objects.
+            - ``issuerDn`` (str): issuer distinguished name.
+            - ``serial`` (str): serial number (hex).
+            - ``notBefore`` (int): validity start as epoch milliseconds.
+            - ``notAfter`` (int): validity end as epoch milliseconds.
+            - ``keyType`` (str): public key algorithm, e.g. ``RSA``, ``EC``.
+            - ``signingAlgorithm`` (str): signature algorithm OID / name.
+            - ``pem`` (str): normalised PEM.
+            - ``subjectKeyIdentifier`` (str): SKI hex string.
+            - ``certificateThumbprint`` (str): SHA-256 thumbprint.
+            - ``certificateSHAOneThumbprint`` (str): SHA-1 thumbprint.
+            - ``publicKeyThumbprint`` (str): public-key SHA-256 thumbprint.
+            - ``keyUsages`` (list[str]): key-usage flags.
+            - ``isKeyUsagesCritical`` (bool): whether KU extension is critical.
+            - ``extendedKeyUsages`` (list[str]): EKU OIDs.
+            - ``isExtendedKeyUsagesCritical`` (bool): whether EKU is critical.
+            - ``selfSigned`` (bool): true when issuer == subject and self-signed.
+            - ``sans`` (list[{sanType, value}], optional): subject alternative names.
+            - ``basicConstraints`` (object, optional): CA flag and path length.
+            - ``extensions`` (list, optional): all extensions.
+            - ``crldps`` (list[str], optional): CRL distribution points.
+            - ``aias`` ({crt, ocsp}, optional): authority information access.
+            - ``policies`` (list, optional): certificate policies.
+            - ``authorityKeyIdentifier`` (str, optional): AKI.
+            - ``unsupportedExtensions`` (list, optional): unrecognised extensions.
+
+        See also:
+            - ``fetch_exposed_certificate`` — grab a live server cert then feed
+              its PEM into this tool.
+            - ``decode_csr`` — decode a CSR instead.
+            - ``detect_file`` — auto-detect the file type first.
         """
         client = get_client()
         result = await client.post(
-            "/api/v1/certificates/decode",
-            json={"pem": pem},
+            "/api/v1/rfc5280/x509",
+            files={"x509": ("certificate.pem", pem.encode(), "application/x-pem-file")},
         )
         return json.dumps(result)
 
     @mcp.tool()
     async def decode_csr(pem: str) -> str:
-        """Decode a PEM-encoded PKCS#10 Certificate Signing Request (CSR).
+        """Decode a PEM- or DER-encoded PKCS#10 Certificate Signing Request.
 
         Safety tier: read-only
 
-        Parses the CSR server-side and returns structured fields including
-        the subject, public key info, requested extensions, and signature.
+        Sends the CSR to Horizon's RFC 5280 PKCS#10 decode endpoint
+        (``POST /api/v1/rfc5280/pkcs10``, multipart/form-data) and returns
+        the parsed fields.
+
+        **When to use:** when a user provides a CSR and wants to inspect
+        the subject, public key, or requested extensions before submitting
+        it for enrollment.
 
         Args:
             pem: PEM-encoded CSR string (including the
-                 ``-----BEGIN CERTIFICATE REQUEST-----`` and
-                 ``-----END CERTIFICATE REQUEST-----`` markers).
+                 ``-----BEGIN CERTIFICATE REQUEST-----`` /
+                 ``-----END CERTIFICATE REQUEST-----`` markers)
+                 **or** base64-encoded DER bytes.
 
         Returns:
-            JSON with parsed CSR fields.
+            JSON object with the following fields:
+
+            - ``dn`` (str): requested subject distinguished name.
+            - ``dnElements`` (list): ordered list of DN attribute objects.
+            - ``keyType`` (str): public key algorithm.
+            - ``pem`` (str): normalised PEM.
+            - ``sans`` (list[{sanType, value}], optional): requested SANs.
+            - ``extensions`` (list, optional): requested extensions.
+            - ``unsupportedExtensions`` (list, optional): unrecognised extensions.
+
+        See also:
+            - ``decode_x509`` — decode a certificate instead.
+            - ``detect_file`` — auto-detect whether input is a cert or CSR.
         """
         client = get_client()
         result = await client.post(
-            "/api/v1/certificates/csr/decode",
-            json={"pem": pem},
+            "/api/v1/rfc5280/pkcs10",
+            files={"pkcs10": ("request.pem", pem.encode(), "application/x-pem-file")},
+        )
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def decode_crl(data: str) -> str:
+        """Decode a PEM- or DER-encoded Certificate Revocation List (CRL).
+
+        Safety tier: read-only
+
+        Sends the CRL to Horizon's RFC 5280 CRL decode endpoint
+        (``POST /api/v1/rfc5280/crl``, multipart/form-data) and returns
+        the parsed fields.
+
+        **When to use:** when a user provides a CRL and wants to check the
+        issuer, update timestamps, or CRL number.
+
+        Args:
+            data: PEM-encoded CRL string (including the
+                  ``-----BEGIN X509 CRL-----`` / ``-----END X509 CRL-----``
+                  markers) **or** base64-encoded DER bytes.
+
+        Returns:
+            JSON object with the following fields:
+
+            - ``issuerDn`` (str): CRL issuer distinguished name.
+            - ``thisUpdate`` (int): issuance date as epoch milliseconds.
+            - ``nextUpdate`` (int): next scheduled update as epoch milliseconds.
+            - ``number`` (int, optional): CRL sequence number.
+            - ``version`` (int, optional): CRL version.
+
+        See also:
+            - ``decode_x509`` — decode the issuing CA certificate.
+            - ``detect_file`` — auto-detect whether input is a CRL.
+        """
+        client = get_client()
+        result = await client.post(
+            "/api/v1/rfc5280/crl",
+            files={"crl": ("revocation.crl", data.encode(), "application/x-pem-file")},
+        )
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def decode_ocsp(data: str) -> str:
+        """Decode an OCSP response (RFC 6960).
+
+        Safety tier: read-only
+
+        Sends the OCSP response to Horizon's RFC 6960 decode endpoint
+        (``POST /api/v1/rfc6960``, multipart/form-data) and returns the
+        parsed status and per-certificate responses.
+
+        **When to use:** when a user has captured an OCSP response (DER
+        bytes, typically base64-encoded) and wants to inspect the revocation
+        status, responder identity, or per-certificate details.
+
+        Args:
+            data: base64-encoded DER bytes of the OCSP response.
+
+        Returns:
+            JSON object with the following fields:
+
+            - ``status`` (str): top-level response status — one of
+              ``"successful"``, ``"malformedRequest"``, ``"internalError"``,
+              ``"tryLater"``, ``"sigRequired"``, ``"unauthorized"``.
+            - ``respID`` (str, optional): responder identifier.
+            - ``responses`` (list, optional): per-certificate entries, each with:
+                - ``certID`` (object): ``{serial, hashAlg, issuerKeyHash,
+                  issuerNameHash}``.
+                - ``status`` (str): certificate status.
+                - ``thisUpdate`` (int): epoch milliseconds.
+                - ``nextUpdate`` (int): epoch milliseconds.
+
+        See also:
+            - ``decode_x509`` — decode the certificate referenced in the OCSP
+              response.
+        """
+        client = get_client()
+        result = await client.post(
+            "/api/v1/rfc6960",
+            files={
+                "ocsp-response": (
+                    "response.der",
+                    data.encode(),
+                    "application/octet-stream",
+                ),
+            },
+        )
+        return json.dumps(result)
+
+    @mcp.tool()
+    async def decode_tsa(data: str) -> str:
+        """Decode a TSA (Time-Stamp Authority) response (RFC 3161).
+
+        Safety tier: read-only
+
+        Sends the timestamping response to Horizon's RFC 3161 decode
+        endpoint (``POST /api/v1/rfc3161``, multipart/form-data) and returns
+        the parsed fields.
+
+        **When to use:** when a user has captured a timestamping response
+        (DER bytes, typically base64-encoded) and wants to verify the
+        timestamp policy and status.
+
+        Args:
+            data: base64-encoded DER bytes of the timestamping response.
+
+        Returns:
+            JSON object with the following fields:
+
+            - ``policy`` (str): OID of the TSA policy.
+            - ``status`` (str|int): response status.
+            - ``failInfo`` (str, optional): failure reason when status is not
+              ``granted``.
+
+        See also:
+            - ``decode_x509`` — decode the TSA signing certificate.
+        """
+        client = get_client()
+        result = await client.post(
+            "/api/v1/rfc3161",
+            files={
+                "timestamping-response": (
+                    "timestamp.der",
+                    data.encode(),
+                    "application/octet-stream",
+                ),
+            },
         )
         return json.dumps(result)
 
     @mcp.tool()
     async def detect_file(data: str) -> str:
-        """Auto-detect and parse an RFC 5280 cryptographic file.
+        """Auto-detect and decode any cryptographic file.
 
         Safety tier: read-only
 
-        Accepts PEM, DER (base64-encoded), or PKCS#7 data and
-        automatically identifies the format and content type. Returns
-        the parsed structure along with the detected format.
+        Sends the raw data to Horizon's crypto detection endpoint
+        (``POST /api/v1/crypto/detect``, multipart/form-data). Horizon
+        identifies the file type and returns both the type label and the
+        decoded content.
+
+        **When to use:** when the user provides an unknown blob of PEM,
+        DER, or PKCS#7 data and you need to figure out what it is before
+        choosing the right decode tool.
 
         Args:
             data: The cryptographic data to detect and parse. Can be
                   PEM-encoded, base64-encoded DER, or PKCS#7 content.
 
         Returns:
-            JSON with detected format and parsed content fields.
+            JSON object with the following fields:
+
+            - ``type`` (str): detected type — one of ``"certificate"``,
+              ``"csr"``, ``"crl"``, ``"bundle"``, ``"ocsp-response"``,
+              ``"timestamping-response"``, ``"openssh-cert"``.
+            - ``value`` (object): decoded content whose schema matches the
+              corresponding decode tool (e.g., same fields as ``decode_x509``
+              when type is ``"certificate"``).
+
+        See also:
+            - ``decode_x509``, ``decode_csr``, ``decode_crl``,
+              ``decode_ocsp``, ``decode_tsa`` — specialised decode tools
+              for when the file type is already known.
         """
         client = get_client()
         result = await client.post(
-            "/api/v1/certificates/detect",
-            json={"data": data},
+            "/api/v1/crypto/detect",
+            files={"file": ("unknown.bin", data.encode(), "application/octet-stream")},
         )
         return json.dumps(result)
 
