@@ -6,17 +6,34 @@ Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certifi
 
 Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **12 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts — so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
 
+## Architecture
+
+66 tools organized in **8 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
+
+| Domain | Tools | Purpose |
+|--------|------:|---------|
+| Assist | 19 | Identity, grading, query validation, crypto decoding, simulation |
+| Lifecycle | 17 | Certificate search, requests, events, enrollment, revocation |
+| Dashboards | 12 | Dashboard CRUD, charts, saved queries |
+| Discovery | 6 | Campaign management |
+| Discovery Events | 3 | Event search and export |
+| Discovery Feed | 4 | Push certificates and events into campaigns |
+| Reports | 3 | Report listing, download, deletion |
+| Profiles | 2 | Profile listing and inspection |
+
+All destructive operations require name confirmation to prevent accidental deletion. See the full [tool reference](docs/tools-reference.md).
+
 ---
 
-## Prerequisites
+## Quickstart
+
+### Prerequisites
 
 - Python 3.11+
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
----
-
-## Installation
+### Install
 
 ```bash
 git clone https://github.com/evertrust/horizon-mcp
@@ -26,98 +43,15 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Verify the module is importable:
-
-```bash
-.venv/bin/python -c "from horizon_mcp.server import mcp; print(f'{len(mcp._tool_manager._tools)} tools registered')"
-```
-
-Note the **absolute path** to the Python binary in the venv — you'll need it
-for the MCP configuration below:
+Note the absolute path to the venv Python binary — you'll need it below:
 
 ```bash
 echo "$(pwd)/.venv/bin/python"
 ```
 
-For OIDC browser authentication, install Playwright and its browser:
+### Connect your LLM client
 
-```bash
-pip install -e ".[oidc]"
-playwright install chromium
-```
-
----
-
-## Authentication
-
-Four authentication modes are supported. The server auto-detects which mode to use based on which environment variables are set. Priority: **mTLS > API Key > OIDC browser**.
-
-### Mode 1: API Key
-
-```bash
-HORIZON_URL=https://horizon.example.com
-HORIZON_API_ID=your-api-id
-HORIZON_API_KEY=your-api-key
-```
-
-### Mode 2: Mutual TLS (PEM files)
-
-```bash
-HORIZON_URL=https://horizon.example.com
-HORIZON_CLIENT_CERT=/path/to/client.crt
-HORIZON_CLIENT_KEY=/path/to/client.key
-HORIZON_CLIENT_KEY_PASSWORD=optional-key-password   # omit if key is unencrypted
-```
-
-### Mode 3: Mutual TLS (PKCS12 / PFX)
-
-```bash
-HORIZON_URL=https://horizon.example.com
-HORIZON_CLIENT_PFX=/path/to/client.p12
-HORIZON_CLIENT_PFX_PASSWORD=optional-pfx-password   # omit if bundle is unencrypted
-```
-
-### Mode 4: OIDC browser session
-
-Set only `HORIZON_URL`. A browser window opens for interactive login at startup. Requires the `oidc` extra (`pip install -e ".[oidc]"`).
-
-```bash
-HORIZON_URL=https://horizon.example.com
-```
-
----
-
-## Configuration reference
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `HORIZON_URL` | Yes | `https://localhost` | Horizon instance URL |
-| `HORIZON_API_ID` | Mode 1 | | API key identifier |
-| `HORIZON_API_KEY` | Mode 1 | | API key secret |
-| `HORIZON_CLIENT_CERT` | Mode 2 | | Path to PEM client certificate |
-| `HORIZON_CLIENT_KEY` | Mode 2 | | Path to PEM private key |
-| `HORIZON_CLIENT_KEY_PASSWORD` | No | | PEM key decryption password |
-| `HORIZON_CLIENT_PFX` | Mode 3 | | Path to PKCS12 / PFX bundle |
-| `HORIZON_CLIENT_PFX_PASSWORD` | No | | PFX decryption password |
-| `HORIZON_VERIFY_SSL` | No | `true` | Verify server TLS certificates |
-| `HORIZON_TIMEOUT` | No | `30` | HTTP request timeout (seconds) |
-| `HORIZON_LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
-
-Copy the example file and fill in your values:
-
-```bash
-cp .env.example .env
-# edit .env
-```
-
----
-
-## Quickstart by LLM client
-
-### Claude Code
-
-Create `.mcp.json` in your project root. Replace `/absolute/path/to/horizon-mcp`
-with the actual path where you cloned the repo (the output of `echo "$(pwd)/.venv/bin/python"` from the installation step):
+**Claude Desktop** — edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -135,78 +69,9 @@ with the actual path where you cloned the repo (the output of `echo "$(pwd)/.ven
 }
 ```
 
-Start Claude Code from that directory. The 66 tools are available immediately.
+**Claude Code** — create `.mcp.json` in your project root (same JSON format as above).
 
-### Claude Desktop
-
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
-
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-Restart Claude Desktop. The Horizon tools appear in the tools panel.
-
-### OpenAI Codex CLI
-
-Create `.mcp.json` in your project root (same format as Claude Code above).
-
-### OpenCode
-
-Add to `opencode.json`:
-
-```json
-{
-  "mcp": {
-    "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-### ChatGPT (via MCP bridge)
-
-ChatGPT does not natively support MCP. Use a bridge such as [mcphost](https://github.com/nicobailey/mcphost):
-
-```bash
-pip install mcphost
-HORIZON_URL=https://horizon.example.com \
-HORIZON_API_ID=your-api-id \
-HORIZON_API_KEY=your-api-key \
-mcphost --mcp-server "horizon=/absolute/path/to/horizon-mcp/.venv/bin/python -m horizon_mcp.server" \
-        --provider openai --model gpt-4o
-```
-
-### MCP Inspector (debugging and exploration)
-
-```bash
-export HORIZON_URL=https://horizon.example.com
-export HORIZON_API_ID=your-api-id
-export HORIZON_API_KEY=your-api-key
-
-npx @modelcontextprotocol/inspector /absolute/path/to/horizon-mcp/.venv/bin/python -- -m horizon_mcp.server
-```
-
-Opens a browser UI showing all 66 tools and 12 knowledge resources.
+For **Cursor**, **Codex**, **OpenCode**, and **MCP Inspector** setup, see [client setup](docs/client-setup.md).
 
 ---
 
@@ -286,150 +151,7 @@ Describe the available fields for HCQL certificate queries.
 
 ---
 
-## Knowledge resources
-
-The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs access these to understand Horizon domain concepts before constructing tool calls.
-
-| Resource | URI | Contents |
-|----------|-----|----------|
-| Profiles | `horizon://knowledge/profiles` | Module types, field reference, authorization modes |
-| Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, 30+ built-in functions, datasource chaining |
-| Workflows | `horizon://knowledge/workflows` | 7 lifecycle workflows, authorization levels, request policies |
-| Query Languages | `horizon://knowledge/query-languages` | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples |
-| RBAC | `horizon://knowledge/rbac` | Permission format, 36-pattern catalog, role guidance |
-| Architecture | `horizon://knowledge/architecture` | Object model, module types, dependency order |
-| Dictionary Matrix | `horizon://knowledge/dictionary-matrix` | Dictionary entries by protocol and lifecycle event |
-| Discovery | `horizon://knowledge/discovery` | Scan types, campaigns, feed API, CLI usage |
-| Automation | `horizon://knowledge/automation` | Trigger types, event hooks, execution policies |
-| Integrations | `horizon://knowledge/integrations` | End-to-end patterns: ACME, MDM, LDAP, OIDC, cloud vaults |
-| Dashboards | `horizon://knowledge/dashboards` | Dashboard and chart structure, saved query types |
-| System Admin | `horizon://knowledge/system-admin` | Licensing, analytics sync, report management |
-
----
-
-## Tool reference
-
-66 tools in 8 domains (19 assist + 17 lifecycle + 12 dashboards + 6 discovery + 3 discovery events + 4 discovery feed + 3 reports + 2 profiles). Safety tiers:
-
-- `read-only` — no side effects
-- `mutating-safe` — creates or modifies data, safe to retry
-- `mutating-destructive` — deletes data or changes active behavior; requires confirmation
-
-### Assist (19 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `whoami` | read-only | Current principal identity and permissions |
-| `get_license_info` | read-only | Horizon license details, quotas, feature flags |
-| `explain_grading_policy` | read-only | Explain policy; optionally evaluate a certificate |
-| `explain_grading_ruleset` | read-only | Explain ruleset; optionally evaluate a certificate |
-| `validate_hcql` | read-only | Validate a certificate search query |
-| `validate_hrql` | read-only | Validate a request search query |
-| `validate_heql` | read-only | Validate an event search query |
-| `validate_hdql` | read-only | Validate a discovery event search query |
-| `describe_query_fields` | read-only | List available fields and syntax for a query language |
-| `translate_to_hql` | read-only | Translate natural language to an HQL query expression |
-| `decode_x509` | read-only | Decode a PEM X.509 certificate |
-| `decode_csr` | read-only | Decode a PEM PKCS#10 CSR |
-| `detect_file` | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA) |
-| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server. Params: `uri` (e.g. `https://host:port`, `ldaps://dc:636`), `timeout` |
-| `decode_crl` | read-only | Decode a PEM/DER CRL. Returns issuer, thisUpdate, nextUpdate |
-| `decode_ocsp` | read-only | Decode an OCSP response (RFC 6960). Returns status, responder ID, per-cert revocation info |
-| `decode_tsa` | read-only | Decode a timestamping response (RFC 3161). Returns policy, status, timestamp |
-| `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary |
-| `simulate_datasource_flow` | read-only | Test a datasource flow pipeline against sample context |
-
-### Lifecycle (17 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `search_certificates` | read-only | Search via HCQL with presets and pagination |
-| `export_certificates_csv` | read-only | Export certificates to CSV (max 1000 rows) |
-| `get_certificate` | read-only | Get full certificate details by ID |
-| `download_certificate` | read-only | Download in PEM / DER / PKCS7 / PKCS12 / JKS |
-| `aggregate_certificates` | read-only | Aggregate certificate counts by field |
-| `search_requests` | read-only | Search requests via HRQL |
-| `export_requests_csv` | read-only | Export requests to CSV |
-| `get_request` | read-only | Get request details by ID |
-| `aggregate_requests` | read-only | Aggregate request counts by field |
-| `search_events` | read-only | Search audit events via HEQL |
-| `get_event` | read-only | Get audit event details by ID |
-| `export_events_csv` | read-only | Export audit events to CSV |
-| `get_request_template` | read-only | Get request template for a workflow |
-| `submit_request` | mutating-safe | Submit a lifecycle request (enroll, renew, revoke, ...) |
-| `approve_request` | mutating-safe | Approve a pending request |
-| `deny_request` | mutating-safe | Deny a pending request |
-| `cancel_request` | mutating-safe | Cancel a pending request |
-
-### Dashboards (12 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_dashboards` | read-only | List personal dashboards with optional filtering |
-| `get_dashboard` | read-only | Get a dashboard and its charts by name |
-| `create_dashboard` | mutating-safe | Create a new personal dashboard |
-| `update_dashboard` | mutating-safe | Update dashboard metadata or replace its chart list |
-| `delete_dashboard` | mutating-destructive | Delete a dashboard (requires name confirmation) |
-| `add_dashboard_chart` | mutating-safe | Add a chart to an existing dashboard |
-| `update_dashboard_chart` | mutating-safe | Update a single chart within a dashboard |
-| `remove_dashboard_chart` | mutating-safe | Remove a chart from a dashboard |
-| `list_saved_queries` | read-only | List saved HQL queries |
-| `get_saved_query` | read-only | Get a saved query by name |
-| `upsert_saved_query` | mutating-safe | Create or update a saved HQL query |
-| `delete_saved_query` | mutating-destructive | Delete a saved query (requires name confirmation) |
-
-### Discovery (6 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_discovery_campaigns` | read-only | List campaigns with optional name filter |
-| `get_discovery_campaign` | read-only | Get a campaign by name |
-| `create_discovery_campaign` | mutating-safe | Create a campaign with hosts, ports, and grading policies |
-| `update_discovery_campaign` | mutating-safe | Update campaign settings (GET -> strip -> merge -> PUT) |
-| `delete_discovery_campaign` | mutating-destructive | Delete a campaign (requires name confirmation) |
-| `flush_discovery_campaign` | mutating-destructive | Purge all events from a campaign (requires confirmation) |
-
-### Discovery Events (3 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `search_discovery_events` | read-only | Search discovery events via HDQL |
-| `get_discovery_event` | read-only | Get a discovery event by ID |
-| `export_discovery_events_csv` | read-only | Export discovery events to CSV |
-
-### Discovery Feed (4 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `start_discovery_feed_session` | mutating-safe | Open a feed session for a campaign |
-| `feed_discovery_certificate` | mutating-safe | Push a certificate into the active feed session |
-| `register_discovery_event` | mutating-safe | Register a discovery event for a feed session |
-| `end_discovery_feed_session` | mutating-safe | Close a feed session and commit results |
-
-### Reports (3 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_reports` | read-only | List reports with optional name filter and expiry toggle |
-| `download_report` | read-only | Fetch raw CSV content by report UUID |
-| `delete_report` | mutating-destructive | Delete a report (requires UUID confirmation) |
-
-### Profiles — read-only (2 tools)
-
-| Tool | Safety | Description |
-|------|--------|-------------|
-| `list_profiles` | read-only | List profiles with optional name and module filter |
-| `get_profile` | read-only | Get full profile details by name |
-
----
-
-## Delete safety
-
-All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_identifier`) parameter that must exactly match the object's name. This forces the LLM to confirm what it intends to delete and prevents accidental destructive operations.
-
----
-
-## Compatibility matrix
+## Compatibility
 
 | Horizon version | Status |
 |-----------------|--------|
@@ -437,42 +159,46 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | 2.7 | Expected to work |
 | 2.9 | Expected to work |
 
----
-
 ## What is not supported
 
-The following capabilities require direct Horizon API calls or the Horizon UI. They are intentionally outside this server's scope:
+The following capabilities require direct Horizon API calls or the Horizon UI:
 
-- **Configuration objects** — CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets (use the Horizon UI or API directly for both reading and writing)
+- **Configuration objects** — CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets
 - **Profile management** — creating, updating, or deleting profiles (read-only listing and inspection are supported)
-- **Credential management** — creating, updating, or deleting stored credentials (private keys, API tokens, etc.)
-- **PKI and third-party connector management** — creating, updating, or deleting connectors to ADCS, EJBCA, HashiCorp Vault, etc.
-- **Trigger management** — creating, updating, or deleting email/webhook/script triggers
-- **Role, team, IDP, and principal administration** — creating or modifying users, teams, identity providers, and access control assignments
-- **Analytics** — analytics sync status and reindex operations
+- **Credential management** — creating, updating, or deleting stored credentials
+- **PKI and third-party connector management** — connectors to ADCS, EJBCA, HashiCorp Vault, etc.
+- **Trigger management** — email/webhook/script triggers
+- **Role, team, IDP, and principal administration**
+- **Analytics** — sync status and reindex operations
 - **SMTP and notification server configuration**
-- **Intune, Jamf, and MDM integration setup** — device management connector configuration
-- **Scheduler and system-level automation** — cron-based jobs and system task configuration
+- **Intune, Jamf, and MDM integration setup**
+- **Scheduler and system-level automation**
 
 ---
 
-## Development
+## Documentation
 
-```bash
-pip install -e ".[dev]"
-pytest tests/ -m "not e2e and not llm_evaluation" -v   # unit tests (no external deps)
-ruff check src/                                         # lint
-mypy src/                                               # type check
-```
+| Document | Contents |
+|----------|----------|
+| [Installation](docs/installation.md) | Full install guide, OIDC setup |
+| [Authentication](docs/authentication.md) | 4 auth modes, environment variables reference |
+| [Client setup](docs/client-setup.md) | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
+| [Tool reference](docs/tools-reference.md) | All 66 tools by domain with safety tiers |
+| [Knowledge resources](docs/knowledge-resources.md) | 12 embedded knowledge resources |
+| [Development](docs/development.md) | Dev setup, tests, linting |
 
-To run E2E tests against a live Horizon instance:
+---
 
-```bash
-export HORIZON_E2E_URL=https://your-qa-instance.evertrust.io
-export HORIZON_E2E_API_ID=your-api-id
-export HORIZON_E2E_API_KEY=your-api-key
-pytest -m e2e -v
-```
+> [!CAUTION]
+> **Experimental software** — This MCP server is experimental and should only be used for exploratory purposes at this time.
+>
+> **Permissions** — The MCP server authenticates as the configured user and the AI agent operates with that user's full permissions. Evertrust recommends against granting AI agents highly privileged access to the CLM to prevent unintended incidents.
+>
+> **No guaranteed boundaries** — While the MCP server attempts to enforce permission boundaries between the user and the AI agent, this may not work in all cases. Users bear sole responsibility for actions taken by the AI agent on their behalf.
+>
+> **AI-generated output** — All output is AI-generated and should be subject to manual human validation before being relied upon.
+>
+> **Third-party AI providers** — Use of AI agents is subject to the terms of service and privacy policy of the AI provider. These are not controlled by the MCP server or by Evertrust.
 
 ---
 
