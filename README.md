@@ -1,6 +1,6 @@
 # Evertrust CLM (Horizon) - MCP Server
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **66 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **66 tools** and **13 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
 
 ## Why knowledge-first?
 

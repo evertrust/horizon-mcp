@@ -99,7 +99,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | Tool | Safety | Description |
 |------|--------|-------------|
 | `start_discovery_feed_session` | mutating-safe | Open a feed session for a campaign |
-| `feed_discovery_certificate` | mutating-safe | Push a certificate into the active feed session |
+| `feed_discovery_certificate` | mutating-safe | Push a certificate with host discovery data into an active feed session |
 | `register_discovery_event` | mutating-safe | Register a discovery event for a feed session |
 | `end_discovery_feed_session` | mutating-safe | Close a feed session and commit results |
 

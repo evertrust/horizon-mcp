@@ -1,4 +1,9 @@
-# Certificate Discovery -- Scans, Campaigns, and CLI
+# Certificate Discovery - Scans, Campaigns, and Data Structures
+
+> **For CLI workflows and commands**, see `horizon://knowledge/discovery-workflows`.
+> This resource covers concepts, data structures, and search patterns.
+> When the user asks about performing discovery operations (netscan, localscan,
+> importing from cloud services, etc.), always consult the workflows resource.
 
 ## Overview
 
@@ -90,45 +95,17 @@ When no ports are specified, the scanner checks common TLS ports:
 
 ---
 
-## Discovery CLI
+## Discovery CLI (horizon-cli)
 
-Horizon provides a CLI agent (`horizon-discover`) for running scans.
-The agent connects to the Horizon server to report results.
+Horizon provides a CLI agent (`horizon-cli`) installed on hosts that perform
+discovery. It supports network scans, local filesystem scans, imports from
+cloud services and appliances, and bulk PKI migration.
 
-### Basic Usage
-
-```bash
-# Run a TLS scan
-horizon-discover scan tls \
-  --hosts 10.0.0.0/24 \
-  --ports 443,8443 \
-  --campaign internal-tls-scan \
-  --horizon-url https://horizon.example.com \
-  --api-key $HORIZON_API_KEY
-
-# Run a file scan
-horizon-discover scan file \
-  --paths /etc/ssl/certs,/opt/app/certs \
-  --campaign file-scan \
-  --horizon-url https://horizon.example.com
-
-# Run from campaign config (pulls settings from server)
-horizon-discover run --campaign internal-tls-scan \
-  --horizon-url https://horizon.example.com
-```
-
-### CLI Options
-
-| Flag               | Description                                    |
-|--------------------|------------------------------------------------|
-| `--hosts`          | Comma-separated host specifications            |
-| `--ports`          | Comma-separated port list                      |
-| `--campaign`       | Campaign name to report results to             |
-| `--horizon-url`    | Horizon server URL                             |
-| `--api-key`        | API key for authentication                     |
-| `--timeout`        | Per-host connection timeout in ms (default 5000)|
-| `--concurrency`    | Maximum concurrent connections (default 50)    |
-| `--insecure`       | Skip TLS verification for the Horizon connection|
+**For full CLI usage, commands, and parameters, see
+`horizon://knowledge/discovery-workflows`.** That resource covers all discovery
+types: netscan, localscan, netimport (AWS ACM, Azure Key Vault, F5 BigIP,
+DigiCert, GlobalSign, HashiCorp Vault, and more), importscan (Nmap, Qualys,
+Nessus), and localimport (folder/CSV bulk import for PKI migrations).
 
 ---
 

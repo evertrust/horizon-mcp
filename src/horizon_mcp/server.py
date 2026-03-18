@@ -153,7 +153,13 @@ mcp = FastMCP(
         "which fields are required and editable. Then ask the user for all "
         "missing information. For revoke workflows, the revocationReason is "
         "MANDATORY  -  always ask the user. For all workflows, optionally offer "
-        "the user to add a requesterComment (free-text justification)."
+        "the user to add a requesterComment (free-text justification).\n"
+        "9. DISCOVERY WORKFLOWS: When the user asks about performing certificate "
+        "discovery (network scans, local scans, importing from cloud services, "
+        "PKI migrations, etc.), consult horizon://knowledge/discovery-workflows "
+        "for CLI commands and parameters. Consult horizon://knowledge/discovery "
+        "for concepts, data structures, and search patterns. Both resources are "
+        "needed for a complete answer."
     ),
     lifespan=lifespan,
 )

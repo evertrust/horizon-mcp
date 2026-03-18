@@ -57,3 +57,7 @@ def register_all_resources(mcp: FastMCP) -> None:
     @mcp.resource("horizon://knowledge/system-admin")
     async def system_admin_knowledge() -> str:
         return _read_knowledge("system_admin.md")
+
+    @mcp.resource("horizon://knowledge/discovery-workflows")
+    async def discovery_workflows_knowledge() -> str:
+        return _read_knowledge("discovery_workflows.md")
