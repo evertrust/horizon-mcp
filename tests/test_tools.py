@@ -467,8 +467,8 @@ class TestAssistDecodeX509:
         result = await call(assist_mcp, "decode_x509", {"pem": pem})
 
         patched_client.post.assert_awaited_once_with(
-            "/api/v1/certificates/decode",
-            json={"pem": pem},
+            "/api/v1/rfc5280/x509",
+            files={"x509": ("certificate.pem", pem.encode(), "application/x-pem-file")},
         )
         assert result["subject"]["CN"] == "test.example.com"
 
