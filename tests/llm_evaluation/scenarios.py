@@ -105,4 +105,29 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         expected_resources=["computation-and-data-flow"],
         description="Complex computation: add parent domain as DNS SAN for LDAPS",
     ),
+    # --- Certificate decode/crypto scenarios ---
+    Scenario(
+        question=(
+            "Check what certificate is exposed on https://www.google.com "
+            "and decode it to show me the full details"
+        ),
+        expected_tools=["fetch_exposed_certificate", "decode_x509"],
+        description="Fetch + decode live certificate",
+    ),
+    Scenario(
+        question=(
+            "I have a PEM file and I'm not sure what it contains — could be a cert, "
+            "a CSR, or something else. How do I identify it?"
+        ),
+        expected_tools=["detect_file"],
+        description="Auto-detect cryptographic file format",
+    ),
+    Scenario(
+        question=(
+            "Is the certificate currently deployed on ldaps://dc01.corp.local:636 "
+            "the same one managed in Horizon?"
+        ),
+        expected_tools=["fetch_exposed_certificate", "search_certificates"],
+        description="Verify deployed cert matches Horizon inventory",
+    ),
 ]

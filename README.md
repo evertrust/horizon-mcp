@@ -1,6 +1,6 @@
 # horizon-mcp
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **63 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **66 tools** and **12 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
 
 ## Why knowledge-first?
 
@@ -135,7 +135,7 @@ with the actual path where you cloned the repo (the output of `echo "$(pwd)/.ven
 }
 ```
 
-Start Claude Code from that directory. The 63 tools are available immediately.
+Start Claude Code from that directory. The 66 tools are available immediately.
 
 ### Claude Desktop
 
@@ -206,7 +206,7 @@ export HORIZON_API_KEY=your-api-key
 npx @modelcontextprotocol/inspector /absolute/path/to/horizon-mcp/.venv/bin/python -- -m horizon_mcp.server
 ```
 
-Opens a browser UI showing all 63 tools and 12 knowledge resources.
+Opens a browser UI showing all 66 tools and 12 knowledge resources.
 
 ---
 
@@ -309,13 +309,13 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 
 ## Tool reference
 
-63 tools in 8 domains. Safety tiers:
+66 tools in 8 domains (19 assist + 17 lifecycle + 12 dashboards + 6 discovery + 3 discovery events + 4 discovery feed + 3 reports + 2 profiles). Safety tiers:
 
 - `read-only` — no side effects
 - `mutating-safe` — creates or modifies data, safe to retry
 - `mutating-destructive` — deletes data or changes active behavior; requires confirmation
 
-### Assist (16 tools)
+### Assist (19 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
@@ -331,8 +331,11 @@ The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs acces
 | `translate_to_hql` | read-only | Translate natural language to an HQL query expression |
 | `decode_x509` | read-only | Decode a PEM X.509 certificate |
 | `decode_csr` | read-only | Decode a PEM PKCS#10 CSR |
-| `detect_file` | read-only | Auto-detect and parse a cryptographic file |
+| `detect_file` | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA) |
 | `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server. Params: `uri` (e.g. `https://host:port`, `ldaps://dc:636`), `timeout` |
+| `decode_crl` | read-only | Decode a PEM/DER CRL. Returns issuer, thisUpdate, nextUpdate |
+| `decode_ocsp` | read-only | Decode an OCSP response (RFC 6960). Returns status, responder ID, per-cert revocation info |
+| `decode_tsa` | read-only | Decode a timestamping response (RFC 3161). Returns policy, status, timestamp |
 | `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary |
 | `simulate_datasource_flow` | read-only | Test a datasource flow pipeline against sample context |
 
