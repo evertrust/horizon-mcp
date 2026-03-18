@@ -9,10 +9,17 @@ Tests 13 tools against a live Horizon QA instance:
   Events (3):   search_discovery_events, get_discovery_event,
                 export_discovery_events_csv
 
+Plus 1 integration test for the full discovery import workflow:
+  Feed a certificate into an existing QA campaign and verify it appears
+  in Horizon's certificate inventory.
+
 All tests are session-gated via conftest pytestmark.
 """
 
 from __future__ import annotations
+
+import asyncio
+import datetime
 
 import pytest
 import pytest_asyncio
@@ -226,11 +233,11 @@ async def test_feed_session_lifecycle(
                 e2e_mcp,
                 "feed_discovery_certificate",
                 session_id=session_id,
+                campaign_name=campaign_name,
                 certificate=_TEST_CERT_PEM,
-                host="test.example.com",
-                port=443,
                 ip="127.0.0.1",
-                protocol="https",
+                hostnames=["test.example.com"],
+                tls_ports=[{"port": 443, "version": "TLSv1.3"}],
             )
             assert "data" in feed_data
         except (_ToolError, AssertionError) as exc:
@@ -317,3 +324,120 @@ async def test_export_discovery_events_csv(e2e_mcp: FastMCP) -> None:
     assert isinstance(data["csv"], str)
     # Even an empty export should have a CSV header row or be empty.
     assert data["returned_rows"] >= 0
+
+
+# ---------------------------------------------------------------------------
+# Discovery import integration test
+# ---------------------------------------------------------------------------
+
+# Existing QA infrastructure for the import test.
+_QA_CAMPAIGN = "sbo-claude-qa"
+_QA_PROFILE = "sbo-claude-monitoring"
+
+
+def _generate_test_cert_pem(cn: str) -> str:
+    """Generate a self-signed certificate with the given CN.
+
+    Returns PEM-encoded certificate string. The cert is valid for 1 year
+    and uses a fresh RSA-2048 key.
+    """
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = issuer = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, cn)])
+    now = datetime.datetime.now(datetime.timezone.utc)
+    cert = (
+        x509.CertificateBuilder()
+        .subject_name(subject)
+        .issuer_name(issuer)
+        .public_key(key.public_key())
+        .serial_number(x509.random_serial_number())
+        .not_valid_before(now)
+        .not_valid_after(now + datetime.timedelta(days=365))
+        .sign(key, hashes.SHA256())
+    )
+    return cert.public_bytes(serialization.Encoding.PEM).decode()
+
+
+@pytest.mark.asyncio
+async def test_discovery_import_workflow(e2e_mcp: FastMCP) -> None:
+    """Full discovery import: feed a cert into a QA campaign, verify it appears in Horizon.
+
+    Uses the pre-existing QA campaign 'sbo-claude-qa' and monitored profile
+    'sbo-claude-monitoring'. This test verifies the end-to-end flow:
+      1. Generate a unique self-signed certificate
+      2. Start a feed session on the QA campaign
+      3. Feed the certificate
+      4. End the session
+      5. Search certificates by DN to confirm import
+    """
+    # --- 0. Verify QA campaign exists ---
+    try:
+        campaign = await call_tool(
+            e2e_mcp, "get_discovery_campaign", name=_QA_CAMPAIGN,
+        )
+    except AssertionError:
+        pytest.skip(f"QA campaign '{_QA_CAMPAIGN}' not found - skipping import test.")
+
+    # --- 1. Generate a unique certificate ---
+    unique_cn = f"{E2E_PREFIX}-import-test.example.com"
+    cert_pem = _generate_test_cert_pem(unique_cn)
+
+    # --- 2. Start feed session ---
+    start_data = await call_tool(
+        e2e_mcp, "start_discovery_feed_session", campaign_name=_QA_CAMPAIGN,
+    )
+    assert "data" in start_data
+    session_id = start_data["data"].get("id")
+    assert session_id, "Expected a session ID from start_discovery_feed_session"
+
+    try:
+        # --- 3. Feed the certificate ---
+        feed_data = await call_tool(
+            e2e_mcp,
+            "feed_discovery_certificate",
+            session_id=session_id,
+            campaign_name=_QA_CAMPAIGN,
+            certificate=cert_pem,
+            ip="10.255.255.1",
+            hostnames=[unique_cn],
+            tls_ports=[{"port": 443, "version": "TLSv1.3"}],
+        )
+        assert "data" in feed_data
+
+    finally:
+        # --- 4. End feed session (always clean up) ---
+        await call_tool(
+            e2e_mcp,
+            "end_discovery_feed_session",
+            campaign_name=_QA_CAMPAIGN,
+            session_id=session_id,
+        )
+
+    # --- 5. Search for the imported certificate ---
+    # Give Horizon a moment to process the import.
+    await asyncio.sleep(3.0)
+
+    search_data = await call_tool(
+        e2e_mcp,
+        "search_certificates",
+        query=f'dn contains "{unique_cn}"',
+        page_size=10,
+        with_count=True,
+    )
+
+    results = search_data.get("results", [])
+    assert len(results) >= 1, (
+        f"Expected to find the imported certificate with CN={unique_cn} "
+        f"but search returned {len(results)} results."
+    )
+
+    # Verify the certificate's DN contains our unique CN.
+    found_dns = [r.get("dn", "") for r in results]
+    assert any(unique_cn in dn for dn in found_dns), (
+        f"None of the returned certificates match CN={unique_cn}. "
+        f"Found DNs: {found_dns}"
+    )

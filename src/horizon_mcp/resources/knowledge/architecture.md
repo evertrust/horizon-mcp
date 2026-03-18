@@ -76,13 +76,35 @@ Horizon modules define the protocol-specific behavior of a profile:
 | IntunePKCS   | `intunepkcs`  | Managed   | Microsoft Intune MDM enrollment (PKCS-based)              |
 | Jamf         | `jamf`        | Managed   | Jamf MDM enrollment                                       |
 | ACME External| `acmeexternal`| Managed   | ACME enrollment via external ACME CA                      |
-| Monitored    | `monitored`   | Monitored | No issuance -- observation and grading only               |
+| Monitored    | `monitored`   | Monitored | No issuance - observation, labeling, ownership, and notifications |
+| Discovery    | `discovery`   | Discovered | Inventory only - stores discovery data, no enrichment             |
+
+### Certificate Lifecycle Stages
+
+Certificates progress through three stages, each corresponding to a module category:
+
+```
+Discovered  --->  Monitored  --->  Managed
+(discovery)      (monitored)      (webra, acme, scep, ...)
+```
+
+- **Discovered**: The certificate exists in a `discovery` profile for inventory purposes only. The relevant data are the certificate's discovery metadata (hosts, ports, paths, services).
+- **Monitored**: The certificate has been promoted to a `monitored` profile and enriched with labels, ownership metadata, and/or notification rules.
+- **Managed**: The certificate is under full lifecycle control in a managed profile (enrollment, renewal, revocation, recovery).
+
+All transitions are **one-way**: a certificate can move from discovered to monitored to managed, but never backwards. You can stop at any stage. A certificate cannot be both monitored and managed at the same time.
+
+A certificate can simultaneously exist in a `discovery` profile (for its discovery data) and in a `monitored` or `managed` profile (for its lifecycle). The `discovery` module is only for certificates that are discovered and have no other profile assignment.
 
 **Managed** modules control the full certificate lifecycle: enrollment,
 renewal, revocation, and recovery. They require a PKI connector.
 
-**Monitored** modules only observe externally-issued certificates. They
-have no PKI connector, no computation rules, and no key escrow.
+**Monitored** modules observe externally-issued certificates. They have
+no PKI connector, no computation rules, and no key escrow, but support
+labels, ownership, and notifications.
+
+**Discovery** modules are pure inventory. They store only the discovery
+metadata with no enrichment or lifecycle control.
 
 ---
 
