@@ -18,7 +18,7 @@ import pytest
 from horizon_mcp.server import mcp
 
 # ---------------------------------------------------------------------------
-# Accessors — one indirection so tests survive internal refactors of FastMCP
+# Accessors  -  one indirection so tests survive internal refactors of FastMCP
 # ---------------------------------------------------------------------------
 
 _tools = mcp._tool_manager._tools  # dict[str, Tool]
@@ -33,7 +33,7 @@ _KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "src" / "horizon_mcp" 
 
 
 def test_tool_count_is_66():
-    """Exactly 66 tools must be registered on the main server —
+    """Exactly 66 tools must be registered on the main server  - 
     any addition or removal is intentional and must update this test."""
     assert len(_tools) == 66, (
         f"Expected 66 tools, got {len(_tools)}. "
@@ -90,7 +90,7 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     "export_events_csv",
     "aggregate_certificates",
     "aggregate_requests",
-    # profiles.py — readonly (2)
+    # profiles.py  -  readonly (2)
     "list_profiles",
     "get_profile",
     # discovery.py (6)

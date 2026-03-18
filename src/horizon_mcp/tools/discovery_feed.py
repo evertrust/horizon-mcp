@@ -40,7 +40,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
 
         Safety tier: mutating-safe
 
-        Store the returned 'id' field — you will need it to end the session.
+        Store the returned 'id' field  -  you will need it to end the session.
         If you lose this value, use list_discovery_campaigns to check campaign
         status, or use Horizon UI to clean up.
 
@@ -115,7 +115,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
 
         Args:
             session_id: Session ID obtained from start_discovery_feed_session.
-            data: Event data dict — contents depend on the event type.
+            data: Event data dict  -  contents depend on the event type.
 
         Returns:
             JSON confirmation with server response data.

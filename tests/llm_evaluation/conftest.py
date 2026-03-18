@@ -1,4 +1,4 @@
-"""LLM evaluation conftest — Claude Code subprocess helper + environment gating.
+"""LLM evaluation conftest  -  Claude Code subprocess helper + environment gating.
 
 All evaluation tests run via `claude -p` with the MCP server attached.
 Required: Claude Code CLI (`claude`) on PATH + HORIZON_E2E_* env vars.

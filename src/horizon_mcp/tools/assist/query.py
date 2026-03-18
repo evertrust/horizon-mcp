@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger("horizon_mcp.tools.assist.query")
 
 # ---------------------------------------------------------------------------
-# Field metadata — pre-built from known Horizon source fields
+# Field metadata  -  pre-built from known Horizon source fields
 # ---------------------------------------------------------------------------
 
 _COMMON_DATE_FORMATS = [
@@ -31,11 +31,11 @@ _COMMON_DATE_FORMATS = [
     "YYYY-MM-DDTHH",
     "YYYY-MM-DDTHH:mm",
     "YYYY-MM-DDTHH:mm:ss",
-    "30d (relative, unquoted — days)",
-    "24h (relative, unquoted — hours)",
-    "5m (relative, unquoted — minutes)",
-    "60s (relative, unquoted — seconds)",
-    "-30d (negative relative — 30 days in the past)",
+    "30d (relative, unquoted  -  days)",
+    "24h (relative, unquoted  -  hours)",
+    "5m (relative, unquoted  -  minutes)",
+    "60s (relative, unquoted  -  seconds)",
+    "-30d (negative relative  -  30 days in the past)",
 ]
 
 _COMMON_COMBINATORS = [
@@ -153,7 +153,7 @@ _HDQL_FIELDS: list[dict[str, str]] = [
 _QUERY_METADATA: dict[str, dict[str, Any]] = {
     "hcql": {
         "query_type": "hcql",
-        "description": "Horizon Certificate Query Language — search certificates",
+        "description": "Horizon Certificate Query Language  -  search certificates",
         "fields": _HCQL_FIELDS,
         "special_conditions": _HCQL_SPECIAL_CONDITIONS,
         "date_formats": _COMMON_DATE_FORMATS,
@@ -168,7 +168,7 @@ _QUERY_METADATA: dict[str, dict[str, Any]] = {
     },
     "hrql": {
         "query_type": "hrql",
-        "description": "Horizon Request Query Language — search workflow requests",
+        "description": "Horizon Request Query Language  -  search workflow requests",
         "fields": _HRQL_FIELDS,
         "special_conditions": _HRQL_SPECIAL_CONDITIONS,
         "date_formats": _COMMON_DATE_FORMATS,
@@ -182,7 +182,7 @@ _QUERY_METADATA: dict[str, dict[str, Any]] = {
     },
     "heql": {
         "query_type": "heql",
-        "description": "Horizon Event Query Language — search audit events",
+        "description": "Horizon Event Query Language  -  search audit events",
         "fields": _HEQL_FIELDS,
         "special_conditions": [],
         "date_formats": _COMMON_DATE_FORMATS,
@@ -196,7 +196,7 @@ _QUERY_METADATA: dict[str, dict[str, Any]] = {
     },
     "hdql": {
         "query_type": "hdql",
-        "description": "Horizon Discovery Query Language — search discovery events",
+        "description": "Horizon Discovery Query Language  -  search discovery events",
         "fields": _HDQL_FIELDS,
         "special_conditions": [],
         "date_formats": _COMMON_DATE_FORMATS,
@@ -217,7 +217,7 @@ _VALID_QUERY_TYPES = sorted(_QUERY_METADATA.keys())
 # ---------------------------------------------------------------------------
 
 # Horizon has no dedicated /validate endpoints. Validation is done by
-# executing a minimal search (pageSize=1) — an invalid query triggers
+# executing a minimal search (pageSize=1)  -  an invalid query triggers
 # a parse error from the server, confirming syntax validity on success.
 _SEARCH_ENDPOINTS: dict[str, str] = {
     "hcql": "/api/v1/certificates/search",
@@ -280,7 +280,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
         Args:
             query: HCQL query string to validate. Field names MUST be lowercase
-                   (contactemail, keytype — NOT contactEmail, keyType).
+                   (contactemail, keytype  -  NOT contactEmail, keyType).
                    Example: ``dn matches ".*example.com" and status is valid``.
 
         Returns:
@@ -299,7 +299,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
         Args:
             query: HRQL query string to validate. Field names MUST be lowercase
-                   (registration.date, modification.date — NOT registrationDate).
+                   (registration.date, modification.date  -  NOT registrationDate).
                    Example: ``workflow equals "enroll" and registration.date before 7d``.
 
         Returns:
@@ -318,7 +318,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
         Args:
             query: HEQL query string to validate. Field names MUST be lowercase
-                   (code, timestamp — NOT eventType, eventDate).
+                   (code, timestamp  -  NOT eventType, eventDate).
                    Example: ``code equals "LIFECYCLE-ENROLL" and timestamp after 24h``.
 
         Returns:
@@ -337,7 +337,7 @@ def register_query_tools(mcp: FastMCP) -> None:
 
         Args:
             query: HDQL query string to validate. Field names MUST be lowercase
-                   (certificateid, sessionid — NOT certificateId, sessionId).
+                   (certificateid, sessionid  -  NOT certificateId, sessionId).
                    Example: ``certificateid equals "abc123" and timestamp after -24h``.
 
         Returns:
@@ -351,14 +351,14 @@ def register_query_tools(mcp: FastMCP) -> None:
 
         See horizon://knowledge/query-languages.
 
-        Safety tier: read-only (local — no API call)
+        Safety tier: read-only (local  -  no API call)
 
         Returns field metadata, supported operators, date formats, and
         example queries for the specified query language type. This is a
         local tool that does not make any API calls.
 
         Args:
-            query_type: Query language type — one of: hcql, hrql, heql, hdql.
+            query_type: Query language type  -  one of: hcql, hrql, heql, hdql.
 
         Returns:
             JSON with fields, special_conditions, date_formats, combinators,

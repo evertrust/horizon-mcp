@@ -1,4 +1,4 @@
-"""Unit tests for the tool layer — representative tools from each domain.
+"""Unit tests for the tool layer  -  representative tools from each domain.
 
 Strategy:
     - Mock ``get_client()`` in ``horizon_mcp.client.state`` to return an
@@ -10,9 +10,9 @@ Strategy:
     - Assert correct HTTP method/endpoint, payload, and response formatting.
 
 Domains covered (3):
-    Profiles   — list_profiles (read-only)
-    Lifecycle  — search_certificates, get_certificate, download_certificate
-    Assist     — whoami, decode_x509, validate_hcql
+    Profiles    -  list_profiles (read-only)
+    Lifecycle   -  search_certificates, get_certificate, download_certificate
+    Assist      -  whoami, decode_x509, validate_hcql
 """
 
 from __future__ import annotations
@@ -98,7 +98,7 @@ async def call(mcp: FastMCP, name: str, args: dict | None = None) -> dict:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestProfileList:
-    """list_profiles — GET with name + module filtering."""
+    """list_profiles  -  GET with name + module filtering."""
 
     async def test_returns_profiles(self, profile_mcp, patched_client):
         patched_client.get.return_value = [
@@ -127,7 +127,7 @@ class TestProfileList:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestLifecycleSearchCertificates:
-    """search_certificates — POST with HCQL query, field presets, truncation."""
+    """search_certificates  -  POST with HCQL query, field presets, truncation."""
 
     async def test_basic_search(self, lifecycle_mcp, patched_client):
         patched_client.post.return_value = {
@@ -174,7 +174,7 @@ class TestLifecycleSearchCertificates:
 
 
 class TestLifecycleGetCertificate:
-    """get_certificate — GET by ID, untruncated."""
+    """get_certificate  -  GET by ID, untruncated."""
 
     async def test_returns_full_certificate(self, lifecycle_mcp, patched_client):
         cert_data = {
@@ -194,7 +194,7 @@ class TestLifecycleGetCertificate:
 
 
 class TestLifecycleDownloadCertificate:
-    """download_certificate — PEM extraction from certificate details."""
+    """download_certificate  -  PEM extraction from certificate details."""
 
     async def test_pem_download(self, lifecycle_mcp, patched_client):
         pem = "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----"
@@ -238,7 +238,7 @@ class TestLifecycleDownloadCertificate:
 
 
 class TestLifecycleSubmitRequest:
-    """submit_request — POST with structured template payload."""
+    """submit_request  -  POST with structured template payload."""
 
     async def test_enrollment_with_template(self, lifecycle_mcp, patched_client):
         patched_client.post.return_value = {
@@ -306,7 +306,7 @@ class TestLifecycleSubmitRequest:
 
 
 class TestLifecycleApproveRequest:
-    """approve_request — preflight permission check + POST with id and workflow."""
+    """approve_request  -  preflight permission check + POST with id and workflow."""
 
     async def test_approve_with_permission(self, lifecycle_mcp, patched_client):
         # GET request returns permissions and workflow
@@ -364,7 +364,7 @@ class TestLifecycleApproveRequest:
 
 
 class TestLifecycleDenyRequest:
-    """deny_request — preflight permission check + POST."""
+    """deny_request  -  preflight permission check + POST."""
 
     async def test_deny_with_permission(self, lifecycle_mcp, patched_client):
         patched_client.get.return_value = {
@@ -396,7 +396,7 @@ class TestLifecycleDenyRequest:
 
 
 class TestLifecycleCancelRequest:
-    """cancel_request — preflight permission check + POST."""
+    """cancel_request  -  preflight permission check + POST."""
 
     async def test_cancel_with_permission(self, lifecycle_mcp, patched_client):
         patched_client.get.return_value = {
@@ -432,7 +432,7 @@ class TestLifecycleCancelRequest:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestAssistWhoami:
-    """whoami — GET /api/v1/security/principals/self."""
+    """whoami  -  GET /api/v1/security/principals/self."""
 
     async def test_returns_principal(self, assist_mcp, patched_client):
         principal = {
@@ -453,7 +453,7 @@ class TestAssistWhoami:
 
 
 class TestAssistDecodeX509:
-    """decode_x509 — POST PEM to decode endpoint."""
+    """decode_x509  -  POST PEM to decode endpoint."""
 
     async def test_decodes_certificate(self, assist_mcp, patched_client):
         decode_result = {
@@ -474,7 +474,7 @@ class TestAssistDecodeX509:
 
 
 class TestAssistValidateHcql:
-    """validate_hcql — minimal search to validate query syntax."""
+    """validate_hcql  -  minimal search to validate query syntax."""
 
     async def test_valid_query(self, assist_mcp, patched_client):
         patched_client.post.return_value = {"count": 42, "hasMore": True, "results": []}
@@ -498,7 +498,7 @@ class TestAssistValidateHcql:
 
 
 class TestAssistDescribeQueryFields:
-    """describe_query_fields — local tool (no API call)."""
+    """describe_query_fields  -  local tool (no API call)."""
 
     async def test_hcql_metadata(self, assist_mcp, patched_client):
         result = await call(assist_mcp, "describe_query_fields", {

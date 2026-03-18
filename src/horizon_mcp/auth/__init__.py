@@ -1,4 +1,4 @@
-"""Authentication providers for Horizon API — auto-detection factory."""
+"""Authentication providers for Horizon API  -  auto-detection factory."""
 
 from __future__ import annotations
 

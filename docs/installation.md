@@ -22,7 +22,7 @@ Verify the module is importable:
 .venv/bin/python -c "from horizon_mcp.server import mcp; print(f'{len(mcp._tool_manager._tools)} tools registered')"
 ```
 
-Note the **absolute path** to the Python binary in the venv — you'll need it
+Note the **absolute path** to the Python binary in the venv  -  you'll need it
 for [client configuration](client-setup.md):
 
 ```bash
@@ -40,5 +40,5 @@ playwright install chromium
 
 ## Next steps
 
-- [Authentication](authentication.md) — configure how the server connects to Horizon
-- [Client setup](client-setup.md) — connect your LLM client to the server
+- [Authentication](authentication.md)  -  configure how the server connects to Horizon
+- [Client setup](client-setup.md)  -  connect your LLM client to the server

@@ -1,4 +1,4 @@
-"""Tier 2 — Full MCP loop tests via Claude Code.
+"""Tier 2  -  Full MCP loop tests via Claude Code.
 
 These tests send prompts to `claude -p` with the MCP server attached and
 verify that Claude actually executes tools against the live Horizon instance

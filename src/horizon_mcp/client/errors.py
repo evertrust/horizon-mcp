@@ -26,7 +26,7 @@ _REMEDIATION_MAP: dict[str, str] = {
 _SPECIFIC_REMEDIATION: dict[str, str] = {
     "HQL-001": "Invalid query syntax. Use validate_hcql/hrql/heql to check your query.",
     "SecAuth001": (
-        "Authentication failed. Check credentials — "
+        "Authentication failed. Check credentials  -  "
         "HORIZON_API_ID/HORIZON_API_KEY for API key auth, "
         "client certificate for mTLS, or re-authenticate via browser."
     ),

@@ -1,4 +1,4 @@
-"""Tier 3 — Claude Code smoke tests.
+"""Tier 3  -  Claude Code smoke tests.
 
 Quick sanity checks that Claude Code can discover and use Horizon MCP tools.
 Uses the shared `mcp_config_path` fixture and `ask_claude` helper.

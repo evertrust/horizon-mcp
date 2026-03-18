@@ -1,4 +1,4 @@
-"""Unit tests for tools/_helpers.py — shared helper functions.
+"""Unit tests for tools/_helpers.py  -  shared helper functions.
 
 Tests cover all 4 public helpers:
   - delete_guard: safety echo enforcement

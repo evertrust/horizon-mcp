@@ -177,12 +177,12 @@ have no PKI connector, no computation rules, and no key escrow.
    in the desired changes, and PUT the complete object back.
 
 7. **Immutable names**: ALL object names in Horizon are immutable after
-   creation — names are used as primary keys in the database and CANNOT be
+   creation  -  names are used as primary keys in the database and CANNOT be
    changed. This applies to every configuration object: profiles, connectors,
    datasources, CAs, triggers, roles, teams, dashboards, saved queries,
    labels, discovery campaigns, etc. When creating any object, you MUST ask
-   the user for the name — never invent or guess names on their behalf.
+   the user for the name  -  never invent or guess names on their behalf.
    To rename an object, the only option is to delete it and recreate it.
-   Most objects also support a **display name** (`displayName`) — a mutable
+   Most objects also support a **display name** (`displayName`)  -  a mutable
    human-friendly label shown in the Horizon UI. When a creation tool accepts
    a `display_name` parameter, always ask the user for it alongside the name.

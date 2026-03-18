@@ -49,7 +49,7 @@ _VALID_ACCESS_LEVELS = frozenset({"everyone", "authenticated", "authorized"})
 def _validate_name(name: str) -> str | None:
     """Return an error JSON string if *name* contains a dot, else None.
 
-    Discovery campaign names use DotlessNameIdentifier — dots are forbidden.
+    Discovery campaign names use DotlessNameIdentifier  -  dots are forbidden.
     """
     if "." in name:
         return json.dumps({

@@ -1,4 +1,4 @@
-"""Golden evaluation scenarios — tool selection and resource usage expectations."""
+"""Golden evaluation scenarios  -  tool selection and resource usage expectations."""
 
 from __future__ import annotations
 
@@ -116,7 +116,7 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
     ),
     Scenario(
         question=(
-            "I have a PEM file and I'm not sure what it contains — could be a cert, "
+            "I have a PEM file and I'm not sure what it contains  -  could be a cert, "
             "a CSR, or something else. How do I identify it?"
         ),
         expected_tools=["detect_file"],

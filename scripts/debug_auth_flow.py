@@ -20,7 +20,7 @@ async def main():
                     headless=False,
                     channel=channel,
                 )
-                print(f"  OK — using {label}")
+                print(f"  OK  -  using {label}")
                 break
             except Exception as exc:
                 if channel:
@@ -108,7 +108,7 @@ async def main():
             if i > 0 and i % 10 == 0:
                 print(f"  [{i*0.5:.0f}s] Still waiting... URL: {page.url[:80]}")
 
-        print("\nTimeout — PLAY_SESSION never changed.")
+        print("\nTimeout  -  PLAY_SESSION never changed.")
         await browser.close()
 
 

@@ -263,7 +263,7 @@ class TestMtlsAuthPfx:
             MtlsAuthProvider(pfx_path="/nonexistent/client.p12", verify_ssl=False)
 
     def test_temp_files_cleaned_immediately(self, pfx_bundle: str):
-        """PFX temp files are wiped right after SSLContext loads — not deferred."""
+        """PFX temp files are wiped right after SSLContext loads  -  not deferred."""
         provider = MtlsAuthProvider(pfx_path=pfx_bundle, verify_ssl=False)
         # Temp dir should already be cleaned up after __init__
         assert provider._temp_dir is None
@@ -271,7 +271,7 @@ class TestMtlsAuthPfx:
     def test_cleanup_idempotent(self, pfx_bundle: str):
         provider = MtlsAuthProvider(pfx_path=pfx_bundle, verify_ssl=False)
         provider.cleanup()  # Already cleaned, should not raise
-        provider.cleanup()  # Again — should not raise
+        provider.cleanup()  # Again  -  should not raise
 
 
 # -- TestPlaySessionAuth -------------------------------------------------------

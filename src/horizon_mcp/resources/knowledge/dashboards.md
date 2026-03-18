@@ -131,12 +131,12 @@ Fields usable in chart `fields` for certificate aggregation:
 `revocationDate.day`, `revocationDate.month`, `revocationDate.year`
 
 **Dynamic fields (instance-specific):**
-- `label.<name>` — Labels defined on the instance. Use `list_labels` to
+- `label.<name>`  -  Labels defined on the instance. Use `list_labels` to
   discover available label names. Example: `label.environment`.
-- `grade.<name>` — Grading policies defined on the instance. Use
+- `grade.<name>`  -  Grading policies defined on the instance. Use
   `list_grading_policies` to discover available policy names.
   Example: `grade.Horizon-Grading-Policy`.
-- `metadata.*` — Certificate metadata keys.
+- `metadata.*`  -  Certificate metadata keys.
 
 > **Important**: `owner` is NOT a valid groupBy field for certificate
 > aggregation. Use `holderId` instead.
@@ -153,8 +153,8 @@ Fields usable in chart `fields` for request aggregation:
 `registrationDate.day`, `registrationDate.month`, `registrationDate.year`
 
 **Dynamic fields (instance-specific):**
-- `label.<name>` — Labels defined on the instance. Use `list_labels`.
-- `metadata.*` — Request metadata keys.
+- `label.<name>`  -  Labels defined on the instance. Use `list_labels`.
+- `metadata.*`  -  Request metadata keys.
 
 ---
 
@@ -284,7 +284,7 @@ Show current request pipeline status (for request-type dashboards).
 Dashboards should be built iteratively:
 
 1. **Ask the user for the dashboard name** (and optionally a description).
-   The name is **immutable** — it cannot be changed after creation. Never
+   The name is **immutable**  -  it cannot be changed after creation. Never
    invent a name on the user's behalf.
 
 2. **Create a blank dashboard** using `create_dashboard` with the chosen
