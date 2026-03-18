@@ -4,6 +4,10 @@
   - search_discovery_events: paginated search with analytics toggle
   - get_discovery_event: single event by ID
   - export_discovery_events_csv: bounded CSV export
+
+Knowledge resources:
+    - horizon://knowledge/discovery (concepts, data structures, search patterns)
+    - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
 """
 
 from __future__ import annotations
@@ -121,6 +125,8 @@ def register_discovery_event_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Search discovery events using HDQL query language.
 
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
+
         HDQL syntax -- use 'equals', 'before', 'after', NOT =, <, >.
         IMPORTANT: HDQL field names are ALL LOWERCASE
         (certificateid, sessionid, timestamp  -  NOT certificateId, sessionId).
@@ -170,6 +176,8 @@ def register_discovery_event_tools(mcp: FastMCP) -> None:
     async def get_discovery_event(event_id: str) -> str:
         """Get full details of a discovery event by ID.
 
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
+
         Returns the complete discovery event record including certificate
         data, session info, client details, and any error information.
 
@@ -192,6 +200,8 @@ def register_discovery_event_tools(mcp: FastMCP) -> None:
         enable_analytics: bool = True,
     ) -> str:
         """Export discovery events matching an HDQL query as CSV.
+
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Returns up to 1000 rows. For full exports use Horizon UI.
 

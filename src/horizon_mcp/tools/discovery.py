@@ -9,7 +9,8 @@
   - flush_discovery_campaign: flush (purge events) with safety echo
 
 Knowledge resources:
-    - horizon://knowledge/discovery
+    - horizon://knowledge/discovery (concepts, data structures, search patterns)
+    - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
 """
 
 from __future__ import annotations
@@ -103,7 +104,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         """List discovery campaigns with optional name filtering.
 
         Safety tier: read-only
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Args:
             max_items: Maximum items to return (default 50).
@@ -125,7 +126,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         """Get a single discovery campaign by name.
 
         Safety tier: read-only
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Args:
             name: Exact campaign name.
@@ -242,7 +243,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         """Update an existing discovery campaign (GET -> strip -> merge -> PUT).
 
         Safety tier: mutating-safe
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Uses the GET-strip-merge-PUT pattern: fetches the current state,
         strips server-populated fields, merges your overrides, and PUTs
@@ -310,7 +311,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         with the end-user first.
 
         Safety tier: mutating-destructive
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Args:
             name: Campaign name to delete.
@@ -336,7 +337,7 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         with the end-user first.
 
         Safety tier: mutating-destructive
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Sends a PATCH to purge all discovery events associated with the
         campaign. This is irreversible.
