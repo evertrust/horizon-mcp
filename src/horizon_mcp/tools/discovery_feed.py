@@ -5,6 +5,15 @@ feed certificates, register events, and end the session.
 
 The discovery feed API lets external scanners push certificate data
 into a Horizon discovery campaign programmatically.
+
+Note: In most cases, the horizon-cli agent handles feed sessions
+automatically during netscan, localscan, netimport, and other
+discovery workflows. These tools are for manual/programmatic feed
+scenarios. See horizon://knowledge/discovery-workflows for CLI usage.
+
+Knowledge resources:
+    - horizon://knowledge/discovery (concepts, data structures, search patterns)
+    - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
 """
 
 from __future__ import annotations
@@ -39,6 +48,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         """Start a discovery feed session for a campaign.
 
         Safety tier: mutating-safe
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Store the returned 'id' field  -  you will need it to end the session.
         If you lose this value, use list_discovery_campaigns to check campaign
@@ -78,6 +88,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         """Feed a discovered certificate into an active feed session.
 
         Safety tier: mutating-safe
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         The hostDiscoveryData describes where the certificate was found.
         See horizon://knowledge/discovery for field details.
@@ -129,6 +140,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         """Register an arbitrary discovery event in an active feed session.
 
         Safety tier: mutating-safe
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Args:
             session_id: Session ID obtained from start_discovery_feed_session.
@@ -150,6 +162,7 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         """End a discovery feed session.
 
         Safety tier: mutating-safe
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
 
         Args:
             campaign_name: Name of the discovery campaign.
