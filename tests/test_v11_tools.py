@@ -360,32 +360,40 @@ class TestDiscoveryFeedCertificate:
         patched_client.post.return_value = {"status": "accepted"}
         result = await call(discovery_feed_mcp, "feed_discovery_certificate", {
             "session_id": "sess-001",
+            "campaign_name": "my-campaign",
             "certificate": "-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----",
-            "host": "server.example.com",
-            "port": 443,
+            "ip": "10.0.0.1",
         })
         patched_client.post.assert_awaited_once()
         payload = patched_client.post.call_args[1]["json"]
         assert payload["sessionId"] == "sess-001"
-        assert payload["host"] == "server.example.com"
-        assert payload["port"] == 443
+        assert payload["campaign"] == "my-campaign"
+        assert payload["hostDiscoveryData"]["ip"] == "10.0.0.1"
         assert "Certificate fed" in result["content"]
 
     async def test_feed_with_optional_fields(self, discovery_feed_mcp, patched_client):
         patched_client.post.return_value = {}
         await call(discovery_feed_mcp, "feed_discovery_certificate", {
             "session_id": "sess-001",
+            "campaign_name": "my-campaign",
             "certificate": "PEM",
-            "host": "h",
-            "port": 443,
             "ip": "10.0.0.1",
-            "protocol": "https",
-            "metadata": {"key": "value"},
+            "hostnames": ["server.example.com"],
+            "tls_ports": [{"port": 443, "version": "TLSv1.3"}],
+            "sources": ["netscan"],
+            "paths": ["/etc/ssl/cert.pem"],
+            "usages": ["nginx:443"],
+            "operating_systems": ["linux"],
         })
         payload = patched_client.post.call_args[1]["json"]
-        assert payload["ip"] == "10.0.0.1"
-        assert payload["protocol"] == "https"
-        assert payload["metadata"] == {"key": "value"}
+        host_data = payload["hostDiscoveryData"]
+        assert host_data["ip"] == "10.0.0.1"
+        assert host_data["hostnames"] == ["server.example.com"]
+        assert host_data["tlsPorts"] == [{"port": 443, "version": "TLSv1.3"}]
+        assert host_data["sources"] == ["netscan"]
+        assert host_data["paths"] == ["/etc/ssl/cert.pem"]
+        assert host_data["usages"] == ["nginx:443"]
+        assert host_data["operatingSystems"] == ["linux"]
 
 
 class TestDiscoveryFeedRegisterEvent:

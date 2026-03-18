@@ -65,42 +65,59 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
     @mcp.tool()
     async def feed_discovery_certificate(
         session_id: str,
+        campaign_name: str,
         certificate: str,
-        host: str,
-        port: int,
-        ip: str | None = None,
-        protocol: str | None = None,
-        metadata: dict[str, Any] | None = None,
+        ip: str,
+        hostnames: list[str] | None = None,
+        tls_ports: list[dict[str, Any]] | None = None,
+        sources: list[str] | None = None,
+        paths: list[str] | None = None,
+        usages: list[str] | None = None,
+        operating_systems: list[str] | None = None,
     ) -> str:
         """Feed a discovered certificate into an active feed session.
 
         Safety tier: mutating-safe
 
+        The hostDiscoveryData describes where the certificate was found.
+        See horizon://knowledge/discovery for field details.
+
         Args:
             session_id: Session ID obtained from start_discovery_feed_session.
+            campaign_name: Name of the discovery campaign (must match the session).
             certificate: PEM-encoded certificate string.
-            host: Hostname where the certificate was discovered.
-            port: Port number where the certificate was discovered.
-            ip: Optional IP address of the host.
-            protocol: Optional protocol (e.g., "https", "smtps").
-            metadata: Optional dict of additional metadata key-value pairs.
+            ip: IP address of the host where the certificate was discovered.
+            hostnames: DNS hostnames of the host (e.g. ["web01.example.com"]).
+            tls_ports: TLS ports serving the cert (e.g. [{"port": 443, "version": "TLSv1.3"}]).
+            sources: Discovery source identifiers (e.g. ["netscan"]).
+            paths: File paths where cert was found (localscan only).
+            usages: Service bindings (localscan only).
+            operating_systems: OS detected on the host (localscan only).
 
         Returns:
             JSON confirmation with server response data.
         """
         client = get_client()
+        host_data: dict[str, Any] = {"ip": ip}
+        if hostnames is not None:
+            host_data["hostnames"] = hostnames
+        if tls_ports is not None:
+            host_data["tlsPorts"] = tls_ports
+        if sources is not None:
+            host_data["sources"] = sources
+        if paths is not None:
+            host_data["paths"] = paths
+        if usages is not None:
+            host_data["usages"] = usages
+        if operating_systems is not None:
+            host_data["operatingSystems"] = operating_systems
+
         payload: dict[str, Any] = {
             "sessionId": session_id,
+            "campaign": campaign_name,
             "certificate": certificate,
-            "host": host,
-            "port": port,
+            "hostDiscoveryData": host_data,
         }
-        if ip is not None:
-            payload["ip"] = ip
-        if protocol is not None:
-            payload["protocol"] = protocol
-        if metadata is not None:
-            payload["metadata"] = metadata
         result = await client.post(_FEED_BASE, json=payload)
         return json.dumps({"content": "Certificate fed to discovery session.", "data": result})
 

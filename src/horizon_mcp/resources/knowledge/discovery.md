@@ -3,8 +3,25 @@
 ## Overview
 
 Horizon Discovery scans networks to find certificates deployed on endpoints.
-Discovered certificates can be imported into monitored profiles for tracking,
-grading, and expiration alerting.
+
+### Where discovered certificates fit in the lifecycle
+
+Certificates in Horizon progress through three stages, each tied to a profile module type:
+
+```
+Discovered  --->  Monitored  --->  Managed
+(discovery)      (monitored)      (webra, acme, scep, ...)
+```
+
+- **Discovered** (module: `discovery`) - the certificate exists for inventory purposes only. The relevant data are the discovery metadata (hosts, ports, paths, services).
+- **Monitored** (module: `monitored`) - the certificate has been promoted and enriched with labels, ownership, and notifications.
+- **Managed** (module: `webra`, `acme`, etc.) - the certificate is under full lifecycle control (enrollment, renewal, revocation).
+
+All transitions are **one-way**. You can stop at any stage, but you can never reverse (e.g., you cannot "un-manage" a certificate). A certificate cannot be both monitored and managed simultaneously.
+
+A certificate can exist in a `discovery` profile (for its discovery data) alongside a `monitored` or `managed` profile (for its lifecycle). The `discovery` module is only for certificates that are purely discovered with no other profile assignment.
+
+**Important:** Discovery events are not the same as certificates. Discovery events belong to the discovery module and track scan results (what was found, when, where). Certificates are separate objects that may be created or updated as a result of discovery.
 
 ---
 
@@ -313,19 +330,24 @@ to verify end-to-end deployment:
 
 ---
 
-## Integration with Monitored Profiles
+## Promoting Certificates Through the Lifecycle
 
-Discovery campaigns reference a monitored profile. When certificates are
-discovered, they are automatically imported into that profile if:
+Discovery campaigns reference a target profile. When certificates are
+discovered, they initially exist in the `discovery` module (inventory only).
 
-1. The profile has `importEnabled: true`
-2. The campaign is configured to auto-import
+To promote a discovered certificate:
 
-Once imported, certificates benefit from:
+1. **Discovered -> Monitored**: Import the certificate into a `monitored` profile. This adds labels, ownership, notifications, and grading. The campaign can auto-import if configured.
+2. **Monitored -> Managed**: Move the certificate to a managed profile (`webra`, `acme`, etc.) for full lifecycle control including enrollment, renewal, and revocation.
+
+These transitions are **one-way** - a certificate cannot be demoted back to a previous stage.
+
+Once promoted to monitored or managed, certificates benefit from:
 - Expiration monitoring and notifications
 - Security grading
 - HCQL-based searching and reporting
 - Team-based ownership and visibility
+- (Managed only) Automated renewal and revocation
 
 ---
 
