@@ -157,11 +157,18 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         """Create a new discovery campaign.
 
         Safety tier: mutating-safe
-        Knowledge: horizon://knowledge/discovery
+        Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
+
+        After creating the campaign, the actual scan is performed by the
+        horizon-cli agent installed on a host with network access to the
+        targets. See horizon://knowledge/discovery-workflows for all CLI
+        commands: netscan (network scan), localscan (filesystem scan),
+        netimport (cloud/appliance import), importscan (third-party tools),
+        and localimport (folder/CSV bulk import for PKI migrations).
 
         Prerequisites: Grading policies must exist if referenced (use list_grading_policies).
             Identity providers in authorization_levels must exist (use list_identity_providers).
-        See also: start_discovery_feed_session → feed_discovery_certificate → end_discovery_feed_session
+        See also: start_discovery_feed_session -> feed_discovery_certificate -> end_discovery_feed_session
             (manual feed workflow), search_discovery_events (view results).
 
         Campaign names cannot contain dots (DotlessNameIdentifier).
