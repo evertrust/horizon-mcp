@@ -443,6 +443,21 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
            Do not guess or invent values for user-facing fields.
         4. Only call submit_request once all required fields are filled.
 
+        PERMISSION-BASED BEHAVIOR — the outcome depends on the caller's
+        permissions on the profile (see horizon://knowledge/workflows):
+
+        - If the caller has the DIRECT action permission (e.g., ``enrollApi``
+          for enroll, ``revokeApi`` for revoke, ``renewApi`` for renew), the
+          operation completes immediately. The certificate is issued/revoked/
+          renewed directly and the response contains the result.
+        - If the caller only has the REQUEST permission (e.g., ``enrollRequest``,
+          ``revokeRequest``, ``renewRequest``), the request is created in
+          PENDING state and requires approval by an authorized operator via
+          approve_request. The response contains the request ID.
+
+        Tell the user which outcome occurred based on the response status.
+        If the status is "pending", inform them that approval is required.
+
         Supported modules: webra, est, scep, acme, crmp, wcce, intune, jamf.
         For EST and SCEP, this endpoint generates the enrollment challenge/password.
         The challenge is returned in the response and can be used by the EST/SCEP
