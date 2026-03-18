@@ -1,4 +1,4 @@
-"""Tier 1 — Tool selection: Does Claude Code pick the right tools?
+"""Tier 1  -  Tool selection: Does Claude Code pick the right tools?
 
 Each scenario sends a question to Claude Code via `claude -p` with the MCP
 server attached. We then check whether the response text mentions expected
@@ -56,7 +56,7 @@ def test_tool_selection(scenario: Scenario, mcp_config_path) -> None:
             f"but response was: {result['raw'][:300]}"
         )
     else:
-        # Knowledge question — should have a substantive text response
+        # Knowledge question  -  should have a substantive text response
         assert len(text) > 50, (
             f"Expected substantive response for knowledge question "
             f"'{scenario.question}', got: {result['raw'][:200]}"

@@ -13,7 +13,7 @@ from tests.e2e.conftest import E2E_PREFIX, call_tool, call_tool_raw, read_resour
 pytestmark = pytest.mark.e2e
 
 # ---------------------------------------------------------------------------
-# Test certificate PEM — minimal self-signed cert for decode_x509 tests
+# Test certificate PEM  -  minimal self-signed cert for decode_x509 tests
 # ---------------------------------------------------------------------------
 
 _TEST_CERT_PEM = (
@@ -182,7 +182,7 @@ async def test_validate_hrql_valid_query(e2e_mcp):
 async def test_validate_heql_valid_query(e2e_mcp):
     """validate_heql must confirm a simple valid HEQL expression.
 
-    HEQL does not support 'field exists' syntax — use 'field matches ".*"'
+    HEQL does not support 'field exists' syntax  -  use 'field matches ".*"'
     as the equivalent match-all pattern.
     """
     result = await call_tool(e2e_mcp, "validate_heql", query='code matches ".*"')
@@ -458,7 +458,7 @@ async def test_translate_to_hql_validates_against_live_instance(e2e_mcp):
 
 
 # ---------------------------------------------------------------------------
-# Grading tools (conditional — skip if no policies configured)
+# Grading tools (conditional  -  skip if no policies configured)
 # ---------------------------------------------------------------------------
 
 

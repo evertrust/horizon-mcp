@@ -1,4 +1,4 @@
-"""Tool registration verification tests — ensure register_tools is correct.
+"""Tool registration verification tests  -  ensure register_tools is correct.
 
 Tests validate:
     1. register_tools registers exactly 62 tools (core CLM ops + read-only profiles)

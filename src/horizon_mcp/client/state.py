@@ -1,4 +1,4 @@
-"""Global client state — avoids circular imports between server.py and tools."""
+"""Global client state  -  avoids circular imports between server.py and tools."""
 
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ _horizon_version: str | None = None
 def get_client() -> HorizonClient:
     """Get the shared HorizonClient instance. Raises if not initialized."""
     if _client is None:
-        raise RuntimeError("HorizonClient not initialized — server not started.")
+        raise RuntimeError("HorizonClient not initialized  -  server not started.")
     return _client
 
 

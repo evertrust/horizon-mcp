@@ -114,7 +114,7 @@ class TestClientRetry:
         )
         auth = ApiKeyAuthProvider(api_id="id", api_key="key")
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing retry, not init
+        client._initialized = True  # Skip lazy init  -  testing retry, not init
 
         route = respx_mock.get("/api/v1/cas").mock(
             side_effect=[
@@ -130,14 +130,14 @@ class TestClientRetry:
 
     @respx.mock(base_url="https://horizon.test")
     async def test_post_does_not_retry(self, respx_mock: respx.MockRouter):
-        """POST should NOT retry — mutations are not idempotent."""
+        """POST should NOT retry  -  mutations are not idempotent."""
         settings = HorizonSettings(
             url="https://horizon.test", api_id="id", api_key="key",
             verify_ssl=False, timeout=5,
         )
         auth = ApiKeyAuthProvider(api_id="id", api_key="key")
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing retry, not init
+        client._initialized = True  # Skip lazy init  -  testing retry, not init
 
         route = respx_mock.post("/api/v1/cas").mock(
             return_value=httpx.Response(500, json={"error": "X-001", "message": "fail"})
@@ -158,7 +158,7 @@ class TestClientRetry:
         )
         auth = ApiKeyAuthProvider(api_id="id", api_key="key")
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing CSRF retry, not init
+        client._initialized = True  # Skip lazy init  -  testing CSRF retry, not init
 
         # First PUT → CSRF 403, then CSRF fetch, then retry succeeds
         put_route = respx_mock.put("/api/v1/cas/test").mock(
@@ -222,7 +222,7 @@ class TestClientReauth:
         )
         auth = _MockReauthProvider()
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing reauth, not init
+        client._initialized = True  # Skip lazy init  -  testing reauth, not init
 
         route = respx_mock.get("/api/v1/cas").mock(
             side_effect=[
@@ -245,7 +245,7 @@ class TestClientReauth:
         )
         auth = _MockReauthProvider()
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing reauth, not init
+        client._initialized = True  # Skip lazy init  -  testing reauth, not init
 
         route = respx_mock.get("/api/v1/cas").mock(
             side_effect=[
@@ -268,7 +268,7 @@ class TestClientReauth:
         )
         auth = _MockReauthProvider()
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing reauth, not init
+        client._initialized = True  # Skip lazy init  -  testing reauth, not init
 
         route = respx_mock.get("/api/v1/cas").mock(
             side_effect=[
@@ -292,7 +292,7 @@ class TestClientReauth:
         )
         auth = _MockReauthProvider()
         client = HorizonClient(settings, auth)
-        client._initialized = True  # Skip lazy init — testing CSRF path, not init
+        client._initialized = True  # Skip lazy init  -  testing CSRF path, not init
 
         put_route = respx_mock.put("/api/v1/cas/test").mock(
             side_effect=[

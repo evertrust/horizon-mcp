@@ -40,7 +40,7 @@ class _Condition:
 
 
 # ---------------------------------------------------------------------------
-# Intent detection — weighted keyword scoring
+# Intent detection  -  weighted keyword scoring
 # ---------------------------------------------------------------------------
 
 _INTENT_KEYWORDS: dict[str, dict[str, int]] = {
@@ -77,7 +77,7 @@ _INTENT_KEYWORDS: dict[str, dict[str, int]] = {
     },
 }
 
-# Shared keywords (weak signal — only used for tie-breaking)
+# Shared keywords (weak signal  -  only used for tie-breaking)
 _SHARED_KEYWORDS: dict[str, int] = {
     "profile": 2, "team": 2, "owner": 2, "module": 2,
 }
@@ -214,13 +214,13 @@ def _glob_to_regex(glob: str) -> str:
 def _choose_operator(value: str, field: str) -> tuple[str, str]:
     """Pick the best HQL operator and formatted value.
 
-    Returns (operator, formatted_value) — always producing valid,
+    Returns (operator, formatted_value)  -  always producing valid,
     copy-paste-ready HQL (no unnecessary escape characters).
     """
     if "*" in value or "?" in value:
         return "matches", _glob_to_regex(value)
     if field in ("dn", "issuer", "san") and "." in value:
-        # Use contains for simple domain-like values — cleaner than regex
+        # Use contains for simple domain-like values  -  cleaner than regex
         return "contains", value
     return "equals", value
 

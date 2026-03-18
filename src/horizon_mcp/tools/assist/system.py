@@ -33,7 +33,7 @@ def register_system_tools(mcp: FastMCP) -> None:
         Useful for verifying connectivity and understanding what the
         current API key or session can access.
 
-        IMPORTANT — Ownership queries: When searching for "my certificates"
+        IMPORTANT  -  Ownership queries: When searching for "my certificates"
         or "certificates I own", use both the identifier AND team list from
         this response to build the HCQL query:
           owner equals "<identifier>" or team in ("<team1>", "<team2>", ...)

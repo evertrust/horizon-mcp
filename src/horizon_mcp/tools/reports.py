@@ -92,7 +92,7 @@ def register_report_tools(mcp: FastMCP) -> None:
 
         Safety tier: read-only
 
-        CRITICAL: The CSV endpoint lives at ``/reports/{uuid}`` — there is
+        CRITICAL: The CSV endpoint lives at ``/reports/{uuid}``  -  there is
         NO ``/api/v1`` prefix for this path.
 
         Args:

@@ -1,4 +1,4 @@
-"""Play Session authentication provider — Playwright browser session capture."""
+"""Play Session authentication provider  -  Playwright browser session capture."""
 
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ class PlaySessionAuthProvider(AuthProvider):
 
     For OIDC flows with PKCE, the server stores a code verifier with a short
     TTL. If manual IdP login takes longer than this TTL, the verifier expires.
-    This provider handles this by retrying — the first attempt caches IdP SSO
+    This provider handles this by retrying  -  the first attempt caches IdP SSO
     cookies, and the retry completes near-instantly via SSO before the verifier
     can expire.
     """
@@ -73,7 +73,7 @@ class PlaySessionAuthProvider(AuthProvider):
 
     async def mark_auth_failed(self) -> None:
         logger.warning(
-            "Session expired — reopening browser for re-authentication."
+            "Session expired  -  reopening browser for re-authentication."
         )
         self._expired = True
 
@@ -95,7 +95,7 @@ class PlaySessionAuthProvider(AuthProvider):
         )
 
         # Use a persistent context with a temp profile directory.
-        # This is Playwright's recommended approach for auth flows — it gives
+        # This is Playwright's recommended approach for auth flows  -  it gives
         # the browser a real user data dir so cookies, SameSite handling, and
         # OIDC redirect chains work identically to a regular Chrome session.
         # The persistent profile also retains IdP SSO cookies across retries.
@@ -117,7 +117,7 @@ class PlaySessionAuthProvider(AuthProvider):
                 shutil.rmtree(user_data_dir, ignore_errors=True)
 
         self._expired = False
-        logger.info("Authentication successful — browser closed.")
+        logger.info("Authentication successful  -  browser closed.")
 
     async def _run_auth_flow_with_retry(
         self, context: BrowserContext
@@ -130,7 +130,7 @@ class PlaySessionAuthProvider(AuthProvider):
 
         On the first attempt, IdP SSO cookies are cached in the persistent
         browser profile. On retry, the IdP recognizes the SSO session and
-        redirects back instantly — fast enough that the code verifier is
+        redirects back instantly  -  fast enough that the code verifier is
         still valid.
         """
         last_error: _OidcFlowError | None = None
@@ -155,7 +155,7 @@ class PlaySessionAuthProvider(AuthProvider):
             )
             if initial_session:
                 logger.info(
-                    "Pre-auth PLAY_SESSION detected — waiting for "
+                    "Pre-auth PLAY_SESSION detected  -  waiting for "
                     "authenticated session (cookie value change)."
                 )
 
@@ -173,7 +173,7 @@ class PlaySessionAuthProvider(AuthProvider):
                 if attempt < _MAX_OIDC_RETRIES:
                     logger.warning(
                         "OIDC code verifier expired (attempt %d/%d). "
-                        "Retrying — IdP SSO cookies should make this "
+                        "Retrying  -  IdP SSO cookies should make this "
                         "instant...",
                         attempt,
                         _MAX_OIDC_RETRIES,
@@ -187,7 +187,7 @@ class PlaySessionAuthProvider(AuthProvider):
 
     @staticmethod
     def _check_playwright_available() -> None:
-        """Verify playwright is importable — fail fast with install instructions."""
+        """Verify playwright is importable  -  fail fast with install instructions."""
         try:
             import playwright  # noqa: F401
         except ImportError:

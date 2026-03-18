@@ -1,4 +1,4 @@
-"""mTLS authentication provider — client certificates via SSLContext."""
+"""mTLS authentication provider  -  client certificates via SSLContext."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ class MtlsAuthProvider(AuthProvider):
     - PKCS#12/PFX: single bundle file
 
     Both paths build an ``ssl.SSLContext`` returned via ``client_kwargs()``
-    so httpx uses it for TLS handshake. No auth headers are needed — the
+    so httpx uses it for TLS handshake. No auth headers are needed  -  the
     certificate IS the credential.
     """
 
@@ -159,7 +159,7 @@ class MtlsAuthProvider(AuthProvider):
         try:
             ctx.load_cert_chain(certfile=cert_pem_path, keyfile=key_pem_path)
         finally:
-            # Wipe temp files immediately — SSLContext retains certs in memory
+            # Wipe temp files immediately  -  SSLContext retains certs in memory
             self.cleanup()
 
         logger.info("mTLS: loaded PFX bundle=%s", self._pfx_path)

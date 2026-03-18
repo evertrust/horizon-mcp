@@ -2,9 +2,9 @@
 
 66 tools in 8 domains. Safety tiers:
 
-- **read-only** — no side effects
-- **mutating-safe** — creates or modifies data, safe to retry
-- **mutating-destructive** — deletes data or changes active behavior; requires confirmation
+- **read-only**  -  no side effects
+- **mutating-safe**  -  creates or modifies data, safe to retry
+- **mutating-destructive**  -  deletes data or changes active behavior; requires confirmation
 
 ## Delete safety
 

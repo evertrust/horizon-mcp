@@ -21,4 +21,4 @@ class ApiKeyAuthProvider(AuthProvider):
         return {"X-API-ID": self._api_id, "X-API-KEY": self._api_key}
 
     async def refresh_if_needed(self) -> None:
-        pass  # Static credentials — nothing to refresh
+        pass  # Static credentials  -  nothing to refresh

@@ -201,7 +201,7 @@ async def test_export_requests_csv(e2e_mcp):
 async def test_export_events_csv(e2e_mcp):
     """export_events_csv must return a CSV payload with metadata.
 
-    HEQL does not support 'field exists' — use 'field matches ".*"' instead.
+    HEQL does not support 'field exists'  -  use 'field matches ".*"' instead.
     """
     result = await call_tool(
         e2e_mcp, "export_events_csv", query='code matches ".*"',
@@ -284,7 +284,7 @@ async def test_get_request_template_enroll(e2e_mcp):
             assert result, "get_request_template returned empty result"
             if "raw" not in result:
                 assert len(result) > 0, "get_request_template returned empty JSON object"
-            return  # Test passed — stop iterating
+            return  # Test passed  -  stop iterating
         except Exception as exc:
             last_error = str(exc)
             continue
@@ -414,7 +414,7 @@ async def test_submit_and_cancel_enroll_request(e2e_mcp):
     profiles = await call_tool(e2e_mcp, "list_profiles", module="webra")
     items = profiles.get("items", [])
     if not items:
-        pytest.skip("No webra profiles configured — skipping submit/cancel flow test")
+        pytest.skip("No webra profiles configured  -  skipping submit/cancel flow test")
 
     profile_name = items[0].get("name") or items[0].get("identifier")
     if not profile_name:
@@ -422,7 +422,7 @@ async def test_submit_and_cancel_enroll_request(e2e_mcp):
 
     # Fetch the enroll template to build a minimal valid payload.
     # get_request_template may raise ToolError (500/400) if the profile's
-    # datasource is misconfigured — skip gracefully in that case.
+    # datasource is misconfigured  -  skip gracefully in that case.
     from mcp.server.fastmcp.exceptions import ToolError as _ToolError
     try:
         template_result = await call_tool(
@@ -491,11 +491,11 @@ async def test_submit_and_cancel_enroll_request(e2e_mcp):
     try:
         cancel_data = json.loads(cancel_result)
     except json.JSONDecodeError:
-        # Non-JSON cancel response — still counts as a successful call
+        # Non-JSON cancel response  -  still counts as a successful call
         return
 
     # Permission denied on cancel is acceptable for this flow test
     # (the submit succeeded, which is the main goal)
     if cancel_data.get("error"):
-        # Log but do not fail — the request may have already transitioned
+        # Log but do not fail  -  the request may have already transitioned
         pass

@@ -20,7 +20,7 @@ logger = logging.getLogger("horizon_mcp.payloads")
 
 
 # ---------------------------------------------------------------------------
-# STRIP_FIELDS — server-populated fields to remove per domain
+# STRIP_FIELDS  -  server-populated fields to remove per domain
 # ---------------------------------------------------------------------------
 # Discovered empirically: these fields cause 400/422 errors when echoed back
 # in PUT payloads.  Keyed by domain name (lowercase, underscore-separated).
@@ -87,7 +87,7 @@ STRIP_FIELDS: dict[str, frozenset[str]] = {
     "scheduled_task": frozenset({"_id"}),
 }
 
-# Baseline fields shared by every domain — makes future domains safer
+# Baseline fields shared by every domain  -  makes future domains safer
 _BASELINE_STRIP = frozenset({"_id", "id", "createdAt", "updatedAt"})
 
 # ---------------------------------------------------------------------------
@@ -97,7 +97,7 @@ _MAX_PREFLIGHT_CALLS = 5
 
 
 # ---------------------------------------------------------------------------
-# to_update_payload — merge logic
+# to_update_payload  -  merge logic
 # ---------------------------------------------------------------------------
 
 def to_update_payload(
@@ -143,7 +143,7 @@ def to_update_payload(
 
 
 # ---------------------------------------------------------------------------
-# _preflight_deps — best-effort dependency validation
+# _preflight_deps  -  best-effort dependency validation
 # ---------------------------------------------------------------------------
 
 # Priority order for dependency checks (highest first).

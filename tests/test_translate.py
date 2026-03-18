@@ -440,7 +440,7 @@ class TestTranslateToolInvocation:
 
 
 # ---------------------------------------------------------------------------
-# 7. Query validity — all produced fragments are well-formed HQL
+# 7. Query validity  -  all produced fragments are well-formed HQL
 # ---------------------------------------------------------------------------
 
 class TestQueryValidity:

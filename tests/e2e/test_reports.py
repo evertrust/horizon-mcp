@@ -1,8 +1,8 @@
 """E2E tests for the 3 report tools.
 
 Covers:
-  - list_reports — read-only listing with optional filters
-  - download_report — CSV download by UUID (skipped if no reports)
+  - list_reports  -  read-only listing with optional filters
+  - download_report  -  CSV download by UUID (skipped if no reports)
 
 The delete_report tool is NOT tested here (mutating-destructive; it requires
 a real UUID to confirm and would permanently remove a report from the QA

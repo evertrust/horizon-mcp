@@ -1,4 +1,4 @@
-"""Horizon MCP resources — knowledge bases and reference data."""
+"""Horizon MCP resources  -  knowledge bases and reference data."""
 
 from __future__ import annotations
 

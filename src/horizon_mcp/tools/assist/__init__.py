@@ -1,4 +1,4 @@
-"""Horizon MCP assist tools — computation, query, crypto, system, and translate helpers."""
+"""Horizon MCP assist tools  -  computation, query, crypto, system, and translate helpers."""
 
 from __future__ import annotations
 

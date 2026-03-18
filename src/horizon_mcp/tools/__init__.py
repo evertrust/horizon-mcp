@@ -1,7 +1,7 @@
-"""Tool registration hub — wires all tool modules to the MCP server.
+"""Tool registration hub  -  wires all tool modules to the MCP server.
 
 Provides one entry point:
-    register_tools  — core CLM tools for certificate lifecycle operations
+    register_tools   -  core CLM tools for certificate lifecycle operations
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 def register_tools(mcp: FastMCP) -> None:
     """Register core CLM tools.
 
-    62 tools across 8 domains — certificate lifecycle, discovery, dashboards,
+    62 tools across 8 domains  -  certificate lifecycle, discovery, dashboards,
     assist, profiles (read-only), reports.
     """
     # Assist (15 tools)
@@ -53,7 +53,7 @@ def register_tools(mcp: FastMCP) -> None:
 
     register_report_tools(mcp)
 
-    # Profiles — read-only (2 tools)
+    # Profiles  -  read-only (2 tools)
     from horizon_mcp.tools.profiles import register_profile_readonly_tools
 
     register_profile_readonly_tools(mcp)

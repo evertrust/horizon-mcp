@@ -10,11 +10,11 @@ Strategy:
     - Assert correct HTTP method/endpoint, payload, and response formatting.
 
 Domains covered:
-    Discovery campaigns — list, get, create, update, delete, flush
-    Discovery events    — search, get, export CSV
-    Discovery feed      — start session, feed cert, register event, end session
-    Dashboards          — CRUD + chart ops + saved queries
-    Reports             — list, download, delete
+    Discovery campaigns  -  list, get, create, update, delete, flush
+    Discovery events     -  search, get, export CSV
+    Discovery feed       -  start session, feed cert, register event, end session
+    Dashboards           -  CRUD + chart ops + saved queries
+    Reports              -  list, download, delete
 """
 
 from __future__ import annotations

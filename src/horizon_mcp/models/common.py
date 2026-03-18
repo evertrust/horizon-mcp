@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 
 # ---------------------------------------------------------------------------
-# 1. AuthorizationLevels — WHO can do WHAT (28 fields incl import)
+# 1. AuthorizationLevels  -  WHO can do WHAT (28 fields incl import)
 # ---------------------------------------------------------------------------
 
 class AuthorizationLevel(BaseModel):
@@ -77,7 +77,7 @@ class AuthorizationLevels(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 2. RequestsPolicy — HOW LONG (durations per workflow)
+# 2. RequestsPolicy  -  HOW LONG (durations per workflow)
 # ---------------------------------------------------------------------------
 
 class FiniteDuration(BaseModel):
@@ -103,7 +103,7 @@ class RequestsPolicy(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 3. TriggerHooks — sync (list[str]) vs async (list[AsyncTrigger])
+# 3. TriggerHooks  -  sync (list[str]) vs async (list[AsyncTrigger])
 # ---------------------------------------------------------------------------
 
 class AsyncTrigger(BaseModel):
@@ -181,7 +181,7 @@ class TriggerHooks(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# 4. CryptoPolicy — ManagedCryptoPolicy vs MonitoredCryptoPolicy (discriminated)
+# 4. CryptoPolicy  -  ManagedCryptoPolicy vs MonitoredCryptoPolicy (discriminated)
 # ---------------------------------------------------------------------------
 
 class ManagedCryptoPolicy(BaseModel):
@@ -376,7 +376,7 @@ class MaxCertificatePerHolderPolicy(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# ToolResult — standard response wrapper
+# ToolResult  -  standard response wrapper
 # ---------------------------------------------------------------------------
 
 class ToolResult(BaseModel):
