@@ -202,6 +202,10 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 
 ---
 
+## Acknowledgements
+
+This project was developed with the assistance of [Anthropic's Claude](https://www.anthropic.com/claude).
+
 ## License
 
-TBD
+Copyright 2025-2026 [Evertrust](https://www.evertrust.fr/). Licensed under the [Apache License 2.0](LICENSE).
