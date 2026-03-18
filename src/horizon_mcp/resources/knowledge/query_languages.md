@@ -82,10 +82,10 @@ serial not exists                   -- certificate has no serial (same as not ex
 ```
 
 **CRITICAL**: The syntax is `field not operator value`, NOT any of these WRONG forms:
-- ~~`not(field operator value)`~~ — INVALID
-- ~~`not field operator value`~~ — INVALID
-- ~~`(not (field operator value))`~~ — INVALID
-- ~~`!(field operator value)`~~ — INVALID
+- ~~`not(field operator value)`~~  -  INVALID
+- ~~`not field operator value`~~  -  INVALID
+- ~~`(not (field operator value))`~~  -  INVALID
+- ~~`!(field operator value)`~~  -  INVALID
 
 The `not` keyword goes BETWEEN the field name and the operator. It is part of the
 operator itself (`not contains`, `not equals`, `not matches`, `not in`, `not exists`).
@@ -217,7 +217,7 @@ For brevity, HQL languages accept symbolic alternatives:
 
 ## HCQL Fields (Certificate Query)
 
-**CRITICAL — HCQL query field names are ALL LOWERCASE, never camelCase:**
+**CRITICAL  -  HCQL query field names are ALL LOWERCASE, never camelCase:**
 - **HCQL query fields are lowercase**: `contactemail`, `keytype`, `signingalgorithm`, `valid.until`, `valid.from`
 - **API `fields`, `sortedBy`, and response fields are camelCase**: `contactEmail`, `keyType`, `signingAlgorithm`, `notAfter`, `notBefore`
 - **Using camelCase in HCQL queries causes HQL-001 errors**
@@ -258,7 +258,7 @@ Common HCQL mistakes (WRONG → CORRECT):
 | `grade`                  | grade  | Security grade (supports lower/greater than) |
 | `grade.*`                | grade  | Grade for specific grading policy            |
 | `label.*`                | string | Label value (dynamic field name)             |
-| `metadata.<key>`         | string | Certificate metadata (restricted keys — see below) |
+| `metadata.<key>`         | string | Certificate metadata (restricted keys  -  see below) |
 | `discoverydata.ip`       | string | Host IP where certificate was discovered     |
 | `discoverydata.sources`  | string | Discovery type (`localscan`, `netscan`, etc.)|
 | `discoverydata.hostnames`| string | Host hostnames (netscan)                     |
@@ -284,11 +284,11 @@ keys are recognized by the HCQL parser:
 `previous_certificate_id`, `automation_policy`, `contact_email`
 
 Common usage:
-- `metadata.renewed_certificate_id not exists` — certs NOT yet renewed
-- `metadata.previous_certificate_id exists` — certs enrolled as renewals
+- `metadata.renewed_certificate_id not exists`  -  certs NOT yet renewed
+- `metadata.previous_certificate_id exists`  -  certs enrolled as renewals
 
 **IMPORTANT**: `san` is a simple string field with no sub-fields.
-Use `san matches "^\*\."` to find wildcard certificates — NOT `san.dnsname`.
+Use `san matches "^\*\."` to find wildcard certificates  -  NOT `san.dnsname`.
 
 ---
 
@@ -448,7 +448,7 @@ NOT HCQL query field names (`valid.until`, `valid.from`).
 ## HCQL vs API Field Names (CRITICAL)
 
 HCQL query fields and API response/request fields use **different naming conventions**.
-Do NOT confuse them — using the wrong convention causes errors.
+Do NOT confuse them  -  using the wrong convention causes errors.
 
 | Context | Convention | Examples |
 |---------|-----------|----------|
@@ -476,8 +476,8 @@ Do NOT confuse them — using the wrong convention causes errors.
 | `valid.from` | `notBefore` | Completely different names |
 | `thumbprint` | `thumbprint` | Same |
 | `publickeythumbprint` | `publicKeyThumbprint` | HCQL lowercase, API camelCase |
-| (no HCQL field) | `certificate` | Full PEM — only in API response |
-| (no HCQL field) | `discoveryData` | Discovery metadata — only in API response |
+| (no HCQL field) | `certificate` | Full PEM  -  only in API response |
+| (no HCQL field) | `discoveryData` | Discovery metadata  -  only in API response |
 | `grade` | `grades` | HCQL singular, API plural |
 | `label.<key>` | `label.<key>` | Same pattern |
 | `metadata.<key>` | `metadata.<key>` | Same pattern |
@@ -674,8 +674,8 @@ campaign equals "weekly-scan" and timestamp after 7d
 
 Certificate ownership in Horizon has **two dimensions**:
 
-1. **Direct ownership** — the `owner` field matches the principal's identifier
-2. **Indirect ownership via teams** — the `team` field matches any team the
+1. **Direct ownership**  -  the `owner` field matches the principal's identifier
+2. **Indirect ownership via teams**  -  the `team` field matches any team the
    principal is a member of
 
 When a user asks for "my certificates", "certificates I own", or similar,
@@ -708,9 +708,9 @@ valid and expiring within 30 days.
 
 ### holderid vs owner
 
-- `owner` — the team or principal that **administers** the certificate
-- `holderid` — the principal the certificate was **issued to** (the subject)
-- `team` — the team the certificate belongs to
+- `owner`  -  the team or principal that **administers** the certificate
+- `holderid`  -  the principal the certificate was **issued to** (the subject)
+- `team`  -  the team the certificate belongs to
 
 When users say "my certificates", they typically mean ownership (`owner` +
 `team`), not holder. If they say "certificates issued to me", use `holderid`.
@@ -729,8 +729,8 @@ often the most reliable way to identify which service uses a certificate.
 
 | Field                     | What it reveals                                      |
 |---------------------------|------------------------------------------------------|
-| `dn`                      | Subject DN — may contain the service hostname        |
-| `san`                     | SANs — DNS names, IPs bound to the certificate       |
+| `dn`                      | Subject DN  -  may contain the service hostname        |
+| `san`                     | SANs  -  DNS names, IPs bound to the certificate       |
 | `discoverydata.paths`      | On-disk file path (keystore, PEM, PFX location)      |
 | `discoverydata.usages` | Service binding: port + config path used by the service |
 | `discoverydata.hostnames` | Hostnames of the machine where the cert was found    |

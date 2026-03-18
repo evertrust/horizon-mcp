@@ -21,7 +21,7 @@ class ModuleType(str, Enum):
 
 
 class AccessLevel(str, Enum):
-    """Authorization access levels — WHO can perform the action."""
+    """Authorization access levels  -  WHO can perform the action."""
     EVERYONE = "everyone"
     AUTHENTICATED = "authenticated"
     AUTHORIZED = "authorized"
@@ -163,7 +163,7 @@ class CryptoMode(str, Enum):
 class KeyType(str, Enum):
     """Certificate key type families.
 
-    Horizon stores the algorithm family only — key size is a separate attribute.
+    Horizon stores the algorithm family only  -  key size is a separate attribute.
     Values are ALL CAPS in API responses but case-insensitive on input.
     """
     RSA = "RSA"

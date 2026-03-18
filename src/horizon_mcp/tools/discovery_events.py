@@ -28,7 +28,7 @@ _MAX_CSV_ROWS = 1000
 _CSV_TIMEOUT = 120
 
 # ---------------------------------------------------------------------------
-# Payload builders (local copies — same logic as lifecycle.py)
+# Payload builders (local copies  -  same logic as lifecycle.py)
 # ---------------------------------------------------------------------------
 
 
@@ -123,7 +123,7 @@ def register_discovery_event_tools(mcp: FastMCP) -> None:
 
         HDQL syntax -- use 'equals', 'before', 'after', NOT =, <, >.
         IMPORTANT: HDQL field names are ALL LOWERCASE
-        (certificateid, sessionid, timestamp — NOT certificateId, sessionId).
+        (certificateid, sessionid, timestamp  -  NOT certificateId, sessionId).
         Examples:
           timestamp after -24h
           certificateid equals "abc123"
@@ -196,7 +196,7 @@ def register_discovery_event_tools(mcp: FastMCP) -> None:
         Returns up to 1000 rows. For full exports use Horizon UI.
 
         HDQL syntax -- use 'equals', 'before', 'after', NOT =, <, >.
-        IMPORTANT: HDQL field names are ALL LOWERCASE (certificateid, sessionid — NOT certificateId, sessionId).
+        IMPORTANT: HDQL field names are ALL LOWERCASE (certificateid, sessionid  -  NOT certificateId, sessionId).
         Example: timestamp after -7d and error.code equals "TIMEOUT"
         Full reference: horizon://knowledge/query-languages
 

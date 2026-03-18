@@ -1,4 +1,4 @@
-"""Certificate profile read-only tools — list and get profiles.
+"""Certificate profile read-only tools  -  list and get profiles.
 
 Safety tiers:
     - list_profiles, get_profile: read-only

@@ -13,7 +13,7 @@ class HorizonSettings(BaseSettings):
     url: str = "https://localhost"
     api_id: str = ""
     api_key: str = ""
-    auth_mode: str = ""  # deprecated — auto-detected from credentials
+    auth_mode: str = ""  # deprecated  -  auto-detected from credentials
 
     # mTLS: PEM files
     client_cert: str = ""

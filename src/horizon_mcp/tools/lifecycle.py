@@ -1,4 +1,4 @@
-"""Phase 5 — Lifecycle tools: certificates, requests, events.
+"""Phase 5  -  Lifecycle tools: certificates, requests, events.
 
 17 MCP tools covering the full Horizon certificate lifecycle:
   - Certificate search (2): search_certificates, export_certificates_csv
@@ -36,7 +36,7 @@ _MAX_ARRAY_ELEMENTS = 20
 _MAX_NESTED_BYTES = 2048
 
 # ---------------------------------------------------------------------------
-# Search presets — default field sets
+# Search presets  -  default field sets
 # ---------------------------------------------------------------------------
 
 _CERT_PRESETS: dict[str, list[str]] = {
@@ -76,7 +76,7 @@ _REQUEST_PRESETS: dict[str, list[str]] = {
 
 
 # ---------------------------------------------------------------------------
-# Truncation helpers (search results only — not applied to get_certificate)
+# Truncation helpers (search results only  -  not applied to get_certificate)
 # ---------------------------------------------------------------------------
 
 def _truncate_value(value: Any, field_path: str = "") -> Any:
@@ -169,7 +169,7 @@ def _build_export_payload(
 
 
 # ---------------------------------------------------------------------------
-# CSV export helper — uses the raw _request method for text response on POST
+# CSV export helper  -  uses the raw _request method for text response on POST
 # ---------------------------------------------------------------------------
 
 async def _post_csv_export(path: str, payload: dict[str, Any]) -> str:
@@ -222,7 +222,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Search certificates using HCQL query language.
 
-        IMPORTANT — HCQL is NOT SQL. Use these operators (not =, <, >, LIKE):
+        IMPORTANT  -  HCQL is NOT SQL. Use these operators (not =, <, >, LIKE):
           String:  field equals "value" | field matches "regex" | field contains "sub" | field in ("a","b")
           Multi-regex: field within ["regex1", "regex2"]
           Date:    field before "2025-06-01" | field after 30d
@@ -233,7 +233,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         Date formats: "2025-06-01", now, today, 30d, 24h, -30d (relative durations are unquoted)
         Supported units: d/days, h/hours, m/minutes, s/seconds (NO weeks or months)
 
-        Examples (all field names are lowercase — NEVER camelCase):
+        Examples (all field names are lowercase  -  NEVER camelCase):
           module equals "webra" and status is valid
           status is valid and valid.until before 360d and profile equals "TLS-Internal"
           dn matches ".*example\\.com" and keytype equals "RSA"
@@ -242,7 +242,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Full reference: horizon://knowledge/query-languages
 
-        IMPORTANT — HCQL vs API field names differ:
+        IMPORTANT  -  HCQL vs API field names differ:
           - HCQL query fields are lowercase: contactemail, keytype, signingalgorithm
           - API fields/sorted_by are camelCase: contactEmail, keyType, signingAlgorithm
           - HCQL date fields: valid.until, valid.from
@@ -260,7 +260,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         The `fields` parameter overrides the preset if provided.
 
-        IMPORTANT — Ownership queries: When user asks for "my certificates",
+        IMPORTANT  -  Ownership queries: When user asks for "my certificates",
         call whoami first to get identifier + teams, then query BOTH:
           owner equals "<id>" or team in ("<team1>", "<team2>", ...)
         Full reference: horizon://knowledge/query-languages (Ownership Patterns section).
@@ -300,8 +300,8 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Returns up to 1000 rows. For full exports use Horizon UI.
 
-        HCQL syntax — use 'equals', 'before', 'after', NOT =, <, >.
-        IMPORTANT: HCQL field names are ALL LOWERCASE (keytype, contactemail — NOT keyType, contactEmail).
+        HCQL syntax  -  use 'equals', 'before', 'after', NOT =, <, >.
+        IMPORTANT: HCQL field names are ALL LOWERCASE (keytype, contactemail  -  NOT keyType, contactEmail).
         Example: status is valid and valid.until before 30d
         Full reference: horizon://knowledge/query-languages
         """
@@ -338,12 +338,12 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Only PEM format is available from the certificate object.
 
-        IMPORTANT — PKCS#12 / PFX retrieval: The PKCS#12 bundle (certificate +
+        IMPORTANT  -  PKCS#12 / PFX retrieval: The PKCS#12 bundle (certificate +
         private key) is NOT stored on the certificate object. For centralized
         enrollment (server-side key generation), the PKCS#12 is returned in the
         **enrollment request response**. To retrieve it:
         1. Use search_requests to find the enrollment request for this certificate
-        2. Use get_request to fetch the request — the response contains the
+        2. Use get_request to fetch the request  -  the response contains the
            PKCS#12 (base64-encoded) in the ``pkcs12`` or ``keyStore`` field
         This only works for centralized enrollments where a password was
         provided at submission time via submit_request(password=...).
@@ -394,7 +394,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         - The allowed key types for centralized generation
 
         Use the template to determine what information to ask the user for
-        before submitting. Do not guess — the template is the source of truth.
+        before submitting. Do not guess  -  the template is the source of truth.
 
         Knowledge: horizon://knowledge/workflows
 
@@ -403,7 +403,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             module: Profile module (webra, est, scep, acme, etc.).
             profile: Profile name. Required for enroll to get profile-specific
                 template. Optional for other workflows if certificate_id is given.
-            certificate_id: For renew/revoke/update/recover/migrate — the existing
+            certificate_id: For renew/revoke/update/recover/migrate  -  the existing
                 certificate ID. The template will be pre-populated with existing
                 values.
         """
@@ -433,17 +433,17 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Knowledge: horizon://knowledge/workflows
 
-        MANDATORY WORKFLOW — follow these steps in order:
+        MANDATORY WORKFLOW  -  follow these steps in order:
         1. Call get_request_template(workflow, module, profile) to discover which
            fields are required, optional, and editable for this profile+workflow.
-        2. Examine the template response — it shows the full field structure
+        2. Examine the template response  -  it shows the full field structure
            including which subject fields, SANs, labels, metadata, contact email,
            owner, and team the requester can fill in.
         3. ASK THE USER for all required information you don't already have.
            Do not guess or invent values for user-facing fields.
         4. Only call submit_request once all required fields are filled.
 
-        PERMISSION-BASED BEHAVIOR — the outcome depends on the caller's
+        PERMISSION-BASED BEHAVIOR  -  the outcome depends on the caller's
         permissions on the profile (see horizon://knowledge/workflows):
 
         - If the caller has the DIRECT action permission (e.g., ``enrollApi``
@@ -485,7 +485,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             template: Certificate request template object. Structure:
                 - subject: list of DN elements, each as
                   {"element": "cn.1", "type": "CN", "value": "server.example.com"}
-                - sans: list of SAN entries — values MUST be arrays:
+                - sans: list of SAN entries  -  values MUST be arrays:
                   {"type": "DNSNAME", "value": ["server.example.com", "alias.example.com"]}
                   Valid types: DNSNAME, RFC822NAME, URI, IPADDRESS, OTHERNAME,
                   DIRECTORYNAME, REGISTEREDID
@@ -499,7 +499,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             password: PKCS#12 password for centralized key generation. When
                 provided, Horizon generates the key pair server-side and returns
                 the PKCS#12 in the response (base64). Also retrievable via
-                get_request. May be auto-generated by profile password policy —
+                get_request. May be auto-generated by profile password policy  - 
                 check get_request_template.
             certificate_id: Certificate ID (required for renew, revoke, update,
                 recover, migrate). Use search_certificates to find it.
@@ -569,7 +569,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         if not perms.get(permission_key):
             return {
                 "error": f"Permission denied: you do not have '{action}' "
-                         f"permission on this request. Do NOT retry — use a "
+                         f"permission on this request. Do NOT retry  -  use a "
                          f"principal with the appropriate role, or check the "
                          f"profile's authorization levels.",
                 "request_id": request_id,
@@ -599,7 +599,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Checks permissions before attempting the approval. The workflow
         type is determined automatically from the request.
-        If permission is denied, returns an error — do NOT retry.
+        If permission is denied, returns an error  -  do NOT retry.
 
         Args:
             request_id: The request ID to approve.
@@ -627,7 +627,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Checks permissions before attempting the denial. The workflow
         type is determined automatically from the request.
-        If permission is denied, returns an error — do NOT retry.
+        If permission is denied, returns an error  -  do NOT retry.
 
         Args:
             request_id: The request ID to deny.
@@ -655,7 +655,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
         Checks permissions before attempting the cancellation. The workflow
         type is determined automatically from the request.
-        If permission is denied, returns an error — do NOT retry.
+        If permission is denied, returns an error  -  do NOT retry.
 
         Args:
             request_id: The request ID to cancel.
@@ -686,16 +686,16 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Search certificate lifecycle requests using HRQL query language.
 
-        HRQL syntax — use 'equals', 'before', 'after', NOT =, <, >.
+        HRQL syntax  -  use 'equals', 'before', 'after', NOT =, <, >.
         IMPORTANT: HRQL field names are ALL LOWERCASE with dots for dates
-        (registration.date, modification.date — NOT registrationDate, lastModificationDate).
+        (registration.date, modification.date  -  NOT registrationDate, lastModificationDate).
         Examples:
           workflow equals "enroll" and status equals "pending"
           status equals "denied" and modification.date after 30d
           profile equals "TLS-Internal" and requester contains "admin"
         Full reference: horizon://knowledge/query-languages
 
-        Results are paginated and field-truncated — use get_request for
+        Results are paginated and field-truncated  -  use get_request for
         full untruncated data on a specific request.
 
         sorted_by format: 'element' or 'element:Desc'.
@@ -752,7 +752,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         generation), the response contains the PKCS#12 bundle with the
         certificate and private key. Look for the ``pkcs12`` or ``keyStore``
         field (base64-encoded). This is the ONLY way to retrieve the private
-        key — it is NOT available on the certificate object itself.
+        key  -  it is NOT available on the certificate object itself.
         """
         client = get_client()
         result = await client.get(f"/api/v1/requests/{request_id}")
@@ -767,7 +767,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         """Export requests matching an HRQL query as CSV (bounded export helper).
 
         Returns up to 1000 rows. For full exports use Horizon UI.
-        HRQL syntax — use 'equals', 'before', 'after', NOT =, <, >.
+        HRQL syntax  -  use 'equals', 'before', 'after', NOT =, <, >.
         IMPORTANT: HRQL field names are ALL LOWERCASE (registration.date, NOT registrationDate).
         Full reference: horizon://knowledge/query-languages
         """
@@ -793,8 +793,8 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Search audit events using HEQL query language.
 
-        HEQL syntax — use 'equals', 'before', 'after', NOT =, <, >.
-        IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp, detail.* — NOT eventType, eventDate).
+        HEQL syntax  -  use 'equals', 'before', 'after', NOT =, <, >.
+        IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp, detail.*  -  NOT eventType, eventDate).
         Examples:
           code equals "LIFECYCLE-ENROLL" and status equals "failure" and timestamp after -24h
           module equals "ACME" and detail.actorId equals "admin@example.com"
@@ -849,8 +849,8 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         """Export audit events matching an HEQL query as CSV (bounded export helper).
 
         Returns up to 1000 rows. For full exports use Horizon UI.
-        HEQL syntax — use 'equals', 'before', 'after', NOT =, <, >.
-        IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp — NOT eventType, eventDate).
+        HEQL syntax  -  use 'equals', 'before', 'after', NOT =, <, >.
+        IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp  -  NOT eventType, eventDate).
         Full reference: horizon://knowledge/query-languages
         """
         payload = _build_export_payload(query, fields, sorted_by)
@@ -875,12 +875,12 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Aggregate certificates by groupBy dimensions using HCQL query.
 
-        Returns counts grouped by the specified fields — ideal for
+        Returns counts grouped by the specified fields  -  ideal for
         dashboarding, reporting, and distribution analysis (e.g. "how many
         valid certs per profile?", "key type distribution?").
 
-        HCQL syntax — use 'equals', 'matches', 'before', 'after', NOT =/</>.
-        IMPORTANT — TWO different naming contexts:
+        HCQL syntax  -  use 'equals', 'matches', 'before', 'after', NOT =/</>.
+        IMPORTANT  -  TWO different naming contexts:
           - query field names are ALL LOWERCASE: keytype, contactemail, signingalgorithm
           - groupBy field names are camelCase: keyType, signingAlgorithm, holderId
         Full reference: horizon://knowledge/query-languages
@@ -907,7 +907,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             having: Optional post-aggregation filter on count.
                 Example: {"operator": "gt", "value": 10}
                 Operators: gt, gte, lt, lte, eq, ne
-            sort_order: Bucket sort order — Asc, Desc, KeyAsc, KeyDesc.
+            sort_order: Bucket sort order  -  Asc, Desc, KeyAsc, KeyDesc.
         """
         client = get_client()
         payload: dict[str, Any] = {
@@ -930,12 +930,12 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
     ) -> str:
         """Aggregate requests by groupBy dimensions using HRQL query.
 
-        Returns counts grouped by the specified fields — ideal for
+        Returns counts grouped by the specified fields  -  ideal for
         workflow analytics (e.g. "pending requests by profile?",
         "approval rate by approver?").
 
-        HRQL syntax — use 'equals', 'matches', 'before', 'after', NOT =/</>.
-        IMPORTANT — TWO different naming contexts:
+        HRQL syntax  -  use 'equals', 'matches', 'before', 'after', NOT =/</>.
+        IMPORTANT  -  TWO different naming contexts:
           - query field names are ALL LOWERCASE: registration.date, modification.date
           - groupBy field names are camelCase: registrationDate, lastModificationDate
         Full reference: horizon://knowledge/query-languages
@@ -959,7 +959,7 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
             having: Optional post-aggregation filter on count.
                 Example: {"operator": "gt", "value": 5}
                 Operators: gt, gte, lt, lte, eq, ne
-            sort_order: Bucket sort order — Asc, Desc, KeyAsc, KeyDesc.
+            sort_order: Bucket sort order  -  Asc, Desc, KeyAsc, KeyDesc.
         """
         client = get_client()
         payload: dict[str, Any] = {

@@ -1,6 +1,6 @@
 # Knowledge resources
 
-The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs read these before acting — so they construct correct HCQL queries, build valid profile payloads, and understand dependency order without needing a human to explain Horizon internals.
+The server exposes 12 knowledge resources at `horizon://knowledge/*`. LLMs read these before acting  -  so they construct correct HCQL queries, build valid profile payloads, and understand dependency order without needing a human to explain Horizon internals.
 
 | Resource | URI | Contents |
 |----------|-----|----------|

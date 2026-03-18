@@ -5,12 +5,12 @@ TSA responses, auto-detecting cryptographic file formats, and fetching
 live certificates from remote TLS endpoints.
 
 Decode tools use the Horizon RFC 5280/6960/3161 multipart endpoints:
-- ``/api/v1/rfc5280/x509``   — X.509 certificate decode
-- ``/api/v1/rfc5280/pkcs10`` — PKCS#10 CSR decode
-- ``/api/v1/rfc5280/crl``    — CRL decode
-- ``/api/v1/rfc6960``        — OCSP response decode
-- ``/api/v1/rfc3161``        — TSA response decode
-- ``/api/v1/crypto/detect``  — auto-detect and decode any crypto file
+- ``/api/v1/rfc5280/x509``    -  X.509 certificate decode
+- ``/api/v1/rfc5280/pkcs10``  -  PKCS#10 CSR decode
+- ``/api/v1/rfc5280/crl``     -  CRL decode
+- ``/api/v1/rfc6960``         -  OCSP response decode
+- ``/api/v1/rfc3161``         -  TSA response decode
+- ``/api/v1/crypto/detect``   -  auto-detect and decode any crypto file
 """
 
 from __future__ import annotations
@@ -88,10 +88,10 @@ def register_crypto_tools(mcp: FastMCP) -> None:
             - ``unsupportedExtensions`` (list, optional): unrecognised extensions.
 
         See also:
-            - ``fetch_exposed_certificate`` — grab a live server cert then feed
+            - ``fetch_exposed_certificate``  -  grab a live server cert then feed
               its PEM into this tool.
-            - ``decode_csr`` — decode a CSR instead.
-            - ``detect_file`` — auto-detect the file type first.
+            - ``decode_csr``  -  decode a CSR instead.
+            - ``detect_file``  -  auto-detect the file type first.
         """
         client = get_client()
         result = await client.post(
@@ -132,8 +132,8 @@ def register_crypto_tools(mcp: FastMCP) -> None:
             - ``unsupportedExtensions`` (list, optional): unrecognised extensions.
 
         See also:
-            - ``decode_x509`` — decode a certificate instead.
-            - ``detect_file`` — auto-detect whether input is a cert or CSR.
+            - ``decode_x509``  -  decode a certificate instead.
+            - ``detect_file``  -  auto-detect whether input is a cert or CSR.
         """
         client = get_client()
         result = await client.post(
@@ -170,8 +170,8 @@ def register_crypto_tools(mcp: FastMCP) -> None:
             - ``version`` (int, optional): CRL version.
 
         See also:
-            - ``decode_x509`` — decode the issuing CA certificate.
-            - ``detect_file`` — auto-detect whether input is a CRL.
+            - ``decode_x509``  -  decode the issuing CA certificate.
+            - ``detect_file``  -  auto-detect whether input is a CRL.
         """
         client = get_client()
         result = await client.post(
@@ -200,7 +200,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
         Returns:
             JSON object with the following fields:
 
-            - ``status`` (str): top-level response status — one of
+            - ``status`` (str): top-level response status  -  one of
               ``"successful"``, ``"malformedRequest"``, ``"internalError"``,
               ``"tryLater"``, ``"sigRequired"``, ``"unauthorized"``.
             - ``respID`` (str, optional): responder identifier.
@@ -212,7 +212,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
                 - ``nextUpdate`` (int): epoch milliseconds.
 
         See also:
-            - ``decode_x509`` — decode the certificate referenced in the OCSP
+            - ``decode_x509``  -  decode the certificate referenced in the OCSP
               response.
         """
         client = get_client()
@@ -254,7 +254,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
               ``granted``.
 
         See also:
-            - ``decode_x509`` — decode the TSA signing certificate.
+            - ``decode_x509``  -  decode the TSA signing certificate.
         """
         client = get_client()
         result = await client.post(
@@ -291,7 +291,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
         Returns:
             JSON object with the following fields:
 
-            - ``type`` (str): detected type — one of ``"certificate"``,
+            - ``type`` (str): detected type  -  one of ``"certificate"``,
               ``"csr"``, ``"crl"``, ``"bundle"``, ``"ocsp-response"``,
               ``"timestamping-response"``, ``"openssh-cert"``.
             - ``value`` (object): decoded content whose schema matches the
@@ -300,7 +300,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
 
         See also:
             - ``decode_x509``, ``decode_csr``, ``decode_crl``,
-              ``decode_ocsp``, ``decode_tsa`` — specialised decode tools
+              ``decode_ocsp``, ``decode_tsa``  -  specialised decode tools
               for when the file type is already known.
         """
         client = get_client()
@@ -388,7 +388,7 @@ def register_crypto_tools(mcp: FastMCP) -> None:
 
         result: dict[str, Any] = {
             "content": (
-                f"Certificate from {host}:{port} — "
+                f"Certificate from {host}:{port}  -  "
                 f"CN={cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value if cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME) else 'N/A'}, "
                 f"expires {cert.not_valid_after_utc.isoformat()}"
             ),

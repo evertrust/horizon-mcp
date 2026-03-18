@@ -46,7 +46,7 @@ All 12 knowledge resources tested for accessibility, content quality, and struct
 | Local Identities | 8 | 6 | `test_local_identities.py` | Partial (CRUD + password, skip reset) |
 | Scheduler | 8 | 8 | `test_scheduler.py` | Read-only (run skipped) |
 | System Config | 6 | 10 | `test_system_config.py` | Full read + export (upsert/import skipped) |
-| Archives | 8 | 12 | `test_archives.py` | Read-only (CRUD skipped — long-running) |
+| Archives | 8 | 12 | `test_archives.py` | Read-only (CRUD skipped  -  long-running) |
 | WCCE | 7 | 6 | `test_wcce.py` | Read-only (needs AD infrastructure) |
 | Profiles (admin) | 13 | 8 | `test_profiles_admin.py` | Partial (delete + conditional v1B) |
 
@@ -70,9 +70,9 @@ These tools cannot be fully tested without external infrastructure:
 
 | Tier | Tests | Description |
 |------|-------|-------------|
-| Tier 1 — Tool Selection | 10 | Golden scenarios: does Claude pick the right tools? |
-| Tier 2 — MCP Loop | 4 | Full tool execution against live Horizon |
-| Tier 3 — Smoke | 2 | Basic Claude Code integration check |
+| Tier 1  -  Tool Selection | 10 | Golden scenarios: does Claude pick the right tools? |
+| Tier 2  -  MCP Loop | 4 | Full tool execution against live Horizon |
+| Tier 3  -  Smoke | 2 | Basic Claude Code integration check |
 
 ## Running Tests
 

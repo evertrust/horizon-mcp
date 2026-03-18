@@ -261,7 +261,7 @@ async def test_feed_session_lifecycle(
 @pytest.mark.asyncio
 async def test_search_discovery_events_no_error(e2e_mcp: FastMCP) -> None:
     """search_discovery_events returns a valid response (may be empty)."""
-    # Query for recent events; the instance may have none — that is valid.
+    # Query for recent events; the instance may have none  -  that is valid.
     data = await call_tool(
         e2e_mcp,
         "search_discovery_events",
@@ -289,11 +289,11 @@ async def test_get_discovery_event_skip_if_empty(e2e_mcp: FastMCP) -> None:
 
     events = search_data.get("results", [])
     if not events:
-        pytest.skip("No discovery events available on the QA instance — skipping.")
+        pytest.skip("No discovery events available on the QA instance  -  skipping.")
 
     event_id = events[0].get("id") or events[0].get("_id")
     if not event_id:
-        pytest.skip("First event has no recognisable ID field — skipping.")
+        pytest.skip("First event has no recognisable ID field  -  skipping.")
 
     event_data = await call_tool(e2e_mcp, "get_discovery_event", event_id=str(event_id))
 

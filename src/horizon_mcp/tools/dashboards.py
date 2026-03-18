@@ -6,7 +6,7 @@
   - Saved queries (4): list, get, upsert, delete
 
 Dashboards are personal/principal-scoped, embedded in PrincipalInfo.
-No _id field, no STRIP_FIELDS needed — the full object round-trips as-is.
+No _id field, no STRIP_FIELDS needed  -  the full object round-trips as-is.
 HTTP 204 from Horizon means "empty collection", not an error.
 
 Knowledge resources:
@@ -129,7 +129,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         Args:
             max_items: Maximum items to return (default 50).
             name_contains: Case-insensitive substring filter on dashboard name.
-            dashboard_type: Filter by type — "certificate" or "request".
+            dashboard_type: Filter by type  -  "certificate" or "request".
 
         Returns:
             JSON with items, count, total_available, and truncated flag.
@@ -181,7 +181,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
 
-        IMPORTANT — The dashboard name is IMMUTABLE: it CANNOT be changed
+        IMPORTANT  -  The dashboard name is IMMUTABLE: it CANNOT be changed
         after creation. You MUST ask the user for the name (and optionally
         a description) before calling this tool. Never invent a name on the
         user's behalf.
@@ -196,8 +196,8 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
             upsert_saved_query (save queries for reuse in charts).
 
         Args:
-            name: Unique dashboard name (IMMUTABLE — cannot be renamed later).
-            dashboard_type: Dashboard scope — "certificate" or "request".
+            name: Unique dashboard name (IMMUTABLE  -  cannot be renamed later).
+            dashboard_type: Dashboard scope  -  "certificate" or "request".
             charts: List of chart objects (default: empty list for blank dashboard).
                 Each chart: {"type": "donut", "title": "My Chart",
                 "localQuery": "status is valid", "fields": ["keyType"],
@@ -240,7 +240,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         Knowledge: horizon://knowledge/dashboards
 
         Fetches the current dashboard, merges provided overrides, and
-        PUTs the full object back. No field stripping needed — dashboards
+        PUTs the full object back. No field stripping needed  -  dashboards
         are principal-scoped with no server-injected metadata.
 
         Args:
@@ -320,7 +320,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
                 Optional layout: "x", "y", "w", "h", "i" (grid position/size/id).
                 Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"),
                 "direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]),
-                "log" (boolean — logarithmic scale), "description" (string).
+                "log" (boolean  -  logarithmic scale), "description" (string).
                 Full example:
                 {"type": "bar-vertical", "title": "Grades", "fields": ["grade.MyPolicy"],
                 "localQuery": "status is valid", "sortOrder": "KeyAsc",
@@ -379,15 +379,15 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
             dashboard_name: Name of the dashboard containing the chart.
             chart_id: Unique chart identifier (the "i" field).
             title: New chart title.
-            chart_type: Chart type — area, donut, heatmap, bar-horizontal,
+            chart_type: Chart type  -  area, donut, heatmap, bar-horizontal,
                 line, metric, pie, polar, pyramid, radar, table, treemap,
                 or bar-vertical.
             local_query: New HQL query string for chart data.
             fields: New list of aggregation/group-by fields.
             limit: Max buckets returned (>= 0).
             having: Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.
-            sort_order: Data sort — "Asc", "Desc", "KeyAsc", or "KeyDesc".
-            direction: Visual rendering direction — "asc" or "desc".
+            sort_order: Data sort  -  "Asc", "Desc", "KeyAsc", or "KeyDesc".
+            direction: Visual rendering direction  -  "asc" or "desc".
             colors: List of hex color codes, e.g. ["#A6ADF7", "#4D54A2"].
             description: New chart description.
             x: Grid x position (0-11).
@@ -521,7 +521,7 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         Args:
             max_items: Maximum items to return (default 50).
             name_contains: Case-insensitive substring filter on query name.
-            query_type: Filter by HQL language — "hcql", "hrql", "heql",
+            query_type: Filter by HQL language  -  "hcql", "hrql", "heql",
                 "hdql", or "hpql".
 
         Returns:
@@ -574,13 +574,13 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
 
         Safety tier: mutating-safe
 
-        Uses upsert semantics — if a query with the given name exists it
+        Uses upsert semantics  -  if a query with the given name exists it
         is updated, otherwise a new one is created. The server validates
         the HQL syntax for the specified query type.
 
         Args:
             name: Unique query name (acts as the upsert key).
-            query_type: HQL language — "hcql", "hrql", "heql", "hdql", or "hpql".
+            query_type: HQL language  -  "hcql", "hrql", "heql", "hdql", or "hpql".
             query: The HQL query string.
             description: Optional human-readable description.
 

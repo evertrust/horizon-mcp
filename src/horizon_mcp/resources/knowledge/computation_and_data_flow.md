@@ -1,6 +1,6 @@
 # Computation Rules, Template Syntax, and Datasource Flows
 
-## IMPORTANT — Read this before writing any computation rule
+## IMPORTANT  -  Read this before writing any computation rule
 
 **DO NOT invent functions or syntax.** Only the functions listed in this document
 exist. There is no `ShortName()`, `Map()`, `Append()`, `SortUnique()`, `ForEach()`,
@@ -73,7 +73,7 @@ email templates, webhook URLs, notification bodies, REST API call payloads.
 
 - The text around `{{ }}` is preserved as-is
 - Simple variables: `{{key}}` resolves to the dictionary value
-- **Functions work inside `{{ }}`**: `{{Upper({{cn}})}}` — note the nested braces
+- **Functions work inside `{{ }}`**: `{{Upper({{cn}})}}`  -  note the nested braces
 - Multi-value: `[[key]]` resolves to all values
 
 **Examples of template strings:**
@@ -92,7 +92,7 @@ pass the full text: `rule="Hello {{Upper({{cn}})}}"`.
 | Aspect | Computation Rule | Template String |
 |--------|-----------------|-----------------|
 | **Purpose** | Compute a single field value | Build a text string with embedded values |
-| **Outer wrapper** | None — bare expression | Free text around `{{ }}` blocks |
+| **Outer wrapper** | None  -  bare expression | Free text around `{{ }}` blocks |
 | **Function syntax** | `Upper({{key}})` | `{{Upper({{key}})}}` |
 | **Multi-value** | `[[key]]` returns list | `[[key]]` returns comma-separated |
 | **API field** | `computationRule` | `templateString` |
@@ -130,7 +130,7 @@ Arguments are separated by commas.
 `Concat("hello", null)` → `null` (NOT `"hello"`). This means:
 - `Concat({{missing_key}}, "-suffix")` → `null` if `missing_key` doesn't exist
 - Use `OrElse` to guard against null: `Concat(OrElse({{key}}, ""), "-suffix")`
-- `OrElse` is the **only** function that absorbs null — it returns the first
+- `OrElse` is the **only** function that absorbs null  -  it returns the first
   non-null argument instead of propagating
 
 ### Any Expression Functions (accept single or multi)
@@ -145,7 +145,7 @@ operation to **each element** and return a list.
 | `Lower` | `Lower(expression)` | string or list | Convert to lowercase. None if input is None. | `Lower("HELLO")` → `"hello"` |
 | `Trim` | `Trim(expression)` | string or list | Strip whitespace. None if input is None. | `Trim(" x ")` → `"x"` |
 | `Substr` | `Substr(expr, start)` or `Substr(expr, start, end)` | string or list | Substring by index range (not length). | `Substr("STRING", 2)` → `"TRING"` |
-| `Concat` | `Concat(expr, ...expr)` | **string or list** | Concatenate. Works on both strings AND arrays — if any argument is a list, the result is a list. **Returns null if ANY argument is null.** | `Concat("a", "-", "b")` → `"a-b"` |
+| `Concat` | `Concat(expr, ...expr)` | **string or list** | Concatenate. Works on both strings AND arrays  -  if any argument is a list, the result is a list. **Returns null if ANY argument is null.** | `Concat("a", "-", "b")` → `"a-b"` |
 | `Extract` | `Extract(expr, regex)` or `Extract(expr, regex, group)` | string or list | Regex match. Optional capture group (1-indexed). | `Extract("user@domain", "(.*)@", 1)` → `"user"` |
 | `Replace` | `Replace(expr, regex, replacement)` | string or list | Regex substitution. | `Replace("a.b", "\\.", "-")` → `"a-b"` |
 | `OrElse` | `OrElse(expr, ...expr)` | string or list | First non-null result. **The only function that absorbs null.** | `OrElse({{missing}}, "fallback")` → `"fallback"` |
@@ -222,8 +222,8 @@ When the **target** is a multi-value field (e.g., `sans.dnsnames`):
 | Multi-value `[[csr.san.dnsname]]` | Replaces list entirely | **Merges** into existing list |
 
 This is the core mechanism for building SAN lists from multiple sources:
-1. **Rule 1** with `overwrite: true` — initialize the list (copy CSR SANs)
-2. **Rule 2+** with `overwrite: false` — append additional values
+1. **Rule 1** with `overwrite: true`  -  initialize the list (copy CSR SANs)
+2. **Rule 2+** with `overwrite: false`  -  append additional values
 
 ### The list accumulation pattern
 
@@ -236,13 +236,13 @@ This is the core mechanism for building SAN lists from multiple sources:
 ```
 
 Each successive rule with `overwrite: false` appends its value only if not
-already present — providing built-in deduplication for the list accumulation
+already present  -  providing built-in deduplication for the list accumulation
 pattern.
 
 ### Merging lists with Concat
 
 `Concat` can merge two lists: `Concat([[csr.san.dnsname]], [[csr.san.ipaddress]])`
-produces a combined list. But remember the null propagation rule — if either
+produces a combined list. But remember the null propagation rule  -  if either
 list is empty/null, the entire result is null. Guard with `OrElse`:
 
 ```
@@ -801,7 +801,7 @@ the available entries vary by context (e.g., email templates have access to
 
 ---
 
-## How to Build Computation Rules — Decision Guide
+## How to Build Computation Rules  -  Decision Guide
 
 When asked to create computation rules, follow this reasoning process:
 
@@ -811,7 +811,7 @@ When asked to create computation rules, follow this reasoning process:
 |-----------|----------|
 | Transform a single field value | One rule: `source` = function expression, `target` = field |
 | Set a field with fallback | One rule: `OrElse(primary, fallback)` |
-| Conditionally set a field | One rule with `condition` — rule only fires when condition resolves non-empty |
+| Conditionally set a field | One rule with `condition`  -  rule only fires when condition resolves non-empty |
 | Build up a multi-value list (SANs) | Multiple rules in sequence, each with `overwrite: false` to append |
 | Enforce naming policy | Rule with `overwrite: true` to force computed value |
 | Enrich from external data | Datasource flow first, then rules referencing `ds.0.*` results |
@@ -820,8 +820,8 @@ When asked to create computation rules, follow this reasoning process:
 
 | Behavior | When to use |
 |----------|-------------|
-| `overwrite: true` | Enforce a policy — the computed value always wins, regardless of what the CSR contains |
-| `overwrite: false` (default) | Augment — add the computed value only if the field is currently empty or the value is not already in the list |
+| `overwrite: true` | Enforce a policy  -  the computed value always wins, regardless of what the CSR contains |
+| `overwrite: false` (default) | Augment  -  add the computed value only if the field is currently empty or the value is not already in the list |
 
 For multi-value fields like `sans.dnsnames`, `overwrite: false` **appends** to
 the existing list. Combined with ordered rules, this enables building up a SAN
@@ -838,11 +838,11 @@ For list accumulation patterns:
 
 | Pitfall | Fix |
 |---------|-----|
-| Function call returns raw template text | You're using `templateString` mode — switch to `computationRule` mode, or use `{{Function({{key}})}}` syntax inside template strings |
+| Function call returns raw template text | You're using `templateString` mode  -  switch to `computationRule` mode, or use `{{Function({{key}})}}` syntax inside template strings |
 | SAN list gets overwritten instead of appended | Use `overwrite: false` for all rules after the first |
-| Rule fires when source is empty | Add a `condition` that mirrors the source expression — prevents setting empty values |
+| Rule fires when source is empty | Add a `condition` that mirrors the source expression  -  prevents setting empty values |
 | Multi-value target only gets one value | Use `[[ ]]` syntax for the source: `[[ csr.san.dnsname ]]` not `{{ csr.san.dnsname }}` |
-| LDAP lookup results are empty | Check datasource flow `inputs` mapping — key must match the datasource's expected parameter name |
+| LDAP lookup results are empty | Check datasource flow `inputs` mapping  -  key must match the datasource's expected parameter name |
 
 ---
 
@@ -852,7 +852,7 @@ Organized by certificate use case, from simple to complex. Each pattern includes
 the **business requirement**, the **computation rules**, and an explanation of
 **why** each rule is structured the way it is.
 
-### TLS Server Certificate — Basic Web Server
+### TLS Server Certificate  -  Basic Web Server
 
 **Requirement:** Internal web servers get certificates with:
 - CN forced to lowercase FQDN
@@ -874,7 +874,7 @@ the **business requirement**, the **computation rules**, and an explanation of
 regardless of what the CSR contains. DNS SANs are preserved as-is from the CSR.
 The contact email falls back to the authenticated user's email if not provided.
 
-### TLS Server Certificate — Ensure CN in DNS SANs
+### TLS Server Certificate  -  Ensure CN in DNS SANs
 
 **Requirement:** Some TLS clients (notably older Java and .NET) require the
 server's FQDN to appear in the DNS SANs, not just the CN. Ensure the CN is
@@ -893,11 +893,11 @@ always present as a DNS SAN without duplicating it if it's already there.
 ```
 
 **Why:** Rule 1 copies all DNS SANs from the CSR. Rule 2 adds the CN with
-`overwrite: false` — if the CN is already in the list (because the CSR
+`overwrite: false`  -  if the CN is already in the list (because the CSR
 included it as a SAN), this is a no-op. If the CN was missing, it gets
 appended. The `condition` prevents adding an empty value if the CN is unset.
 
-### TLS Server Certificate — Domain Controller (LDAPS)
+### TLS Server Certificate  -  Domain Controller (LDAPS)
 
 **Requirement:** Active Directory domain controllers need the **parent domain**
 as a DNS SAN for LDAPS connectivity. For `dc01.corp.example.com`, the cert
@@ -929,7 +929,7 @@ must include `corp.example.com` as a SAN so that LDAP clients connecting to
 The `overwrite: false` ensures no duplication. The `condition` mirrors the
 source so the rule is skipped if the CN doesn't contain a domain part.
 
-### TLS Server Certificate — Full SAN Expansion (FQDN + hostname + domain)
+### TLS Server Certificate  -  Full SAN Expansion (FQDN + hostname + domain)
 
 **Requirement:** Some environments need the certificate to contain all three
 forms: the FQDN, the short hostname, and the parent domain. Common for servers
@@ -958,7 +958,7 @@ hostname from local network, domain for service discovery).
 **Result for `CN=web01.corp.example.com`:**
 - DNS SANs: original CSR SANs + `web01.corp.example.com` + `web01` + `corp.example.com`
 
-### TLS Server Certificate — SAN Restriction (Security Policy)
+### TLS Server Certificate  -  SAN Restriction (Security Policy)
 
 **Requirement:** Only allow DNS SANs within the corporate domain. Reject or
 strip SANs pointing to external domains. This prevents a server from getting a
@@ -978,7 +978,7 @@ cert valid for `evil.com` through an internal CA.
 `overwrite: true` replaces whatever the CSR requested with only the allowed SANs.
 External SANs like `evil.com` or `other.example.net` are silently dropped.
 
-### TLS Client Certificate — User Identity from LDAP
+### TLS Client Certificate  -  User Identity from LDAP
 
 **Requirement:** Enrich client certificates with user attributes from
 corporate LDAP. The CN comes from the CSR, but the organization, department,
@@ -1015,7 +1015,7 @@ values into certificate fields. `OrElse` provides fallbacks. The `condition`
 on OU and email prevents setting empty values if the LDAP lookup returned
 nothing for those attributes.
 
-### TLS Client Certificate — Smart Card / PIV
+### TLS Client Certificate  -  Smart Card / PIV
 
 **Requirement:** Smart card certificates need the UPN (User Principal Name) as
 an `otherName` SAN, the user's email as an RFC822 SAN, and the CN in
@@ -1050,7 +1050,7 @@ an `otherName` SAN, the user's email as an RFC822 SAN, and the CN in
 ]
 ```
 
-### ACME Certificate — Contact Email Mapping
+### ACME Certificate  -  Contact Email Mapping
 
 **Requirement:** ACME certificates should set the contact email from the ACME
 account's contact information, and tag the certificate with the requesting
@@ -1063,7 +1063,7 @@ IP for audit.
 ]
 ```
 
-### EST Certificate — Mutual TLS Renewal
+### EST Certificate  -  Mutual TLS Renewal
 
 **Requirement:** EST re-enrollment uses mutual TLS. Copy the authenticated
 client certificate's CN to the new certificate's CN, and preserve the original
@@ -1081,7 +1081,7 @@ subject organization. This ensures certificate continuity during renewal.
 attributes from the existing (expiring) client certificate used for mTLS
 authentication. This copies them to the new certificate.
 
-### SCEP Certificate — Device Identity with LDAP Enrichment
+### SCEP Certificate  -  Device Identity with LDAP Enrichment
 
 **Requirement:** SCEP device certificates (e.g., for network equipment, printers)
 should map the SCEP challenge to a device identity, look up the device in LDAP,
@@ -1112,7 +1112,7 @@ and populate the certificate with the device's assigned department and location.
 ]
 ```
 
-### WCCE Certificate — Active Directory User Mapping
+### WCCE Certificate  -  Active Directory User Mapping
 
 **Requirement:** Windows Certificate Client Enrollment (WCCE) certificates
 should map the caller's Active Directory identity to certificate fields.
@@ -1181,10 +1181,10 @@ be owned by the "Infrastructure" team. All others get the default "PKI-Ops" team
 
 **Why:** Rule 1 sets owner to "Infrastructure" only if the principal belongs to
 "infra-team" (checked via Join + Match). Rule 2 sets "PKI-Ops" with
-`overwrite: false` — it only fires if Rule 1 didn't set the owner (because the
+`overwrite: false`  -  it only fires if Rule 1 didn't set the owner (because the
 condition was false). This implements an if/else pattern.
 
-### Notification Template String — Certificate Expiry Email
+### Notification Template String  -  Certificate Expiry Email
 
 **Requirement:** Send an expiry warning email with certificate details embedded
 in the body. This uses **template string** syntax (free text with embedded
@@ -1207,7 +1207,7 @@ Regards,
 PKI Operations Team
 ```
 
-### Notification Template String — REST Webhook with Functions
+### Notification Template String  -  REST Webhook with Functions
 
 **Requirement:** Call an external API with a payload that varies based on
 certificate labels. Uses functions inside template string `{{ }}`.
@@ -1223,7 +1223,7 @@ strings use the nested `{{Function({{key}})}}` syntax.
 
 ---
 
-## WebRA SAN DNS — Shortnames from CN + Request SANs (Sorted, Unique)
+## WebRA SAN DNS  -  Shortnames from CN + Request SANs (Sorted, Unique)
 
 **Requirement:** For a WebRA profile, compute the DNS SANs as the shortnames
 (first DNS label) of the CN plus all DNS SANs from the WebRA enrollment

@@ -1,9 +1,9 @@
-"""E2E test configuration — fixtures for testing against a live Horizon instance.
+"""E2E test configuration  -  fixtures for testing against a live Horizon instance.
 
 Environment variables required:
-    HORIZON_E2E_URL      — Base URL of the Horizon QA instance
-    HORIZON_E2E_API_ID   — API key identifier
-    HORIZON_E2E_API_KEY  — API key secret
+    HORIZON_E2E_URL       -  Base URL of the Horizon QA instance
+    HORIZON_E2E_API_ID    -  API key identifier
+    HORIZON_E2E_API_KEY   -  API key secret
 
 All E2E tests are skipped if these are not set.
 """
@@ -145,7 +145,7 @@ async def read_resource(mcp: FastMCP, uri: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Factory fixtures — create/delete resources for test lifecycle
+# Factory fixtures  -  create/delete resources for test lifecycle
 # ---------------------------------------------------------------------------
 
 @pytest_asyncio.fixture

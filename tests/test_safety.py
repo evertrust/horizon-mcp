@@ -1,7 +1,7 @@
 """Tests verifying safety tier enforcement for registered tools.
 
 Covers:
-    1. Delete tool enumeration — only dashboard/discovery/report delete tools exist
+    1. Delete tool enumeration  -  only dashboard/discovery/report delete tools exist
 """
 
 from __future__ import annotations

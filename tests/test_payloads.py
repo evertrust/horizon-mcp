@@ -1,4 +1,4 @@
-"""Tests for horizon_mcp.models.payloads — update payload infrastructure.
+"""Tests for horizon_mcp.models.payloads  -  update payload infrastructure.
 
 Covers three main areas:
   1. STRIP_FIELDS configuration correctness per domain.
@@ -129,7 +129,7 @@ class TestStripFields:
 
 
 # =========================================================================
-# 2. to_update_payload() — merge logic
+# 2. to_update_payload()  -  merge logic
 # =========================================================================
 
 class TestToUpdatePayload:
@@ -440,7 +440,7 @@ class TestExtractors:
 
 
 # =========================================================================
-# 4. _check_one() — single dependency check
+# 4. _check_one()  -  single dependency check
 # =========================================================================
 
 class TestCheckOne:
@@ -486,7 +486,7 @@ class TestCheckOne:
 
 
 # =========================================================================
-# 5. _preflight_deps() — dependency validation
+# 5. _preflight_deps()  -  dependency validation
 # =========================================================================
 
 class TestPreflightDeps:

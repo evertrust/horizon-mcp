@@ -35,12 +35,12 @@ def register_computation_tools(mcp: FastMCP) -> None:
         MANDATORY: Before writing ANY computation rule, you MUST read the
         knowledge resource horizon://knowledge/computation-and-data-flow.
         It contains the COMPLETE list of available functions, the exact syntax,
-        and real-world PKI examples. DO NOT invent functions or syntax — only
+        and real-world PKI examples. DO NOT invent functions or syntax  -  only
         use what is documented in that resource.
 
         Safety tier: read-only
 
-        Available functions (exhaustive list — no others exist):
+        Available functions (exhaustive list  -  no others exist):
             String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse
             List: Filter, Slice, Sort, Split, Unique
             Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain,
@@ -63,7 +63,7 @@ def register_computation_tools(mcp: FastMCP) -> None:
         Two expression modes:
 
         **computation_rule** (default): Full expression language with functions.
-            ``Upper({{cn}})`` — ``DomainDNS({{fqdn}})`` — ``Sort(Unique([[sans]]))``
+            ``Upper({{cn}})``  -  ``DomainDNS({{fqdn}})``  -  ``Sort(Unique([[sans]]))``
 
         **template_string**: Text interpolation with embedded ``{{ }}`` blocks.
             ``Hello {{name}}, cert expires {{certificate.not_after}}``
@@ -74,7 +74,7 @@ def register_computation_tools(mcp: FastMCP) -> None:
                   For template strings, use free text with ``{{key}}`` placeholders.
             dictionary: Key-value pairs available as variables during evaluation.
                         All values must be strings.
-            mode: Expression type — "computation_rule" (default) or "template_string".
+            mode: Expression type  -  "computation_rule" (default) or "template_string".
 
         Returns:
             JSON with the computed result including computedValueSingle,

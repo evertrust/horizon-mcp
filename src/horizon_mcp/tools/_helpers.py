@@ -6,7 +6,7 @@ Four functions covering identical boilerplate found in 4+ tool modules:
   - build_list_response: truncated list with metadata
   - get_strip_merge_put: GET→strip→merge→PUT update cycle
 
-NOT a generic CRUD framework — literal extraction of code that already
+NOT a generic CRUD framework  -  literal extraction of code that already
 exists in connectors.py, triggers.py, profiles.py, and security.py.
 """
 

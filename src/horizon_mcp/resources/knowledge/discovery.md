@@ -154,7 +154,7 @@ When a certificate is discovered, Horizon stores rich metadata on the
 certificate object itself. This data is accessible via `get_certificate`
 (in the API response) and searchable via HCQL `discoverydata.*` fields.
 
-### discoveryData — Where the certificate was found
+### discoveryData  -  Where the certificate was found
 
 A certificate can be discovered on **multiple hosts**. Each host gets its
 own entry in the `discoveryData` array, keyed by IP address.
@@ -212,7 +212,7 @@ own entry in the `discoveryData` array, keyed by IP address.
 - Find certs on a subnet: `discoverydata.ip matches "^10\\.0\\.1\\."`
 - Find certs with TLS 1.2: `discoverydata.tls.version equals "TLSv1.2"`
 
-### discoveryInfo — Which campaigns found the certificate
+### discoveryInfo  -  Which campaigns found the certificate
 
 ```json
 {
@@ -236,18 +236,18 @@ A certificate can be tracked by **multiple campaigns** simultaneously.
 
 **When to use in searches:** `discoveryinfo.campaign equals "prod-netscan"`
 
-### discoveredTrusted — Trust status
+### discoveredTrusted  -  Trust status
 
 `discoveredTrusted` is a boolean on the certificate. When `true`, the
 discovered certificate was issued by a CA that Horizon recognizes as trusted.
 When `false` or absent, the issuer is unknown.
 
-**When to use:** `certificate is discovered and discoveredTrusted equals "true"` — find
+**When to use:** `certificate is discovered and discoveredTrusted equals "true"`  -  find
 discovered certs from known CAs.
 
 ---
 
-## Third-Party Data — External System Tracking
+## Third-Party Data  -  External System Tracking
 
 When certificates are pushed to or synchronized with external systems via
 third-party connectors, Horizon tracks the mapping in `thirdPartyData`.
@@ -341,15 +341,15 @@ When the Horizon Client discovers a certificate, it records:
 
 | Metadata field            | Description                                               |
 |---------------------------|-----------------------------------------------------------|
-| `ip`                      | string or null — The certificate's host IP                |
-| `sources`                 | Array of strings or null — Discovery type (e.g. `["localscan"]`) |
-| `hostnames`               | Array of strings or null — Host hostnames, netscan only (e.g. `["tomcat-01.orb.local"]`) |
-| `operatingSystems`        | Array of strings or null — Host OS, localscan only (e.g. `["linux"]`) |
-| `paths`                   | Array of strings or null — Certificate file paths on host, localscan only (e.g. `["/opt/tomcat/conf/keystore.jks"]`) |
-| `usages`                  | Array of strings or null — Config file paths used to find the certificate, localscan only (e.g. `["tomcat-*:8443", "/opt/tomcat/conf"]`) |
-| `tlsPorts`                | Array of TlsPort objects or null — Ports where the certificate is exposed for HTTPS (netscan only) |
+| `ip`                      | string or null  -  The certificate's host IP                |
+| `sources`                 | Array of strings or null  -  Discovery type (e.g. `["localscan"]`) |
+| `hostnames`               | Array of strings or null  -  Host hostnames, netscan only (e.g. `["tomcat-01.orb.local"]`) |
+| `operatingSystems`        | Array of strings or null  -  Host OS, localscan only (e.g. `["linux"]`) |
+| `paths`                   | Array of strings or null  -  Certificate file paths on host, localscan only (e.g. `["/opt/tomcat/conf/keystore.jks"]`) |
+| `usages`                  | Array of strings or null  -  Config file paths used to find the certificate, localscan only (e.g. `["tomcat-*:8443", "/opt/tomcat/conf"]`) |
+| `tlsPorts`                | Array of TlsPort objects or null  -  Ports where the certificate is exposed for HTTPS (netscan only) |
 
-These fields are searchable in HCQL as `discoverydata.<field>` — see the
+These fields are searchable in HCQL as `discoverydata.<field>`  -  see the
 query languages reference for the full field list.
 
 ### Natively integrated services

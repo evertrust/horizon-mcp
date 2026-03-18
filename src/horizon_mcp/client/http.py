@@ -22,7 +22,7 @@ from horizon_mcp.settings import HorizonSettings
 
 logger = logging.getLogger("horizon_mcp.client")
 
-# PUT/DELETE endpoints verified as idempotent — initially empty, populated incrementally
+# PUT/DELETE endpoints verified as idempotent  -  initially empty, populated incrementally
 RETRYABLE_ENDPOINTS: set[tuple[str, str]] = set()
 
 # Status codes that warrant retry on safe methods
@@ -108,7 +108,7 @@ class HorizonClient:
         Checks the auth provider first (OIDC captures csrf-token during
         browser login), then tries the JSON API endpoint, then falls back
         to reading the ``csrf-token`` cookie set by Play Framework.
-        Returns None if no source provides a token — in that case the
+        Returns None if no source provides a token  -  in that case the
         client will send ``Csrf-Token: nocheck`` on mutating requests.
         """
         # Auth provider may have captured csrf-token (e.g., OIDC browser flow)
@@ -120,7 +120,7 @@ class HorizonClient:
         # Ensure auth session is ready before making HTTP calls
         await self._auth.refresh_if_needed()
 
-        # Re-check after refresh — OIDC captures csrf-token during browser flow
+        # Re-check after refresh  -  OIDC captures csrf-token during browser flow
         provider_token = self._auth.csrf_token
         if provider_token:
             self._csrf_token = provider_token
@@ -137,7 +137,7 @@ class HorizonClient:
                 if self._csrf_token:
                     return self._csrf_token
         except Exception:
-            logger.debug("CSRF JSON endpoint unavailable — checking cookies")
+            logger.debug("CSRF JSON endpoint unavailable  -  checking cookies")
 
         # Fallback: Play Framework sets a csrf-token cookie
         cookie_token = self._http.cookies.get("csrf-token")
@@ -169,7 +169,7 @@ class HorizonClient:
         # CSRF token
         await self.fetch_csrf_token()
 
-        # Whoami — use raw httpx to avoid recursion through _request
+        # Whoami  -  use raw httpx to avoid recursion through _request
         try:
             headers = await self._auth.get_headers()
             resp = await self._http.get(
@@ -195,11 +195,11 @@ class HorizonClient:
                 )
             else:
                 logger.warning(
-                    "Whoami returned %d — continuing without principal info",
+                    "Whoami returned %d  -  continuing without principal info",
                     resp.status_code,
                 )
         except Exception as exc:
-            logger.warning("Whoami failed: %s — continuing", exc)
+            logger.warning("Whoami failed: %s  -  continuing", exc)
 
     # -- Internal -----------------------------------------------------------
 
@@ -257,7 +257,7 @@ class HorizonClient:
 
         # CSRF 403 → single retry after token refresh
         if resp.status_code == 403 and self._is_csrf_rejection(resp):
-            logger.info("CSRF rejected — refreshing token and retrying",
+            logger.info("CSRF rejected  -  refreshing token and retrying",
                         extra={"request_id": request_id})
             await self.fetch_csrf_token()
             headers["Csrf-Token"] = self._csrf_token or "nocheck"
@@ -269,7 +269,7 @@ class HorizonClient:
         # Auth failure retry: 401 or non-CSRF 403 → re-authenticate once
         if resp.status_code in (401, 403) and not reauth_attempted:
             logger.info(
-                "Auth rejected (%d) — attempting re-authentication",
+                "Auth rejected (%d)  -  attempting re-authentication",
                 resp.status_code,
                 extra={"request_id": request_id},
             )

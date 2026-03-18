@@ -4,7 +4,7 @@ Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certifi
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **12 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts — so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **12 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
 
 ## Architecture
 
@@ -43,7 +43,7 @@ source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
 ```
 
-Note the absolute path to the venv Python binary — you'll need it below:
+Note the absolute path to the venv Python binary  -  you'll need it below:
 
 ```bash
 echo "$(pwd)/.venv/bin/python"
@@ -51,7 +51,7 @@ echo "$(pwd)/.venv/bin/python"
 
 ### Connect your LLM client
 
-**Claude Desktop** — edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+**Claude Desktop**  -  edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
 
 ```json
 {
@@ -69,7 +69,7 @@ echo "$(pwd)/.venv/bin/python"
 }
 ```
 
-**Claude Code** — create `.mcp.json` in your project root (same JSON format as above).
+**Claude Code**  -  create `.mcp.json` in your project root (same JSON format as above).
 
 For **Cursor**, **Codex**, **OpenCode**, and **MCP Inspector** setup, see [client setup](docs/client-setup.md).
 
@@ -118,7 +118,7 @@ Download certificate abc123 in PKCS12 format with password "changeit".
 ```
 
 ```
-Revoke the certificate with ID xyz789 — reason: keyCompromise.
+Revoke the certificate with ID xyz789  -  reason: keyCompromise.
 ```
 
 ### Dashboards
@@ -163,13 +163,13 @@ Describe the available fields for HCQL certificate queries.
 
 The following capabilities require direct Horizon API calls or the Horizon UI:
 
-- **Configuration objects** — CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets
-- **Profile management** — creating, updating, or deleting profiles (read-only listing and inspection are supported)
-- **Credential management** — creating, updating, or deleting stored credentials
-- **PKI and third-party connector management** — connectors to ADCS, EJBCA, HashiCorp Vault, etc.
-- **Trigger management** — email/webhook/script triggers
+- **Configuration objects**  -  CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets
+- **Profile management**  -  creating, updating, or deleting profiles (read-only listing and inspection are supported)
+- **Credential management**  -  creating, updating, or deleting stored credentials
+- **PKI and third-party connector management**  -  connectors to ADCS, EJBCA, HashiCorp Vault, etc.
+- **Trigger management**  -  email/webhook/script triggers
 - **Role, team, IDP, and principal administration**
-- **Analytics** — sync status and reindex operations
+- **Analytics**  -  sync status and reindex operations
 - **SMTP and notification server configuration**
 - **Intune, Jamf, and MDM integration setup**
 - **Scheduler and system-level automation**
@@ -190,15 +190,15 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 ---
 
 > [!CAUTION]
-> **Experimental software** — This MCP server is experimental and should only be used for exploratory purposes at this time.
+> **Experimental software**  -  This MCP server is experimental and should only be used for exploratory purposes at this time.
 >
-> **Permissions** — The MCP server authenticates as the configured user and the AI agent operates with that user's full permissions. Evertrust recommends against granting AI agents highly privileged access to the CLM to prevent unintended incidents.
+> **Permissions**  -  The MCP server authenticates as the configured user and the AI agent operates with that user's full permissions. Evertrust recommends against granting AI agents highly privileged access to the CLM to prevent unintended incidents.
 >
-> **No guaranteed boundaries** — While the MCP server attempts to enforce permission boundaries between the user and the AI agent, this may not work in all cases. Users bear sole responsibility for actions taken by the AI agent on their behalf.
+> **No guaranteed boundaries**  -  While the MCP server attempts to enforce permission boundaries between the user and the AI agent, this may not work in all cases. Users bear sole responsibility for actions taken by the AI agent on their behalf.
 >
-> **AI-generated output** — All output is AI-generated and should be subject to manual human validation before being relied upon.
+> **AI-generated output**  -  All output is AI-generated and should be subject to manual human validation before being relied upon.
 >
-> **Third-party AI providers** — Use of AI agents is subject to the terms of service and privacy policy of the AI provider. These are not controlled by the MCP server or by Evertrust.
+> **Third-party AI providers**  -  Use of AI agents is subject to the terms of service and privacy policy of the AI provider. These are not controlled by the MCP server or by Evertrust.
 
 ---
 
