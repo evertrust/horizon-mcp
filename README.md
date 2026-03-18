@@ -4,7 +4,7 @@ Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certifi
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **12 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **13 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
 
 ## Architecture
 
