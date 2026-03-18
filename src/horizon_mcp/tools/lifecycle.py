@@ -383,13 +383,29 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         profile: str | None = None,
         certificate_id: str | None = None,
     ) -> str:
-        """Get the request template for a specific workflow.
+        """Get the request template showing which fields are required/editable.
 
-        Use `horizon://knowledge/workflows` for workflow reference.
+        MUST be called before submit_request. The template response tells you:
+        - Which subject fields exist and whether they are editable or computed
+        - Which SAN types are allowed
+        - Which labels are available
+        - Whether contactEmail, owner, team are editable
+        - Whether a password is required (centralized) or a CSR (decentralized)
+        - The allowed key types for centralized generation
 
-        Workflows: enroll, renew, revoke, update, recover, migrate, import.
-        The template describes all required and optional fields for submitting
-        a request of the given workflow type.
+        Use the template to determine what information to ask the user for
+        before submitting. Do not guess — the template is the source of truth.
+
+        Knowledge: horizon://knowledge/workflows
+
+        Args:
+            workflow: enroll, renew, revoke, update, recover, migrate, import.
+            module: Profile module (webra, est, scep, acme, etc.).
+            profile: Profile name. Required for enroll to get profile-specific
+                template. Optional for other workflows if certificate_id is given.
+            certificate_id: For renew/revoke/update/recover/migrate — the existing
+                certificate ID. The template will be pre-populated with existing
+                values.
         """
         client = get_client()
         params: dict[str, str] = {"workflow": workflow}
@@ -413,48 +429,92 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         certificate_id: str | None = None,
         data: dict | None = None,
     ) -> str:
-        """Submit a certificate lifecycle request.
+        """Submit a certificate lifecycle request (enroll, renew, revoke, etc.).
 
-        Workflow: get_request_template → submit_request → [approve_request | deny_request | cancel_request].
-
-        IMPORTANT: Use get_request_template first to discover required fields.
         Knowledge: horizon://knowledge/workflows
 
-        Workflows: enroll, renew, revoke, update, recover, migrate, import.
+        MANDATORY WORKFLOW — follow these steps in order:
+        1. Call get_request_template(workflow, module, profile) to discover which
+           fields are required, optional, and editable for this profile+workflow.
+        2. Examine the template response — it shows the full field structure
+           including which subject fields, SANs, labels, metadata, contact email,
+           owner, and team the requester can fill in.
+        3. ASK THE USER for all required information you don't already have.
+           Do not guess or invent values for user-facing fields.
+        4. Only call submit_request once all required fields are filled.
+
+        Supported modules: webra, est, scep, acme, crmp, wcce, intune, jamf.
+        For EST and SCEP, this endpoint generates the enrollment challenge/password.
+        The challenge is returned in the response and can be used by the EST/SCEP
+        client to complete enrollment through the protocol endpoint.
+
+        Workflows and what to ask the user:
+        - **enroll**: Subject (CN, O, OU, etc.), SANs, labels, contact email,
+          owner, team, key type. Check get_request_template for which fields
+          are editable vs computed vs fixed by the profile.
+        - **renew**: certificate_id required. Template is pre-populated from
+          the existing cert. Ask if any fields should change.
+        - **revoke**: certificate_id required. Ask for revocationReason:
+          keycompromise, cacompromise, affiliationchange, superseded,
+          cessationofoperation, certificatehold, removefromcrl,
+          privilegewithdrawn, aacompromise, unspecified.
+        - **update**: certificate_id required. Ask which metadata to change
+          (labels, contact email, owner, team).
+        - **recover**: certificate_id required. For re-issuing a lost cert.
+        - **migrate**: certificate_id required. For moving between profiles.
 
         Args:
-            workflow: Workflow type (enroll, renew, revoke, update, recover, migrate, import).
+            workflow: enroll, renew, revoke, update, recover, migrate, or import.
             profile: Certificate profile name.
-            module: Profile module type (webra, acme, scep, est, wcce, crmp, etc.).
-            template: Certificate request template object containing:
+            module: Profile module type (webra, est, scep, acme, crmp, etc.).
+            template: Certificate request template object. Structure:
                 - subject: list of DN elements, each as
-                  {"element": "cn.1", "type": "CN", "value": "my-server.example.com"}
+                  {"element": "cn.1", "type": "CN", "value": "server.example.com"}
                 - sans: list of SAN entries — values MUST be arrays:
-                  {"type": "DNSNAME", "value": ["my-server.example.com", "alias.example.com"]}
-                  Valid types: DNSNAME, EMAIL, IP, URI, OTHERNAME, DIRECTORYNAME, REGISTEREDID
-                - labels: list of label assignments using 'label' key (NOT 'key'):
-                  {"label": "environment", "value": "production"}
-                - keyType: key type spec, e.g. "rsa-2048", "rsa-3072", "ec-p256"
+                  {"type": "DNSNAME", "value": ["server.example.com", "alias.example.com"]}
+                  Valid types: DNSNAME, RFC822NAME, URI, IPADDRESS, OTHERNAME,
+                  DIRECTORYNAME, REGISTEREDID
+                - labels: [{"label": "environment", "value": "production"}]
+                - contactEmail: {"value": "admin@example.com"}
+                - owner: {"value": "admin-principal"}
+                - team: {"value": "infra-team"}
+                - keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.
+                - csr: PEM-encoded CSR (for decentralized key generation)
                 - extensions: optional certificate extensions
-            password: Password for PKCS#12 private key protection (centralized key
-                generation). When provided, Horizon generates the key pair server-side
-                and the response contains the PKCS#12 bundle (certificate + private
-                key) in base64. The PKCS#12 is also retrievable via get_request.
-                Note: the password may also be auto-generated by Horizon depending
-                on the profile's password policy — check get_request_template to
-                see if a password is required or auto-generated.
-            certificate_id: Certificate ID (required for renew, revoke, update, recover, migrate).
+            password: PKCS#12 password for centralized key generation. When
+                provided, Horizon generates the key pair server-side and returns
+                the PKCS#12 in the response (base64). Also retrievable via
+                get_request. May be auto-generated by profile password policy —
+                check get_request_template.
+            certificate_id: Certificate ID (required for renew, revoke, update,
+                recover, migrate). Use search_certificates to find it.
             data: Additional workflow-specific fields merged into the payload.
-                For revoke: {"revocationReason": "KEY_COMPROMISE"}.
-                For update: field overrides for the certificate metadata.
+                For revoke: {"revocationReason": "keycompromise"}.
+                For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.
+                For dry run validation: {"dryRun": true}.
+                For requester comment: {"requesterComment": "reason for request"}.
 
-        Enrollment example:
-            workflow="enroll", profile="my-profile", module="webra",
+        Enrollment example (centralized, WebRA):
+            workflow="enroll", profile="TLS-Internal", module="webra",
             template={"subject": [{"element": "cn.1", "type": "CN", "value": "server.local"}],
                       "sans": [{"type": "DNSNAME", "value": ["server.local"]}],
                       "labels": [{"label": "env", "value": "prod"}],
+                      "contactEmail": {"value": "admin@corp.com"},
+                      "owner": {"value": "jdoe"},
+                      "team": {"value": "infra"},
                       "keyType": "rsa-3072"},
             password="changeit"
+
+        EST challenge example:
+            workflow="enroll", profile="EST-Devices", module="est",
+            template={"subject": [{"element": "cn.1", "type": "CN", "value": "device01"}],
+                      "contactEmail": {"value": "ops@corp.com"}},
+            password="challenge-password"
+
+        Revoke example:
+            workflow="revoke", profile="TLS-Internal", module="webra",
+            certificate_id="abc123",
+            data={"revocationReason": "keycompromise"}
         """
         client = get_client()
         payload: dict[str, Any] = {

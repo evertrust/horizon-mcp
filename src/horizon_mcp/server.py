@@ -147,7 +147,13 @@ mcp = FastMCP(
         "  - detect_file: auto-detect format and parse any of the above\n"
         "  - fetch_exposed_certificate: fetch a live TLS cert from a remote server\n"
         "These return structured JSON (DN, SANs, extensions, key usage, AIA, CRL "
-        "DPs, thumbprints, etc.) rather than text output that needs further parsing."
+        "DPs, thumbprints, etc.) rather than text output that needs further parsing.\n"
+        "8. LIFECYCLE REQUESTS — ASK BEFORE SUBMITTING: Before calling "
+        "submit_request, you MUST call get_request_template first to discover "
+        "which fields are required and editable. Then ask the user for all "
+        "missing information. For revoke workflows, the revocationReason is "
+        "MANDATORY — always ask the user. For all workflows, optionally offer "
+        "the user to add a requesterComment (free-text justification)."
     ),
     lifespan=lifespan,
 )
