@@ -39,7 +39,7 @@ class TestToolRegistrationBoundary:
 
     def test_tool_count(self) -> None:
         mcp = _make_mcp(register_tools)
-        assert len(_tool_names(mcp)) == 66
+        assert len(_tool_names(mcp)) == 74
 
     def test_excludes_admin_tools(self) -> None:
         names = _tool_names(_make_mcp(register_tools))
@@ -48,7 +48,7 @@ class TestToolRegistrationBoundary:
             "list_cas", "get_ca", "create_ca", "update_ca", "delete_ca",
             "list_labels", "get_label", "create_label", "update_label", "delete_label",
             "create_http_proxy", "update_http_proxy", "delete_http_proxy",
-            "create_datasource", "update_datasource", "delete_datasource",
+            # datasource CRUD is now registered (create_dns/ldap/rest, update, delete)
             "create_password_policy", "update_password_policy", "delete_password_policy",
             # Security admin (entire module removed)
             "list_roles", "get_role",
@@ -88,6 +88,9 @@ class TestToolRegistrationBoundary:
             "list_dashboards", "create_dashboard",
             # Reports
             "list_reports",
+            # Datasources
+            "list_datasources", "create_dns_datasource",
+            "create_ldap_datasource", "create_rest_datasource",
         ]
         for tool in expected:
             assert tool in names, f"Expected tool '{tool}' missing"

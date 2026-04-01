@@ -2,6 +2,7 @@
 
 Provides one entry point:
     register_tools   -  core CLM tools for certificate lifecycle operations
+                        and configuration management
 """
 
 from __future__ import annotations
@@ -15,8 +16,8 @@ if TYPE_CHECKING:
 def register_tools(mcp: FastMCP) -> None:
     """Register core CLM tools.
 
-    62 tools across 8 domains  -  certificate lifecycle, discovery, dashboards,
-    assist, profiles (read-only), reports.
+    74 tools across 9 domains  -  certificate lifecycle, discovery, dashboards,
+    assist, profiles (read-only), reports, datasources.
     """
     # Assist (15 tools)
     from horizon_mcp.tools.assist import register_assist_tools
@@ -57,3 +58,8 @@ def register_tools(mcp: FastMCP) -> None:
     from horizon_mcp.tools.profiles import register_profile_readonly_tools
 
     register_profile_readonly_tools(mcp)
+
+    # Datasources (8 tools)
+    from horizon_mcp.tools.datasources import register_datasource_tools
+
+    register_datasource_tools(mcp)

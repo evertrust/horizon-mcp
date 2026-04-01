@@ -159,7 +159,14 @@ mcp = FastMCP(
         "PKI migrations, etc.), consult horizon://knowledge/discovery-workflows "
         "for CLI commands and parameters. Consult horizon://knowledge/discovery "
         "for concepts, data structures, and search patterns. Both resources are "
-        "needed for a complete answer."
+        "needed for a complete answer.\n"
+        "10. DATASOURCE AND VALIDATION RULES: When the user asks about auto-validation, "
+        "datasource configuration, or enriching enrollment requests with external data, "
+        "consult horizon://knowledge/datasources for DNS/LDAP/REST datasource setup, "
+        "horizon://knowledge/validation-rules for validation rule condition syntax "
+        "(operators, boolean logic, datasource references, resolvesDNS, CIDR matching), "
+        "and horizon://knowledge/dictionary-entries for all available dictionary entries "
+        "by context and protocol module."
     ),
     lifespan=lifespan,
 )

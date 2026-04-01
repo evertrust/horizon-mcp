@@ -13,7 +13,7 @@ not listed below, it does not exist in Horizon.
 - Parsing: `ShortenDNS`, `DomainDNS`, `EmailUser`, `EmailDomain`, `SamAccountNameUser`, `SamAccountNameDomain`
 - Access: `Get`, `First`, `Last`, `Join`, `Match`
 - Date: `DateTimeFormat`
-- Encoding: `URLEncode`, `URLDecode`, `EscapeJson`, `JsonArray`, `DerAsBase64`
+- Encoding: `URLEncode`, `URLDecode`, `EscapeJson`, `JsonArray`, `DerAsBase64`, `Base64` (v2.8.5+), `Raw` (v2.8.5+)
 - Special values: `NULL`, `NOW`
 
 **ShortenDNS extracts the hostname** (first DNS label): `ShortenDNS("web01.corp.com")` → `"web01"`.
@@ -194,6 +194,8 @@ operation to **each element** and return a list.
 | `EscapeJson` | `EscapeJson(singleExpr)` | string | Escape for JSON embedding |
 | `JsonArray` | `JsonArray(multiExpr)` | string | Serialize list as JSON array string |
 | `DerAsBase64` | `DerAsBase64(singleExpr)` | string | Encode DER binary as Base64 |
+| `Base64` | `Base64(singleExpr)` | string | Encode a string as Base64. `Base64("string1")` -> `"c3RyaW5nMQ=="`. **Available since Horizon 2.8.5.** |
+| `Raw` | `Raw(singleExpr)` | string | Extract the raw value from a JSON-encoded string (strips JSON escaping). `Raw("str\"in\ng1==")` -> `str"in\ng1==`. **Available since Horizon 2.8.5.** |
 
 ---
 
@@ -758,8 +760,10 @@ databases) during enrollment and feed results into computation rules.
 | `stopOnSuccess`  | boolean | If `true` and this datasource returns results, skip subsequent entries. |
 | `inputs`         | array   | List of `{key, value}` pairs mapping datasource parameters to computation rules. |
 
-**Indexed results**: Datasource results are accessed as `ds.<flowIndex>.<key>` where
-`flowIndex` is 0-based (first datasource = `ds.0.*`, second = `ds.1.*`, etc.).
+**Indexed results**: Datasource results are accessed as `ds.<flowIndex>.<resultIndex>.<key>`
+where all indexes are **1-based** (first datasource = `ds.1.*`, second = `ds.2.*`, etc.).
+For DNS/LDAP, there is an additional result index: `ds.1.1.cname`, `ds.1.2.cname`.
+For REST, there is no result index: `ds.1.jsonField`.
 
 **Chaining logic**: Datasource flows are evaluated in order. Each flow can
 populate dictionary entries that subsequent flows and computation rules can
@@ -771,11 +775,11 @@ primary source first, fall back to secondary).
 The typical pattern is:
 
 1. **Datasource flow** queries LDAP for user attributes
-2. Flow results populate entries like `ds.0.department` (0-based flow index)
+2. Flow results populate entries like `ds.1.1.department` (1-based flow and result index)
 3. **Computation rules** map those entries to certificate fields:
    ```json
    {
-     "source": "{{ ds.0.department }}",
+     "source": "{{ ds.1.1.department }}",
      "target": "subject.organizationalUnit"
    }
    ```
@@ -799,6 +803,11 @@ All contexts share the same function library and dictionary entries, though
 the available entries vary by context (e.g., email templates have access to
 `certificate.*` entries that are not available during enrollment).
 
+**Related resources:**
+- horizon://knowledge/datasources - DNS, LDAP, REST datasource configuration
+- horizon://knowledge/validation-rules - validation rule condition syntax
+- horizon://knowledge/dictionary-entries - all dictionary entries by context and module
+
 ---
 
 ## How to Build Computation Rules  -  Decision Guide
@@ -814,7 +823,7 @@ When asked to create computation rules, follow this reasoning process:
 | Conditionally set a field | One rule with `condition`  -  rule only fires when condition resolves non-empty |
 | Build up a multi-value list (SANs) | Multiple rules in sequence, each with `overwrite: false` to append |
 | Enforce naming policy | Rule with `overwrite: true` to force computed value |
-| Enrich from external data | Datasource flow first, then rules referencing `ds.0.*` results |
+| Enrich from external data | Datasource flow first, then rules referencing `ds.1.1.*` results |
 
 ### Step 2: Choose between `overwrite: true` and `overwrite: false`
 
@@ -1001,16 +1010,16 @@ and email are looked up in LDAP using the requesting user's identifier.
 ```json
 [
   { "source": "{{csr.subject.cn}}", "target": "subject.commonName" },
-  { "source": "OrElse({{ds.0.o}}, \"Acme Corp\")", "target": "subject.organization" },
-  { "source": "{{ds.0.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.0.department}}" },
-  { "source": "{{ds.0.mail}}", "target": "sans.rfc822names", "condition": "{{ds.0.mail}}" },
-  { "source": "OrElse({{ds.0.mail}}, {{principal.mail}})", "target": "contactEmail" },
-  { "source": "{{ds.0.department}}", "target": "label.department", "condition": "{{ds.0.department}}" }
+  { "source": "OrElse({{ds.1.1.o}}, \"Acme Corp\")", "target": "subject.organization" },
+  { "source": "{{ds.1.1.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.1.1.department}}" },
+  { "source": "{{ds.1.1.mail}}", "target": "sans.rfc822names", "condition": "{{ds.1.1.mail}}" },
+  { "source": "OrElse({{ds.1.1.mail}}, {{principal.mail}})", "target": "contactEmail" },
+  { "source": "{{ds.1.1.department}}", "target": "label.department", "condition": "{{ds.1.1.department}}" }
 ]
 ```
 
 **Why:** The datasource flow runs first, querying LDAP with the authenticated
-user's ID. Results populate `ds.0.*` entries. Computation rules then map those
+user's ID. Results populate `ds.1.1.*` entries. Computation rules then map those
 values into certificate fields. `OrElse` provides fallbacks. The `condition`
 on OU and email prevents setting empty values if the LDAP lookup returned
 nothing for those attributes.
@@ -1038,15 +1047,15 @@ an `otherName` SAN, the user's email as an RFC822 SAN, and the CN in
 ```json
 [
   {
-    "source": "Concat({{ds.0.sn}}, \".\", {{ds.0.givenName}})",
+    "source": "Concat({{ds.1.1.sn}}, \".\", {{ds.1.1.givenName}})",
     "target": "subject.commonName",
-    "condition": "{{ds.0.sn}}"
+    "condition": "{{ds.1.1.sn}}"
   },
-  { "source": "{{ds.0.mail}}", "target": "sans.rfc822names", "condition": "{{ds.0.mail}}" },
-  { "source": "{{ds.0.userPrincipalName}}", "target": "sans.othername_upn", "condition": "{{ds.0.userPrincipalName}}" },
-  { "source": "OrElse({{ds.0.o}}, \"Acme Corp\")", "target": "subject.organization" },
-  { "source": "{{ds.0.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.0.department}}" },
-  { "source": "{{ds.0.mail}}", "target": "contactEmail", "condition": "{{ds.0.mail}}" }
+  { "source": "{{ds.1.1.mail}}", "target": "sans.rfc822names", "condition": "{{ds.1.1.mail}}" },
+  { "source": "{{ds.1.1.userPrincipalName}}", "target": "sans.othername_upn", "condition": "{{ds.1.1.userPrincipalName}}" },
+  { "source": "OrElse({{ds.1.1.o}}, \"Acme Corp\")", "target": "subject.organization" },
+  { "source": "{{ds.1.1.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.1.1.department}}" },
+  { "source": "{{ds.1.1.mail}}", "target": "contactEmail", "condition": "{{ds.1.1.mail}}" }
 ]
 ```
 
@@ -1104,11 +1113,11 @@ and populate the certificate with the device's assigned department and location.
 ```json
 [
   { "source": "Lower({{csr.subject.cn}})", "target": "subject.commonName", "overwrite": true },
-  { "source": "OrElse({{ds.0.l}}, \"Unknown Site\")", "target": "subject.locality" },
-  { "source": "OrElse({{ds.0.department}}, \"IT\")", "target": "subject.organizationalUnit" },
+  { "source": "OrElse({{ds.1.1.l}}, \"Unknown Site\")", "target": "subject.locality" },
+  { "source": "OrElse({{ds.1.1.department}}, \"IT\")", "target": "subject.organizationalUnit" },
   { "source": "\"Acme Corp\"", "target": "subject.organization", "overwrite": true },
-  { "source": "{{ds.0.managedBy}}", "target": "contactEmail", "condition": "{{ds.0.managedBy}}" },
-  { "source": "{{ds.0.location}}", "target": "label.site", "condition": "{{ds.0.location}}" }
+  { "source": "{{ds.1.1.managedBy}}", "target": "contactEmail", "condition": "{{ds.1.1.managedBy}}" },
+  { "source": "{{ds.1.1.location}}", "target": "label.site", "condition": "{{ds.1.1.location}}" }
 ]
 ```
 

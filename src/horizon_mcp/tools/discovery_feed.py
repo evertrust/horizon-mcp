@@ -45,7 +45,11 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def start_discovery_feed_session(campaign_name: str) -> str:
-        """Start a discovery feed session for a campaign.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Start a discovery feed session for a campaign.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -85,7 +89,11 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         usages: list[str] | None = None,
         operating_systems: list[str] | None = None,
     ) -> str:
-        """Feed a discovered certificate into an active feed session.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Feed a discovered certificate into an active feed session.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -137,7 +145,11 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         session_id: str,
         data: dict[str, Any],
     ) -> str:
-        """Register an arbitrary discovery event in an active feed session.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Register an arbitrary discovery event in an active feed session.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -159,7 +171,11 @@ def register_discovery_feed_tools(mcp: FastMCP) -> None:
         campaign_name: str,
         session_id: str,
     ) -> str:
-        """End a discovery feed session.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        End a discovery feed session.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows

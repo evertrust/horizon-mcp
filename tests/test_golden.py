@@ -32,11 +32,11 @@ _KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "src" / "horizon_mcp" 
 # ===================================================================
 
 
-def test_tool_count_is_66():
-    """Exactly 66 tools must be registered on the main server  - 
+def test_tool_count_is_74():
+    """Exactly 74 tools must be registered on the main server  -
     any addition or removal is intentional and must update this test."""
-    assert len(_tools) == 66, (
-        f"Expected 66 tools, got {len(_tools)}. "
+    assert len(_tools) == 74, (
+        f"Expected 74 tools, got {len(_tools)}. "
         f"If you added or removed a tool, update this test and the "
         f"EXPECTED_TOOL_NAMES list in test_tool_name_enumeration."
     )
@@ -47,7 +47,7 @@ def test_tool_count_is_66():
 # ===================================================================
 
 EXPECTED_TOOL_NAMES: list[str] = sorted([
-    # --- 65 tools ---
+    # --- 74 tools ---
     # assist/system.py (4)
     "whoami",
     "get_license_info",
@@ -126,6 +126,15 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     "list_reports",
     "download_report",
     "delete_report",
+    # datasources.py (8)
+    "list_datasources",
+    "get_datasource",
+    "create_dns_datasource",
+    "create_ldap_datasource",
+    "create_rest_datasource",
+    "update_datasource",
+    "delete_datasource",
+    "test_datasource",
 ])
 
 
@@ -144,10 +153,10 @@ def test_tool_name_enumeration():
 # ===================================================================
 
 
-def test_resource_count_is_13():
-    """Exactly 13 knowledge resources must be registered."""
-    assert len(_resources) == 13, (
-        f"Expected 13 resources, got {len(_resources)}."
+def test_resource_count_is_16():
+    """Exactly 16 knowledge resources must be registered."""
+    assert len(_resources) == 16, (
+        f"Expected 16 resources, got {len(_resources)}."
     )
 
 
@@ -170,11 +179,15 @@ EXPECTED_RESOURCE_URIS: list[str] = sorted([
     "horizon://knowledge/dashboards",
     "horizon://knowledge/system-admin",
     "horizon://knowledge/discovery-workflows",
+    # v1.2 knowledge resources
+    "horizon://knowledge/datasources",
+    "horizon://knowledge/validation-rules",
+    "horizon://knowledge/dictionary-entries",
 ])
 
 
 def test_resource_uris():
-    """All 13 resource URIs must match the expected list exactly."""
+    """All 16 resource URIs must match the expected list exactly."""
     actual = sorted(_resources.keys())
     assert actual == EXPECTED_RESOURCE_URIS, (
         f"Resource URI drift detected.\n"
@@ -210,6 +223,20 @@ class TestCriticalToolSchemas:
         expected = {"workflow", "profile", "module", "template", "data"}
         assert expected.issubset(params), (
             f"submit_request missing params: {expected - params}"
+        )
+
+    def test_create_dns_datasource_params(self):
+        params = _get_param_names("create_dns_datasource")
+        expected = {"name", "lookup", "host", "port", "timeout", "record_types"}
+        assert expected.issubset(params), (
+            f"create_dns_datasource missing params: {expected - params}"
+        )
+
+    def test_create_ldap_datasource_params(self):
+        params = _get_param_names("create_ldap_datasource")
+        expected = {"name", "hostname", "credentials", "base_dn", "filter", "secure", "timeout"}
+        assert expected.issubset(params), (
+            f"create_ldap_datasource missing params: {expected - params}"
         )
 
 
@@ -253,6 +280,18 @@ class TestToolDescriptionKnowledgeReferences:
             "simulate_computation_rule should reference computation-and-data-flow"
         )
 
+    def test_datasource_tools_reference_datasources_knowledge(self):
+        for tool_name in (
+            "list_datasources", "get_datasource",
+            "create_dns_datasource", "create_ldap_datasource",
+            "create_rest_datasource", "update_datasource",
+            "delete_datasource", "test_datasource",
+        ):
+            desc = _get_description(tool_name)
+            assert "horizon://knowledge/datasources" in desc, (
+                f"{tool_name} description should reference horizon://knowledge/datasources"
+            )
+
 
 # ===================================================================
 # 7. Knowledge resource non-empty test
@@ -272,6 +311,9 @@ _KNOWLEDGE_FILES = [
     # v1.1 knowledge resources
     "dashboards.md",
     "system_admin.md",
+    # v1.2 knowledge resources
+    "datasources.md",
+    "validation_rules.md",
 ]
 
 

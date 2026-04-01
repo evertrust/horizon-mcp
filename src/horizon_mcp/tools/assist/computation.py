@@ -47,7 +47,8 @@ def register_computation_tools(mcp: FastMCP) -> None:
                      SamAccountNameUser, SamAccountNameDomain
             Date: DateTimeFormat
             Access: Get, First, Last, Join, Match
-            Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64
+            Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64,
+                     Base64 (v2.8.5+), Raw (v2.8.5+)
             Special: NULL, NOW
 
         Syntax rules:

@@ -384,12 +384,12 @@ Step 2: create_webra_profile(
   pki_connector="my-pki",
   certificate_template={
     "subject": [
-      {"type": "CN", "computationRule": "{{ ds.0.cn }}", "mandatory": true, "editableByRequester": false},
+      {"type": "CN", "computationRule": "{{ ds.1.1.cn }}", "mandatory": true, "editableByRequester": false},
       {"type": "O", "value": "My Org", "mandatory": true, "editableByRequester": false},
-      {"type": "OU", "computationRule": "{{ ds.0.department }}", "mandatory": false}
+      {"type": "OU", "computationRule": "{{ ds.1.1.department }}", "mandatory": false}
     ],
     "sans": [
-      {"type": "RFC822", "computationRule": "{{ ds.0.email }}", "editableByRequester": false}
+      {"type": "RFC822", "computationRule": "{{ ds.1.1.email }}", "editableByRequester": false}
     ]
   },
   authorization_levels={
