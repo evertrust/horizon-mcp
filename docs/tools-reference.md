@@ -1,6 +1,6 @@
 # Tool reference
 
-66 tools in 8 domains. Safety tiers:
+74 tools in 9 domains. Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -117,3 +117,16 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 |------|--------|-------------|
 | `list_profiles` | read-only | List profiles with optional name and module filter |
 | `get_profile` | read-only | Get full profile details by name |
+
+## Datasources (8 tools)
+
+| Tool | Safety | Description |
+|------|--------|-------------|
+| `list_datasources` | read-only | List datasources with optional type and name filtering |
+| `get_datasource` | read-only | Get a datasource configuration by name |
+| `create_dns_datasource` | mutating-safe | Create a DNS datasource for hostname/record lookups |
+| `create_ldap_datasource` | mutating-safe | Create an LDAP datasource for directory lookups |
+| `create_rest_datasource` | mutating-safe | Create a REST datasource for HTTP API lookups |
+| `update_datasource` | mutating-safe | Update datasource configuration (GET-strip-merge-PUT) |
+| `delete_datasource` | mutating-destructive | Delete a datasource (requires name confirmation) |
+| `test_datasource` | read-only | Test a datasource config against a context dictionary |

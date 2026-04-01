@@ -61,3 +61,16 @@ def register_all_resources(mcp: FastMCP) -> None:
     @mcp.resource("horizon://knowledge/discovery-workflows")
     async def discovery_workflows_knowledge() -> str:
         return _read_knowledge("discovery_workflows.md")
+
+    # v1.2 knowledge resources
+    @mcp.resource("horizon://knowledge/datasources")
+    async def datasources_knowledge() -> str:
+        return _read_knowledge("datasources.md")
+
+    @mcp.resource("horizon://knowledge/validation-rules")
+    async def validation_rules_knowledge() -> str:
+        return _read_knowledge("validation_rules.md")
+
+    @mcp.resource("horizon://knowledge/dictionary-entries")
+    async def dictionary_entries_knowledge() -> str:
+        return _read_knowledge("dictionary_matrix.md")

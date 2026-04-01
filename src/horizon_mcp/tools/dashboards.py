@@ -176,7 +176,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         charts: list[dict[str, Any]] | None = None,
         description: str | None = None,
     ) -> str:
-        """Create a new personal dashboard.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Create a new personal dashboard.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
@@ -234,7 +238,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         description: str | None = None,
         clear_fields: list[str] | None = None,
     ) -> str:
-        """Update an existing dashboard (GET -> merge -> PUT).
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Update an existing dashboard (GET -> merge -> PUT).
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
@@ -267,7 +275,12 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def delete_dashboard(name: str, expected_name: str) -> str:
-        """Delete a dashboard. Requires name confirmation.
+        """STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST
+        ask the user for explicit confirmation before calling this tool. Do not
+        proceed without a clear "yes" from the user. Present what will be
+        permanently destroyed and wait.
+
+        Delete a dashboard. Requires name confirmation.
 
         Safety tier: mutating-destructive
         Knowledge: horizon://knowledge/dashboards
@@ -298,7 +311,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         dashboard_name: str,
         chart: dict[str, Any],
     ) -> str:
-        """Add a chart to an existing dashboard.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Add a chart to an existing dashboard.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
@@ -367,7 +384,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         logarithmic: bool | None = None,
         clear_fields: list[str] | None = None,
     ) -> str:
-        """Update a single chart within a dashboard.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Update a single chart within a dashboard.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
@@ -469,7 +490,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         dashboard_name: str,
         chart_id: str,
     ) -> str:
-        """Remove a chart from a dashboard.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Remove a chart from a dashboard.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/dashboards
@@ -570,7 +595,11 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
         query: str,
         description: str | None = None,
     ) -> str:
-        """Create or update a saved HQL query.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Create or update a saved HQL query.
 
         Safety tier: mutating-safe
 
@@ -608,7 +637,12 @@ def register_dashboard_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def delete_saved_query(name: str, expected_name: str) -> str:
-        """Delete a saved query. Requires name confirmation.
+        """STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST
+        ask the user for explicit confirmation before calling this tool. Do not
+        proceed without a clear "yes" from the user. Present what will be
+        permanently destroyed and wait.
+
+        Delete a saved query. Requires name confirmation.
 
         Safety tier: mutating-destructive
 

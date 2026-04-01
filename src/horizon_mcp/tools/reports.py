@@ -116,12 +116,14 @@ def register_report_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def delete_report(report_uuid: str, expected_uuid: str) -> str:
-        """Delete a report by UUID. Requires UUID confirmation.
+        """STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST
+        ask the user for explicit confirmation before calling this tool. Do not
+        proceed without a clear "yes" from the user. Present what will be
+        permanently destroyed and wait.
+
+        Delete a report by UUID. Requires UUID confirmation.
 
         Safety tier: mutating-destructive
-
-        IMPORTANT: Before executing this operation, always confirm the
-        action with the end-user first.
 
         Args:
             report_uuid: UUID of the report to delete.

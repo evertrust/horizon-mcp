@@ -1,14 +1,14 @@
 # Evertrust CLM (Horizon) - MCP Server
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **66 tools** and **13 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, and discovery through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **74 tools** and **16 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **13 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, and more. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, and understands dependency order without needing a human to explain Horizon internals every session.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **16 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, and dictionary entries. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, configures datasource-backed auto-validation, and understands dependency order without needing a human to explain Horizon internals every session.
 
 ## Architecture
 
-66 tools organized in **8 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
+74 tools organized in **9 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
 
 | Domain | Tools | Purpose |
 |--------|------:|---------|
@@ -18,10 +18,11 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 | Discovery | 6 | Campaign management |
 | Discovery Events | 3 | Event search and export |
 | Discovery Feed | 4 | Push certificates and events into campaigns |
+| Datasources | 8 | DNS, LDAP, REST external datasource CRUD and testing |
 | Reports | 3 | Report listing, download, deletion |
 | Profiles | 2 | Profile listing and inspection |
 
-All destructive operations require name confirmation to prevent accidental deletion. See the full [tool reference](docs/tools-reference.md).
+All mutating tools include a STOP confirmation block that instructs the LLM to ask the user for explicit approval before executing. Destructive operations additionally require a name confirmation parameter. See the full [tool reference](docs/tools-reference.md).
 
 ---
 
@@ -131,6 +132,25 @@ Create a dashboard showing certificate status distribution by profile.
 List my saved queries and show me the one named "expiring-soon".
 ```
 
+### Datasources and validation
+
+```
+List all configured external datasources.
+```
+
+```
+Create a DNS datasource that looks up CNAME records for certificate SAN validation.
+```
+
+```
+Which profile modules support auto-validation rules? How do I set up a validation
+rule that checks DNS CNAME targets for all SANs in an enrollment request?
+```
+
+```
+What dictionary entries are available during WebRA enrollment?
+```
+
 ### Diagnostics
 
 ```
@@ -155,7 +175,8 @@ Describe the available fields for HCQL certificate queries.
 
 | Horizon version | Status |
 |-----------------|--------|
-| 2.8 | Tested |
+| 2.8.5+ | Tested (full feature set including Base64/Raw computation rules) |
+| 2.8.0-2.8.4 | Tested (Base64/Raw computation rules not available) |
 | 2.7 | Expected to work |
 | 2.9 | Expected to work |
 
@@ -163,7 +184,7 @@ Describe the available fields for HCQL certificate queries.
 
 The following capabilities require direct Horizon API calls or the Horizon UI:
 
-- **Configuration objects**  -  CAs, trust chains, labels, HTTP proxies, datasources, password policies, grading policies, and grading rulesets
+- **Configuration objects**  -  CAs, trust chains, labels, HTTP proxies, password policies, grading policies, and grading rulesets
 - **Profile management**  -  creating, updating, or deleting profiles (read-only listing and inspection are supported)
 - **Credential management**  -  creating, updating, or deleting stored credentials
 - **PKI and third-party connector management**  -  connectors to ADCS, EJBCA, HashiCorp Vault, etc.
@@ -183,8 +204,8 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 | [Installation](docs/installation.md) | Full install guide, OIDC setup |
 | [Authentication](docs/authentication.md) | 4 auth modes, environment variables reference |
 | [Client setup](docs/client-setup.md) | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md) | All 66 tools by domain with safety tiers |
-| [Knowledge resources](docs/knowledge-resources.md) | 12 embedded knowledge resources |
+| [Tool reference](docs/tools-reference.md) | All 74 tools by domain with safety tiers |
+| [Knowledge resources](docs/knowledge-resources.md) | 16 embedded knowledge resources |
 | [Development](docs/development.md) | Dev setup, tests, linting |
 
 ---

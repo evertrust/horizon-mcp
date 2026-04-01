@@ -130,4 +130,54 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         expected_tools=["fetch_exposed_certificate", "search_certificates"],
         description="Verify deployed cert matches Horizon inventory",
     ),
+    # --- Datasource scenarios ---
+    Scenario(
+        question="List all configured external datasources in Horizon",
+        expected_tools=["list_datasources"],
+        expected_resources=["datasources"],
+        description="List datasources",
+    ),
+    Scenario(
+        question=(
+            "I need to set up a DNS datasource to look up CNAME records for "
+            "certificate SAN validation during enrollment. What's the approach?"
+        ),
+        expected_tools=["create_dns_datasource"],
+        expected_resources=["datasources", "validation-rules"],
+        description="DNS datasource for SAN CNAME validation",
+    ),
+    Scenario(
+        question=(
+            "How do I configure an LDAP datasource to enrich certificate "
+            "requests with user department information from Active Directory?"
+        ),
+        expected_tools=["create_ldap_datasource"],
+        expected_resources=["datasources"],
+        description="LDAP datasource for AD enrichment",
+    ),
+    # --- Validation rule scenarios ---
+    Scenario(
+        question=(
+            "Which certificate profile modules support auto-validation rules? "
+            "What are the differences in authorization modes?"
+        ),
+        expected_tools=[],
+        expected_resources=["validation-rules"],
+        description="Knowledge: validation rule module support",
+    ),
+    Scenario(
+        question=(
+            "Write a validation rule that checks if the certificate CN ends "
+            "with .corp.local AND the requesting user's IP is in the 10.0.0.0/8 range"
+        ),
+        expected_tools=[],
+        expected_resources=["validation-rules"],
+        description="Knowledge: complex validation rule with boolean logic and CIDR",
+    ),
+    Scenario(
+        question="What dictionary entries are available during EST enrollment?",
+        expected_tools=[],
+        expected_resources=["dictionary-entries"],
+        description="Knowledge: EST dictionary entries",
+    ),
 ]

@@ -155,7 +155,11 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         ports: list[int] | None = None,
         grading_policies: list[str] | None = None,
     ) -> str:
-        """Create a new discovery campaign.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Create a new discovery campaign.
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -240,7 +244,11 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
         grading_policies: list[str] | None = None,
         clear_fields: list[str] | None = None,
     ) -> str:
-        """Update an existing discovery campaign (GET -> strip -> merge -> PUT).
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Update an existing discovery campaign (GET -> strip -> merge -> PUT).
 
         Safety tier: mutating-safe
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -305,10 +313,12 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def delete_discovery_campaign(name: str, expected_name: str) -> str:
-        """Delete a discovery campaign. Requires name confirmation.
+        """STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST
+        ask the user for explicit confirmation before calling this tool. Do not
+        proceed without a clear "yes" from the user. Present what will be
+        permanently destroyed and wait.
 
-        IMPORTANT: Before executing this operation, always confirm the action
-        with the end-user first.
+        Delete a discovery campaign. Requires name confirmation.
 
         Safety tier: mutating-destructive
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
@@ -331,10 +341,12 @@ def register_discovery_campaign_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def flush_discovery_campaign(name: str, expected_name: str) -> str:
-        """Flush (purge all events from) a discovery campaign. Requires name confirmation.
+        """STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST
+        ask the user for explicit confirmation before calling this tool. Do not
+        proceed without a clear "yes" from the user. Present what will be
+        permanently destroyed and wait.
 
-        IMPORTANT: Before executing this operation, always confirm the action
-        with the end-user first.
+        Flush (purge all events from) a discovery campaign. Requires name confirmation.
 
         Safety tier: mutating-destructive
         Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows
