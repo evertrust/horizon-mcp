@@ -429,7 +429,11 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
         certificate_id: str | None = None,
         data: dict | None = None,
     ) -> str:
-        """Submit a certificate lifecycle request (enroll, renew, revoke, etc.).
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Submit a certificate lifecycle request (enroll, renew, revoke, etc.).
 
         Knowledge: horizon://knowledge/workflows
 
@@ -592,7 +596,11 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def approve_request(request_id: str) -> str:
-        """Approve a pending certificate lifecycle request.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Approve a pending certificate lifecycle request.
 
         Prerequisites: Use search_requests or get_request to find the request ID.
             Only pending requests can be approved. Permissions are checked automatically.
@@ -620,7 +628,11 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def deny_request(request_id: str) -> str:
-        """Deny a pending certificate lifecycle request.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Deny a pending certificate lifecycle request.
 
         Prerequisites: Use search_requests or get_request to find the request ID.
             Only pending requests can be denied. Permissions are checked automatically.
@@ -648,7 +660,11 @@ def register_lifecycle_tools(mcp: FastMCP) -> None:
 
     @mcp.tool()
     async def cancel_request(request_id: str) -> str:
-        """Cancel a pending certificate lifecycle request.
+        """STOP - This tool modifies data. You MUST ask the user for explicit
+        confirmation before calling this tool. Do not proceed without a clear
+        "yes" from the user. Present what you intend to do and wait.
+
+        Cancel a pending certificate lifecycle request.
 
         Prerequisites: Use search_requests or get_request to find the request ID.
             Only pending requests can be cancelled. Permissions are checked automatically.

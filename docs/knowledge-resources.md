@@ -1,6 +1,6 @@
 # Knowledge resources
 
-The server exposes 13 knowledge resources at `horizon://knowledge/*`. LLMs read these before acting  -  so they construct correct HCQL queries, build valid profile payloads, and understand dependency order without needing a human to explain Horizon internals.
+The server exposes 16 knowledge resources at `horizon://knowledge/*`. LLMs read these before acting  -  so they construct correct HCQL queries, build valid profile payloads, configure datasource-backed auto-validation, and understand dependency order without needing a human to explain Horizon internals.
 
 | Resource | URI | Contents |
 |----------|-----|----------|
@@ -10,7 +10,9 @@ The server exposes 13 knowledge resources at `horizon://knowledge/*`. LLMs read 
 | Query Languages | `horizon://knowledge/query-languages` | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples |
 | RBAC | `horizon://knowledge/rbac` | Permission format, 36-pattern catalog, role guidance |
 | Architecture | `horizon://knowledge/architecture` | Object model, module types, dependency order |
-| Dictionary Matrix | `horizon://knowledge/dictionary-matrix` | Dictionary entries by protocol and lifecycle event |
+| Datasources | `horizon://knowledge/datasources` | DNS, LDAP, REST datasource config, multi-lookup patterns, end-to-end recipes |
+| Validation Rules | `horizon://knowledge/validation-rules` | Auto-approval conditions, operator reference (API-verified syntax), module support matrix |
+| Dictionary Entries | `horizon://knowledge/dictionary-entries` | All dictionary entries by context, protocol, and lifecycle event |
 | Discovery | `horizon://knowledge/discovery` | Concepts, campaigns, data structures, search patterns |
 | Discovery Workflows | `horizon://knowledge/discovery-workflows` | CLI commands for netscan, localscan, netimport, importscan, localimport |
 | Automation | `horizon://knowledge/automation` | Trigger types, event hooks, execution policies |

@@ -118,6 +118,10 @@ set of configuration options.
   If the rules reject the request, it falls back to the manual approval queue
   for an authorized operator.
 
+See horizon://knowledge/validation-rules for the complete validation rule
+condition syntax (operators, boolean logic, datasource references, resolvesDNS,
+CIDR matching, array quantifiers).
+
 ### ACME Module (`module: "acme"`)
 
 ACME (RFC 8555) profiles support automated certificate issuance via the

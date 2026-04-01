@@ -71,23 +71,37 @@ def mcp_config_path() -> Path:
 # Claude Code subprocess helper
 # ---------------------------------------------------------------------------
 
+_DEFAULT_MODEL = os.environ.get("HORIZON_LLM_EVAL_MODEL", "sonnet")
+
+
 def ask_claude(
     question: str,
     mcp_config: Path,
     *,
     timeout: int = 120,
+    model: str | None = None,
 ) -> dict[str, Any]:
     """Run `claude -p` with the MCP server and return parsed output.
+
+    Args:
+        question: The prompt to send.
+        mcp_config: Path to the MCP config JSON file.
+        timeout: Subprocess timeout in seconds.
+        model: Claude model to use. Defaults to HORIZON_LLM_EVAL_MODEL env
+               var, or "sonnet" if unset. Use "sonnet" for cost-efficient
+               evaluation, "opus" for maximum capability testing.
 
     Returns a dict with:
         - "text": the full response text (lowercased for easy assertion)
         - "raw": the original response text (preserving case)
         - "exit_code": process exit code
     """
+    effective_model = model or _DEFAULT_MODEL
     result = subprocess.run(
         [
             "claude", "-p", question,
             "--output-format", "json",
+            "--model", effective_model,
             "--mcp-config", str(mcp_config),
         ],
         capture_output=True,
