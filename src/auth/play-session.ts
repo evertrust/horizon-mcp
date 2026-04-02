@@ -75,7 +75,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
   }
 
   private async _acquireSession(): Promise<void> {
-    PlaySessionAuthProvider._checkPlaywrightAvailable();
+    await PlaySessionAuthProvider._checkPlaywrightAvailable();
 
     // Dynamic import - playwright is optional
     const { chromium } = await import("playwright");
@@ -184,9 +184,9 @@ export class PlaySessionAuthProvider extends AuthProvider {
     );
   }
 
-  private static _checkPlaywrightAvailable(): void {
+  private static async _checkPlaywrightAvailable(): Promise<void> {
     try {
-      require.resolve("playwright");
+      await import("playwright");
     } catch {
       throw new Error(
         "Play session auth requires Playwright. " +
