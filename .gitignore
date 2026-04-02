@@ -24,3 +24,4 @@ docs/superpowers
 .worktrees/
 node_modules/
 dist/
+.18a28fbffff2be53-00000000.bun-build
