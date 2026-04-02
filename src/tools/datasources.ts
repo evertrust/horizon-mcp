@@ -215,10 +215,32 @@ export function registerDatasourceTools(
         "DNS datasources query DNS servers and return record data (A, AAAA, " +
         "CNAME, PTR, TXT) used in computation/validation rules via " +
         "ds.<flowIndex>.<resultIndex>.<recordType> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation.\n\n" +
-        "The lookup field is a TemplateString supporting {{key}} syntax for " +
-        'dynamic DNS queries, e.g. "{{csr.san.dnsname.1}}".\n\n' +
-        "See also: test_datasource, list_datasources.",
+        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
+        "the user for the name before creating.\n\n" +
+        "The lookup field is a TemplateString that supports {{key}} syntax for\n" +
+        'dynamic DNS queries. For example: "{{csr.san.dnsname.1}}" will look up\n' +
+        "the first DNS SAN from the CSR.\n\n" +
+        "Typical workflow:\n" +
+        "    1. Use test_datasource first to validate your DNS config works\n" +
+        "    2. Call this tool to create the datasource\n" +
+        "    3. Add the datasource to a profile's dsFlow (via profile configuration)\n" +
+        "    4. Use ds.<flowIndex>.<resultIndex>.<recordType> in computation\n" +
+        "       rules or validation rule conditions\n\n" +
+        "When to use DNS datasources:\n" +
+        "    - Validate that a SAN hostname has a specific CNAME target\n" +
+        "    - Check if a hostname resolves (A/AAAA records exist)\n" +
+        "    - Look up TXT records for domain ownership verification\n" +
+        "    - Reverse-lookup IP addresses via PTR records\n\n" +
+        "Example - CNAME validation for PaaS deployment:\n" +
+        '    name="san-cname-check"\n' +
+        '    lookup="{{csr.san.dnsname.1}}"\n' +
+        '    record_types=["cname"]\n' +
+        "    -> After creation, add to profile dsFlow with input mapping:\n" +
+        '       {"hostname": "{{csr.san.dnsname.1}}"}\n' +
+        '    -> Reference in validation rule: {{ds.1.1.cname}} matches ".*\\.paas\\.internal$"\n\n' +
+        "See also: test_datasource (validate before creating),\n" +
+        "    simulate_datasource_flow (test entire flow pipeline),\n" +
+        "    list_datasources (verify creation).",
       inputSchema: z.object({
         name: z.string().describe("Unique datasource name (immutable primary key)."),
         lookup: z
@@ -308,9 +330,45 @@ export function registerDatasourceTools(
         "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
         "LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return " +
         "user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation.\n\n" +
-        "Prerequisites: The referenced credentials object must already exist in Horizon.\n\n" +
-        "See also: test_datasource, list_datasources.",
+        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
+        "the user for the name before creating.\n\n" +
+        "Prerequisites: The referenced credentials object must already exist in\n" +
+        "Horizon (type: PasswordCredentials with LDAP bind DN + password).\n\n" +
+        "The baseDn and filter fields support TemplateString syntax with {{key}}\n" +
+        'for dynamic LDAP queries. Example filter: "(sAMAccountName={{username}})".\n\n' +
+        "Special LDAP attributes are auto-decoded:\n" +
+        "    - objectSid, objectGuid: decoded from binary\n" +
+        "    - userCertificate: parsed as X.509 PEM + subject elements\n" +
+        "    - dn: parsed into subject components (cn, o, ou, etc.)\n\n" +
+        "Typical workflow:\n" +
+        "    1. Ensure the PasswordCredentials for LDAP bind already exist\n" +
+        "    2. Use test_datasource first to validate LDAP connectivity and filter\n" +
+        "    3. Call this tool to create the datasource\n" +
+        "    4. Add the datasource to a profile's dsFlow\n" +
+        "    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n" +
+        "       or validation rule conditions\n\n" +
+        "When to use LDAP datasources:\n" +
+        "    - Enrich certificates with user attributes (department, email, manager)\n" +
+        "    - Validate user group membership before auto-approving enrollment\n" +
+        "    - Look up computer objects for server certificate enrichment\n" +
+        "    - Resolve AD attributes for certificate naming policies\n\n" +
+        "Example - Active Directory user enrichment:\n" +
+        '    name="corp-ad"\n' +
+        '    hostname="ldaps://dc01.corp.local"\n' +
+        '    credentials="ad-bind-creds"\n' +
+        '    base_dn="OU=Users,DC=corp,DC=local"\n' +
+        '    filter="(sAMAccountName={{principal.identifier}})"\n' +
+        "    secure=True\n" +
+        '    timeout="10s"\n' +
+        "    limit=1\n" +
+        "    attributes=[\n" +
+        '        {"key": "department", "multi": false, "selected": true},\n' +
+        '        {"key": "mail", "multi": false, "selected": true},\n' +
+        '        {"key": "memberOf", "multi": true, "selected": true}\n' +
+        "    ]\n\n" +
+        "See also: test_datasource (validate LDAP connectivity before creating),\n" +
+        "    simulate_datasource_flow (test full flow pipeline),\n" +
+        "    list_datasources (verify creation).",
       inputSchema: z.object({
         name: z.string().describe("Unique datasource name (immutable primary key)."),
         hostname: z
@@ -432,10 +490,35 @@ export function registerDatasourceTools(
         "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
         "REST datasources call HTTP APIs and return parsed response data via " +
         "ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation.\n\n" +
-        "Prerequisites: When authenticationType is not 'noauth', the referenced " +
+        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
+        "the user for the name before creating.\n\n" +
+        "Prerequisites: When authenticationType is not 'noauth', the referenced\n" +
         "credentials object must already exist in Horizon.\n\n" +
-        "See also: test_datasource, list_datasources.",
+        "The url, headers, and payload fields support TemplateString syntax\n" +
+        "with {{key}} for dynamic values.\n\n" +
+        "Typical workflow:\n" +
+        "    1. Ensure credentials exist (unless using noauth)\n" +
+        "    2. Use test_datasource first to validate the API call works\n" +
+        "    3. Call this tool to create the datasource\n" +
+        "    4. Add the datasource to a profile's dsFlow\n" +
+        "    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n\n" +
+        "When to use REST datasources:\n" +
+        "    - Query a CMDB API for host ownership information\n" +
+        "    - Call an internal service to validate hostnames or domains\n" +
+        "    - Fetch user metadata from an HR system API\n" +
+        "    - Integrate with any HTTP-based external data source\n\n" +
+        "Example - CMDB host ownership lookup:\n" +
+        '    name="cmdb-lookup"\n' +
+        '    method="GET"\n' +
+        '    url="https://cmdb.corp.local/api/v1/hosts/{{csr.san.dnsname.1}}"\n' +
+        '    authentication_type="bearer"\n' +
+        '    credentials="cmdb-api-token"\n' +
+        '    timeout="10s"\n' +
+        "    expected_http_codes=[200]\n" +
+        '    attributes=[{"key": "owner", "multi": false, "selected": true}]\n\n' +
+        "See also: test_datasource (validate API call before creating),\n" +
+        "    simulate_datasource_flow (test full flow pipeline),\n" +
+        "    list_datasources (verify creation).",
       inputSchema: z.object({
         name: z.string().describe("Unique datasource name (immutable primary key)."),
         method: z.string().describe("HTTP method (GET, POST, PUT, DELETE, etc.)."),
@@ -824,8 +907,31 @@ export function registerDatasourceTools(
         "Safety tier: read-only (performs a live query but does not persist anything)\n" +
         "Knowledge: horizon://knowledge/datasources\n\n" +
         "Sends the datasource definition and an optional context dictionary to " +
-        "Horizon for a one-off test execution.\n\n" +
-        "See also: create_dns_datasource, create_ldap_datasource, create_rest_datasource.",
+        "Horizon for a one-off test execution. Useful for validating datasource\n" +
+        "configuration before creating or after modifying it.\n\n" +
+        "For DNS: returns resolved records (A, AAAA, CNAME, PTR, TXT).\n" +
+        "For LDAP: returns matched attributes and computed DN/filter.\n" +
+        "For REST: returns response code, headers, body, and extracted attributes.\n\n" +
+        "Typical workflow:\n" +
+        "    1. Call test_datasource with your planned configuration\n" +
+        '    2. Check the result: status should be "success"\n' +
+        "    3. If successful, proceed to create_dns/ldap/rest_datasource\n" +
+        "    4. If failed, adjust configuration and test again\n\n" +
+        "Example - Test DNS CNAME lookup:\n" +
+        '    ds_type="dns", name="test-cname",\n' +
+        '    lookup="{{hostname}}", record_types=["cname"],\n' +
+        '    context={"hostname": "app.corp.local"}\n' +
+        "    -> Expect: status=\"success\", dictionary contains cname record\n\n" +
+        "Example - Test LDAP user lookup:\n" +
+        '    ds_type="ldap", name="test-ldap",\n' +
+        '    hostname="ldaps://ldap.corp.local", credentials="ldap-creds",\n' +
+        '    base_dn="DC=corp,DC=local", filter="(sAMAccountName={{user}})",\n' +
+        "    secure=True,\n" +
+        '    context={"user": "jdoe"}\n' +
+        "    -> Expect: status=\"success\", dictionary contains user attributes\n\n" +
+        "See also: create_dns_datasource / create_ldap_datasource /\n" +
+        "    create_rest_datasource (create after testing),\n" +
+        "    simulate_datasource_flow (test full flow pipeline with chaining).",
       inputSchema: z.object({
         ds_type: z
           .string()

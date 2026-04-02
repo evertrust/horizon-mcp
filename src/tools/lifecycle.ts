@@ -48,19 +48,32 @@ export function registerLifecycleTools(
         "Examples (all field names are lowercase - NEVER camelCase):\n" +
         '  module equals "webra" and status is valid\n' +
         '  status is valid and valid.until before 360d and profile equals "TLS-Internal"\n' +
-        '  dn matches ".*example\\\\.com" and keytype equals "RSA"\n\n' +
+        '  dn matches ".*example\\\\.com" and keytype equals "RSA"\n' +
+        '  contactemail equals "user@example.com" or owner equals "user@example.com"\n' +
+        '  san contains "example" and status is not revoked\n\n' +
         "Full reference: horizon://knowledge/query-languages\n\n" +
         "IMPORTANT - HCQL vs API field names differ:\n" +
-        "  - HCQL query fields are lowercase: contactemail, keytype\n" +
-        "  - API fields/sorted_by are camelCase: contactEmail, keyType\n" +
-        "  - HCQL date: valid.until, valid.from\n" +
-        "  - API date: notAfter, notBefore\n\n" +
+        "  - HCQL query fields are lowercase: contactemail, keytype, signingalgorithm\n" +
+        "  - API fields/sorted_by are camelCase: contactEmail, keyType, signingAlgorithm\n" +
+        "  - HCQL date fields: valid.until, valid.from\n" +
+        "  - API date fields: notAfter, notBefore\n" +
+        "  - sorted_by format: 'element' or 'element:Desc' (e.g. 'notAfter:Asc')\n" +
+        "  - Sortable elements (API names): _id, module, profile, owner, team,\n" +
+        "    discoveredTrusted, thumbprint, selfSigned, publicKeyThumbprint, dn,\n" +
+        "    serial, issuer, notBefore, notAfter, revocationDate, revocationReason,\n" +
+        "    keyType, signingAlgorithm, holderId, contactEmail, grades, escrowed, removeAt\n\n" +
         "Presets (return fields):\n" +
         "  - compact (default): dn, serial, profile, module, notAfter, keyType, owner, team\n" +
         "  - diagnostic: adds revocationReason, triggerResults, discoverydata.*, contactemail\n" +
-        "  - compliance: adds grade, grade.*, signingalgorithm, keytype, notBefore\n\n" +
-        "IMPORTANT - Ownership queries: call whoami first to get identifier + teams.\n" +
-        "See also: whoami, get_certificate, aggregate_certificates, export_certificates_csv.",
+        "  - compliance: adds grade, grade.*, signingalgorithm, keytype, notBefore, notAfter\n\n" +
+        "The fields parameter overrides the preset if provided.\n\n" +
+        "IMPORTANT - Ownership queries: When user asks for \"my certificates\",\n" +
+        "call whoami first to get identifier + teams, then query BOTH:\n" +
+        '  owner equals "<id>" or team in ("<team1>", "<team2>", ...)\n' +
+        "Full reference: horizon://knowledge/query-languages (Ownership Patterns section).\n\n" +
+        "See also: whoami (get identity + teams for ownership queries),\n" +
+        "    get_certificate (full details by ID), aggregate_certificates (group-by analytics),\n" +
+        "    export_certificates_csv (bulk CSV export).",
       inputSchema: z.object({
         query: z.string().describe("HCQL query expression."),
         preset: z
@@ -365,13 +378,55 @@ export function registerLifecycleTools(
         "2. Examine the template response - it shows the full field structure.\n" +
         "3. ASK THE USER for all required information you don't already have.\n" +
         "4. Only call submit_request once all required fields are filled.\n\n" +
-        "PERMISSION-BASED BEHAVIOR:\n" +
-        "- If the caller has the DIRECT action permission (e.g., enrollApi for enroll),\n" +
-        "  the operation completes immediately.\n" +
-        "- If the caller only has the REQUEST permission, the request is created in\n" +
-        "  PENDING state and requires approval via approve_request.\n\n" +
-        "Supported modules: webra, est, scep, acme, crmp, wcce, intune, jamf.\n\n" +
-        "Workflows: enroll, renew, revoke, update, recover, migrate, import.",
+        "PERMISSION-BASED BEHAVIOR - the outcome depends on the caller's\n" +
+        "permissions on the profile (see horizon://knowledge/workflows):\n\n" +
+        "- If the caller has the DIRECT action permission (e.g., enrollApi\n" +
+        "  for enroll, revokeApi for revoke, renewApi for renew), the\n" +
+        "  operation completes immediately. The certificate is issued/revoked/\n" +
+        "  renewed directly and the response contains the result.\n" +
+        "- If the caller only has the REQUEST permission (e.g., enrollRequest,\n" +
+        "  revokeRequest, renewRequest), the request is created in\n" +
+        "  PENDING state and requires approval by an authorized operator via\n" +
+        "  approve_request. The response contains the request ID.\n\n" +
+        "Tell the user which outcome occurred based on the response status.\n" +
+        "If the status is \"pending\", inform them that approval is required.\n\n" +
+        "Supported modules: webra, est, scep, acme, crmp, wcce, intune, jamf.\n" +
+        "For EST and SCEP, this endpoint generates the enrollment challenge/password.\n" +
+        "The challenge is returned in the response and can be used by the EST/SCEP\n" +
+        "client to complete enrollment through the protocol endpoint.\n\n" +
+        "Workflows and what to ask the user:\n" +
+        "- enroll: Subject (CN, O, OU, etc.), SANs, labels, contact email,\n" +
+        "  owner, team, key type. Check get_request_template for which fields\n" +
+        "  are editable vs computed vs fixed by the profile.\n" +
+        "- renew: certificate_id required. Template is pre-populated from\n" +
+        "  the existing cert. Ask if any fields should change.\n" +
+        "- revoke: certificate_id required. Ask for revocationReason:\n" +
+        "  keycompromise, cacompromise, affiliationchange, superseded,\n" +
+        "  cessationofoperation, certificatehold, removefromcrl,\n" +
+        "  privilegewithdrawn, aacompromise, unspecified.\n" +
+        "- update: certificate_id required. Ask which metadata to change\n" +
+        "  (labels, contact email, owner, team).\n" +
+        "- recover: certificate_id required. For re-issuing a lost cert.\n" +
+        "- migrate: certificate_id required. For moving between profiles.\n\n" +
+        "Enrollment example (centralized, WebRA):\n" +
+        '    workflow="enroll", profile="TLS-Internal", module="webra",\n' +
+        '    template={"subject": [{"element": "cn.1", "type": "CN", "value": "server.local"}],\n' +
+        '              "sans": [{"type": "DNSNAME", "value": ["server.local"]}],\n' +
+        '              "labels": [{"label": "env", "value": "prod"}],\n' +
+        '              "contactEmail": {"value": "admin@corp.com"},\n' +
+        '              "owner": {"value": "jdoe"},\n' +
+        '              "team": {"value": "infra"},\n' +
+        '              "keyType": "rsa-3072"},\n' +
+        '    password="changeit"\n\n' +
+        "EST challenge example:\n" +
+        '    workflow="enroll", profile="EST-Devices", module="est",\n' +
+        '    template={"subject": [{"element": "cn.1", "type": "CN", "value": "device01"}],\n' +
+        '              "contactEmail": {"value": "ops@corp.com"}},\n' +
+        '    password="challenge-password"\n\n' +
+        "Revoke example:\n" +
+        '    workflow="revoke", profile="TLS-Internal", module="webra",\n' +
+        '    certificate_id="abc123",\n' +
+        '    data={"revocationReason": "keycompromise"}',
       inputSchema: z.object({
         workflow: z
           .string()
@@ -386,23 +441,47 @@ export function registerLifecycleTools(
           .record(z.unknown())
           .optional()
           .describe(
-            "Certificate request template object (subject, sans, labels, contactEmail, etc.).",
+            "Certificate request template object. Structure:\n" +
+            "- subject: list of DN elements, each as\n" +
+            '  {"element": "cn.1", "type": "CN", "value": "server.example.com"}\n' +
+            "- sans: list of SAN entries - values MUST be arrays:\n" +
+            '  {"type": "DNSNAME", "value": ["server.example.com", "alias.example.com"]}\n' +
+            "  Valid types: DNSNAME, RFC822NAME, URI, IPADDRESS, OTHERNAME,\n" +
+            "  DIRECTORYNAME, REGISTEREDID\n" +
+            '- labels: [{"label": "environment", "value": "production"}]\n' +
+            '- contactEmail: {"value": "admin@example.com"}\n' +
+            '- owner: {"value": "admin-principal"}\n' +
+            '- team: {"value": "infra-team"}\n' +
+            '- keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.\n' +
+            "- csr: PEM-encoded CSR (for decentralized key generation)\n" +
+            "- extensions: optional certificate extensions",
           ),
         password: z
           .string()
           .optional()
-          .describe("PKCS#12 password for centralized key generation."),
+          .describe(
+            "PKCS#12 password for centralized key generation. When\n" +
+            "provided, Horizon generates the key pair server-side and returns\n" +
+            "the PKCS#12 in the response (base64). Also retrievable via\n" +
+            "get_request. May be auto-generated by profile password policy -\n" +
+            "check get_request_template.",
+          ),
         certificate_id: z
           .string()
           .optional()
           .describe(
-            "Certificate ID (required for renew, revoke, update, recover, migrate).",
+            "Certificate ID (required for renew, revoke, update, recover, migrate). " +
+            "Use search_certificates to find it.",
           ),
         data: z
           .record(z.unknown())
           .optional()
           .describe(
-            "Additional workflow-specific fields merged into the payload.",
+            "Additional workflow-specific fields merged into the payload.\n" +
+            'For revoke: {"revocationReason": "keycompromise"}.\n' +
+            'For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.\n' +
+            'For dry run validation: {"dryRun": true}.\n' +
+            'For requester comment: {"requesterComment": "reason for request"}.',
           ),
       }),
     },
@@ -610,6 +689,11 @@ export function registerLifecycleTools(
         "    approver, registrationDate, lastModificationDate\n" +
         "  - diagnostic: adds certificate, dn, requesterComment, approverComment\n" +
         "  - compliance: adds dn, certificateId\n\n" +
+        "Usable return fields: _id, approver, approverComment, certificate,\n" +
+        "  certificateId, contact, dn, expirationDate, holderId, label.<key>,\n" +
+        "  labels, lastModificationDate, metadata, metadata.<key>, module,\n" +
+        "  owner, profile, registrationDate, releaseAt, requester,\n" +
+        "  requesterComment, status, team, workflow\n\n" +
         "See also: get_request (full details by ID), aggregate_requests (group-by analytics),\n" +
         "    export_requests_csv (bulk CSV export).",
       inputSchema: z.object({
