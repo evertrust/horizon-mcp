@@ -18,7 +18,7 @@
     "build:binary": "npm run build && bun build --compile dist/index.js --outfile dist/horizon-mcp --external playwright",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.config.e2e.ts --reporter=verbose",
-    "test:llm": "vitest run tests/llm-evaluation --reporter=verbose",
+    "test:llm": "vitest run --config vitest.config.llm.ts --reporter=verbose",
     "lint": "eslint src/ tests/ && tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

@@ -34,9 +34,9 @@ export const STRIP_FIELDS: Record<string, ReadonlySet<string>> = {
   scheduled_task: new Set(["_id"]),
 };
 
-const BASELINE_STRIP = new Set(["_id", "id", "createdAt", "updatedAt"]);
+export const BASELINE_STRIP = new Set(["_id", "id", "createdAt", "updatedAt"]);
 
-const MAX_PREFLIGHT_CALLS = 5;
+export const MAX_PREFLIGHT_CALLS = 5;
 
 // ---------------------------------------------------------------------------
 // toUpdatePayload - merge logic
@@ -78,14 +78,14 @@ export function toUpdatePayload(
 
 type DepTuple = [name: string, path: string];
 
-function extractPkiConnector(value: unknown): DepTuple[] {
+export function extractPkiConnector(value: unknown): DepTuple[] {
   if (typeof value === "string" && value) {
     return [[value, `/api/v1/pki/connectors/${value}`]];
   }
   return [];
 }
 
-function extractCredential(value: unknown): DepTuple[] {
+export function extractCredential(value: unknown): DepTuple[] {
   const names: string[] = [];
   if (typeof value === "string" && value) {
     names.push(value);
@@ -97,7 +97,7 @@ function extractCredential(value: unknown): DepTuple[] {
   return names.map((n) => [n, `/api/v1/security/credentials/${n}`]);
 }
 
-function extractTriggersFromHooks(value: unknown): DepTuple[] {
+export function extractTriggersFromHooks(value: unknown): DepTuple[] {
   if (typeof value !== "object" || value === null) return [];
   const names = new Set<string>();
   for (const hookList of Object.values(value as Record<string, unknown>)) {
@@ -117,7 +117,7 @@ function extractTriggersFromHooks(value: unknown): DepTuple[] {
   return [...names].sort().map((n) => [n, `/api/v1/triggers/${n}`]);
 }
 
-function extractGradingPolicies(value: unknown): DepTuple[] {
+export function extractGradingPolicies(value: unknown): DepTuple[] {
   const names: string[] = [];
   if (typeof value === "string" && value) {
     names.push(value);
@@ -129,7 +129,7 @@ function extractGradingPolicies(value: unknown): DepTuple[] {
   return names.map((n) => [n, `/api/v1/certificate/grading/policies/${n}`]);
 }
 
-function extractDatasourceFlow(value: unknown): DepTuple[] {
+export function extractDatasourceFlow(value: unknown): DepTuple[] {
   if (!Array.isArray(value)) return [];
   const names: string[] = [];
   for (const entry of value) {
@@ -142,7 +142,7 @@ function extractDatasourceFlow(value: unknown): DepTuple[] {
   return names.map((n) => [n, `/api/v1/datasources/${n}`]);
 }
 
-function extractIdentityProvider(value: unknown): DepTuple[] {
+export function extractIdentityProvider(value: unknown): DepTuple[] {
   const names: string[] = [];
   if (typeof value === "string" && value) {
     names.push(value);
@@ -154,7 +154,7 @@ function extractIdentityProvider(value: unknown): DepTuple[] {
   return names.map((n) => [n, `/api/v1/security/identity/providers/${n}`]);
 }
 
-const DEP_CHECKS: Array<{
+export const DEP_CHECKS: Array<{
   key: string;
   extractor: (value: unknown) => DepTuple[];
   hint: string;
@@ -174,7 +174,7 @@ const DEP_CHECKS: Array<{
 // preflightDeps - best-effort dependency validation
 // ---------------------------------------------------------------------------
 
-async function checkOne(
+export async function checkOne(
   client: HorizonClient,
   name: string,
   path: string,
