@@ -1,0 +1,16 @@
+import { defineConfig } from "tsup";
+
+export default defineConfig({
+  entry: ["src/index.ts"],
+  format: ["esm"],
+  target: "node20",
+  outDir: "dist",
+  clean: true,
+  sourcemap: true,
+  // Inline knowledge markdown files as string constants.
+  // Plain imports (import x from "./file.md") work with this loader.
+  // Do NOT use ?raw suffix - that is a Vite convention, not supported here.
+  loader: { ".md": "text" },
+  // Playwright is an optional dep - never bundle it
+  external: ["playwright"],
+});
