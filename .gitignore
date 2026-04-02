@@ -22,3 +22,5 @@ htmlcov/
 .DS_Store
 docs/superpowers
 .worktrees/
+node_modules/
+dist/

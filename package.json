@@ -1,0 +1,41 @@
+{
+  "name": "horizon-mcp-server",
+  "version": "2.0.0",
+  "description": "MCP server for Evertrust Horizon certificate lifecycle management",
+  "type": "module",
+  "bin": {
+    "horizon-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup",
+    "build:binary": "npm run build && bun build --compile dist/index.js --outfile dist/horizon-mcp",
+    "test": "vitest run",
+    "test:e2e": "vitest run tests/e2e --reporter=verbose",
+    "test:llm": "vitest run tests/llm-evaluation --reporter=verbose",
+    "lint": "eslint src/ tests/ && tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.29.0",
+    "undici": "7.24.7",
+    "zod": "3.25.76"
+  },
+  "optionalDependencies": {
+    "playwright": "1.59.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.15.18",
+    "eslint": "9.27.0",
+    "tsup": "8.5.0",
+    "tsx": "4.19.4",
+    "typescript": "5.8.3",
+    "vitest": "3.2.1"
+  }
+}
