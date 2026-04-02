@@ -1,6 +1,6 @@
 # Evertrust CLM (Horizon) - MCP Server
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **80 tools** and **17 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **81 tools** and **17 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
 
 ## Why knowledge-first?
 
@@ -8,11 +8,11 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 
 ## Architecture
 
-80 tools organized in **10 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
+81 tools organized in **10 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
 
 | Domain | Tools | Purpose |
 |--------|------:|---------|
-| Assist | 19 | Identity, grading, query validation, crypto decoding, simulation |
+| Assist | 20 | Identity, grading, query validation, crypto decoding, simulation |
 | Lifecycle | 17 | Certificate search, requests, events, enrollment, revocation |
 | Dashboards | 12 | Dashboard CRUD, charts, saved queries |
 | Discovery | 6 | Campaign management |
@@ -31,25 +31,23 @@ All mutating tools include a STOP confirmation block that instructs the LLM to a
 
 ### Prerequisites
 
-- Python 3.11+
+- Node.js 20+
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
 ### Install
 
-```bash
-git clone https://github.com/evertrust/horizon-mcp
-cd horizon-mcp
-python3 -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-```
+**Option A - npm (requires Node.js)**
 
-Note the absolute path to the venv Python binary  -  you'll need it below:
+No install needed - runs directly:
 
 ```bash
-echo "$(pwd)/.venv/bin/python"
+npx horizon-mcp-server
 ```
+
+**Option B - standalone binary (no runtime needed)**
+
+Download the pre-built binary for your platform from the [releases page](https://github.com/evertrust/horizon-mcp/releases).
 
 ### Connect your LLM client
 
@@ -59,8 +57,8 @@ echo "$(pwd)/.venv/bin/python"
 {
   "mcpServers": {
     "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
+      "command": "npx",
+      "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -227,7 +225,7 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 | [Installation](docs/installation.md) | Full install guide, OIDC setup |
 | [Authentication](docs/authentication.md) | 4 auth modes, environment variables reference |
 | [Client setup](docs/client-setup.md) | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md) | All 80 tools by domain with safety tiers |
+| [Tool reference](docs/tools-reference.md) | All 81 tools by domain with safety tiers |
 | [Knowledge resources](docs/knowledge-resources.md) | 17 embedded knowledge resources |
 | [Development](docs/development.md) | Dev setup, tests, linting |
 

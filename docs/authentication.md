@@ -31,7 +31,14 @@ HORIZON_CLIENT_PFX_PASSWORD=optional-pfx-password   # omit if bundle is unencryp
 
 ## Mode 4: OIDC browser session
 
-Set only `HORIZON_URL`. A browser window opens for interactive login at startup. Requires the `oidc` extra (`pip install -e ".[oidc]"`).
+Set only `HORIZON_URL`. A browser window opens for interactive login at startup. Requires Playwright:
+
+```bash
+npm install playwright
+npx playwright install chromium
+```
+
+Then configure with just the URL:
 
 ```bash
 HORIZON_URL=https://horizon.example.com
@@ -53,9 +60,4 @@ HORIZON_URL=https://horizon.example.com
 | `HORIZON_TIMEOUT` | No | `30` | HTTP request timeout (seconds) |
 | `HORIZON_LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
-Copy the example file and fill in your values:
-
-```bash
-cp .env.example .env
-# edit .env
-```
+Set these as environment variables in your MCP client configuration (see [client setup](client-setup.md)).

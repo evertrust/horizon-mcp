@@ -1,6 +1,6 @@
 # Tool reference
 
-80 tools in 10 domains. Safety tiers:
+81 tools in 10 domains. Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -12,7 +12,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 
 ---
 
-## Assist (19 tools)
+## Assist (20 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
@@ -35,6 +35,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `decode_tsa` | read-only | Decode a timestamping response (RFC 3161) |
 | `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary |
 | `simulate_datasource_flow` | read-only | Test a datasource flow pipeline against sample context |
+| `convert_pkcs12_to_jks` | read-only | Convert PKCS#12 to JKS keystore |
 
 ## Lifecycle (17 tools)
 

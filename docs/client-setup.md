@@ -1,6 +1,6 @@
 # Client setup
 
-Configure your LLM client to connect to the horizon-mcp server. In every example below, replace `/absolute/path/to/horizon-mcp/.venv/bin/python` with the actual path from `echo "$(pwd)/.venv/bin/python"` (see [installation](installation.md)).
+Configure your LLM client to connect to the horizon-mcp server.
 
 ## Claude Desktop
 
@@ -10,8 +10,25 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
+      "command": "npx",
+      "args": ["horizon-mcp-server"],
+      "env": {
+        "HORIZON_URL": "https://horizon.example.com",
+        "HORIZON_API_ID": "your-api-id",
+        "HORIZON_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Or with the standalone binary:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "command": "/path/to/horizon-mcp",
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -32,8 +49,8 @@ Create `.mcp.json` in your project root:
 {
   "mcpServers": {
     "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
+      "command": "npx",
+      "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -44,7 +61,24 @@ Create `.mcp.json` in your project root:
 }
 ```
 
-Start Claude Code from that directory. The 66 tools are available immediately.
+Or with the standalone binary:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "command": "/path/to/horizon-mcp",
+      "env": {
+        "HORIZON_URL": "https://horizon.example.com",
+        "HORIZON_API_ID": "your-api-id",
+        "HORIZON_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Start Claude Code from that directory. The 81 tools are available immediately.
 
 ## Cursor
 
@@ -54,8 +88,25 @@ Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for glob
 {
   "mcpServers": {
     "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
+      "command": "npx",
+      "args": ["horizon-mcp-server"],
+      "env": {
+        "HORIZON_URL": "https://horizon.example.com",
+        "HORIZON_API_ID": "your-api-id",
+        "HORIZON_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Or with the standalone binary:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "command": "/path/to/horizon-mcp",
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -74,8 +125,20 @@ Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/co
 
 ```toml
 [mcp_servers.horizon]
-command = "/absolute/path/to/horizon-mcp/.venv/bin/python"
-args = ["-m", "horizon_mcp.server"]
+command = "npx"
+args = ["horizon-mcp-server"]
+
+[mcp_servers.horizon.env]
+HORIZON_URL = "https://horizon.example.com"
+HORIZON_API_ID = "your-api-id"
+HORIZON_API_KEY = "your-api-key"
+```
+
+Or with the standalone binary:
+
+```toml
+[mcp_servers.horizon]
+command = "/path/to/horizon-mcp"
 
 [mcp_servers.horizon.env]
 HORIZON_URL = "https://horizon.example.com"
@@ -92,7 +155,7 @@ codex mcp add horizon \
   --env HORIZON_URL=https://horizon.example.com \
   --env HORIZON_API_ID=your-api-id \
   --env HORIZON_API_KEY=your-api-key \
-  -- /absolute/path/to/horizon-mcp/.venv/bin/python -m horizon_mcp.server
+  -- npx horizon-mcp-server
 ```
 
 ## OpenCode
@@ -103,8 +166,25 @@ Add to `opencode.json`:
 {
   "mcp": {
     "horizon": {
-      "command": "/absolute/path/to/horizon-mcp/.venv/bin/python",
-      "args": ["-m", "horizon_mcp.server"],
+      "command": "npx",
+      "args": ["horizon-mcp-server"],
+      "env": {
+        "HORIZON_URL": "https://horizon.example.com",
+        "HORIZON_API_ID": "your-api-id",
+        "HORIZON_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+Or with the standalone binary:
+
+```json
+{
+  "mcp": {
+    "horizon": {
+      "command": "/path/to/horizon-mcp",
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -122,7 +202,7 @@ export HORIZON_URL=https://horizon.example.com
 export HORIZON_API_ID=your-api-id
 export HORIZON_API_KEY=your-api-key
 
-npx @modelcontextprotocol/inspector /absolute/path/to/horizon-mcp/.venv/bin/python -- -m horizon_mcp.server
+npx @modelcontextprotocol/inspector npx horizon-mcp-server
 ```
 
-Opens a browser UI showing all 66 tools and 12 knowledge resources.
+Opens a browser UI showing all 81 tools and 17 knowledge resources.
