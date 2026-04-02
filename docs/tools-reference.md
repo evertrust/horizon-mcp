@@ -1,6 +1,6 @@
 # Tool reference
 
-74 tools in 9 domains. Safety tiers:
+80 tools in 10 domains. Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -130,3 +130,14 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `update_datasource` | mutating-safe | Update datasource configuration (GET-strip-merge-PUT) |
 | `delete_datasource` | mutating-destructive | Delete a datasource (requires name confirmation) |
 | `test_datasource` | read-only | Test a datasource config against a context dictionary |
+
+## Triggers & Credentials (6 tools)
+
+| Tool | Safety | Description |
+|------|--------|-------------|
+| `list_credentials` | read-only | List stored credentials (names/types only, secrets never exposed) |
+| `list_triggers` | read-only | List triggers with optional type and name filtering |
+| `get_trigger` | read-only | Get a trigger configuration by name |
+| `create_rest_notification` | mutating-safe | Create a REST notification with multi-step sequences |
+| `delete_trigger` | mutating-destructive | Delete a trigger (requires name confirmation) |
+| `simulate_trigger` | read-only | Test-fire a trigger without real certificate context |

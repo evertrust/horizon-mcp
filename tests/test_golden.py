@@ -32,11 +32,11 @@ _KNOWLEDGE_DIR = Path(__file__).resolve().parent.parent / "src" / "horizon_mcp" 
 # ===================================================================
 
 
-def test_tool_count_is_74():
-    """Exactly 74 tools must be registered on the main server  -
+def test_tool_count_is_80():
+    """Exactly 80 tools must be registered on the main server  -
     any addition or removal is intentional and must update this test."""
-    assert len(_tools) == 74, (
-        f"Expected 74 tools, got {len(_tools)}. "
+    assert len(_tools) == 80, (
+        f"Expected 80 tools, got {len(_tools)}. "
         f"If you added or removed a tool, update this test and the "
         f"EXPECTED_TOOL_NAMES list in test_tool_name_enumeration."
     )
@@ -47,7 +47,7 @@ def test_tool_count_is_74():
 # ===================================================================
 
 EXPECTED_TOOL_NAMES: list[str] = sorted([
-    # --- 74 tools ---
+    # --- 80 tools ---
     # assist/system.py (4)
     "whoami",
     "get_license_info",
@@ -135,6 +135,13 @@ EXPECTED_TOOL_NAMES: list[str] = sorted([
     "update_datasource",
     "delete_datasource",
     "test_datasource",
+    # triggers.py (6)
+    "list_credentials",
+    "list_triggers",
+    "get_trigger",
+    "create_rest_notification",
+    "delete_trigger",
+    "simulate_trigger",
 ])
 
 
@@ -153,10 +160,10 @@ def test_tool_name_enumeration():
 # ===================================================================
 
 
-def test_resource_count_is_16():
-    """Exactly 16 knowledge resources must be registered."""
-    assert len(_resources) == 16, (
-        f"Expected 16 resources, got {len(_resources)}."
+def test_resource_count_is_17():
+    """Exactly 17 knowledge resources must be registered."""
+    assert len(_resources) == 17, (
+        f"Expected 17 resources, got {len(_resources)}."
     )
 
 
@@ -183,11 +190,13 @@ EXPECTED_RESOURCE_URIS: list[str] = sorted([
     "horizon://knowledge/datasources",
     "horizon://knowledge/validation-rules",
     "horizon://knowledge/dictionary-entries",
+    # v1.3 knowledge resources
+    "horizon://knowledge/rest-notifications",
 ])
 
 
 def test_resource_uris():
-    """All 16 resource URIs must match the expected list exactly."""
+    """All 17 resource URIs must match the expected list exactly."""
     actual = sorted(_resources.keys())
     assert actual == EXPECTED_RESOURCE_URIS, (
         f"Resource URI drift detected.\n"
@@ -239,6 +248,13 @@ class TestCriticalToolSchemas:
             f"create_ldap_datasource missing params: {expected - params}"
         )
 
+    def test_create_rest_notification_params(self):
+        params = _get_param_names("create_rest_notification")
+        expected = {"name", "event", "sequence", "retries", "run_period", "run_on_renewed"}
+        assert expected.issubset(params), (
+            f"create_rest_notification missing params: {expected - params}"
+        )
+
 
 # ===================================================================
 # 6. Tool description -> knowledge URI reference tests
@@ -280,6 +296,17 @@ class TestToolDescriptionKnowledgeReferences:
             "simulate_computation_rule should reference computation-and-data-flow"
         )
 
+    def test_trigger_tools_reference_rest_notifications_knowledge(self):
+        for tool_name in (
+            "list_triggers", "get_trigger",
+            "create_rest_notification", "delete_trigger",
+            "simulate_trigger",
+        ):
+            desc = _get_description(tool_name)
+            assert "horizon://knowledge/rest-notifications" in desc, (
+                f"{tool_name} description should reference horizon://knowledge/rest-notifications"
+            )
+
     def test_datasource_tools_reference_datasources_knowledge(self):
         for tool_name in (
             "list_datasources", "get_datasource",
@@ -314,6 +341,8 @@ _KNOWLEDGE_FILES = [
     # v1.2 knowledge resources
     "datasources.md",
     "validation_rules.md",
+    # v1.3 knowledge resources
+    "rest_notifications.md",
 ]
 
 
@@ -345,6 +374,44 @@ class TestKnowledgeFieldAlignment:
             assert wf in knowledge_text, f"Workflow '{wf}' not found in workflows.md"
         params = _get_param_names("submit_request")
         assert "workflow" in params
+
+    def test_rest_notifications_knowledge_mentions_auth_types(self):
+        """The rest-notifications knowledge doc mentions all 5 authentication types
+        and the key template variables."""
+        knowledge_text = (_KNOWLEDGE_DIR / "rest_notifications.md").read_text(encoding="utf-8")
+        for auth_type in ("noauth", "basic", "bearer", "x509", "custom"):
+            assert auth_type in knowledge_text, (
+                f"Auth type '{auth_type}' not found in rest_notifications.md"
+            )
+        for key in ("certificate.pem", "certificate.serial", "rest.response", "credentials.key"):
+            assert key in knowledge_text, (
+                f"Template key '{key}' not found in rest_notifications.md"
+            )
+
+    def test_rest_notifications_knowledge_documents_event_semantics(self):
+        """The rest-notifications knowledge doc includes event semantics
+        explaining PKCS#12 vs private key availability."""
+        knowledge_text = (_KNOWLEDGE_DIR / "rest_notifications.md").read_text(encoding="utf-8")
+        for concept in (
+            "on_approve_enroll",
+            "pkcs12",
+            "certificate.private_key",
+            "previous.certificate",
+            "fire-and-forget",
+            "Dictionary Availability Matrix",
+        ):
+            assert concept in knowledge_text, (
+                f"Event semantics concept '{concept}' not found in rest_notifications.md"
+            )
+
+    def test_rest_notifications_knowledge_mentions_chaining_patterns(self):
+        """The rest-notifications knowledge doc includes multi-step chaining
+        patterns with decision guidance."""
+        knowledge_text = (_KNOWLEDGE_DIR / "rest_notifications.md").read_text(encoding="utf-8")
+        for pattern in ("Pattern A", "Pattern B", "Pattern C", "OAuth", "Lookup"):
+            assert pattern in knowledge_text, (
+                f"Chaining pattern '{pattern}' not found in rest_notifications.md"
+            )
 
     def test_query_languages_knowledge_mentions_hcql_fields(self):
         """The query-languages knowledge doc mentions key HCQL fields, and

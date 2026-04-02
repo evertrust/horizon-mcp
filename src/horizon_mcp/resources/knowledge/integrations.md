@@ -139,9 +139,9 @@ directory. Also used for certificate publishing to AD.
    {
      "dsFlow": [
        {
-         "datasource": "corp-ldap",
-         "stopOnSuccess": true,
-         "inputMappings": { "username": "{{ principal.name }}" }
+         "ds": "corp-ldap",
+         "inputs": [{"key": "username", "value": "{{ principal.name }}"}],
+         "stopOnSuccess": true
        }
      ]
    }
@@ -151,9 +151,9 @@ directory. Also used for certificate publishing to AD.
    ```json
    {
      "computationRules": [
-       { "source": "{{ datasource.corp-ldap.department }}", "target": "subject.organizationalUnit" },
-       { "source": "{{ datasource.corp-ldap.mail }}", "target": "subject.email" },
-       { "source": "{{ datasource.corp-ldap.displayName }}", "target": "subject.commonName" }
+       { "source": "{{ ds.1.1.department }}", "target": "subject.organizationalUnit" },
+       { "source": "{{ ds.1.1.mail }}", "target": "subject.email" },
+       { "source": "{{ ds.1.1.displayName }}", "target": "subject.commonName" }
      ]
    }
    ```
@@ -324,28 +324,26 @@ Notify an external system via webhook whenever a certificate is enrolled.
 Look up supporting objects first, then create and attach the trigger.
 
 ```
-Step 1: list_http_proxies → find proxy if needed
-Step 2: list_credentials → find credential for auth
-Step 3: create_trigger(
+Step 1: list_credentials → find credential for auth
+Step 2: create_rest_notification(
   name="notify-on-enroll",
-  trigger_type="rest",
-  configuration={
-    "events": ["on_enroll"],
-    "sequence": [
-      {
-        "url": "https://api.example.com/webhook",
-        "authenticationType": "bearer",
-        "credentials": "my-bearer-cred",
-        "method": "POST",
-        "headers": [{"name": "Content-Type", "value": "application/json"}],
-        "payloadType": "json",
-        "payload": "{\"cn\": \"{{ csr.subject.cn }}\", \"serial\": \"{{ certificate.serial }}\"}",
-        "expectedHttpCodes": [200, 201]
-      }
-    ]
-  }
+  event="on_enroll",
+  sequence=[
+    {
+      "url": "https://api.example.com/webhook",
+      "authenticationType": "bearer",
+      "credentials": "my-bearer-cred",
+      "method": "POST",
+      "headers": [{"name": "Content-Type", "value": "application/json"}],
+      "payloadType": "json",
+      "payload": "{\"cn\": \"{{certificate.subject.cn.1}}\", \"serial\": \"{{certificate.serial}}\"}",
+      "expectedHttpCodes": [200, 201],
+      "timeout": "30 seconds"
+    }
+  ]
 )
-Step 4: attach_trigger_to_profile(trigger="notify-on-enroll", profile="MyProfile")
+Step 3: Attach the trigger to a profile via the Horizon admin UI
+        or by updating the profile's triggerHooks via the API.
 ```
 
 ### Create an Email Notification Trigger with Attachments
@@ -353,23 +351,24 @@ Step 4: attach_trigger_to_profile(trigger="notify-on-enroll", profile="MyProfile
 Send a formatted email with the issued certificate attached in PEM and
 PKCS#7 formats. No prerequisite lookups are needed.
 
-```
-create_trigger(
-  name="enroll-email",
-  trigger_type="email",
-  configuration={
-    "events": ["on_enroll"],
-    "emailTemplate": {
-      "to": [{"type": "static", "email": "admin@example.com"}],
-      "from": "horizon@example.com",
-      "title": "Certificate issued: {{ csr.subject.cn }}",
-      "body": "<p>Certificate <b>{{ csr.subject.cn }}</b> has been issued.</p>",
-      "isHtml": true
-    },
-    "attachPemCertificate": true,
-    "attachPkcs7Bundle": true
-  }
-)
+Email triggers are created via the Horizon admin UI or the trigger API
+(`POST /api/v1/triggers`):
+
+```json
+{
+  "name": "enroll-email",
+  "type": "email",
+  "events": ["on_enroll"],
+  "emailTemplate": {
+    "to": [{"type": "static", "email": "admin@example.com"}],
+    "from": "horizon@example.com",
+    "title": "Certificate issued: {{certificate.subject.cn.1}}",
+    "body": "<p>Certificate <b>{{certificate.subject.cn.1}}</b> has been issued.</p>",
+    "isHtml": true
+  },
+  "attachPemCertificate": true,
+  "attachPkcs7Bundle": true
+}
 ```
 
 ### Create a Profile with Datasource Flow and Computation Rules
@@ -433,23 +432,11 @@ Step 2: create_acme_profile(
   },
   acme_challenge_type="dns-01"
 )
-Step 3: create_trigger(
-  name="acme-expiry-30d",
-  trigger_type="email",
-  configuration={
-    "events": ["on_expire"],
-    "runPeriod": "1 day",
-    "runOnRenewed": false,
-    "emailTemplate": {
-      "to": [{"type": "contact"}],
-      "from": "pki@example.com",
-      "title": "Certificate expiring: {{ certificate.dn }}",
-      "body": "Your certificate expires on {{ certificate.notAfter }}. Please renew.",
-      "isHtml": false
-    }
-  }
-)
-Step 4: attach_trigger_to_profile(trigger="acme-expiry-30d", profile="acme-dns01")
+Step 3: Create an email notification via the trigger API or Horizon admin UI:
+        POST /api/v1/triggers with type="email", events=["on_expire"],
+        runPeriod="1 day", runOnRenewed=false
+Step 4: Attach the trigger to the profile via the Horizon admin UI
+        or by updating the profile's triggerHooks via the API.
 ```
 
 ### Create a Dashboard for Certificate Monitoring

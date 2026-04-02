@@ -76,6 +76,7 @@ class TestDeleteToolEnumeration:
         "delete_datasource",
         "delete_saved_query",
         "delete_report",
+        "delete_trigger",
     ])
 
     def test_delete_tools(self):
