@@ -103,9 +103,12 @@ request lifecycle.
 ### Attaching Triggers to Profiles
 
 Triggers are attached to profiles via the `triggerHooks` object on the profile.
-The MCP server provides `attach_trigger_to_profile` and
-`detach_trigger_from_profile` tools that auto-map trigger events to the
-correct hook fields.
+This is done through the Horizon admin UI or by updating the profile via the
+API (`PUT /api/v1/profiles/`). Each trigger event maps to a specific hook
+field on the `triggerHooks` object (e.g., `on_enroll` maps to `onEnroll`,
+`on_approve_enroll` maps to `onApproveEnroll`). Sync hooks are plain string
+lists; async hooks (like `on_expire`, `on_pending_*`) are lists of objects
+with a `name` field.
 
 ---
 

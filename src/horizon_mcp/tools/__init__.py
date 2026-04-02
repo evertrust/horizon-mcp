@@ -16,8 +16,8 @@ if TYPE_CHECKING:
 def register_tools(mcp: FastMCP) -> None:
     """Register core CLM tools.
 
-    74 tools across 9 domains  -  certificate lifecycle, discovery, dashboards,
-    assist, profiles (read-only), reports, datasources.
+    80 tools across 10 domains  -  certificate lifecycle, discovery, dashboards,
+    assist, profiles (read-only), reports, datasources, triggers/credentials.
     """
     # Assist (15 tools)
     from horizon_mcp.tools.assist import register_assist_tools
@@ -63,3 +63,8 @@ def register_tools(mcp: FastMCP) -> None:
     from horizon_mcp.tools.datasources import register_datasource_tools
 
     register_datasource_tools(mcp)
+
+    # Triggers & Credentials (6 tools)
+    from horizon_mcp.tools.triggers import register_trigger_tools
+
+    register_trigger_tools(mcp)
