@@ -161,27 +161,43 @@ export async function preflightRequestAction(
   requestId: string,
   permissionKey: string,
 ): Promise<Record<string, unknown>> {
-  const request = await client.get<Record<string, unknown>>(
-    `/api/v1/requests/${requestId}`,
-  );
-
-  const permissions = request["permissions"] as
-    | Record<string, boolean>
-    | undefined;
-  if (permissions && !permissions[permissionKey]) {
-    throw new HorizonError(403, {
-      errorCode: "SecPerm001",
-      message: `Cannot ${action} request: insufficient permissions (${permissionKey}=false).`,
-      remediation:
-        "Check role assignments for the authenticated principal.",
-    });
+  let request: Record<string, unknown>;
+  try {
+    request = await client.get<Record<string, unknown>>(
+      `/api/v1/requests/${requestId}`,
+    );
+  } catch (err) {
+    if (err instanceof HorizonError) {
+      return { error: err.toToolResult() };
+    }
+    return { error: String(err) };
   }
 
-  const status = request["status"];
-  if (typeof status === "string" && status.toLowerCase() !== "pending") {
-    throw new HorizonError(422, {
-      message: `Cannot ${action} request: status is '${status}', expected 'pending'.`,
-    });
+  const permissions = (request["permissions"] ?? {}) as Record<string, boolean>;
+  if (!permissions[permissionKey]) {
+    return {
+      error:
+        `Permission denied: you do not have '${action}' ` +
+        "permission on this request. Do NOT retry - use a " +
+        "principal with the appropriate role, or check the " +
+        "profile's authorization levels.",
+      request_id: requestId,
+      request_status: request["status"],
+      request_workflow: request["workflow"],
+      request_profile: request["profile"],
+      your_permissions: permissions,
+    };
+  }
+
+  const status = String(request["status"] ?? "").toLowerCase();
+  if (status !== "pending") {
+    return {
+      error:
+        `Request is not pending (current status: '${status}'). ` +
+        `Only pending requests can be ${action}d.`,
+      request_id: requestId,
+      request_status: status,
+    };
   }
 
   return request;
