@@ -8,8 +8,19 @@ import { createAuthProvider } from "./auth/index.js";
 import { HorizonClient } from "./client/http.js";
 import { registerAllResources } from "./resources/index.js";
 import { registerProfileTools } from "./tools/profiles.js";
-import { registerSystemTools } from "./tools/assist/system.js";
 import { registerLifecycleTools } from "./tools/lifecycle.js";
+import { registerDashboardTools } from "./tools/dashboards.js";
+import { registerDiscoveryTools } from "./tools/discovery.js";
+import { registerDiscoveryEventTools } from "./tools/discovery-events.js";
+import { registerDiscoveryFeedTools } from "./tools/discovery-feed.js";
+import { registerDatasourceTools } from "./tools/datasources.js";
+import { registerReportTools } from "./tools/reports.js";
+import { registerTriggerTools } from "./tools/triggers.js";
+import { registerSystemTools } from "./tools/assist/system.js";
+import { registerQueryTools } from "./tools/assist/query.js";
+import { registerCryptoTools } from "./tools/assist/crypto.js";
+import { registerComputationTools } from "./tools/assist/computation.js";
+import { registerTranslateTools } from "./tools/assist/translate.js";
 
 const logger = getLogger("horizon_mcp.server");
 
@@ -109,10 +120,21 @@ async function main(): Promise<void> {
   // Register all resources
   registerAllResources(server);
 
-  // Register Phase 1 representative tools
-  registerSystemTools(server, client);
+  // Register all tools by domain
   registerProfileTools(server, client);
   registerLifecycleTools(server, client);
+  registerDashboardTools(server, client);
+  registerDiscoveryTools(server, client);
+  registerDiscoveryEventTools(server, client);
+  registerDiscoveryFeedTools(server, client);
+  registerDatasourceTools(server, client);
+  registerReportTools(server, client);
+  registerTriggerTools(server, client);
+  registerSystemTools(server, client);
+  registerQueryTools(server, client);
+  registerCryptoTools(server, client);
+  registerComputationTools(server, client);
+  registerTranslateTools(server, client);
 
   logger.info("Horizon MCP server ready - auth will trigger on first tool call.");
 
