@@ -180,4 +180,60 @@ TOOL_SELECTION_SCENARIOS: list[Scenario] = [
         expected_resources=["dictionary-entries"],
         description="Knowledge: EST dictionary entries",
     ),
+    # --- REST notification scenarios ---
+    Scenario(
+        question=(
+            "I need to deploy certificates to our internal load balancer via its "
+            "REST API whenever a certificate is enrolled. The API requires a "
+            "bearer token and accepts JSON with the PEM and private key."
+        ),
+        expected_tools=[],
+        expected_resources=["rest-notifications", "automation"],
+        description="Knowledge: REST notification for cert deployment",
+    ),
+    Scenario(
+        question=(
+            "How do I build a REST notification that first obtains an OAuth token "
+            "from an auth server, then uses that token to push the certificate "
+            "to our deployment API?"
+        ),
+        expected_tools=[],
+        expected_resources=["rest-notifications"],
+        description="Knowledge: multi-step REST notification with OAuth chaining",
+    ),
+    Scenario(
+        question=(
+            "What template variables can I use in a REST notification payload? "
+            "I need the certificate PEM, CN, SANs, and serial number."
+        ),
+        expected_tools=[],
+        expected_resources=["rest-notifications"],
+        description="Knowledge: REST notification dictionary keys",
+    ),
+    Scenario(
+        question=(
+            "When a certificate is revoked, I want to notify our security "
+            "operations platform via a REST API call. How do I set this up?"
+        ),
+        expected_tools=[],
+        expected_resources=["rest-notifications"],
+        description="Knowledge: REST notification on revocation event",
+    ),
+    # --- Trigger tool scenarios ---
+    Scenario(
+        question="List all REST notifications configured on this Horizon instance",
+        expected_tools=["list_triggers"],
+        expected_resources=["rest-notifications"],
+        description="List REST triggers",
+    ),
+    Scenario(
+        question=(
+            "Create a REST notification that POSTs certificate data to "
+            "https://webhook.site/test when a certificate is enrolled. "
+            "Use no authentication and expect HTTP 200."
+        ),
+        expected_tools=["create_rest_notification"],
+        expected_resources=["rest-notifications"],
+        description="Create REST notification for cert deployment",
+    ),
 ]

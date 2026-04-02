@@ -166,7 +166,15 @@ mcp = FastMCP(
         "horizon://knowledge/validation-rules for validation rule condition syntax "
         "(operators, boolean logic, datasource references, resolvesDNS, CIDR matching), "
         "and horizon://knowledge/dictionary-entries for all available dictionary entries "
-        "by context and protocol module."
+        "by context and protocol module.\n"
+        "11. REST NOTIFICATIONS AND CUSTOM CONNECTORS: When the user asks about building "
+        "custom connectors, deploying certificates to external systems via REST APIs, "
+        "creating REST notifications, chaining multiple API calls, or automating "
+        "certificate deployment to load balancers, CDNs, IoT platforms, or any REST "
+        "service, consult horizon://knowledge/rest-notifications for the full REST "
+        "notification API schema, multi-step sequence chaining patterns, authentication "
+        "types, template string dictionary, and real-world examples. Also consult "
+        "horizon://knowledge/automation for trigger attachment to profiles."
     ),
     lifespan=lifespan,
 )

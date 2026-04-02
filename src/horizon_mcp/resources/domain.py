@@ -74,3 +74,8 @@ def register_all_resources(mcp: FastMCP) -> None:
     @mcp.resource("horizon://knowledge/dictionary-entries")
     async def dictionary_entries_knowledge() -> str:
         return _read_knowledge("dictionary_matrix.md")
+
+    # v1.3 knowledge resources
+    @mcp.resource("horizon://knowledge/rest-notifications")
+    async def rest_notifications_knowledge() -> str:
+        return _read_knowledge("rest_notifications.md")

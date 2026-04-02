@@ -1,14 +1,14 @@
 # Evertrust CLM (Horizon) - MCP Server
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **74 tools** and **16 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **80 tools** and **17 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **16 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, and dictionary entries. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, configures datasource-backed auto-validation, and understands dependency order without needing a human to explain Horizon internals every session.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **17 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, and REST notification connectors. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, configures datasource-backed auto-validation, and understands dependency order without needing a human to explain Horizon internals every session.
 
 ## Architecture
 
-74 tools organized in **9 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
+80 tools organized in **10 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
 
 | Domain | Tools | Purpose |
 |--------|------:|---------|
@@ -19,6 +19,7 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 | Discovery Events | 3 | Event search and export |
 | Discovery Feed | 4 | Push certificates and events into campaigns |
 | Datasources | 8 | DNS, LDAP, REST external datasource CRUD and testing |
+| Triggers | 6 | REST notification CRUD, simulation, credential discovery |
 | Reports | 3 | Report listing, download, deletion |
 | Profiles | 2 | Profile listing and inspection |
 
@@ -151,6 +152,27 @@ rule that checks DNS CNAME targets for all SANs in an enrollment request?
 What dictionary entries are available during WebRA enrollment?
 ```
 
+### REST notifications and custom connectors
+
+```
+I need to deploy certificates to our load balancer via REST API whenever
+a certificate is enrolled. The API uses bearer token auth.
+```
+
+```
+Build a REST notification that creates a ServiceNow incident when a certificate
+is about to expire, and assigns it to the team that owns the certificate.
+```
+
+```
+What template variables are available in a REST notification for the on_renew event?
+I need the new cert PEM, the old cert serial, and the first DNS SAN.
+```
+
+```
+List all existing REST notifications and show me the credentials available for auth.
+```
+
 ### Diagnostics
 
 ```
@@ -186,9 +208,10 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 
 - **Configuration objects**  -  CAs, trust chains, labels, HTTP proxies, password policies, grading policies, and grading rulesets
 - **Profile management**  -  creating, updating, or deleting profiles (read-only listing and inspection are supported)
-- **Credential management**  -  creating, updating, or deleting stored credentials
+- **Credential management**  -  creating, updating, or deleting stored credentials (read-only listing IS supported via `list_credentials`)
 - **PKI and third-party connector management**  -  connectors to ADCS, EJBCA, HashiCorp Vault, etc.
-- **Trigger management**  -  email/webhook/script triggers
+- **Email/webhook trigger management**  -  creating email or webhook (Teams/Slack/Mattermost) triggers (REST notifications ARE supported via `create_rest_notification`)
+- **Trigger attachment to profiles**  -  attaching triggers to profile triggerHooks (use the Horizon admin UI or profile API)
 - **Role, team, IDP, and principal administration**
 - **Analytics**  -  sync status and reindex operations
 - **SMTP and notification server configuration**
@@ -204,8 +227,8 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 | [Installation](docs/installation.md) | Full install guide, OIDC setup |
 | [Authentication](docs/authentication.md) | 4 auth modes, environment variables reference |
 | [Client setup](docs/client-setup.md) | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md) | All 74 tools by domain with safety tiers |
-| [Knowledge resources](docs/knowledge-resources.md) | 16 embedded knowledge resources |
+| [Tool reference](docs/tools-reference.md) | All 80 tools by domain with safety tiers |
+| [Knowledge resources](docs/knowledge-resources.md) | 17 embedded knowledge resources |
 | [Development](docs/development.md) | Dev setup, tests, linting |
 
 ---

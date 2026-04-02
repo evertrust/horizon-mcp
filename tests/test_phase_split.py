@@ -39,7 +39,7 @@ class TestToolRegistrationBoundary:
 
     def test_tool_count(self) -> None:
         mcp = _make_mcp(register_tools)
-        assert len(_tool_names(mcp)) == 74
+        assert len(_tool_names(mcp)) == 80
 
     def test_excludes_admin_tools(self) -> None:
         names = _tool_names(_make_mcp(register_tools))
@@ -55,7 +55,7 @@ class TestToolRegistrationBoundary:
             "create_role", "delete_role", "create_team", "delete_team",
             "create_principal", "delete_principal",
             "create_identity_provider", "delete_identity_provider",
-            "list_credentials", "get_credential",
+            "get_credential",
             # Analytics (removed)
             "get_analytics",
             # Profile create/update (removed)
@@ -91,6 +91,8 @@ class TestToolRegistrationBoundary:
             # Datasources
             "list_datasources", "create_dns_datasource",
             "create_ldap_datasource", "create_rest_datasource",
+            # Triggers & Credentials
+            "list_triggers", "list_credentials", "create_rest_notification",
         ]
         for tool in expected:
             assert tool in names, f"Expected tool '{tool}' missing"

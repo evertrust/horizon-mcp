@@ -208,6 +208,90 @@ def test_datasource_chaining_knowledge(mcp_config_path) -> None:
     ), f"Expected OAuth chaining pattern, got: {result['raw'][:300]}"
 
 
+# =========================================================================
+# REST notifications knowledge (Tier 2 - LLM reasons from knowledge docs)
+# =========================================================================
+
+
+def test_rest_notification_lifecycle(mcp_config_path) -> None:
+    """Claude creates a REST notification, lists it, and deletes it."""
+    notif_name = f"{_PREFIX}-rest-notif"
+    result = ask_claude(
+        f"Create a REST notification named '{notif_name}' that fires on "
+        "on_enroll and POSTs to https://httpbin.org/post with JSON body "
+        "containing the certificate serial ({{{{certificate.serial}}}}) and CN "
+        "({{{{certificate.subject.cn.1}}}}). Use no authentication, expect "
+        "HTTP 200, timeout 30 seconds. "
+        f"Then list triggers and confirm '{notif_name}' exists. "
+        f"Finally, delete the trigger '{notif_name}'.",
+        mcp_config_path,
+        timeout=180,
+    )
+    assert result["exit_code"] == 0
+    text = result["text"]
+    assert any(
+        kw in text for kw in ["created", "trigger", notif_name.lower(), "deleted", "rest"]
+    ), f"Expected trigger lifecycle output, got: {result['raw'][:300]}"
+
+
+def test_rest_notification_deployment_knowledge(mcp_config_path) -> None:
+    """Claude designs a REST notification for certificate deployment."""
+    result = ask_claude(
+        "I need to deploy certificates to our internal load balancer whenever "
+        "a certificate is enrolled. The load balancer has a REST API at "
+        "https://lb.internal/api/certs that accepts POST with JSON body "
+        "containing 'domain', 'pem', and 'serial' fields. It uses bearer "
+        "token auth. Show me the exact JSON to create this REST notification.",
+        mcp_config_path,
+        timeout=120,
+    )
+    assert result["exit_code"] == 0
+    text = result["text"]
+    assert "rest" in text, f"Should mention REST type: {result['raw'][:300]}"
+    assert any(
+        kw in text for kw in ["sequence", "on_enroll", "bearer", "certificate.pem"]
+    ), f"Expected REST notification JSON, got: {result['raw'][:300]}"
+
+
+def test_rest_notification_oauth_chaining_knowledge(mcp_config_path) -> None:
+    """Claude designs a multi-step REST notification with OAuth chaining."""
+    result = ask_claude(
+        "How do I build a REST notification that first obtains an OAuth "
+        "token from https://auth.example.com/token using client credentials, "
+        "then uses that token to push the certificate PEM and private key to "
+        "https://api.example.com/certificates? The auth endpoint returns JSON "
+        "with an access_token field. Show me the complete multi-step sequence.",
+        mcp_config_path,
+        timeout=120,
+    )
+    assert result["exit_code"] == 0
+    text = result["text"]
+    assert len(text) > 200, f"Expected detailed explanation, got: {result['raw'][:200]}"
+    assert any(
+        kw in text for kw in ["rest.response.1", "access_token", "sequence"]
+    ), f"Expected OAuth chaining pattern, got: {result['raw'][:300]}"
+
+
+def test_rest_notification_dictionary_knowledge(mcp_config_path) -> None:
+    """Claude correctly identifies available template variables."""
+    result = ask_claude(
+        "What template variables can I use in a REST notification payload? "
+        "Specifically for a notification on the on_renew event, I need to "
+        "include the new certificate's PEM, the old certificate's serial, "
+        "and the certificate's first DNS SAN. Show me the exact keys to use.",
+        mcp_config_path,
+        timeout=120,
+    )
+    assert result["exit_code"] == 0
+    text = result["text"]
+    assert any(
+        kw in text for kw in ["certificate.pem", "previous.certificate"]
+    ), f"Expected dictionary keys, got: {result['raw'][:300]}"
+    assert any(
+        kw in text for kw in ["san.dnsname.1", "san.dnsname"]
+    ), f"Expected SAN key format, got: {result['raw'][:300]}"
+
+
 def test_dictionary_entries_knowledge(mcp_config_path) -> None:
     """Claude correctly identifies dictionary entries by protocol."""
     result = ask_claude(
