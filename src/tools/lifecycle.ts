@@ -13,6 +13,7 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { HorizonClient } from "../client/http.js";
+import { HorizonError } from "../client/errors.js";
 import {
   CERT_PRESETS,
   REQUEST_PRESETS,
@@ -455,17 +456,29 @@ export function registerLifecycleTools(
         request_id,
         "approve",
       );
+      if ("error" in preflight) {
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(preflight) }],
+        };
+      }
 
-      const result = await client.post<Record<string, unknown>>(
-        "/api/v1/requests/approve",
-        {
-          id: request_id,
-          workflow: preflight["workflow"],
-        },
-      );
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
-      };
+      try {
+        const result = await client.post<Record<string, unknown>>(
+          "/api/v1/requests/approve",
+          {
+            id: request_id,
+            workflow: preflight["workflow"],
+          },
+        );
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        };
+      } catch (err) {
+        const msg = err instanceof HorizonError ? err.toToolResult() : String(err);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
+        };
+      }
     },
   );
 
@@ -494,17 +507,29 @@ export function registerLifecycleTools(
         request_id,
         "approve",
       );
+      if ("error" in preflight) {
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(preflight) }],
+        };
+      }
 
-      const result = await client.post<Record<string, unknown>>(
-        "/api/v1/requests/deny",
-        {
-          id: request_id,
-          workflow: preflight["workflow"],
-        },
-      );
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
-      };
+      try {
+        const result = await client.post<Record<string, unknown>>(
+          "/api/v1/requests/deny",
+          {
+            id: request_id,
+            workflow: preflight["workflow"],
+          },
+        );
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        };
+      } catch (err) {
+        const msg = err instanceof HorizonError ? err.toToolResult() : String(err);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
+        };
+      }
     },
   );
 
@@ -533,17 +558,29 @@ export function registerLifecycleTools(
         request_id,
         "cancel",
       );
+      if ("error" in preflight) {
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(preflight) }],
+        };
+      }
 
-      const result = await client.post<Record<string, unknown>>(
-        "/api/v1/requests/cancel",
-        {
-          id: request_id,
-          workflow: preflight["workflow"],
-        },
-      );
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
-      };
+      try {
+        const result = await client.post<Record<string, unknown>>(
+          "/api/v1/requests/cancel",
+          {
+            id: request_id,
+            workflow: preflight["workflow"],
+          },
+        );
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        };
+      } catch (err) {
+        const msg = err instanceof HorizonError ? err.toToolResult() : String(err);
+        return {
+          content: [{ type: "text" as const, text: JSON.stringify({ error: msg }) }],
+        };
+      }
     },
   );
 

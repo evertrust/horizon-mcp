@@ -447,9 +447,10 @@ describe("Lifecycle tools", () => {
         arguments: { request_id: "req-001" },
       });
       const r = result as ToolResult;
+      const parsed = JSON.parse(r.content[0]!.text);
 
-      expect(r.isError).toBe(true);
-      expect(r.content[0]!.text).toContain("approve");
+      expect(parsed.error).toBeDefined();
+      expect(parsed.error).toContain("Permission denied");
       expect(mockClient.post).not.toHaveBeenCalled();
     });
 
@@ -465,9 +466,10 @@ describe("Lifecycle tools", () => {
         arguments: { request_id: "req-001" },
       });
       const r = result as ToolResult;
+      const parsed = JSON.parse(r.content[0]!.text);
 
-      expect(r.isError).toBe(true);
-      expect(r.content[0]!.text).toContain("pending");
+      expect(parsed.error).toBeDefined();
+      expect(parsed.error).toContain("pending");
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
@@ -510,9 +512,10 @@ describe("Lifecycle tools", () => {
         arguments: { request_id: "req-002" },
       });
       const r = result as ToolResult;
+      const parsed = JSON.parse(r.content[0]!.text);
 
-      expect(r.isError).toBe(true);
-      expect(r.content[0]!.text).toContain("deny");
+      expect(parsed.error).toBeDefined();
+      expect(parsed.error).toContain("Permission denied");
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
@@ -555,9 +558,10 @@ describe("Lifecycle tools", () => {
         arguments: { request_id: "req-003" },
       });
       const r = result as ToolResult;
+      const parsed = JSON.parse(r.content[0]!.text);
 
-      expect(r.isError).toBe(true);
-      expect(r.content[0]!.text).toContain("cancel");
+      expect(parsed.error).toBeDefined();
+      expect(parsed.error).toContain("Permission denied");
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
