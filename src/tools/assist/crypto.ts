@@ -135,7 +135,37 @@ export function registerCryptoTools(
         "When to use: after fetching a PEM with fetch_exposed_certificate, " +
         "after retrieving a certificate from the Horizon inventory, or when a " +
         "user pastes a PEM block and wants to understand its contents.\n\n" +
-        "See also: fetch_exposed_certificate, decode_csr, detect_file.",
+        "Returns: JSON object with the following fields:\n" +
+        "- dn (str): subject distinguished name.\n" +
+        "- dnElements (list): ordered list of DN attribute objects.\n" +
+        "- issuerDn (str): issuer distinguished name.\n" +
+        "- serial (str): serial number (hex).\n" +
+        "- notBefore (int): validity start as epoch milliseconds.\n" +
+        "- notAfter (int): validity end as epoch milliseconds.\n" +
+        "- keyType (str): public key algorithm, e.g. RSA, EC.\n" +
+        "- signingAlgorithm (str): signature algorithm OID / name.\n" +
+        "- pem (str): normalised PEM.\n" +
+        "- subjectKeyIdentifier (str): SKI hex string.\n" +
+        "- certificateThumbprint (str): SHA-256 thumbprint.\n" +
+        "- certificateSHAOneThumbprint (str): SHA-1 thumbprint.\n" +
+        "- publicKeyThumbprint (str): public-key SHA-256 thumbprint.\n" +
+        "- keyUsages (list[str]): key-usage flags.\n" +
+        "- isKeyUsagesCritical (bool): whether KU extension is critical.\n" +
+        "- extendedKeyUsages (list[str]): EKU OIDs.\n" +
+        "- isExtendedKeyUsagesCritical (bool): whether EKU is critical.\n" +
+        "- selfSigned (bool): true when issuer == subject and self-signed.\n" +
+        "- sans (list[{sanType, value}], optional): subject alternative names.\n" +
+        "- basicConstraints (object, optional): CA flag and path length.\n" +
+        "- extensions (list, optional): all extensions.\n" +
+        "- crldps (list[str], optional): CRL distribution points.\n" +
+        "- aias ({crt, ocsp}, optional): authority information access.\n" +
+        "- policies (list, optional): certificate policies.\n" +
+        "- authorityKeyIdentifier (str, optional): AKI.\n" +
+        "- unsupportedExtensions (list, optional): unrecognised extensions.\n\n" +
+        "See also:\n" +
+        "- fetch_exposed_certificate - grab a live server cert then feed its PEM into this tool.\n" +
+        "- decode_csr - decode a CSR instead.\n" +
+        "- detect_file - auto-detect the file type first.",
       inputSchema: z.object({
         pem: z
           .string()
@@ -174,7 +204,17 @@ export function registerCryptoTools(
         "When to use: when a user provides a CSR and wants to inspect " +
         "the subject, public key, or requested extensions before submitting " +
         "it for enrollment.\n\n" +
-        "See also: decode_x509, detect_file.",
+        "Returns: JSON object with the following fields:\n" +
+        "- dn (str): requested subject distinguished name.\n" +
+        "- dnElements (list): ordered list of DN attribute objects.\n" +
+        "- keyType (str): public key algorithm.\n" +
+        "- pem (str): normalised PEM.\n" +
+        "- sans (list[{sanType, value}], optional): requested SANs.\n" +
+        "- extensions (list, optional): requested extensions.\n" +
+        "- unsupportedExtensions (list, optional): unrecognised extensions.\n\n" +
+        "See also:\n" +
+        "- decode_x509 - decode a certificate instead.\n" +
+        "- detect_file - auto-detect whether input is a cert or CSR.",
       inputSchema: z.object({
         pem: z
           .string()
@@ -212,7 +252,15 @@ export function registerCryptoTools(
         "the parsed fields.\n\n" +
         "When to use: when a user provides a CRL and wants to check the " +
         "issuer, update timestamps, or CRL number.\n\n" +
-        "See also: decode_x509, detect_file.",
+        "Returns: JSON object with the following fields:\n" +
+        "- issuerDn (str): CRL issuer distinguished name.\n" +
+        "- thisUpdate (int): issuance date as epoch milliseconds.\n" +
+        "- nextUpdate (int): next scheduled update as epoch milliseconds.\n" +
+        "- number (int, optional): CRL sequence number.\n" +
+        "- version (int, optional): CRL version.\n\n" +
+        "See also:\n" +
+        "- decode_x509 - decode the issuing CA certificate.\n" +
+        "- detect_file - auto-detect whether input is a CRL.",
       inputSchema: z.object({
         data: z
           .string()
@@ -251,7 +299,18 @@ export function registerCryptoTools(
         "When to use: when a user has captured an OCSP response (DER " +
         "bytes, typically base64-encoded) and wants to inspect the revocation " +
         "status, responder identity, or per-certificate details.\n\n" +
-        "See also: decode_x509.",
+        "Returns: JSON object with the following fields:\n" +
+        "- status (str): top-level response status - one of\n" +
+        '  "successful", "malformedRequest", "internalError",\n' +
+        '  "tryLater", "sigRequired", "unauthorized".\n' +
+        "- respID (str, optional): responder identifier.\n" +
+        "- responses (list, optional): per-certificate entries, each with:\n" +
+        "    - certID (object): {serial, hashAlg, issuerKeyHash, issuerNameHash}.\n" +
+        "    - status (str): certificate status.\n" +
+        "    - thisUpdate (int): epoch milliseconds.\n" +
+        "    - nextUpdate (int): epoch milliseconds.\n\n" +
+        "See also:\n" +
+        "- decode_x509 - decode the certificate referenced in the OCSP response.",
       inputSchema: z.object({
         data: z
           .string()
@@ -287,7 +346,12 @@ export function registerCryptoTools(
         "When to use: when a user has captured a timestamping response " +
         "(DER bytes, typically base64-encoded) and wants to verify the " +
         "timestamp policy and status.\n\n" +
-        "See also: decode_x509.",
+        "Returns: JSON object with the following fields:\n" +
+        "- policy (str): OID of the TSA policy.\n" +
+        "- status (str|int): response status.\n" +
+        "- failInfo (str, optional): failure reason when status is not granted.\n\n" +
+        "See also:\n" +
+        "- decode_x509 - decode the TSA signing certificate.",
       inputSchema: z.object({
         data: z
           .string()
@@ -326,7 +390,17 @@ export function registerCryptoTools(
         "When to use: when the user provides an unknown blob of PEM, " +
         "DER, or PKCS#7 data and you need to figure out what it is before " +
         "choosing the right decode tool.\n\n" +
-        "See also: decode_x509, decode_csr, decode_crl, decode_ocsp, decode_tsa.",
+        "Returns: JSON object with the following fields:\n" +
+        '- type (str): detected type - one of "certificate",\n' +
+        '  "csr", "crl", "bundle", "ocsp-response",\n' +
+        '  "timestamping-response", "openssh-cert".\n' +
+        "- value (object): decoded content whose schema matches the\n" +
+        "  corresponding decode tool (e.g., same fields as decode_x509\n" +
+        '  when type is "certificate").\n\n' +
+        "See also:\n" +
+        "- decode_x509, decode_csr, decode_crl,\n" +
+        "  decode_ocsp, decode_tsa - specialised decode tools\n" +
+        "  for when the file type is already known.",
       inputSchema: z.object({
         data: z
           .string()
