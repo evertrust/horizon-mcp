@@ -37,6 +37,7 @@ export function registerDiscoveryEventTools(
     {
       description:
         "Search discovery events using HDQL query language.\n\n" +
+        "Safety tier: read-only\n" +
         "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n" +
         "HDQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HDQL field names are ALL LOWERCASE\n" +
@@ -123,6 +124,7 @@ export function registerDiscoveryEventTools(
     {
       description:
         "Get full details of a discovery event by ID.\n\n" +
+        "Safety tier: read-only\n" +
         "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n" +
         "Returns the complete discovery event record including certificate " +
         "data, session info, client details, and any error information.",
@@ -149,6 +151,7 @@ export function registerDiscoveryEventTools(
     {
       description:
         "Export discovery events matching an HDQL query as CSV.\n\n" +
+        "Safety tier: read-only\n" +
         "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n" +
         "Returns up to 1000 rows. For full exports use Horizon UI.\n\n" +
         "HDQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
