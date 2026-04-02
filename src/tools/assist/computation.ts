@@ -25,9 +25,20 @@ export function registerComputationTools(
         "  Access: Get, First, Last, Join, Match\n" +
         "  Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64, Base64, Raw\n" +
         "  Special: NULL, NOW\n\n" +
-        "Two expression modes:\n" +
+        "Syntax rules:\n" +
+        "  - Dictionary lookups: {{key}} for single, [[key]] for multi\n" +
+        "  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n" +
+        "  - Concat on arrays merges them: Concat([[a]], [[b]]) -> combined list\n" +
+        '  - Concat with null returns null: use OrElse({{key}}, "") to guard\n' +
+        "  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n" +
+        "  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n" +
+        "  - Sort alphabetically sorts a list\n" +
+        "  - Unique deduplicates a list\n\n" +
+        "Two expression modes:\n\n" +
         "  computation_rule (default): Full expression language with functions.\n" +
-        "  template_string: Text interpolation with embedded {{ }} blocks.",
+        "    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort(Unique([[sans]]))\n\n" +
+        "  template_string: Text interpolation with embedded {{ }} blocks.\n" +
+        "    Hello {{name}}, cert expires {{certificate.not_after}}",
       inputSchema: z.object({
         rule: z
           .string()

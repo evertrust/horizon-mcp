@@ -358,13 +358,39 @@ export function registerTriggerTools(
         "REST notifications execute a sequence of HTTP requests when a certificate " +
         "lifecycle event occurs. Each step can reference template variables from the " +
         "certificate/request dictionary and from previous steps' responses.\n\n" +
-        "IMPORTANT: Trigger names are IMMUTABLE after creation.\n\n" +
-        "Each sequence step requires: url, method, authenticationType, expectedHttpCodes, timeout.\n" +
-        "Optional step fields: credentials, headers, payloadType, payload, proxy.\n\n" +
-        "Template variables: {{certificate.pem}}, {{certificate.serial}}, " +
-        "{{rest.response.N.field}}, etc.\n\n" +
-        "See horizon://knowledge/rest-notifications for the complete dictionary reference.\n\n" +
-        "See also: simulate_trigger, list_triggers, get_trigger, delete_trigger.",
+        "IMPORTANT: Trigger names are IMMUTABLE after creation. Always ask the\n" +
+        "user for the name before creating.\n\n" +
+        "Each step in the sequence is a dict with these fields:\n" +
+        "    - url (required): Target URL - supports {{variable}} template strings\n" +
+        "    - method (required): HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD)\n" +
+        '    - authenticationType (required): "noauth", "basic", "bearer", "x509", or "custom"\n' +
+        "    - credentials (required unless noauth): Name of credential in Horizon\n" +
+        "    - expectedHttpCodes (required): List of HTTP codes meaning success (e.g., [200, 201])\n" +
+        '    - timeout (required): Duration string (e.g., "30 seconds")\n' +
+        "    - headers: List of {name, value} dicts - values support {{variable}} templates\n" +
+        '    - payloadType: "json", "text", or "none"\n' +
+        "    - payload: Request body - supports {{variable}} template strings\n" +
+        "    - proxy: Name of HTTP proxy in Horizon\n\n" +
+        "Template variables available in URL, headers, and payload:\n" +
+        "    - Certificate: {{certificate.pem}}, {{certificate.serial}}, {{certificate.subject.cn.1}},\n" +
+        "      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, {{certificate.private_key}}, etc.\n" +
+        "    - Request: {{request.id}}, {{request.workflow}}, {{request.requester}}, etc.\n" +
+        "    - Previous cert (on_renew only): {{previous.certificate.serial}}, etc.\n" +
+        "    - Credentials (custom auth): {{credentials.key}}, {{credentials.login}}, {{credentials.password}}\n" +
+        "    - Response chaining: {{rest.response.1.field}}, {{rest.response.2.field.nested}}, etc.\n" +
+        "    - Computation rules: {{Upper({{certificate.subject.cn.1}})}}, {{Base64(Raw({{certificate.pem}}))}}, etc.\n\n" +
+        "See horizon://knowledge/rest-notifications for the complete dictionary reference\n" +
+        "and multi-step chaining patterns.\n\n" +
+        "Common patterns:\n" +
+        "    - Single-step deployment: POST cert PEM + key to a target API\n" +
+        "    - OAuth + deploy: Step 1 gets token, step 2 uses {{rest.response.1.access_token}}\n" +
+        "    - Lookup + update: Step 1 finds resource ID, step 2 updates by ID\n" +
+        "    - Create + activate: Step 1 creates resource, step 2 activates it\n\n" +
+        "After creating, attach the trigger to a profile using the Horizon UI or API\n" +
+        "to start receiving events. See horizon://knowledge/automation for attachment.\n\n" +
+        "See also: simulate_trigger (test before attaching to profile),\n" +
+        "    list_triggers (verify creation), get_trigger (inspect config),\n" +
+        "    delete_trigger (remove).",
       inputSchema: z.object({
         name: z.string().describe("Unique trigger name (immutable primary key)."),
         event: z
@@ -587,9 +613,18 @@ export function registerTriggerTools(
         "Sends a PATCH request to simulate the trigger. The trigger must already " +
         "exist. Horizon executes it with a synthetic test context and returns the " +
         "execution result.\n\n" +
-        "Note: Template variables like {{certificate.serial}} will not have real " +
-        "values during simulation.\n\n" +
-        "See also: create_rest_notification, get_trigger.",
+        "Use this to verify that a REST notification's sequence steps, authentication,\n" +
+        "and URL/payload templates work correctly before attaching the trigger to a\n" +
+        "production profile.\n\n" +
+        "Note: Template variables like {{certificate.serial}} will not have real\n" +
+        "values during simulation - they are filled with test/placeholder data.\n\n" +
+        "Typical workflow:\n" +
+        "    1. Create a REST notification with create_rest_notification\n" +
+        "    2. Call simulate_trigger to verify the HTTP calls succeed\n" +
+        "    3. If simulation passes, attach the trigger to a profile\n" +
+        "    4. If simulation fails, inspect errors, fix config, and retry\n\n" +
+        "See also: create_rest_notification (create before simulating),\n" +
+        "    get_trigger (inspect current config).",
       inputSchema: z.object({
         name: z
           .string()
