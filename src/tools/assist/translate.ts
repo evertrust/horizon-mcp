@@ -23,7 +23,7 @@ import { QUERY_METADATA } from "./query.js";
 // Data structures
 // ---------------------------------------------------------------------------
 
-interface Condition {
+export interface Condition {
   readonly fragment: string;
   readonly reason: string;
   readonly confidence: number;
@@ -41,7 +41,7 @@ function condition(
 // Intent detection - weighted keyword scoring
 // ---------------------------------------------------------------------------
 
-type QueryType = "hcql" | "hrql" | "heql" | "hdql";
+export type QueryType = "hcql" | "hrql" | "heql" | "hdql";
 
 const INTENT_KEYWORDS: Readonly<Record<QueryType, Record<string, number>>> = {
   hcql: {
@@ -88,7 +88,7 @@ function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function detectIntent(text: string): { queryType: QueryType; confidence: number } {
+export function detectIntent(text: string): { queryType: QueryType; confidence: number } {
   const lower = text.toLowerCase();
   const scores: Record<QueryType, number> = { hcql: 0, hrql: 0, heql: 0, hdql: 0 };
 
@@ -287,7 +287,7 @@ function extractFieldValues(
 // Per-type condition extractors
 // ---------------------------------------------------------------------------
 
-function extractHcql(text: string): Condition[] {
+export function extractHcql(text: string): Condition[] {
   const conditions: Condition[] = [];
   const lower = text.toLowerCase();
 
@@ -380,7 +380,7 @@ function extractHcql(text: string): Condition[] {
   return conditions;
 }
 
-function extractHrql(text: string): Condition[] {
+export function extractHrql(text: string): Condition[] {
   const conditions: Condition[] = [];
   const lower = text.toLowerCase();
 
@@ -420,7 +420,7 @@ function extractHrql(text: string): Condition[] {
   return conditions;
 }
 
-function extractHeql(text: string): Condition[] {
+export function extractHeql(text: string): Condition[] {
   const conditions: Condition[] = [];
   const lower = text.toLowerCase();
 
@@ -540,7 +540,7 @@ function extractHeql(text: string): Condition[] {
   return conditions;
 }
 
-function extractHdql(text: string): Condition[] {
+export function extractHdql(text: string): Condition[] {
   const conditions: Condition[] = [];
   const lower = text.toLowerCase();
 
@@ -585,7 +585,7 @@ function extractHdql(text: string): Condition[] {
 // Assembler + validator
 // ---------------------------------------------------------------------------
 
-const EXTRACTORS: Readonly<Record<QueryType, (text: string) => Condition[]>> = {
+export const EXTRACTORS: Readonly<Record<QueryType, (text: string) => Condition[]>> = {
   hcql: extractHcql,
   hrql: extractHrql,
   heql: extractHeql,
