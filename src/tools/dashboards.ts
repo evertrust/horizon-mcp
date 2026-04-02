@@ -627,7 +627,8 @@ export function registerDashboardTools(
     {
       description:
         "List saved HQL queries with optional filtering.\n\n" +
-        "Safety tier: read-only\n\n" +
+        "Safety tier: read-only\n" +
+        "Knowledge: horizon://knowledge/dashboards\n\n" +
         "Returns JSON with items, count, total_available, and truncated flag.",
       inputSchema: z.object({
         max_items: z
@@ -673,7 +674,8 @@ export function registerDashboardTools(
     {
       description:
         "Get a single saved query by name.\n\n" +
-        "Safety tier: read-only\n\n" +
+        "Safety tier: read-only\n" +
+        "Knowledge: horizon://knowledge/dashboards\n\n" +
         "Returns JSON representation of the saved query.",
       inputSchema: z.object({
         name: z.string().describe("Exact saved query name."),
@@ -693,7 +695,8 @@ export function registerDashboardTools(
         "confirmation before calling this tool. Do not proceed without a clear " +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Create or update a saved HQL query.\n\n" +
-        "Safety tier: mutating-safe\n\n" +
+        "Safety tier: mutating-safe\n" +
+        "Knowledge: horizon://knowledge/dashboards\n\n" +
         "Uses upsert semantics - if a query with the given name exists it " +
         "is updated, otherwise a new one is created. The server validates " +
         "the HQL syntax for the specified query type.",
@@ -745,7 +748,8 @@ export function registerDashboardTools(
         'proceed without a clear "yes" from the user. Present what will be ' +
         "permanently destroyed and wait.\n\n" +
         "Delete a saved query. Requires name confirmation.\n\n" +
-        "Safety tier: mutating-destructive",
+        "Safety tier: mutating-destructive\n" +
+        "Knowledge: horizon://knowledge/dashboards",
       inputSchema: z.object({
         name: z.string().describe("Saved query name to delete."),
         expected_name: z

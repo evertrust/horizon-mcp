@@ -1,0 +1,2861 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Golden tests > tool schemas match snapshot 1`] = `
+[
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "chart": {
+          "additionalProperties": {},
+          "description": "Chart configuration object. Required fields: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"]}. Valid chart types: area, donut, heatmap, bar-horizontal, line, metric, pie, polar, pyramid, radar, table, treemap, bar-vertical. Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), "direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), "log" (boolean - logarithmic scale), "description" (string).",
+          "type": "object",
+        },
+        "dashboard_name": {
+          "description": "Name of the dashboard to modify.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "dashboard_name",
+        "chart",
+      ],
+      "type": "object",
+    },
+    "name": "add_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "group_by": {
+          "description": "List of field names to group by (camelCase).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "having": {
+          "additionalProperties": false,
+          "description": "Optional post-aggregation filter on count.",
+          "properties": {
+            "operator": {
+              "description": "Comparison operator.",
+              "enum": [
+                "gt",
+                "gte",
+                "lt",
+                "lte",
+                "eq",
+                "ne",
+              ],
+              "type": "string",
+            },
+            "value": {
+              "description": "Threshold count value.",
+              "type": "number",
+            },
+          },
+          "required": [
+            "operator",
+            "value",
+          ],
+          "type": "object",
+        },
+        "query": {
+          "description": "HCQL filter expression (ALL LOWERCASE field names).",
+          "type": "string",
+        },
+        "sort_order": {
+          "default": "Desc",
+          "description": "Bucket sort order.",
+          "enum": [
+            "Asc",
+            "Desc",
+            "KeyAsc",
+            "KeyDesc",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+        "group_by",
+      ],
+      "type": "object",
+    },
+    "name": "aggregate_certificates",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "group_by": {
+          "description": "List of field names to group by (camelCase).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "having": {
+          "additionalProperties": false,
+          "description": "Optional post-aggregation filter on count.",
+          "properties": {
+            "operator": {
+              "description": "Comparison operator.",
+              "enum": [
+                "gt",
+                "gte",
+                "lt",
+                "lte",
+                "eq",
+                "ne",
+              ],
+              "type": "string",
+            },
+            "value": {
+              "description": "Threshold count value.",
+              "type": "number",
+            },
+          },
+          "required": [
+            "operator",
+            "value",
+          ],
+          "type": "object",
+        },
+        "query": {
+          "description": "HRQL filter expression (ALL LOWERCASE field names).",
+          "type": "string",
+        },
+        "sort_order": {
+          "default": "Desc",
+          "description": "Bucket sort order.",
+          "enum": [
+            "Asc",
+            "Desc",
+            "KeyAsc",
+            "KeyDesc",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+        "group_by",
+      ],
+      "type": "object",
+    },
+    "name": "aggregate_requests",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "description": "The request ID to approve.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "request_id",
+      ],
+      "type": "object",
+    },
+    "name": "approve_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "description": "The request ID to cancel.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "request_id",
+      ],
+      "type": "object",
+    },
+    "name": "cancel_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "default": "horizon",
+          "description": "Key entry alias in the JKS keystore",
+          "type": "string",
+        },
+        "jks_password": {
+          "description": "Password for the output JKS keystore (defaults to pkcs12_password)",
+          "type": "string",
+        },
+        "pkcs12_base64": {
+          "description": "Base64-encoded PKCS#12 bundle",
+          "type": "string",
+        },
+        "pkcs12_password": {
+          "description": "Password for the PKCS#12 bundle",
+          "type": "string",
+        },
+      },
+      "required": [
+        "pkcs12_base64",
+        "pkcs12_password",
+      ],
+      "type": "object",
+    },
+    "name": "convert_pkcs12_to_jks",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "charts": {
+          "description": "List of chart objects (default: empty list for blank dashboard). Each chart: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"], "i": "1", "x": 0, "y": 0, "w": 6, "h": 4}. Recommended: start with charts=[] and use add_dashboard_chart interactively.",
+          "items": {
+            "additionalProperties": {},
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "dashboard_type": {
+          "description": "Dashboard scope - "certificate" or "request".",
+          "enum": [
+            "certificate",
+            "request",
+          ],
+          "type": "string",
+        },
+        "description": {
+          "description": "Optional human-readable description.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Unique dashboard name (IMMUTABLE - cannot be renamed later).",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "dashboard_type",
+      ],
+      "type": "object",
+    },
+    "name": "create_dashboard",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "authorization_levels": {
+          "additionalProperties": true,
+          "description": "Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. Valid accessLevel values: "everyone", "authenticated", "authorized". Optional per-section: "enforcedIdentityProviders": ["idp-name"].",
+          "properties": {
+            "feed": {
+              "$ref": "#/properties/authorization_levels/properties/search",
+            },
+            "search": {
+              "additionalProperties": true,
+              "properties": {
+                "accessLevel": {
+                  "enum": [
+                    "everyone",
+                    "authenticated",
+                    "authorized",
+                  ],
+                  "type": "string",
+                },
+                "enforcedIdentityProviders": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              },
+              "required": [
+                "accessLevel",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "search",
+            "feed",
+          ],
+          "type": "object",
+        },
+        "description": {
+          "description": "Optional human-readable description.",
+          "type": "string",
+        },
+        "enabled": {
+          "default": true,
+          "description": "Whether the campaign is active (default true).",
+          "type": "boolean",
+        },
+        "event_on_failure": {
+          "default": true,
+          "description": "Generate events on scan failures (default true).",
+          "type": "boolean",
+        },
+        "event_on_success": {
+          "default": true,
+          "description": "Generate events on successful scans (default true).",
+          "type": "boolean",
+        },
+        "event_on_warning": {
+          "default": true,
+          "description": "Generate events on scan warnings (default true).",
+          "type": "boolean",
+        },
+        "grading_policies": {
+          "description": "Optional list of grading policy names to apply.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "hosts": {
+          "description": "Optional list of hosts/IP ranges to scan.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "name": {
+          "description": "Unique campaign name (no dots allowed).",
+          "type": "string",
+        },
+        "ports": {
+          "description": "Optional list of ports to scan.",
+          "items": {
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "authorization_levels",
+      ],
+      "type": "object",
+    },
+    "name": "create_discovery_campaign",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "description": "Human-readable description.",
+          "type": "string",
+        },
+        "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lang": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "lang",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "host": {
+          "description": "DNS server IP address. Omit for Horizon's default resolver.",
+          "type": "string",
+        },
+        "lookup": {
+          "description": "DNS hostname to look up - supports {{key}} TemplateString syntax.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Unique datasource name (immutable primary key).",
+          "type": "string",
+        },
+        "port": {
+          "default": 53,
+          "description": "DNS server port (default 53).",
+          "type": "integer",
+        },
+        "record_types": {
+          "description": "DNS record types to return: "a", "aaaa", "cname", "ptr", "txt". Omit for all.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "timeout": {
+          "default": "10 seconds",
+          "description": "Query timeout in duration format (default "10 seconds").",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "lookup",
+      ],
+      "type": "object",
+    },
+    "name": "create_dns_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+              },
+              "multi": {
+                "type": "boolean",
+              },
+              "selected": {
+                "type": "boolean",
+              },
+            },
+            "required": [
+              "key",
+              "multi",
+              "selected",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "base_dn": {
+          "description": "LDAP search base DN - supports {{key}} TemplateString syntax.",
+          "type": "string",
+        },
+        "credentials": {
+          "description": "Name of existing PasswordCredentials for LDAP bind.",
+          "type": "string",
+        },
+        "description": {
+          "description": "Human-readable description.",
+          "type": "string",
+        },
+        "disable_hostname_validation": {
+          "default": false,
+          "description": "Skip hostname validation on TLS (default false).",
+          "type": "boolean",
+        },
+        "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lang": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "lang",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "filter": {
+          "description": "LDAP search filter - supports {{key}} TemplateString syntax.",
+          "type": "string",
+        },
+        "follow_referrals": {
+          "description": "Enable LDAP referral traversal.",
+          "type": "boolean",
+        },
+        "hostname": {
+          "description": "LDAP server URL (e.g. "ldaps://ldap.corp.example.com").",
+          "type": "string",
+        },
+        "limit": {
+          "description": "Maximum number of LDAP results to return.",
+          "type": "integer",
+        },
+        "name": {
+          "description": "Unique datasource name (immutable primary key).",
+          "type": "string",
+        },
+        "port": {
+          "description": "LDAP port. Default: 389 (LDAP) or 636 (LDAPS).",
+          "type": "integer",
+        },
+        "proxy": {
+          "description": "Name of an existing HTTP proxy object.",
+          "type": "string",
+        },
+        "secure": {
+          "description": "Use secure LDAP (LDAPS).",
+          "type": "boolean",
+        },
+        "timeout": {
+          "description": "Query timeout in duration format (e.g. "10s", "30 seconds").",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "hostname",
+        "credentials",
+        "base_dn",
+        "filter",
+        "secure",
+        "timeout",
+      ],
+      "type": "object",
+    },
+    "name": "create_ldap_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+              },
+              "multi": {
+                "type": "boolean",
+              },
+              "selected": {
+                "type": "boolean",
+              },
+            },
+            "required": [
+              "key",
+              "multi",
+              "selected",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "authentication_type": {
+          "description": "Auth scheme: "noauth", "basic", "x509", "bearer", or "custom".",
+          "type": "string",
+        },
+        "credentials": {
+          "description": "Name of existing credentials. Required when authentication_type is not "noauth".",
+          "type": "string",
+        },
+        "description": {
+          "description": "Human-readable description.",
+          "type": "string",
+        },
+        "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lang": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "lang",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "expected_http_codes": {
+          "description": "HTTP status codes indicating success (e.g. [200, 201]).",
+          "items": {
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "headers": {
+          "description": "Custom HTTP headers as [{name, value}].",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "method": {
+          "description": "HTTP method (GET, POST, PUT, DELETE, etc.).",
+          "type": "string",
+        },
+        "name": {
+          "description": "Unique datasource name (immutable primary key).",
+          "type": "string",
+        },
+        "payload": {
+          "description": "Request body - supports {{key}} TemplateString syntax.",
+          "type": "string",
+        },
+        "payload_type": {
+          "description": "Payload format hint (e.g. "json").",
+          "type": "string",
+        },
+        "proxy": {
+          "description": "Name of an existing HTTP proxy object.",
+          "type": "string",
+        },
+        "timeout": {
+          "description": "Request timeout in duration format (e.g. "10s").",
+          "type": "string",
+        },
+        "url": {
+          "description": "Endpoint URL - supports {{key}} TemplateString syntax.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "method",
+        "url",
+        "authentication_type",
+        "timeout",
+        "expected_http_codes",
+      ],
+      "type": "object",
+    },
+    "name": "create_rest_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "event": {
+          "description": "Single lifecycle event to subscribe to. Examples: "on_enroll", "on_revoke", "on_renew", "on_expire".",
+          "type": "string",
+        },
+        "licence_usage_percent": {
+          "description": "Threshold 1-100 for on_license_usage. MANDATORY for on_license_usage only.",
+          "type": "integer",
+        },
+        "name": {
+          "description": "Unique trigger name (immutable primary key).",
+          "type": "string",
+        },
+        "on_trigger_error": {
+          "description": "Names of triggers to fire if this notification fails.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "retries": {
+          "default": 10,
+          "description": "Retry count on failure with exponential backoff (default 10).",
+          "type": "integer",
+        },
+        "run_on_renewed": {
+          "description": "Whether to fire even if certificate was renewed. MANDATORY for on_expire only.",
+          "type": "boolean",
+        },
+        "run_period": {
+          "description": "Duration for periodic events (e.g. "30 days"). MANDATORY for on_expire, on_pending_*, on_license_expiration, on_credentials_expiration. FORBIDDEN for all other events.",
+          "type": "string",
+        },
+        "sequence": {
+          "description": "Ordered list of REST call steps. Each step: {url, method, authenticationType, expectedHttpCodes, timeout, ...}.",
+          "items": {
+            "additionalProperties": {},
+            "type": "object",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "event",
+        "sequence",
+      ],
+      "type": "object",
+    },
+    "name": "create_rest_notification",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "description": "PEM-encoded CRL string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "data",
+      ],
+      "type": "object",
+    },
+    "name": "decode_crl",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "pem": {
+          "description": "PEM-encoded CSR string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "pem",
+      ],
+      "type": "object",
+    },
+    "name": "decode_csr",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "description": "Base64-encoded DER bytes of the OCSP response.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "data",
+      ],
+      "type": "object",
+    },
+    "name": "decode_ocsp",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "description": "Base64-encoded DER bytes of the timestamping response.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "data",
+      ],
+      "type": "object",
+    },
+    "name": "decode_tsa",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "pem": {
+          "description": "PEM-encoded X.509 certificate string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "pem",
+      ],
+      "type": "object",
+    },
+    "name": "decode_x509",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Dashboard name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_dashboard",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Datasource name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Campaign name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_discovery_campaign",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_uuid": {
+          "description": "Must exactly match report_uuid as a deletion safeguard.",
+          "type": "string",
+        },
+        "report_uuid": {
+          "description": "UUID of the report to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "report_uuid",
+        "expected_uuid",
+      ],
+      "type": "object",
+    },
+    "name": "delete_report",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Saved query name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_saved_query",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Trigger name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_trigger",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "description": "The request ID to deny.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "request_id",
+      ],
+      "type": "object",
+    },
+    "name": "deny_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "query_type": {
+          "description": "Query language type - one of: hcql, hrql, heql, hdql.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query_type",
+      ],
+      "type": "object",
+    },
+    "name": "describe_query_fields",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "description": "The cryptographic data to detect and parse. Can be PEM-encoded, base64-encoded DER, or PKCS#7 content.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "data",
+      ],
+      "type": "object",
+    },
+    "name": "detect_file",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_id": {
+          "description": "Certificate ID.",
+          "type": "string",
+        },
+        "format": {
+          "default": "pem",
+          "description": "Output format (only 'pem' is supported via the API).",
+          "type": "string",
+        },
+      },
+      "required": [
+        "certificate_id",
+      ],
+      "type": "object",
+    },
+    "name": "download_certificate",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "report_uuid": {
+          "description": "UUID of the report to download.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "report_uuid",
+      ],
+      "type": "object",
+    },
+    "name": "download_report",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "campaign_name": {
+          "description": "Name of the discovery campaign.",
+          "type": "string",
+        },
+        "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "campaign_name",
+        "session_id",
+      ],
+      "type": "object",
+    },
+    "name": "end_discovery_feed_session",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_pem": {
+          "description": "Optional PEM-encoded certificate to evaluate against the policy.",
+          "type": "string",
+        },
+        "policy_name": {
+          "description": "Name of the grading policy to inspect.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "policy_name",
+      ],
+      "type": "object",
+    },
+    "name": "explain_grading_policy",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_pem": {
+          "description": "Optional PEM-encoded certificate to evaluate against the ruleset.",
+          "type": "string",
+        },
+        "ruleset_name": {
+          "description": "Name of the grading ruleset to inspect.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "ruleset_name",
+      ],
+      "type": "object",
+    },
+    "name": "explain_grading_ruleset",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "description": "Fields to include in the CSV export.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "query": {
+          "description": "HCQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'notAfter' or 'notAfter:Desc'.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "export_certificates_csv",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "enable_analytics": {
+          "default": true,
+          "description": "Enable analytics on the export (default true).",
+          "type": "boolean",
+        },
+        "fields": {
+          "description": "Specific fields to include in the CSV columns.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "query": {
+          "description": "HDQL query string.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort specification, e.g. 'timestamp:Desc'.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "export_discovery_events_csv",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "description": "Fields to include in the CSV export.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "query": {
+          "description": "HEQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'timestamp:Desc'.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "export_events_csv",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "description": "Fields to include in the CSV export.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "query": {
+          "description": "HRQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'registrationDate:Desc'.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "export_requests_csv",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "campaign_name": {
+          "description": "Name of the discovery campaign (must match the session).",
+          "type": "string",
+        },
+        "certificate": {
+          "description": "PEM-encoded certificate string.",
+          "type": "string",
+        },
+        "hostnames": {
+          "description": "DNS hostnames of the host (e.g. ["web01.example.com"]).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "ip": {
+          "description": "IP address of the host where the certificate was discovered.",
+          "type": "string",
+        },
+        "operating_systems": {
+          "description": "OS detected on the host (localscan only).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "paths": {
+          "description": "File paths where cert was found (localscan only).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
+          "type": "string",
+        },
+        "sources": {
+          "description": "Discovery source identifiers (e.g. ["netscan"]).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "tls_ports": {
+          "description": "TLS ports serving the cert (e.g. [{"port": 443, "version": "TLSv1.3"}]).",
+          "items": {
+            "additionalProperties": true,
+            "properties": {
+              "port": {
+                "type": "integer",
+              },
+              "version": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "port",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "usages": {
+          "description": "Service bindings (localscan only).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "session_id",
+        "campaign_name",
+        "certificate",
+        "ip",
+      ],
+      "type": "object",
+    },
+    "name": "feed_discovery_certificate",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "timeout": {
+          "default": 10,
+          "description": "Connection timeout in seconds (default 10).",
+          "exclusiveMinimum": 0,
+          "type": "integer",
+        },
+        "uri": {
+          "description": "Target endpoint. Examples: https://www.example.com, ldaps://dc01.corp.local:636, 192.168.1.1:8443, mail.example.com:993",
+          "type": "string",
+        },
+      },
+      "required": [
+        "uri",
+      ],
+      "type": "object",
+    },
+    "name": "fetch_exposed_certificate",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a flush safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Campaign name to flush.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "flush_discovery_campaign",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_id": {
+          "description": "Certificate ID.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "certificate_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_certificate",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact dashboard name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_dashboard",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact datasource name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact campaign name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_discovery_campaign",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "description": "The discovery event ID.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "event_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_discovery_event",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "description": "Event ID.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "event_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_event",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "get_license_info",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact profile name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_profile",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "request_id": {
+          "description": "Request ID.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "request_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_id": {
+          "description": "For renew/revoke/update/recover/migrate - the existing certificate ID.",
+          "type": "string",
+        },
+        "module": {
+          "description": "Profile module (webra, est, scep, acme, etc.).",
+          "type": "string",
+        },
+        "profile": {
+          "description": "Profile name. Required for enroll to get profile-specific template.",
+          "type": "string",
+        },
+        "workflow": {
+          "description": "Workflow type: enroll, renew, revoke, update, recover, migrate, import.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "workflow",
+      ],
+      "type": "object",
+    },
+    "name": "get_request_template",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact saved query name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_saved_query",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Exact trigger name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_trigger",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "credential_type": {
+          "description": "Filter by type: "password" (login/password), "raw" (API token), or "x509" (client certificate).",
+          "type": "string",
+        },
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on credential name.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_credentials",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "dashboard_type": {
+          "description": "Filter by type - "certificate" or "request".",
+          "enum": [
+            "certificate",
+            "request",
+          ],
+          "type": "string",
+        },
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on dashboard name.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_dashboards",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "ds_type": {
+          "description": "Filter by datasource type: "dns", "ldap", or "rest".",
+          "type": "string",
+        },
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on datasource name.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_datasources",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on campaign name.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_discovery_campaigns",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "default": 50,
+          "description": "Maximum number of profiles to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "module": {
+          "description": "Filter by module type (webra, acme, scep, est, monitored).",
+          "type": "string",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on profile name.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_profiles",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "expired": {
+          "default": false,
+          "description": "Include expired reports (default false).",
+          "type": "boolean",
+        },
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "report_name": {
+          "description": "Exact report name to filter on (server-side).",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_reports",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on query name.",
+          "type": "string",
+        },
+        "query_type": {
+          "description": "Filter by HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".",
+          "enum": [
+            "hcql",
+            "hrql",
+            "heql",
+            "hdql",
+            "hpql",
+          ],
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_saved_queries",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "default": 50,
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
+        },
+        "name_contains": {
+          "description": "Case-insensitive substring filter on trigger name.",
+          "type": "string",
+        },
+        "trigger_type": {
+          "description": "Filter by type: "rest", "email", "webhook", "akv", "aws", etc.",
+          "type": "string",
+        },
+      },
+      "type": "object",
+    },
+    "name": "list_triggers",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "additionalProperties": {},
+          "description": "Event data object - contents depend on the event type.",
+          "type": "object",
+        },
+        "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "session_id",
+        "data",
+      ],
+      "type": "object",
+    },
+    "name": "register_discovery_event",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "chart_id": {
+          "description": "Unique chart identifier (the "i" field) to remove.",
+          "type": "string",
+        },
+        "dashboard_name": {
+          "description": "Name of the dashboard containing the chart.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "dashboard_name",
+        "chart_id",
+      ],
+      "type": "object",
+    },
+    "name": "remove_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "description": "Custom field list (overrides preset).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "page_index": {
+          "default": 0,
+          "description": "Page index (0-based).",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "preset": {
+          "default": "compact",
+          "description": "Preset field set (overridden by fields if provided).",
+          "enum": [
+            "compact",
+            "diagnostic",
+            "compliance",
+          ],
+          "type": "string",
+        },
+        "query": {
+          "description": "HCQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'notAfter' or 'notAfter:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": false,
+          "description": "Include total count in response.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_certificates",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "enable_analytics": {
+          "default": true,
+          "description": "Enable analytics on the search (default true).",
+          "type": "boolean",
+        },
+        "page_index": {
+          "default": 0,
+          "description": "Zero-based page index (default 0).",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page, max 100 (default 25).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "query": {
+          "description": "HDQL query string.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort specification, e.g. 'timestamp:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": false,
+          "description": "Include total count in response (slower).",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_discovery_events",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "page_index": {
+          "default": 0,
+          "description": "Page index (0-based).",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "query": {
+          "description": "HEQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'timestamp:Desc'.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_events",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "description": "Custom field list (overrides preset).",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "page_index": {
+          "default": 0,
+          "description": "Page index (0-based).",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "preset": {
+          "default": "compact",
+          "description": "Preset field set (overridden by fields if provided).",
+          "enum": [
+            "compact",
+            "diagnostic",
+            "compliance",
+          ],
+          "type": "string",
+        },
+        "query": {
+          "description": "HRQL query expression.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort field, e.g. 'registrationDate:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": false,
+          "description": "Include total count in response.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_requests",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "dictionary": {
+          "additionalProperties": {
+            "type": "string",
+          },
+          "description": "Key-value pairs available as variables during evaluation.",
+          "type": "object",
+        },
+        "mode": {
+          "default": "computation_rule",
+          "description": "Expression type - "computation_rule" or "template_string".",
+          "enum": [
+            "computation_rule",
+            "template_string",
+          ],
+          "type": "string",
+        },
+        "rule": {
+          "description": "The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "rule",
+        "dictionary",
+      ],
+      "type": "object",
+    },
+    "name": "simulate_computation_rule",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "context": {
+          "additionalProperties": {},
+          "description": "Optional initial context dictionary.",
+          "type": "object",
+        },
+        "flow": {
+          "description": "Ordered list of flow entries.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "datasource": {
+                "type": "string",
+              },
+              "inputs": {
+                "additionalProperties": {
+                  "type": "string",
+                },
+                "default": {},
+                "type": "object",
+              },
+              "stopOnSuccess": {
+                "default": false,
+                "type": "boolean",
+              },
+            },
+            "required": [
+              "datasource",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "flow",
+      ],
+      "type": "object",
+    },
+    "name": "simulate_datasource_flow",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "Name of the existing trigger to simulate.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "simulate_trigger",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "campaign_name": {
+          "description": "Name of the discovery campaign to feed into.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "campaign_name",
+      ],
+      "type": "object",
+    },
+    "name": "start_discovery_feed_session",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "certificate_id": {
+          "description": "Certificate ID (required for renew, revoke, update, recover, migrate).",
+          "type": "string",
+        },
+        "data": {
+          "additionalProperties": {},
+          "description": "Additional workflow-specific fields merged into the payload.",
+          "type": "object",
+        },
+        "module": {
+          "description": "Profile module type (webra, est, scep, acme, crmp, etc.).",
+          "type": "string",
+        },
+        "password": {
+          "description": "PKCS#12 password for centralized key generation.",
+          "type": "string",
+        },
+        "profile": {
+          "description": "Certificate profile name.",
+          "type": "string",
+        },
+        "template": {
+          "additionalProperties": {},
+          "description": "Certificate request template object (subject, sans, labels, contactEmail, etc.).",
+          "type": "object",
+        },
+        "workflow": {
+          "description": "Workflow type: enroll, renew, revoke, update, recover, migrate, import.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "workflow",
+        "profile",
+        "module",
+      ],
+      "type": "object",
+    },
+    "name": "submit_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+              },
+              "multi": {
+                "type": "boolean",
+              },
+              "selected": {
+                "type": "boolean",
+              },
+            },
+            "required": [
+              "key",
+              "multi",
+              "selected",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "authentication_type": {
+          "description": "(REST) Auth type.",
+          "type": "string",
+        },
+        "base_dn": {
+          "description": "(LDAP) Base DN TemplateString.",
+          "type": "string",
+        },
+        "context": {
+          "additionalProperties": {
+            "type": "string",
+          },
+          "description": "Key-value pairs to resolve TemplateString variables. Example: {"hostname": "web01.corp.local"}.",
+          "type": "object",
+        },
+        "credentials": {
+          "description": "(LDAP/REST) Credentials name.",
+          "type": "string",
+        },
+        "ds_type": {
+          "description": "Datasource type: "dns", "ldap", or "rest".",
+          "type": "string",
+        },
+        "expected_http_codes": {
+          "description": "(REST) Success HTTP codes.",
+          "items": {
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "filter": {
+          "description": "(LDAP) Search filter TemplateString.",
+          "type": "string",
+        },
+        "headers": {
+          "description": "(REST) HTTP headers.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "host": {
+          "description": "(DNS) DNS server IP.",
+          "type": "string",
+        },
+        "hostname": {
+          "description": "(LDAP) LDAP server URL.",
+          "type": "string",
+        },
+        "limit": {
+          "description": "(LDAP) Max results.",
+          "type": "integer",
+        },
+        "lookup": {
+          "description": "(DNS) Hostname to look up.",
+          "type": "string",
+        },
+        "method": {
+          "description": "(REST) HTTP method.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Datasource name (for identification).",
+          "type": "string",
+        },
+        "payload": {
+          "description": "(REST) Request body TemplateString.",
+          "type": "string",
+        },
+        "payload_type": {
+          "description": "(REST) Payload format.",
+          "type": "string",
+        },
+        "port": {
+          "description": "(DNS/LDAP) Port number.",
+          "type": "integer",
+        },
+        "record_types": {
+          "description": "(DNS) Record types to query.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "secure": {
+          "description": "(LDAP) Use LDAPS.",
+          "type": "boolean",
+        },
+        "timeout": {
+          "description": "Timeout in duration format.",
+          "type": "string",
+        },
+        "url": {
+          "description": "(REST) Endpoint URL TemplateString.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "ds_type",
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "test_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "natural_language": {
+          "description": "Plain-English description of what to search for.
+Examples:
+- "expired RSA certificates from team-alpha"
+- "pending enrollment requests for the ACME profile"
+- "audit events in the last 24 hours"
+- "discovery scans on port 443"",
+          "type": "string",
+        },
+        "target_type": {
+          "description": "Force a specific query type (hcql, hrql, heql, hdql). If omitted the type is auto-detected from the input.",
+          "type": "string",
+        },
+        "validate": {
+          "default": true,
+          "description": "Whether to validate the query against Horizon (default true). Set to false for offline usage.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "natural_language",
+      ],
+      "type": "object",
+    },
+    "name": "translate_to_hql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "charts": {
+          "description": "New charts list (replaces existing).",
+          "items": {
+            "additionalProperties": {},
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "description": "New description.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Dashboard name to update.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_dashboard",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "chart_id": {
+          "description": "Unique chart identifier (the "i" field).",
+          "type": "string",
+        },
+        "chart_type": {
+          "description": "Chart type - area, donut, heatmap, bar-horizontal, line, metric, pie, polar, pyramid, radar, table, treemap, or bar-vertical.",
+          "type": "string",
+        },
+        "clear_fields": {
+          "description": "Chart field names to explicitly set to null.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "colors": {
+          "description": "List of hex color codes, e.g. ["#A6ADF7", "#4D54A2"].",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "dashboard_name": {
+          "description": "Name of the dashboard containing the chart.",
+          "type": "string",
+        },
+        "description": {
+          "description": "New chart description.",
+          "type": "string",
+        },
+        "direction": {
+          "description": "Visual rendering direction - "asc" or "desc".",
+          "type": "string",
+        },
+        "fields": {
+          "description": "New list of aggregation/group-by fields.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "h": {
+          "description": "Grid row span.",
+          "minimum": 1,
+          "type": "integer",
+        },
+        "having": {
+          "additionalProperties": {},
+          "description": "Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.",
+          "type": "object",
+        },
+        "limit": {
+          "description": "Max buckets returned (>= 0).",
+          "minimum": 0,
+          "type": "integer",
+        },
+        "local_query": {
+          "description": "New HQL query string for chart data.",
+          "type": "string",
+        },
+        "logarithmic": {
+          "description": "Enable logarithmic scale on value axis (API field: "log").",
+          "type": "boolean",
+        },
+        "sort_order": {
+          "description": "Data sort - "Asc", "Desc", "KeyAsc", or "KeyDesc".",
+          "type": "string",
+        },
+        "title": {
+          "description": "New chart title.",
+          "type": "string",
+        },
+        "w": {
+          "description": "Grid column span (1-12).",
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "x": {
+          "description": "Grid x position (0-11).",
+          "maximum": 11,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "y": {
+          "description": "Grid y position.",
+          "minimum": 0,
+          "type": "integer",
+        },
+      },
+      "required": [
+        "dashboard_name",
+        "chart_id",
+      ],
+      "type": "object",
+    },
+    "name": "update_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "key": {
+                "type": "string",
+              },
+              "multi": {
+                "type": "boolean",
+              },
+              "selected": {
+                "type": "boolean",
+              },
+            },
+            "required": [
+              "key",
+              "multi",
+              "selected",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "authentication_type": {
+          "description": "(REST) New auth type.",
+          "type": "string",
+        },
+        "base_dn": {
+          "description": "(LDAP) New base DN TemplateString.",
+          "type": "string",
+        },
+        "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "credentials": {
+          "description": "(LDAP/REST) New credentials name.",
+          "type": "string",
+        },
+        "description": {
+          "description": "New description.",
+          "type": "string",
+        },
+        "disable_hostname_validation": {
+          "description": "(LDAP) New hostname validation flag.",
+          "type": "boolean",
+        },
+        "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "lang": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "lang",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "expected_http_codes": {
+          "description": "(REST) New success HTTP codes.",
+          "items": {
+            "type": "integer",
+          },
+          "type": "array",
+        },
+        "filter": {
+          "description": "(LDAP) New search filter TemplateString.",
+          "type": "string",
+        },
+        "follow_referrals": {
+          "description": "(LDAP) New referral traversal flag.",
+          "type": "boolean",
+        },
+        "headers": {
+          "description": "(REST) New HTTP headers.",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string",
+              },
+              "value": {
+                "type": "string",
+              },
+            },
+            "required": [
+              "name",
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "host": {
+          "description": "(DNS) New DNS server IP.",
+          "type": "string",
+        },
+        "hostname": {
+          "description": "(LDAP) New LDAP server URL.",
+          "type": "string",
+        },
+        "limit": {
+          "description": "(LDAP) New result limit.",
+          "type": "integer",
+        },
+        "lookup": {
+          "description": "(DNS) New lookup TemplateString.",
+          "type": "string",
+        },
+        "method": {
+          "description": "(REST) New HTTP method.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Datasource name to update (cannot be changed).",
+          "type": "string",
+        },
+        "payload": {
+          "description": "(REST) New request body TemplateString.",
+          "type": "string",
+        },
+        "payload_type": {
+          "description": "(REST) New payload format hint.",
+          "type": "string",
+        },
+        "port": {
+          "description": "(DNS/LDAP) New port number.",
+          "type": "integer",
+        },
+        "proxy": {
+          "description": "(LDAP/REST) New proxy name.",
+          "type": "string",
+        },
+        "record_types": {
+          "description": "(DNS) New record type filter.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "secure": {
+          "description": "(LDAP) New secure flag.",
+          "type": "boolean",
+        },
+        "timeout": {
+          "description": "New timeout in duration format.",
+          "type": "string",
+        },
+        "url": {
+          "description": "(REST) New endpoint URL TemplateString.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "authorization_levels": {
+          "additionalProperties": true,
+          "description": "New access control configuration.",
+          "properties": {
+            "feed": {
+              "$ref": "#/properties/authorization_levels/properties/search",
+            },
+            "search": {
+              "additionalProperties": true,
+              "properties": {
+                "accessLevel": {
+                  "enum": [
+                    "everyone",
+                    "authenticated",
+                    "authorized",
+                  ],
+                  "type": "string",
+                },
+                "enforcedIdentityProviders": {
+                  "items": {
+                    "type": "string",
+                  },
+                  "type": "array",
+                },
+              },
+              "required": [
+                "accessLevel",
+              ],
+              "type": "object",
+            },
+          },
+          "required": [
+            "search",
+            "feed",
+          ],
+          "type": "object",
+        },
+        "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "description": "New description.",
+          "type": "string",
+        },
+        "enabled": {
+          "description": "Whether the campaign is active.",
+          "type": "boolean",
+        },
+        "event_on_failure": {
+          "description": "Whether to generate events on failures.",
+          "type": "boolean",
+        },
+        "event_on_success": {
+          "description": "Whether to generate events on success.",
+          "type": "boolean",
+        },
+        "event_on_warning": {
+          "description": "Whether to generate events on warnings.",
+          "type": "boolean",
+        },
+        "grading_policies": {
+          "description": "New list of grading policy names.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "hosts": {
+          "description": "New list of hosts/IP ranges.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "name": {
+          "description": "Campaign name to update.",
+          "type": "string",
+        },
+        "ports": {
+          "description": "New list of ports.",
+          "items": {
+            "type": "integer",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_discovery_campaign",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "description": "Optional human-readable description.",
+          "type": "string",
+        },
+        "name": {
+          "description": "Unique query name (acts as the upsert key).",
+          "type": "string",
+        },
+        "query": {
+          "description": "The HQL query string.",
+          "type": "string",
+        },
+        "query_type": {
+          "description": "HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".",
+          "enum": [
+            "hcql",
+            "hrql",
+            "heql",
+            "hdql",
+            "hpql",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "query_type",
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "upsert_saved_query",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "description": "HCQL query string to validate. Field names MUST be lowercase (contactemail, keytype - NOT contactEmail, keyType). Example: dn matches ".*example.com" and status is valid",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "validate_hcql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "description": "HDQL query string to validate. Field names MUST be lowercase (certificateid, sessionid - NOT certificateId, sessionId). Example: certificateid equals "abc123" and timestamp after -24h",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "validate_hdql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "description": "HEQL query string to validate. Field names MUST be lowercase (code, timestamp - NOT eventType, eventDate). Example: code equals "LIFECYCLE-ENROLL" and timestamp after 24h",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "validate_heql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "description": "HRQL query string to validate. Field names MUST be lowercase (registration.date, modification.date - NOT registrationDate). Example: workflow equals "enroll" and registration.date before 7d",
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "validate_hrql",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "whoami",
+  },
+]
+`;

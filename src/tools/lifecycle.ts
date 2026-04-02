@@ -34,6 +34,7 @@ export function registerLifecycleTools(
     {
       description:
         "Search certificates using HCQL query language.\n\n" +
+        "Safety tier: read-only\n\n" +
         "IMPORTANT - HCQL is NOT SQL. Use these operators (not =, <, >, LIKE):\n" +
         '  String: field equals "value" | field matches "regex" | field contains "sub" | field in ("a","b")\n' +
         '  Multi-regex: field within ["regex1", "regex2"]\n' +
@@ -166,6 +167,7 @@ export function registerLifecycleTools(
     {
       description:
         "Export certificates matching an HCQL query as CSV (bounded export helper).\n\n" +
+        "Safety tier: read-only\n\n" +
         "Returns up to 1000 rows. For full exports use Horizon UI.\n\n" +
         "HCQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HCQL field names are ALL LOWERCASE (keytype, contactemail - NOT keyType, contactEmail).\n" +
@@ -211,6 +213,7 @@ export function registerLifecycleTools(
     {
       description:
         "Download a certificate in PEM format.\n\n" +
+        "Safety tier: read-only\n\n" +
         "Only PEM format is available from the certificate object.\n\n" +
         "IMPORTANT - PKCS#12 / PFX retrieval: The PKCS#12 bundle (certificate +\n" +
         "private key) is NOT stored on the certificate object. For centralized\n" +
@@ -292,6 +295,8 @@ export function registerLifecycleTools(
     {
       description:
         "Get the request template showing which fields are required/editable.\n\n" +
+        "Safety tier: read-only\n" +
+        "Knowledge: horizon://knowledge/workflows\n\n" +
         "MUST be called before submit_request. The template response tells you:\n" +
         "- Which subject fields exist and whether they are editable or computed\n" +
         "- Which SAN types are allowed\n" +
@@ -300,8 +305,7 @@ export function registerLifecycleTools(
         "- Whether a password is required (centralized) or a CSR (decentralized)\n" +
         "- The allowed key types for centralized generation\n\n" +
         "Use the template to determine what information to ask the user for\n" +
-        "before submitting. Do not guess - the template is the source of truth.\n\n" +
-        "Knowledge: horizon://knowledge/workflows",
+        "before submitting. Do not guess - the template is the source of truth.",
       inputSchema: z.object({
         workflow: z
           .string()
@@ -352,6 +356,7 @@ export function registerLifecycleTools(
         "confirmation before calling this tool. Do not proceed without a clear\n" +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Submit a certificate lifecycle request (enroll, renew, revoke, etc.).\n\n" +
+        "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/workflows\n\n" +
         "MANDATORY WORKFLOW - follow these steps in order:\n" +
         "1. Call get_request_template(workflow, module, profile) to discover which\n" +
@@ -433,6 +438,7 @@ export function registerLifecycleTools(
         "confirmation before calling this tool. Do not proceed without a clear\n" +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Approve a pending certificate lifecycle request.\n\n" +
+        "Safety tier: mutating-safe\n\n" +
         "Prerequisites: Use search_requests or get_request to find the request ID.\n" +
         "Only pending requests can be approved. Permissions are checked automatically.\n\n" +
         "Checks permissions before attempting the approval. The workflow\n" +
@@ -471,6 +477,7 @@ export function registerLifecycleTools(
         "confirmation before calling this tool. Do not proceed without a clear\n" +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Deny a pending certificate lifecycle request.\n\n" +
+        "Safety tier: mutating-safe\n\n" +
         "Prerequisites: Use search_requests or get_request to find the request ID.\n" +
         "Only pending requests can be denied. Permissions are checked automatically.\n\n" +
         "Checks permissions before attempting the denial. The workflow\n" +
@@ -509,6 +516,7 @@ export function registerLifecycleTools(
         "confirmation before calling this tool. Do not proceed without a clear\n" +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Cancel a pending certificate lifecycle request.\n\n" +
+        "Safety tier: mutating-safe\n\n" +
         "Prerequisites: Use search_requests or get_request to find the request ID.\n" +
         "Only pending requests can be cancelled. Permissions are checked automatically.\n\n" +
         "Checks permissions before attempting the cancellation. The workflow\n" +
@@ -544,6 +552,7 @@ export function registerLifecycleTools(
     {
       description:
         "Search certificate lifecycle requests using HRQL query language.\n\n" +
+        "Safety tier: read-only\n\n" +
         "HRQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HRQL field names are ALL LOWERCASE with dots for dates\n" +
         "(registration.date, modification.date - NOT registrationDate, lastModificationDate).\n" +
@@ -672,6 +681,7 @@ export function registerLifecycleTools(
     {
       description:
         "Export requests matching an HRQL query as CSV (bounded export helper).\n\n" +
+        "Safety tier: read-only\n\n" +
         "Returns up to 1000 rows. For full exports use Horizon UI.\n" +
         "HRQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HRQL field names are ALL LOWERCASE (registration.date, NOT registrationDate).\n" +
@@ -716,6 +726,7 @@ export function registerLifecycleTools(
     {
       description:
         "Search audit events using HEQL query language.\n\n" +
+        "Safety tier: read-only\n\n" +
         "HEQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp, detail.* - NOT eventType, eventDate).\n" +
         "Examples:\n" +
@@ -802,6 +813,7 @@ export function registerLifecycleTools(
     {
       description:
         "Export audit events matching an HEQL query as CSV (bounded export helper).\n\n" +
+        "Safety tier: read-only\n\n" +
         "Returns up to 1000 rows. For full exports use Horizon UI.\n" +
         "HEQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         "IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp - NOT eventType, eventDate).\n" +
@@ -846,6 +858,7 @@ export function registerLifecycleTools(
     {
       description:
         "Aggregate certificates by groupBy dimensions using HCQL query.\n\n" +
+        "Safety tier: read-only\n\n" +
         "Returns counts grouped by the specified fields - ideal for\n" +
         "dashboarding, reporting, and distribution analysis (e.g. 'how many\n" +
         "valid certs per profile?', 'key type distribution?').\n\n" +
@@ -909,6 +922,7 @@ export function registerLifecycleTools(
     {
       description:
         "Aggregate requests by groupBy dimensions using HRQL query.\n\n" +
+        "Safety tier: read-only\n\n" +
         "Returns counts grouped by the specified fields - ideal for\n" +
         "workflow analytics (e.g. 'pending requests by profile?',\n" +
         "'approval rate by approver?').\n\n" +
