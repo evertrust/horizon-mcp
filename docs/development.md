@@ -3,14 +3,16 @@
 ## Setup
 
 ```bash
-pip install -e ".[dev]"
+npm install
 ```
 
 ## Unit tests
 
 ```bash
-pytest tests/ -m "not e2e and not llm_evaluation" -v
+npm test
 ```
+
+Runs [vitest](https://vitest.dev/) on the full test suite (excluding E2E and LLM evaluation tests).
 
 ## E2E tests
 
@@ -20,12 +22,19 @@ Run against a live Horizon instance:
 export HORIZON_E2E_URL=https://your-qa-instance.evertrust.io
 export HORIZON_E2E_API_ID=your-api-id
 export HORIZON_E2E_API_KEY=your-api-key
-pytest -m e2e -v
+npm run test:e2e
 ```
 
 ## Linting and type checking
 
 ```bash
-ruff check src/   # lint
-mypy src/          # type check
+npm run lint        # eslint + tsc --noEmit
+npm run typecheck   # tsc --noEmit only
+```
+
+## Build
+
+```bash
+npm run build              # tsup -> dist/index.js
+npm run build:binary       # tsup + bun compile -> dist/horizon-mcp
 ```
