@@ -16,15 +16,16 @@
  *   - horizon://knowledge/discovery (concepts, data structures, search patterns)
  *   - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
  */
-import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HorizonClient } from "../client/http.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import type { HorizonClient } from '../client/http.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const FEED_BASE = "/api/v1/discovery/feed";
+const FEED_BASE = '/api/v1/discovery/feed';
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -39,38 +40,38 @@ export function registerDiscoveryFeedTools(
   // =======================================================================
 
   server.registerTool(
-    "start_discovery_feed_session",
+    'start_discovery_feed_session',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Start a discovery feed session for a campaign.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n" +
+        'Start a discovery feed session for a campaign.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         "Store the returned 'id' field - you will need it to end the session. " +
-        "If you lose this value, use list_discovery_campaigns to check campaign " +
-        "status, or use Horizon UI to clean up.",
+        'If you lose this value, use list_discovery_campaigns to check campaign ' +
+        'status, or use Horizon UI to clean up.',
       inputSchema: z.object({
         campaign_name: z
           .string()
-          .describe("Name of the discovery campaign to feed into."),
+          .describe('Name of the discovery campaign to feed into.'),
       }),
     },
     async ({ campaign_name }) => {
       const result = await client.get<Record<string, unknown>>(
         `${FEED_BASE}/${campaign_name}`,
       );
-      const sessionId = (result["id"] as string | undefined) ?? "";
+      const sessionId = (result['id'] as string | undefined) ?? '';
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               content:
                 `Feed session started for campaign '${campaign_name}'. ` +
                 `Session ID: ${sessionId}. ` +
-                "Store this ID to end the session later.",
+                'Store this ID to end the session later.',
               data: result,
             }),
           },
@@ -84,48 +85,42 @@ export function registerDiscoveryFeedTools(
   // =======================================================================
 
   server.registerTool(
-    "feed_discovery_certificate",
+    'feed_discovery_certificate',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Feed a discovered certificate into an active feed session.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n" +
-        "The hostDiscoveryData describes where the certificate was found. " +
-        "See horizon://knowledge/discovery for field details.",
+        'Feed a discovered certificate into an active feed session.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
+        'The hostDiscoveryData describes where the certificate was found. ' +
+        'See horizon://knowledge/discovery for field details.',
       inputSchema: z.object({
         session_id: z
           .string()
-          .describe(
-            "Session ID obtained from start_discovery_feed_session.",
-          ),
+          .describe('Session ID obtained from start_discovery_feed_session.'),
         campaign_name: z
           .string()
-          .describe(
-            "Name of the discovery campaign (must match the session).",
-          ),
-        certificate: z
-          .string()
-          .describe("PEM-encoded certificate string."),
+          .describe('Name of the discovery campaign (must match the session).'),
+        certificate: z.string().describe('PEM-encoded certificate string.'),
         ip: z
           .string()
           .describe(
-            "IP address of the host where the certificate was discovered.",
+            'IP address of the host where the certificate was discovered.',
           ),
         hostnames: z
           .array(z.string())
           .optional()
-          .describe(
-            'DNS hostnames of the host (e.g. ["web01.example.com"]).',
-          ),
+          .describe('DNS hostnames of the host (e.g. ["web01.example.com"]).'),
         tls_ports: z
           .array(
-            z.object({
-              port: z.number().int(),
-              version: z.string().optional(),
-            }).passthrough(),
+            z
+              .object({
+                port: z.number().int(),
+                version: z.string().optional(),
+              })
+              .passthrough(),
           )
           .optional()
           .describe(
@@ -138,15 +133,15 @@ export function registerDiscoveryFeedTools(
         paths: z
           .array(z.string())
           .optional()
-          .describe("File paths where cert was found (localscan only)."),
+          .describe('File paths where cert was found (localscan only).'),
         usages: z
           .array(z.string())
           .optional()
-          .describe("Service bindings (localscan only)."),
+          .describe('Service bindings (localscan only).'),
         operating_systems: z
           .array(z.string())
           .optional()
-          .describe("OS detected on the host (localscan only)."),
+          .describe('OS detected on the host (localscan only).'),
       }),
     },
     async ({
@@ -162,13 +157,13 @@ export function registerDiscoveryFeedTools(
       operating_systems,
     }) => {
       const hostData: Record<string, unknown> = { ip };
-      if (hostnames !== undefined) hostData["hostnames"] = hostnames;
-      if (tls_ports !== undefined) hostData["tlsPorts"] = tls_ports;
-      if (sources !== undefined) hostData["sources"] = sources;
-      if (paths !== undefined) hostData["paths"] = paths;
-      if (usages !== undefined) hostData["usages"] = usages;
+      if (hostnames !== undefined) hostData['hostnames'] = hostnames;
+      if (tls_ports !== undefined) hostData['tlsPorts'] = tls_ports;
+      if (sources !== undefined) hostData['sources'] = sources;
+      if (paths !== undefined) hostData['paths'] = paths;
+      if (usages !== undefined) hostData['usages'] = usages;
       if (operating_systems !== undefined)
-        hostData["operatingSystems"] = operating_systems;
+        hostData['operatingSystems'] = operating_systems;
 
       const payload: Record<string, unknown> = {
         sessionId: session_id,
@@ -183,9 +178,9 @@ export function registerDiscoveryFeedTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
-              content: "Certificate fed to discovery session.",
+              content: 'Certificate fed to discovery session.',
               data: result,
             }),
           },
@@ -199,26 +194,22 @@ export function registerDiscoveryFeedTools(
   // =======================================================================
 
   server.registerTool(
-    "register_discovery_event",
+    'register_discovery_event',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Register an arbitrary discovery event in an active feed session.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows",
+        'Register an arbitrary discovery event in an active feed session.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
       inputSchema: z.object({
         session_id: z
           .string()
-          .describe(
-            "Session ID obtained from start_discovery_feed_session.",
-          ),
+          .describe('Session ID obtained from start_discovery_feed_session.'),
         data: z
           .record(z.string(), z.unknown())
-          .describe(
-            "Event data object - contents depend on the event type.",
-          ),
+          .describe('Event data object - contents depend on the event type.'),
       }),
     },
     async ({ session_id, data }) => {
@@ -233,9 +224,9 @@ export function registerDiscoveryFeedTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
-              content: "Discovery event registered.",
+              content: 'Discovery event registered.',
               data: result,
             }),
           },
@@ -249,24 +240,20 @@ export function registerDiscoveryFeedTools(
   // =======================================================================
 
   server.registerTool(
-    "end_discovery_feed_session",
+    'end_discovery_feed_session',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "End a discovery feed session.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows",
+        'End a discovery feed session.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
       inputSchema: z.object({
-        campaign_name: z
-          .string()
-          .describe("Name of the discovery campaign."),
+        campaign_name: z.string().describe('Name of the discovery campaign.'),
         session_id: z
           .string()
-          .describe(
-            "Session ID obtained from start_discovery_feed_session.",
-          ),
+          .describe('Session ID obtained from start_discovery_feed_session.'),
       }),
     },
     async ({ campaign_name, session_id }) => {
@@ -274,7 +261,7 @@ export function registerDiscoveryFeedTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               content: `Feed session '${session_id}' ended for campaign '${campaign_name}'.`,
             }),

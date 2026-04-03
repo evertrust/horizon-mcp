@@ -1,4 +1,4 @@
-import type { Agent } from "undici";
+import type { Agent } from 'undici';
 
 /**
  * Abstract base class for Horizon authentication providers.
@@ -27,7 +27,7 @@ export abstract class AuthProvider {
   }
 
   /** Return TLS connect options for undici.Agent, or undefined. */
-  getDispatcherOptions(): Agent.Options["connect"] | undefined {
+  getDispatcherOptions(): Agent.Options['connect'] | undefined {
     return undefined;
   }
 }

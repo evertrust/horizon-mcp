@@ -6,13 +6,13 @@ Horizon provides five domain-specific query languages for searching different
 object types. All share the same operator syntax but have different field
 sets tailored to their domain.
 
-| Language | Full Name                       | Searches           | API Endpoint                        |
-|----------|---------------------------------|--------------------|-------------------------------------|
-| **HCQL** | Horizon Certificate Query Lang  | Certificates       | `/api/v1/certificates/search`       |
-| **HRQL** | Horizon Request Query Language  | Requests           | `/api/v1/requests/search`           |
-| **HEQL** | Horizon Event Query Language    | Audit events       | `/api/v1/events/search`             |
-| **HDQL** | Horizon Discovery Query Lang    | Discovery results  | `/api/v1/discovery/events/search`   |
-| **HPQL** | Horizon Principal Query Lang    | Principals (users) | *Reference only -- no search API*   |
+| Language | Full Name                      | Searches           | API Endpoint                      |
+| -------- | ------------------------------ | ------------------ | --------------------------------- |
+| **HCQL** | Horizon Certificate Query Lang | Certificates       | `/api/v1/certificates/search`     |
+| **HRQL** | Horizon Request Query Language | Requests           | `/api/v1/requests/search`         |
+| **HEQL** | Horizon Event Query Language   | Audit events       | `/api/v1/events/search`           |
+| **HDQL** | Horizon Discovery Query Lang   | Discovery results  | `/api/v1/discovery/events/search` |
+| **HPQL** | Horizon Principal Query Lang   | Principals (users) | _Reference only -- no search API_ |
 
 ---
 
@@ -22,22 +22,22 @@ All five languages share these operators:
 
 ### Comparison Operators
 
-| Operator              | Syntax                  | Description                              |
-|-----------------------|-------------------------|------------------------------------------|
-| `equals`              | `field equals "value"`  | Exact match (case-sensitive)             |
-| `matches`             | `field matches "regex"` | Regular expression match                 |
-| `contains`            | `field contains "sub"`  | Substring match (case-insensitive)       |
-| `in`                  | `field in ("a", "b")`   | Value is one of the listed values        |
-| `within`              | `field within ["r1", "r2"]` | Match against multiple regex patterns (multi-regex OR) |
+| Operator   | Syntax                      | Description                                            |
+| ---------- | --------------------------- | ------------------------------------------------------ |
+| `equals`   | `field equals "value"`      | Exact match (case-sensitive)                           |
+| `matches`  | `field matches "regex"`     | Regular expression match                               |
+| `contains` | `field contains "sub"`      | Substring match (case-insensitive)                     |
+| `in`       | `field in ("a", "b")`       | Value is one of the listed values                      |
+| `within`   | `field within ["r1", "r2"]` | Match against multiple regex patterns (multi-regex OR) |
 
 **Symbolic aliases**: `=` for `equals`.
 
 ### Date Operators
 
-| Operator              | Syntax                          | Description                        |
-|-----------------------|---------------------------------|------------------------------------|
-| `before`              | `field before "2025-01-01"`     | Date is before the given date      |
-| `after`               | `field after "2025-01-01"`      | Date is after the given date       |
+| Operator | Syntax                      | Description                   |
+| -------- | --------------------------- | ----------------------------- |
+| `before` | `field before "2025-01-01"` | Date is before the given date |
+| `after`  | `field after "2025-01-01"`  | Date is after the given date  |
 
 **Symbolic aliases**: `<` for `before`, `>` for `after`.
 
@@ -48,21 +48,21 @@ All five languages share these operators:
 These operators work on **grade fields** (`grade`, `grade.*`) with grade values (A, B, C, D, E).
 They do NOT work on numeric values.
 
-| Operator                | Syntax                              | Description                        |
-|-------------------------|-------------------------------------|------------------------------------|
-| `lower than`            | `grade lower than B`                | Grade is at or below (<=)          |
-| `greater than`          | `grade greater than C`              | Grade is at or above (>=)          |
-| `strictly lower than`   | `grade strictly lower than B`       | Grade is strictly below (<)        |
-| `strictly greater than` | `grade strictly greater than C`     | Grade is strictly above (>)        |
+| Operator                | Syntax                          | Description                 |
+| ----------------------- | ------------------------------- | --------------------------- |
+| `lower than`            | `grade lower than B`            | Grade is at or below (<=)   |
+| `greater than`          | `grade greater than C`          | Grade is at or above (>=)   |
+| `strictly lower than`   | `grade strictly lower than B`   | Grade is strictly below (<) |
+| `strictly greater than` | `grade strictly greater than C` | Grade is strictly above (>) |
 
 **Symbolic aliases**: `<=` for `lower than`, `>=` for `greater than`, `<` for `strictly lower than`, `>` for `strictly greater than`.
 
 ### Existence Operators
 
-| Operator      | Syntax                | Description                        |
-|---------------|-----------------------|------------------------------------|
-| `exists`      | `field exists`        | Field has a non-null value         |
-| `not exists`  | `field not exists`    | Field is null or absent            |
+| Operator     | Syntax             | Description                |
+| ------------ | ------------------ | -------------------------- |
+| `exists`     | `field exists`     | Field has a non-null value |
+| `not exists` | `field not exists` | Field is null or absent    |
 
 ### Negation
 
@@ -73,6 +73,7 @@ field not operator value
 ```
 
 **Examples:**
+
 ```
 dn not contains "test"              -- DN does NOT contain "test"
 profile not equals "WebRA-Prod"     -- profile is NOT "WebRA-Prod"
@@ -82,10 +83,11 @@ serial not exists                   -- certificate has no serial (same as not ex
 ```
 
 **CRITICAL**: The syntax is `field not operator value`, NOT any of these WRONG forms:
-- ~~`not(field operator value)`~~  -  INVALID
-- ~~`not field operator value`~~  -  INVALID
-- ~~`(not (field operator value))`~~  -  INVALID
-- ~~`!(field operator value)`~~  -  INVALID
+
+- ~~`not(field operator value)`~~ - INVALID
+- ~~`not field operator value`~~ - INVALID
+- ~~`(not (field operator value))`~~ - INVALID
+- ~~`!(field operator value)`~~ - INVALID
 
 The `not` keyword goes BETWEEN the field name and the operator. It is part of the
 operator itself (`not contains`, `not equals`, `not matches`, `not in`, `not exists`).
@@ -154,21 +156,21 @@ There is no `errors` or `warnings` (plural) value.
 
 Query languages accept multiple date formats:
 
-| Format                | Example                   | Description                   |
-|-----------------------|---------------------------|-------------------------------|
-| `YYYY`                | `"2025"`                  | Year only                     |
-| `YYYY-MM`             | `"2025-06"`               | Year and month                |
-| `YYYY-MM-DD`          | `"2025-06-15"`            | Absolute date                 |
-| `YYYY-MM-DDTHH`       | `"2025-06-15T14"`         | Date with hour                |
-| `YYYY-MM-DDTHH:mm`    | `"2025-06-15T14:30"`      | Date with hour and minutes    |
-| `YYYY-MM-DDTHH:mm:ss` | `"2025-06-15T14:30:00"`   | Full ISO datetime             |
-| `now`                 | `now`                     | Current timestamp             |
-| `today`               | `today`                   | Current date at midnight      |
-| Relative              | `30d`                     | 30 days                       |
-| Relative              | `24h`                     | 24 hours                      |
-| Relative              | `5m`                      | 5 minutes                     |
-| Relative              | `60s`                     | 60 seconds                    |
-| Relative (negative)   | `-30d`                    | 30 days in the past           |
+| Format                | Example                 | Description                |
+| --------------------- | ----------------------- | -------------------------- |
+| `YYYY`                | `"2025"`                | Year only                  |
+| `YYYY-MM`             | `"2025-06"`             | Year and month             |
+| `YYYY-MM-DD`          | `"2025-06-15"`          | Absolute date              |
+| `YYYY-MM-DDTHH`       | `"2025-06-15T14"`       | Date with hour             |
+| `YYYY-MM-DDTHH:mm`    | `"2025-06-15T14:30"`    | Date with hour and minutes |
+| `YYYY-MM-DDTHH:mm:ss` | `"2025-06-15T14:30:00"` | Full ISO datetime          |
+| `now`                 | `now`                   | Current timestamp          |
+| `today`               | `today`                 | Current date at midnight   |
+| Relative              | `30d`                   | 30 days                    |
+| Relative              | `24h`                   | 24 hours                   |
+| Relative              | `5m`                    | 5 minutes                  |
+| Relative              | `60s`                   | 60 seconds                 |
+| Relative (negative)   | `-30d`                  | 30 days in the past        |
 
 Supported relative duration units: `d`/`day`/`days`, `h`/`hour`/`hours`,
 `m`/`minute`/`minutes`, `s`/`second`/`seconds`.
@@ -183,12 +185,12 @@ determine the direction.
 
 ## Combinators
 
-| Combinator       | Syntax              | Description                              |
-|------------------|---------------------|------------------------------------------|
-| `and` / `&&`     | `expr1 and expr2`   | Both conditions must match               |
-| `or` / `||`      | `expr1 or expr2`    | At least one condition must match        |
-| `not` / `!`      | `not expr`          | Negates the condition                    |
-| Parentheses      | `(expr1 or expr2) and expr3` | Grouping for precedence         |
+| Combinator   | Syntax                       | Description                |
+| ------------ | ---------------------------- | -------------------------- | ---------------- | --------------------------------- |
+| `and` / `&&` | `expr1 and expr2`            | Both conditions must match |
+| `or` / `     |                              | `                          | `expr1 or expr2` | At least one condition must match |
+| `not` / `!`  | `not expr`                   | Negates the condition      |
+| Parentheses  | `(expr1 or expr2) and expr3` | Grouping for precedence    |
 
 **Symbolic aliases**: `&` for `and`, `|` for `or`.
 
@@ -200,29 +202,31 @@ determine the direction.
 
 For brevity, HQL languages accept symbolic alternatives:
 
-| Symbol | Equivalent                  | Context       |
-|--------|-----------------------------|---------------|
-| `=`    | `equals`                    | Any field     |
-| `<`    | `before` / `strictly lower than` | Date / Grade |
+| Symbol | Equivalent                        | Context      |
+| ------ | --------------------------------- | ------------ | ---------- | ---------- |
+| `=`    | `equals`                          | Any field    |
+| `<`    | `before` / `strictly lower than`  | Date / Grade |
 | `>`    | `after` / `strictly greater than` | Date / Grade |
-| `<=`   | `lower than`                | Grade         |
-| `>=`   | `greater than`              | Grade         |
-| `&&`   | `and`                       | Combinator    |
-| `&`    | `and`                       | Combinator    |
-| `||`   | `or`                        | Combinator    |
-| `|`    | `or`                        | Combinator    |
-| `!`    | `not`                       | Combinator    |
+| `<=`   | `lower than`                      | Grade        |
+| `>=`   | `greater than`                    | Grade        |
+| `&&`   | `and`                             | Combinator   |
+| `&`    | `and`                             | Combinator   |
+| `      |                                   | `            | `or`       | Combinator |
+| `      | `                                 | `or`         | Combinator |
+| `!`    | `not`                             | Combinator   |
 
 ---
 
 ## HCQL Fields (Certificate Query)
 
-**CRITICAL  -  HCQL query field names are ALL LOWERCASE, never camelCase:**
+**CRITICAL - HCQL query field names are ALL LOWERCASE, never camelCase:**
+
 - **HCQL query fields are lowercase**: `contactemail`, `keytype`, `signingalgorithm`, `valid.until`, `valid.from`
 - **API `fields`, `sortedBy`, and response fields are camelCase**: `contactEmail`, `keyType`, `signingAlgorithm`, `notAfter`, `notBefore`
 - **Using camelCase in HCQL queries causes HQL-001 errors**
 
 Common HCQL mistakes (WRONG → CORRECT):
+
 - `contactEmail` → `contactemail`
 - `keyType` → `keytype`
 - `signingAlgorithm` → `signingalgorithm`
@@ -231,47 +235,47 @@ Common HCQL mistakes (WRONG → CORRECT):
 - `primaryKeyType` → `primarykeytype`
 - `certificateType` → `certificatetype`
 
-| Field                    | Type   | Description                                  |
-|--------------------------|--------|----------------------------------------------|
-| `dn`                     | string | Full distinguished name                      |
-| `profile`                | string | Profile name                                 |
-| `module`                 | string | Module type (webra, acme, scep, est, monitored) |
-| `san`                    | string | Subject Alternative Name (any type, no sub-fields) |
-| `issuer`                 | string | Issuer distinguished name                    |
-| `serial`                 | string | Certificate serial number                    |
-| `thumbprint`             | string | Certificate thumbprint                       |
-| `publickeythumbprint`    | string | Public key thumbprint                        |
-| `keytype`                | string | Key algorithm (RSA, EC, etc.)                |
-| `primarykeytype`         | string | Primary key type (hybrid certs)              |
-| `alternatekeytype`       | string | Alternate key type (hybrid certs)            |
-| `signingalgorithm`       | string | Signature algorithm                          |
-| `owner`                  | string | Owning team name                             |
-| `team`                   | string | Team name                                    |
-| `holderid`               | string | Certificate holder identifier (principal)    |
-| `contactemail`           | string | Contact email address                        |
-| `valid.from`             | date   | Validity start date                          |
-| `valid.until`            | date   | Validity end date                            |
-| `revocation.date`        | date   | When the certificate was revoked             |
-| `revocation.reason`      | string | Revocation reason                            |
-| `purge.date`             | date   | Scheduled purge date                         |
-| `id`                     | id     | Certificate internal ID                      |
-| `grade`                  | grade  | Security grade (supports lower/greater than) |
-| `grade.*`                | grade  | Grade for specific grading policy            |
-| `label.*`                | string | Label value (dynamic field name)             |
-| `metadata.<key>`         | string | Certificate metadata (restricted keys  -  see below) |
-| `discoverydata.ip`       | string | Host IP where certificate was discovered     |
-| `discoverydata.sources`  | string | Discovery type (`localscan`, `netscan`, etc.)|
-| `discoverydata.hostnames`| string | Host hostnames (netscan)                     |
-| `discoverydata.operatingsystems` | string | Host OS (localscan)                 |
-| `discoverydata.paths`    | string | Certificate file path on host (localscan). E.g. `/opt/tomcat/conf/keystore.jks` |
-| `discoverydata.usages`   | string | Config file paths used to find the cert (localscan). E.g. `tomcat-*:8443`, `/opt/tomcat/conf` |
-| `discoverydata.tls.version` | string | TLS version (netscan)                     |
-| `discoverydata.tls.port` | number | HTTPS port where cert is exposed (netscan)   |
-| `discoveryinfo.campaign` | string | Discovery campaign name                      |
-| `thirdparty.connector`   | string | Third-party connector name                   |
-| `thirdparty.id`          | string | Third-party external ID                      |
-| `thirdparty.fingerprint` | string | Third-party fingerprint                      |
-| `trigger.results`        | special| See trigger.results syntax above             |
+| Field                            | Type    | Description                                                                                   |
+| -------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
+| `dn`                             | string  | Full distinguished name                                                                       |
+| `profile`                        | string  | Profile name                                                                                  |
+| `module`                         | string  | Module type (webra, acme, scep, est, monitored)                                               |
+| `san`                            | string  | Subject Alternative Name (any type, no sub-fields)                                            |
+| `issuer`                         | string  | Issuer distinguished name                                                                     |
+| `serial`                         | string  | Certificate serial number                                                                     |
+| `thumbprint`                     | string  | Certificate thumbprint                                                                        |
+| `publickeythumbprint`            | string  | Public key thumbprint                                                                         |
+| `keytype`                        | string  | Key algorithm (RSA, EC, etc.)                                                                 |
+| `primarykeytype`                 | string  | Primary key type (hybrid certs)                                                               |
+| `alternatekeytype`               | string  | Alternate key type (hybrid certs)                                                             |
+| `signingalgorithm`               | string  | Signature algorithm                                                                           |
+| `owner`                          | string  | Owning team name                                                                              |
+| `team`                           | string  | Team name                                                                                     |
+| `holderid`                       | string  | Certificate holder identifier (principal)                                                     |
+| `contactemail`                   | string  | Contact email address                                                                         |
+| `valid.from`                     | date    | Validity start date                                                                           |
+| `valid.until`                    | date    | Validity end date                                                                             |
+| `revocation.date`                | date    | When the certificate was revoked                                                              |
+| `revocation.reason`              | string  | Revocation reason                                                                             |
+| `purge.date`                     | date    | Scheduled purge date                                                                          |
+| `id`                             | id      | Certificate internal ID                                                                       |
+| `grade`                          | grade   | Security grade (supports lower/greater than)                                                  |
+| `grade.*`                        | grade   | Grade for specific grading policy                                                             |
+| `label.*`                        | string  | Label value (dynamic field name)                                                              |
+| `metadata.<key>`                 | string  | Certificate metadata (restricted keys - see below)                                            |
+| `discoverydata.ip`               | string  | Host IP where certificate was discovered                                                      |
+| `discoverydata.sources`          | string  | Discovery type (`localscan`, `netscan`, etc.)                                                 |
+| `discoverydata.hostnames`        | string  | Host hostnames (netscan)                                                                      |
+| `discoverydata.operatingsystems` | string  | Host OS (localscan)                                                                           |
+| `discoverydata.paths`            | string  | Certificate file path on host (localscan). E.g. `/opt/tomcat/conf/keystore.jks`               |
+| `discoverydata.usages`           | string  | Config file paths used to find the cert (localscan). E.g. `tomcat-*:8443`, `/opt/tomcat/conf` |
+| `discoverydata.tls.version`      | string  | TLS version (netscan)                                                                         |
+| `discoverydata.tls.port`         | number  | HTTPS port where cert is exposed (netscan)                                                    |
+| `discoveryinfo.campaign`         | string  | Discovery campaign name                                                                       |
+| `thirdparty.connector`           | string  | Third-party connector name                                                                    |
+| `thirdparty.id`                  | string  | Third-party external ID                                                                       |
+| `thirdparty.fingerprint`         | string  | Third-party fingerprint                                                                       |
+| `trigger.results`                | special | See trigger.results syntax above                                                              |
 
 ### Allowed `metadata.<key>` Values
 
@@ -284,11 +288,12 @@ keys are recognized by the HCQL parser:
 `previous_certificate_id`, `automation_policy`, `contact_email`
 
 Common usage:
-- `metadata.renewed_certificate_id not exists`  -  certs NOT yet renewed
-- `metadata.previous_certificate_id exists`  -  certs enrolled as renewals
+
+- `metadata.renewed_certificate_id not exists` - certs NOT yet renewed
+- `metadata.previous_certificate_id exists` - certs enrolled as renewals
 
 **IMPORTANT**: `san` is a simple string field with no sub-fields.
-Use `san matches "^\*\."` to find wildcard certificates  -  NOT `san.dnsname`.
+Use `san matches "^\*\."` to find wildcard certificates - NOT `san.dnsname`.
 
 ---
 
@@ -296,26 +301,26 @@ Use `san matches "^\*\."` to find wildcard certificates  -  NOT `san.dnsname`.
 
 **HRQL query field names are lowercase with dotted notation for dates.**
 
-| Field                    | Type   | Description                                  |
-|--------------------------|--------|----------------------------------------------|
-| `id`                     | id     | Unique request identifier                    |
-| `module`                 | string | Module type                                  |
-| `workflow`               | string | Workflow type (enroll, renew, revoke, etc.)   |
-| `profile`                | string | Profile name                                 |
-| `status`                 | string | Request status                               |
-| `requester`              | string | Who submitted the request                    |
-| `approver`               | string | Who approved/denied the request              |
-| `team`                   | string | Team name                                    |
-| `owner`                  | string | Owner name                                   |
-| `contact`                | string | Contact information                          |
-| `dn`                     | string | Requested or associated distinguished name   |
-| `holderid`               | string | Request holder identifier                    |
-| `comment.requester`      | string | Requester comment                            |
-| `comment.approver`       | string | Approver comment                             |
-| `registration.date`      | date   | When the request was created                 |
-| `modification.date`      | date   | When the request was last modified           |
-| `expiration.date`        | date   | When the request expires                     |
-| `label.*`                | string | Label value (dynamic field name)             |
+| Field               | Type   | Description                                 |
+| ------------------- | ------ | ------------------------------------------- |
+| `id`                | id     | Unique request identifier                   |
+| `module`            | string | Module type                                 |
+| `workflow`          | string | Workflow type (enroll, renew, revoke, etc.) |
+| `profile`           | string | Profile name                                |
+| `status`            | string | Request status                              |
+| `requester`         | string | Who submitted the request                   |
+| `approver`          | string | Who approved/denied the request             |
+| `team`              | string | Team name                                   |
+| `owner`             | string | Owner name                                  |
+| `contact`           | string | Contact information                         |
+| `dn`                | string | Requested or associated distinguished name  |
+| `holderid`          | string | Request holder identifier                   |
+| `comment.requester` | string | Requester comment                           |
+| `comment.approver`  | string | Approver comment                            |
+| `registration.date` | date   | When the request was created                |
+| `modification.date` | date   | When the request was last modified          |
+| `expiration.date`   | date   | When the request expires                    |
+| `label.*`           | string | Label value (dynamic field name)            |
 
 **Special condition:** `request is [not] valid|expired`
 
@@ -325,16 +330,16 @@ Use `san matches "^\*\."` to find wildcard certificates  -  NOT `san.dnsname`.
 
 **HEQL field names are lowercase. Use `detail.<key>` for dynamic event detail fields.**
 
-| Field                    | Type   | Description                                  |
-|--------------------------|--------|----------------------------------------------|
-| `id`                     | id     | Unique event identifier                      |
-| `code`                   | string | Event code/type                              |
-| `node`                   | string | Horizon node that generated the event        |
-| `module`                 | string | Module type                                  |
-| `status`                 | string | Event status                                 |
-| `timestamp`              | date   | Event timestamp                              |
-| `purge.date`             | date   | Scheduled purge date                         |
-| `detail.*`               | string | Dynamic event detail field (see catalog below) |
+| Field        | Type   | Description                                    |
+| ------------ | ------ | ---------------------------------------------- |
+| `id`         | id     | Unique event identifier                        |
+| `code`       | string | Event code/type                                |
+| `node`       | string | Horizon node that generated the event          |
+| `module`     | string | Module type                                    |
+| `status`     | string | Event status                                   |
+| `timestamp`  | date   | Event timestamp                                |
+| `purge.date` | date   | Scheduled purge date                           |
+| `detail.*`   | string | Dynamic event detail field (see catalog below) |
 
 ### `detail.*` Key Catalog
 
@@ -377,25 +382,25 @@ for specific event types.
 
 **HDQL field names are lowercase with dotted notation.**
 
-| Field                    | Type    | Description                                 |
-|--------------------------|---------|---------------------------------------------|
-| `id`                     | id      | Unique discovery event identifier           |
-| `code`                   | string  | Discovery event code                        |
-| `status`                 | string  | Discovery event status                      |
-| `campaign`               | string  | Discovery campaign name                     |
-| `hostname`               | string  | Discovered hostname                         |
-| `ip`                     | string  | Discovered IP address                       |
-| `port`                   | number  | Discovered port                             |
-| `source`                 | string  | Discovery source                            |
-| `actorid`                | string  | Actor who triggered the scan                |
-| `certificateid`          | id      | Associated certificate ID                   |
-| `sessionid`              | id      | Discovery session ID                        |
-| `error.code`             | string  | Error code (if scan failed)                 |
-| `error.message`          | string  | Error message (if scan failed)              |
-| `client.version`         | string  | Discovery client version                    |
-| `client.ip`              | string  | Discovery client IP                         |
-| `client.id`              | string  | Discovery client identifier                 |
-| `timestamp`              | date    | When the scan occurred                      |
+| Field            | Type   | Description                       |
+| ---------------- | ------ | --------------------------------- |
+| `id`             | id     | Unique discovery event identifier |
+| `code`           | string | Discovery event code              |
+| `status`         | string | Discovery event status            |
+| `campaign`       | string | Discovery campaign name           |
+| `hostname`       | string | Discovered hostname               |
+| `ip`             | string | Discovered IP address             |
+| `port`           | number | Discovered port                   |
+| `source`         | string | Discovery source                  |
+| `actorid`        | string | Actor who triggered the scan      |
+| `certificateid`  | id     | Associated certificate ID         |
+| `sessionid`      | id     | Discovery session ID              |
+| `error.code`     | string | Error code (if scan failed)       |
+| `error.message`  | string | Error message (if scan failed)    |
+| `client.version` | string | Discovery client version          |
+| `client.ip`      | string | Discovery client IP               |
+| `client.id`      | string | Discovery client identifier       |
+| `timestamp`      | date   | When the scan occurred            |
 
 ---
 
@@ -404,15 +409,15 @@ for specific event types.
 **Note**: HPQL is used in the Horizon UI for filtering principals. There is
 no corresponding search API endpoint -- it is listed here for reference only.
 
-| Field                    | Type   | Description                          |
-|--------------------------|--------|--------------------------------------|
-| `identifier`             | string | Principal identifier (username)      |
-| `name`                   | string | Display name                         |
-| `email`                  | string | Email address                        |
-| `role`                   | string | Assigned role name                   |
-| `team`                   | string | Assigned team name                   |
-| `idp`                    | string | Identity provider name               |
-| `lastLogin`              | date   | Last login timestamp                 |
+| Field        | Type   | Description                     |
+| ------------ | ------ | ------------------------------- |
+| `identifier` | string | Principal identifier (username) |
+| `name`       | string | Display name                    |
+| `email`      | string | Email address                   |
+| `role`       | string | Assigned role name              |
+| `team`       | string | Assigned team name              |
+| `idp`        | string | Identity provider name          |
+| `lastLogin`  | date   | Last login timestamp            |
 
 ---
 
@@ -448,39 +453,39 @@ NOT HCQL query field names (`valid.until`, `valid.from`).
 ## HCQL vs API Field Names (CRITICAL)
 
 HCQL query fields and API response/request fields use **different naming conventions**.
-Do NOT confuse them  -  using the wrong convention causes errors.
+Do NOT confuse them - using the wrong convention causes errors.
 
-| Context | Convention | Examples |
-|---------|-----------|----------|
-| **HCQL `query` parameter** | lowercase, dot-separated | `dn`, `san`, `keytype`, `contactemail`, `valid.until`, `valid.from` |
-| **API `fields` parameter** | camelCase | `dn`, `subjectAlternateNames`, `keyType`, `contactEmail`, `notAfter`, `notBefore` |
-| **API `sortedBy` elements** | camelCase | `notAfter`, `keyType`, `signingAlgorithm` |
+| Context                     | Convention               | Examples                                                                          |
+| --------------------------- | ------------------------ | --------------------------------------------------------------------------------- |
+| **HCQL `query` parameter**  | lowercase, dot-separated | `dn`, `san`, `keytype`, `contactemail`, `valid.until`, `valid.from`               |
+| **API `fields` parameter**  | camelCase                | `dn`, `subjectAlternateNames`, `keyType`, `contactEmail`, `notAfter`, `notBefore` |
+| **API `sortedBy` elements** | camelCase                | `notAfter`, `keyType`, `signingAlgorithm`                                         |
 
 ### Common HCQL → API field mapping
 
-| HCQL query field | API `fields` / response field | Notes |
-|-----------------|-------------------------------|-------|
-| `dn` | `dn` | Same |
-| `san` | `subjectAlternateNames` | HCQL: `san`, API: `subjectAlternateNames` |
-| `serial` | `serial` | Same |
-| `issuer` | `issuer` | Same |
-| `profile` | `profile` | Same |
-| `module` | `module` | Same |
-| `owner` | `owner` | Same |
-| `team` | `team` | Same |
-| `keytype` | `keyType` | HCQL lowercase, API camelCase |
-| `signingalgorithm` | `signingAlgorithm` | HCQL lowercase, API camelCase |
-| `contactemail` | `contactEmail` | HCQL lowercase, API camelCase |
-| `holderid` | `holderId` | HCQL lowercase, API camelCase |
-| `valid.until` | `notAfter` | Completely different names |
-| `valid.from` | `notBefore` | Completely different names |
-| `thumbprint` | `thumbprint` | Same |
-| `publickeythumbprint` | `publicKeyThumbprint` | HCQL lowercase, API camelCase |
-| (no HCQL field) | `certificate` | Full PEM  -  only in API response |
-| (no HCQL field) | `discoveryData` | Discovery metadata  -  only in API response |
-| `grade` | `grades` | HCQL singular, API plural |
-| `label.<key>` | `label.<key>` | Same pattern |
-| `metadata.<key>` | `metadata.<key>` | Same pattern |
+| HCQL query field      | API `fields` / response field | Notes                                     |
+| --------------------- | ----------------------------- | ----------------------------------------- |
+| `dn`                  | `dn`                          | Same                                      |
+| `san`                 | `subjectAlternateNames`       | HCQL: `san`, API: `subjectAlternateNames` |
+| `serial`              | `serial`                      | Same                                      |
+| `issuer`              | `issuer`                      | Same                                      |
+| `profile`             | `profile`                     | Same                                      |
+| `module`              | `module`                      | Same                                      |
+| `owner`               | `owner`                       | Same                                      |
+| `team`                | `team`                        | Same                                      |
+| `keytype`             | `keyType`                     | HCQL lowercase, API camelCase             |
+| `signingalgorithm`    | `signingAlgorithm`            | HCQL lowercase, API camelCase             |
+| `contactemail`        | `contactEmail`                | HCQL lowercase, API camelCase             |
+| `holderid`            | `holderId`                    | HCQL lowercase, API camelCase             |
+| `valid.until`         | `notAfter`                    | Completely different names                |
+| `valid.from`          | `notBefore`                   | Completely different names                |
+| `thumbprint`          | `thumbprint`                  | Same                                      |
+| `publickeythumbprint` | `publicKeyThumbprint`         | HCQL lowercase, API camelCase             |
+| (no HCQL field)       | `certificate`                 | Full PEM - only in API response           |
+| (no HCQL field)       | `discoveryData`               | Discovery metadata - only in API response |
+| `grade`               | `grades`                      | HCQL singular, API plural                 |
+| `label.<key>`         | `label.<key>`                 | Same pattern                              |
+| `metadata.<key>`      | `metadata.<key>`              | Same pattern                              |
 
 ### Usable API `fields` values for certificate search
 
@@ -511,6 +516,7 @@ HCQL and HRQL support aggregate queries for dashboarding and reporting:
 ```
 
 **API endpoints:**
+
 - HCQL: `POST /api/v1/certificates/aggregate`
 - HRQL: `POST /api/v1/requests/aggregate`
 
@@ -526,23 +532,23 @@ Common groupBy fields: `profile`, `module`, `keyType`, `owner`, `team`,
 
 The `having` object filters groups by their count:
 
-| Operator | Description              |
-|----------|--------------------------|
-| `gt`     | Count greater than       |
-| `gte`    | Count greater or equal   |
-| `lt`     | Count less than          |
-| `lte`    | Count less or equal      |
-| `eq`     | Count equals             |
-| `ne`     | Count not equals         |
+| Operator | Description            |
+| -------- | ---------------------- |
+| `gt`     | Count greater than     |
+| `gte`    | Count greater or equal |
+| `lt`     | Count less than        |
+| `lte`    | Count less or equal    |
+| `eq`     | Count equals           |
+| `ne`     | Count not equals       |
 
 ### Sort Order
 
-| Value      | Description                            |
-|------------|----------------------------------------|
-| `Asc`      | Ascending by count                     |
-| `Desc`     | Descending by count                    |
-| `KeyAsc`   | Ascending by group key (alphabetical)  |
-| `KeyDesc`  | Descending by group key                |
+| Value     | Description                           |
+| --------- | ------------------------------------- |
+| `Asc`     | Ascending by count                    |
+| `Desc`    | Descending by count                   |
+| `KeyAsc`  | Ascending by group key (alphabetical) |
+| `KeyDesc` | Descending by group key               |
 
 ---
 
@@ -674,8 +680,8 @@ campaign equals "weekly-scan" and timestamp after 7d
 
 Certificate ownership in Horizon has **two dimensions**:
 
-1. **Direct ownership**  -  the `owner` field matches the principal's identifier
-2. **Indirect ownership via teams**  -  the `team` field matches any team the
+1. **Direct ownership** - the `owner` field matches the principal's identifier
+2. **Indirect ownership via teams** - the `team` field matches any team the
    principal is a member of
 
 When a user asks for "my certificates", "certificates I own", or similar,
@@ -708,9 +714,9 @@ valid and expiring within 30 days.
 
 ### holderid vs owner
 
-- `owner`  -  the team or principal that **administers** the certificate
-- `holderid`  -  the principal the certificate was **issued to** (the subject)
-- `team`  -  the team the certificate belongs to
+- `owner` - the team or principal that **administers** the certificate
+- `holderid` - the principal the certificate was **issued to** (the subject)
+- `team` - the team the certificate belongs to
 
 When users say "my certificates", they typically mean ownership (`owner` +
 `team`), not holder. If they say "certificates issued to me", use `holderid`.
@@ -727,14 +733,14 @@ often the most reliable way to identify which service uses a certificate.
 
 ### Discovery fields to search
 
-| Field                     | What it reveals                                      |
-|---------------------------|------------------------------------------------------|
-| `dn`                      | Subject DN  -  may contain the service hostname        |
-| `san`                     | SANs  -  DNS names, IPs bound to the certificate       |
-| `discoverydata.paths`      | On-disk file path (keystore, PEM, PFX location)      |
-| `discoverydata.usages` | Service binding: port + config path used by the service |
-| `discoverydata.hostnames` | Hostnames of the machine where the cert was found    |
-| `discoverydata.sources`   | How it was found (localscan, netscan, etc.)          |
+| Field                     | What it reveals                                         |
+| ------------------------- | ------------------------------------------------------- |
+| `dn`                      | Subject DN - may contain the service hostname           |
+| `san`                     | SANs - DNS names, IPs bound to the certificate          |
+| `discoverydata.paths`     | On-disk file path (keystore, PEM, PFX location)         |
+| `discoverydata.usages`    | Service binding: port + config path used by the service |
+| `discoverydata.hostnames` | Hostnames of the machine where the cert was found       |
+| `discoverydata.sources`   | How it was found (localscan, netscan, etc.)             |
 
 ### Natively integrated services
 

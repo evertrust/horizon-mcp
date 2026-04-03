@@ -2,9 +2,9 @@
  * Shared helpers extracted from proven tool patterns.
  * Direct ports of Python's _helpers.py + inline helpers from lifecycle.py.
  */
-import type { HorizonClient } from "../client/http.js";
-import { HorizonError } from "../client/errors.js";
-import { toUpdatePayload } from "../models/payloads.js";
+import { HorizonError } from '../client/errors.js';
+import type { HorizonClient } from '../client/http.js';
+import { toUpdatePayload } from '../models/payloads.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -25,36 +25,86 @@ const MAX_NESTED_BYTES = 2048;
 
 export const CERT_PRESETS: Record<string, string[]> = {
   compact: [
-    "dn", "serial", "profile", "module", "notAfter", "keyType", "owner", "team",
+    'dn',
+    'serial',
+    'profile',
+    'module',
+    'notAfter',
+    'keyType',
+    'owner',
+    'team',
   ],
   diagnostic: [
-    "dn", "serial", "profile", "module", "notAfter", "keyType", "owner", "team",
-    "revocationReason", "triggerResults",
-    "discoverydata.source", "discoverydata.ip", "discoverydata.lastSeen",
-    "contactemail",
+    'dn',
+    'serial',
+    'profile',
+    'module',
+    'notAfter',
+    'keyType',
+    'owner',
+    'team',
+    'revocationReason',
+    'triggerResults',
+    'discoverydata.source',
+    'discoverydata.ip',
+    'discoverydata.lastSeen',
+    'contactemail',
   ],
   compliance: [
-    "dn", "serial", "profile", "module", "notAfter", "keyType", "owner", "team",
-    "grade", "grade.details", "grade.score",
-    "signingalgorithm", "keytype",
-    "notBefore", "notAfter",
+    'dn',
+    'serial',
+    'profile',
+    'module',
+    'notAfter',
+    'keyType',
+    'owner',
+    'team',
+    'grade',
+    'grade.details',
+    'grade.score',
+    'signingalgorithm',
+    'keytype',
+    'notBefore',
+    'notAfter',
   ],
 };
 
 export const REQUEST_PRESETS: Record<string, string[]> = {
   compact: [
-    "workflow", "status", "profile", "module", "requester",
-    "approver", "registrationDate", "lastModificationDate",
+    'workflow',
+    'status',
+    'profile',
+    'module',
+    'requester',
+    'approver',
+    'registrationDate',
+    'lastModificationDate',
   ],
   diagnostic: [
-    "workflow", "status", "profile", "module", "requester",
-    "approver", "registrationDate", "lastModificationDate",
-    "certificate", "dn", "requesterComment", "approverComment",
+    'workflow',
+    'status',
+    'profile',
+    'module',
+    'requester',
+    'approver',
+    'registrationDate',
+    'lastModificationDate',
+    'certificate',
+    'dn',
+    'requesterComment',
+    'approverComment',
   ],
   compliance: [
-    "workflow", "status", "profile", "module", "requester",
-    "approver", "registrationDate", "lastModificationDate",
-    "dn", "certificateId",
+    'workflow',
+    'status',
+    'profile',
+    'module',
+    'requester',
+    'approver',
+    'registrationDate',
+    'lastModificationDate',
+    'dn',
+    'certificateId',
   ],
 };
 
@@ -65,11 +115,11 @@ export const REQUEST_PRESETS: Record<string, string[]> = {
 export function deleteGuard(
   name: string,
   expected: string,
-  label = "name",
+  label = 'name',
 ): void {
   if (name !== expected) {
     throw new HorizonError(422, {
-      errorCode: "SAFETY-ECHO",
+      errorCode: 'SAFETY-ECHO',
       message:
         `Safety check failed: expected_${label}='${expected}' ` +
         `does not match ${label}='${name}'.`,
@@ -89,8 +139,8 @@ export function applyNameFilter(
   if (!nameContains) return items;
   const needle = nameContains.toLowerCase();
   return items.filter((item) => {
-    const name = item["name"];
-    return typeof name === "string" && name.toLowerCase().includes(needle);
+    const name = item['name'];
+    return typeof name === 'string' && name.toLowerCase().includes(needle);
   });
 }
 
@@ -123,9 +173,9 @@ export function buildMutateResponse(opts: {
     kind: opts.kind,
     name: opts.name,
   };
-  if (opts.data !== undefined) response["data"] = opts.data;
+  if (opts.data !== undefined) response['data'] = opts.data;
   if (opts.warnings && opts.warnings.length > 0) {
-    response["warnings"] = opts.warnings;
+    response['warnings'] = opts.warnings;
   }
   return JSON.stringify(response);
 }
@@ -173,24 +223,24 @@ export async function preflightRequestAction(
     return { error: String(err) };
   }
 
-  const permissions = (request["permissions"] ?? {}) as Record<string, boolean>;
+  const permissions = (request['permissions'] ?? {}) as Record<string, boolean>;
   if (!permissions[permissionKey]) {
     return {
       error:
         `Permission denied: you do not have '${action}' ` +
-        "permission on this request. Do NOT retry - use a " +
-        "principal with the appropriate role, or check the " +
+        'permission on this request. Do NOT retry - use a ' +
+        'principal with the appropriate role, or check the ' +
         "profile's authorization levels.",
       request_id: requestId,
-      request_status: request["status"],
-      request_workflow: request["workflow"],
-      request_profile: request["profile"],
+      request_status: request['status'],
+      request_workflow: request['workflow'],
+      request_profile: request['profile'],
       your_permissions: permissions,
     };
   }
 
-  const status = String(request["status"] ?? "").toLowerCase();
-  if (status !== "pending") {
+  const status = String(request['status'] ?? '').toLowerCase();
+  if (status !== 'pending') {
     return {
       error:
         `Request is not pending (current status: '${status}'). ` +
@@ -211,12 +261,12 @@ export function buildSortedBy(
   sortedBy?: string,
 ): Array<{ element: string; order: string }> | undefined {
   if (!sortedBy) return undefined;
-  const parts = sortedBy.split(":", 2);
+  const parts = sortedBy.split(':', 2);
   const element = parts[0]!.trim();
-  let order = parts.length > 1 ? parts[1]!.trim() : "Asc";
+  let order = parts.length > 1 ? parts[1]!.trim() : 'Asc';
   // Capitalize first letter
   order = order.charAt(0).toUpperCase() + order.slice(1);
-  if (order !== "Asc" && order !== "Desc") order = "Asc";
+  if (order !== 'Asc' && order !== 'Desc') order = 'Asc';
   return [{ element, order }];
 }
 
@@ -234,10 +284,10 @@ export function buildSearchPayload(
     pageIndex,
     pageSize: cappedPageSize,
   };
-  if (fields && fields.length > 0) payload["fields"] = fields;
+  if (fields && fields.length > 0) payload['fields'] = fields;
   const sorted = buildSortedBy(sortedBy);
-  if (sorted) payload["sortedBy"] = sorted;
-  if (withCount) payload["withCount"] = true;
+  if (sorted) payload['sortedBy'] = sorted;
+  if (withCount) payload['withCount'] = true;
   return payload;
 }
 
@@ -247,9 +297,9 @@ export function buildExportPayload(
   sortedBy?: string,
 ): Record<string, unknown> {
   const payload: Record<string, unknown> = { query };
-  if (fields && fields.length > 0) payload["fields"] = fields;
+  if (fields && fields.length > 0) payload['fields'] = fields;
   const sorted = buildSortedBy(sortedBy);
-  if (sorted) payload["sortedBy"] = sorted;
+  if (sorted) payload['sortedBy'] = sorted;
   return payload;
 }
 
@@ -264,7 +314,7 @@ export function csvTruncationMetadata(csvText: string): {
   returned_rows: number;
   max_rows: number;
 } {
-  const lines = csvText.trim().split("\n");
+  const lines = csvText.trim().split('\n');
   const rowCount = lines.length > 0 ? Math.max(0, lines.length - 1) : 0;
   return {
     truncated: rowCount >= MAX_CSV_ROWS,
@@ -278,7 +328,7 @@ export function csvTruncationMetadata(csvText: string): {
 // ---------------------------------------------------------------------------
 
 function truncateValue(value: unknown): unknown {
-  if (typeof value === "string" && value.length > MAX_STRING_LEN) {
+  if (typeof value === 'string' && value.length > MAX_STRING_LEN) {
     return `${value.slice(0, MAX_STRING_LEN)}... <truncated: use get_certificate for full value>`;
   }
 
@@ -295,10 +345,10 @@ function truncateValue(value: unknown): unknown {
     return truncated;
   }
 
-  if (typeof value === "object" && value !== null) {
+  if (typeof value === 'object' && value !== null) {
     const serialized = JSON.stringify(value);
     if (new TextEncoder().encode(serialized).length > MAX_NESTED_BYTES) {
-      return "<oversized: use get_certificate>";
+      return '<oversized: use get_certificate>';
     }
     const result: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(value)) {

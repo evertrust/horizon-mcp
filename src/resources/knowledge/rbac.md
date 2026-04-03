@@ -20,24 +20,24 @@ Every permission follows a three-level colon-delimited pattern:
 domain:action:scope
 ```
 
-| Level    | Description                | Examples                                                        |
-|----------|----------------------------|-----------------------------------------------------------------|
-| `domain` | The functional area        | `certificates`, `configuration`, `security`, `discovery`        |
-| `action` | The operation              | `search`, `enroll`, `revoke`, `create`, `update`, `delete`, `*` |
-| `scope`  | The target boundary        | `*` (all), a specific profile name, a specific object name      |
+| Level    | Description         | Examples                                                        |
+| -------- | ------------------- | --------------------------------------------------------------- |
+| `domain` | The functional area | `certificates`, `configuration`, `security`, `discovery`        |
+| `action` | The operation       | `search`, `enroll`, `revoke`, `create`, `update`, `delete`, `*` |
+| `scope`  | The target boundary | `*` (all), a specific profile name, a specific object name      |
 
 ### Wildcard Support
 
 The `*` wildcard is supported at every level:
 
-| Pattern                      | Meaning                                               |
-|------------------------------|-------------------------------------------------------|
-| `certificates:*:*`           | All certificate actions on all profiles               |
-| `certificates:search:*`      | Search certificates across all profiles               |
-| `certificates:enroll:TLS`    | Enroll certificates only in the "TLS" profile         |
-| `configuration:*:*`          | Full configuration admin                              |
-| `security:*:*`               | Full security/RBAC admin                              |
-| `*:*:*`                      | Superadmin -- all permissions in the system           |
+| Pattern                   | Meaning                                       |
+| ------------------------- | --------------------------------------------- |
+| `certificates:*:*`        | All certificate actions on all profiles       |
+| `certificates:search:*`   | Search certificates across all profiles       |
+| `certificates:enroll:TLS` | Enroll certificates only in the "TLS" profile |
+| `configuration:*:*`       | Full configuration admin                      |
+| `security:*:*`            | Full security/RBAC admin                      |
+| `*:*:*`                   | Superadmin -- all permissions in the system   |
 
 ### Implication Rules
 
@@ -60,17 +60,17 @@ role, or via wildcard implication.
 Control lifecycle operations on certificates within specific profiles.
 Scope = profile name or `*`.
 
-| Permission Pattern            | Description                                   |
-|-------------------------------|-----------------------------------------------|
-| `certificates:search:{scope}` | Search and view certificates                  |
-| `certificates:enroll:{scope}` | Submit enrollment requests                    |
-| `certificates:revoke:{scope}` | Submit revocation requests                    |
-| `certificates:update:{scope}` | Update certificate metadata                   |
-| `certificates:recover:{scope}`| Recover escrowed private keys                 |
-| `certificates:migrate:{scope}`| Migrate certificates between profiles         |
-| `certificates:renew:{scope}`  | Submit renewal requests                       |
-| `certificates:import:{scope}` | Import externally-issued certificates         |
-| `certificates:approve:{scope}`| Approve or deny pending requests              |
+| Permission Pattern             | Description                           |
+| ------------------------------ | ------------------------------------- |
+| `certificates:search:{scope}`  | Search and view certificates          |
+| `certificates:enroll:{scope}`  | Submit enrollment requests            |
+| `certificates:revoke:{scope}`  | Submit revocation requests            |
+| `certificates:update:{scope}`  | Update certificate metadata           |
+| `certificates:recover:{scope}` | Recover escrowed private keys         |
+| `certificates:migrate:{scope}` | Migrate certificates between profiles |
+| `certificates:renew:{scope}`   | Submit renewal requests               |
+| `certificates:import:{scope}`  | Import externally-issued certificates |
+| `certificates:approve:{scope}` | Approve or deny pending requests      |
 
 ### Configuration Permissions (9)
 
@@ -78,7 +78,7 @@ Control management of Horizon configuration objects.
 Scope = object name or `*`.
 
 | Permission Pattern                  | Description                                   |
-|-------------------------------------|-----------------------------------------------|
+| ----------------------------------- | --------------------------------------------- |
 | `configuration:profiles:{scope}`    | Manage certificate profiles (CRUD)            |
 | `configuration:cas:{scope}`         | Manage CA trust objects                       |
 | `configuration:connectors:{scope}`  | Manage PKI and third-party connectors         |
@@ -93,13 +93,13 @@ Scope = object name or `*`.
 
 Control the RBAC system itself. Scope = object name or `*`.
 
-| Permission Pattern              | Description                                       |
-|---------------------------------|---------------------------------------------------|
-| `security:roles:{scope}`        | Manage roles (create, update, delete, list)       |
-| `security:teams:{scope}`        | Manage teams                                      |
-| `security:principals:{scope}`   | Manage user principals (assign roles/teams)       |
-| `security:idps:{scope}`         | Manage identity provider configurations           |
-| `security:credentials:{scope}`  | Manage stored credentials (keystores, passwords)  |
+| Permission Pattern             | Description                                      |
+| ------------------------------ | ------------------------------------------------ |
+| `security:roles:{scope}`       | Manage roles (create, update, delete, list)      |
+| `security:teams:{scope}`       | Manage teams                                     |
+| `security:principals:{scope}`  | Manage user principals (assign roles/teams)      |
+| `security:idps:{scope}`        | Manage identity provider configurations          |
+| `security:credentials:{scope}` | Manage stored credentials (keystores, passwords) |
 
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign
@@ -109,28 +109,28 @@ them can escalate to any permission level.
 
 Control certificate discovery campaigns and results.
 
-| Permission Pattern             | Description                                    |
-|--------------------------------|------------------------------------------------|
-| `discovery:campaigns:{scope}`  | Manage discovery campaigns (create, run, delete) |
-| `discovery:events:{scope}`     | View and manage discovery events/results       |
+| Permission Pattern            | Description                                      |
+| ----------------------------- | ------------------------------------------------ |
+| `discovery:campaigns:{scope}` | Manage discovery campaigns (create, run, delete) |
+| `discovery:events:{scope}`    | View and manage discovery events/results         |
 
 ### Wildcard Shortcuts (2)
 
-| Pattern                     | Description                                         |
-|-----------------------------|-----------------------------------------------------|
-| `certificates:*:{scope}`   | All certificate actions on scoped profile(s)        |
-| `*:*:*`                     | Unrestricted superadmin access                      |
+| Pattern                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `certificates:*:{scope}` | All certificate actions on scoped profile(s) |
+| `*:*:*`                  | Unrestricted superadmin access               |
 
 ### Action-Level Wildcards (9 implied)
 
 Any domain supports `*` as its action, granting all actions within that domain:
 
-| Pattern                          | Equivalent to                                     |
-|----------------------------------|---------------------------------------------------|
-| `certificates:*:TLS`             | All 9 certificate actions on the "TLS" profile    |
-| `configuration:*:MyConnector`    | All configuration actions on "MyConnector"        |
-| `security:*:*`                   | Full RBAC admin                                   |
-| `discovery:*:*`                  | Full discovery admin                              |
+| Pattern                       | Equivalent to                                  |
+| ----------------------------- | ---------------------------------------------- |
+| `certificates:*:TLS`          | All 9 certificate actions on the "TLS" profile |
+| `configuration:*:MyConnector` | All configuration actions on "MyConnector"     |
+| `security:*:*`                | Full RBAC admin                                |
+| `discovery:*:*`               | Full discovery admin                           |
 
 ---
 
@@ -159,29 +159,29 @@ A role is a named, reusable bundle of permissions.
 
 ### Common Role Patterns
 
-| Role Name           | Typical Permissions                                             |
-|---------------------|-----------------------------------------------------------------|
-| `superadmin`        | `*:*:*`                                                         |
-| `certificate-admin` | `certificates:*:*`, `configuration:profiles:*`                  |
+| Role Name           | Typical Permissions                                                       |
+| ------------------- | ------------------------------------------------------------------------- |
+| `superadmin`        | `*:*:*`                                                                   |
+| `certificate-admin` | `certificates:*:*`, `configuration:profiles:*`                            |
 | `operator`          | `certificates:search:*`, `certificates:enroll:*`, `certificates:revoke:*` |
-| `auditor`           | `certificates:search:*`, `discovery:events:*` (read-only)      |
-| `config-admin`      | `configuration:*:*`                                             |
-| `security-admin`    | `security:*:*`                                                  |
-| `profile-scoped`    | `certificates:*:ProfileName` (single-profile access)            |
-| `approver`          | `certificates:approve:*` (can approve but not enroll)           |
+| `auditor`           | `certificates:search:*`, `discovery:events:*` (read-only)                 |
+| `config-admin`      | `configuration:*:*`                                                       |
+| `security-admin`    | `security:*:*`                                                            |
+| `profile-scoped`    | `certificates:*:ProfileName` (single-profile access)                      |
+| `approver`          | `certificates:approve:*` (can approve but not enroll)                     |
 
 ### Role API Operations
 
-| Operation     | Method | Path                                    |
-|---------------|--------|-----------------------------------------|
-| List roles    | GET    | `/api/v1/security/roles`                |
-| Get role      | GET    | `/api/v1/security/roles/{name}`         |
-| Create role   | POST   | `/api/v1/security/roles`                |
-| Update role   | PUT    | `/api/v1/security/roles/` (name in body)|
-| Delete role   | DELETE | `/api/v1/security/roles/{name}`         |
-| Get members   | GET    | `/api/v1/security/roles/{name}/members` |
-| Add members   | POST   | `/api/v1/security/roles/{name}/members` |
-| Remove members| DELETE | `/api/v1/security/roles/{name}/members` |
+| Operation      | Method | Path                                     |
+| -------------- | ------ | ---------------------------------------- |
+| List roles     | GET    | `/api/v1/security/roles`                 |
+| Get role       | GET    | `/api/v1/security/roles/{name}`          |
+| Create role    | POST   | `/api/v1/security/roles`                 |
+| Update role    | PUT    | `/api/v1/security/roles/` (name in body) |
+| Delete role    | DELETE | `/api/v1/security/roles/{name}`          |
+| Get members    | GET    | `/api/v1/security/roles/{name}/members`  |
+| Add members    | POST   | `/api/v1/security/roles/{name}/members`  |
+| Remove members | DELETE | `/api/v1/security/roles/{name}/members`  |
 
 ---
 
@@ -215,30 +215,33 @@ certificates a principal can see and act on.
 ### Certificate Ownership Transfer
 
 Certificates can be transferred between teams using:
+
 ```
 PATCH /api/v1/security/teams/{prev}/{new}
 ```
+
 This bulk operation moves all certificate ownership from one team to another.
 
 ### Team API Operations
 
-| Operation     | Method | Path                                     |
-|---------------|--------|------------------------------------------|
-| List teams    | GET    | `/api/v1/security/teams`                 |
-| Get team      | GET    | `/api/v1/security/teams/{name}`          |
-| Create team   | POST   | `/api/v1/security/teams`                 |
-| Update team   | PUT    | `/api/v1/security/teams/` (name in body) |
-| Delete team   | DELETE | `/api/v1/security/teams/{name}`          |
-| Get members   | GET    | `/api/v1/security/teams/{name}/members`  |
-| Add members   | POST   | `/api/v1/security/teams/{name}/members`  |
-| Remove members| DELETE | `/api/v1/security/teams/{name}/members`  |
-| Transfer      | PATCH  | `/api/v1/security/teams/{prev}/{new}`    |
+| Operation      | Method | Path                                     |
+| -------------- | ------ | ---------------------------------------- |
+| List teams     | GET    | `/api/v1/security/teams`                 |
+| Get team       | GET    | `/api/v1/security/teams/{name}`          |
+| Create team    | POST   | `/api/v1/security/teams`                 |
+| Update team    | PUT    | `/api/v1/security/teams/` (name in body) |
+| Delete team    | DELETE | `/api/v1/security/teams/{name}`          |
+| Get members    | GET    | `/api/v1/security/teams/{name}/members`  |
+| Add members    | POST   | `/api/v1/security/teams/{name}/members`  |
+| Remove members | DELETE | `/api/v1/security/teams/{name}/members`  |
+| Transfer       | PATCH  | `/api/v1/security/teams/{prev}/{new}`    |
 
 ---
 
 ## Principals
 
 A principal is a user identity in Horizon. Principals aggregate:
+
 - **Roles** -- permission bundles
 - **Teams** -- organizational membership
 - **Direct permissions** -- individual permission grants (bypass roles)
@@ -259,6 +262,7 @@ A principal is a user identity in Horizon. Principals aggregate:
 ### Effective Permission Calculation
 
 A principal's effective permissions are the **union** of:
+
 1. All permissions from all assigned roles
 2. All direct permissions on the principal
 3. Wildcard expansion (e.g., `certificates:*:*` expands to cover all actions)
@@ -274,14 +278,14 @@ Effective = Union(
 
 ### Principal API Operations
 
-| Operation          | Method | Path                                     |
-|--------------------|--------|------------------------------------------|
-| Search principals  | GET    | `/api/v1/security/principals`            |
-| Get principal      | GET    | `/api/v1/security/principals/{id}`       |
-| Get self           | GET    | `/api/v1/security/principals/self`       |
-| Create principal   | POST   | `/api/v1/security/principals`            |
-| Update principal   | PUT    | `/api/v1/security/principals/` (id in body) |
-| Delete principal   | DELETE | `/api/v1/security/principals/{id}`       |
+| Operation         | Method | Path                                        |
+| ----------------- | ------ | ------------------------------------------- |
+| Search principals | GET    | `/api/v1/security/principals`               |
+| Get principal     | GET    | `/api/v1/security/principals/{id}`          |
+| Get self          | GET    | `/api/v1/security/principals/self`          |
+| Create principal  | POST   | `/api/v1/security/principals`               |
+| Update principal  | PUT    | `/api/v1/security/principals/` (id in body) |
+| Delete principal  | DELETE | `/api/v1/security/principals/{id}`          |
 
 ---
 
@@ -290,9 +294,9 @@ Effective = Union(
 Identity Providers (IDPs) determine how principals authenticate. Horizon
 supports two IDP types:
 
-| Type     | Description                                                      |
-|----------|------------------------------------------------------------------|
-| `local`  | Built-in username/password authentication with password policy   |
+| Type     | Description                                                                  |
+| -------- | ---------------------------------------------------------------------------- |
+| `local`  | Built-in username/password authentication with password policy               |
 | `openid` | OpenID Connect SSO via an external provider (Entra ID, Keycloak, Okta, etc.) |
 
 Profiles can restrict specific workflow actions to principals authenticated
@@ -350,6 +354,7 @@ wildcard expansion.
 ### Profile-Scoped Operator
 
 Grant full certificate lifecycle on a single profile:
+
 ```json
 {
   "name": "operator-TLS",
@@ -369,10 +374,7 @@ Grant full certificate lifecycle on a single profile:
 ```json
 {
   "name": "auditor",
-  "permissions": [
-    "certificates:search:*",
-    "discovery:events:*"
-  ]
+  "permissions": ["certificates:search:*", "discovery:events:*"]
 }
 ```
 
