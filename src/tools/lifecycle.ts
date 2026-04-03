@@ -438,7 +438,7 @@ export function registerLifecycleTools(
           .string()
           .describe("Profile module type (webra, est, scep, acme, crmp, etc.)."),
         template: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe(
             "Certificate request template object. Structure:\n" +
@@ -474,7 +474,7 @@ export function registerLifecycleTools(
             "Use search_certificates to find it.",
           ),
         data: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe(
             "Additional workflow-specific fields merged into the payload.\n" +

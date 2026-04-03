@@ -172,7 +172,7 @@ export type ValidationRuleset = z.infer<typeof validationRulesetSchema>;
 
 export const dataSourceFlowEntrySchema = z.object({
   datasource: z.string(),
-  inputs: z.record(z.string()).default({}),
+  inputs: z.record(z.string(), z.string()).default({}),
   stopOnSuccess: z.boolean().default(false),
 });
 export type DataSourceFlowEntry = z.infer<typeof dataSourceFlowEntrySchema>;
