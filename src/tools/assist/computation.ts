@@ -1,81 +1,86 @@
-import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HorizonClient } from "../../client/http.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import type { HorizonClient } from '../../client/http.js';
 
 export function registerComputationTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
   server.registerTool(
-    "simulate_computation_rule",
+    'simulate_computation_rule',
     {
       description:
-        "Test a computation rule or template string against a dictionary.\n\n" +
-        "MANDATORY: Before writing ANY computation rule, you MUST read the " +
-        "knowledge resource horizon://knowledge/computation-and-data-flow. " +
-        "It contains the COMPLETE list of available functions, the exact syntax, " +
-        "and real-world PKI examples. DO NOT invent functions or syntax - only " +
-        "use what is documented in that resource.\n\n" +
-        "Safety tier: read-only\n\n" +
-        "Available functions (exhaustive list - no others exist):\n" +
-        "  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n" +
-        "  List: Filter, Slice, Sort, Split, Unique\n" +
-        "  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n" +
-        "  Date: DateTimeFormat\n" +
-        "  Access: Get, First, Last, Join, Match\n" +
-        "  Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64, Base64, Raw\n" +
-        "  Special: NULL, NOW\n\n" +
-        "Syntax rules:\n" +
-        "  - Dictionary lookups: {{key}} for single, [[key]] for multi\n" +
-        "  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n" +
-        "  - Concat on arrays merges them: Concat([[a]], [[b]]) -> combined list\n" +
+        'Test a computation rule or template string against a dictionary.\n\n' +
+        'MANDATORY: Before writing ANY computation rule, you MUST read the ' +
+        'knowledge resource horizon://knowledge/computation-and-data-flow. ' +
+        'It contains the COMPLETE list of available functions, the exact syntax, ' +
+        'and real-world PKI examples. DO NOT invent functions or syntax - only ' +
+        'use what is documented in that resource.\n\n' +
+        'Safety tier: read-only\n\n' +
+        'Available functions (exhaustive list - no others exist):\n' +
+        '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
+        '  List: Filter, Slice, Sort, Split, Unique\n' +
+        '  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n' +
+        '  Date: DateTimeFormat\n' +
+        '  Access: Get, First, Last, Join, Match\n' +
+        '  Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64, Base64, Raw\n' +
+        '  Special: NULL, NOW\n\n' +
+        'Syntax rules:\n' +
+        '  - Dictionary lookups: {{key}} for single, [[key]] for multi\n' +
+        '  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n' +
+        '  - Concat on arrays merges them: Concat([[a]], [[b]]) -> combined list\n' +
         '  - Concat with null returns null: use OrElse({{key}}, "") to guard\n' +
-        "  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n" +
-        "  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n" +
-        "  - Sort alphabetically sorts a list\n" +
-        "  - Unique deduplicates a list\n\n" +
-        "Two expression modes:\n\n" +
-        "  computation_rule (default): Full expression language with functions.\n" +
-        "    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort(Unique([[sans]]))\n\n" +
-        "  template_string: Text interpolation with embedded {{ }} blocks.\n" +
-        "    Hello {{name}}, cert expires {{certificate.not_after}}",
+        '  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n' +
+        '  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n' +
+        '  - Sort alphabetically sorts a list\n' +
+        '  - Unique deduplicates a list\n\n' +
+        'Two expression modes:\n\n' +
+        '  computation_rule (default): Full expression language with functions.\n' +
+        '    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort(Unique([[sans]]))\n\n' +
+        '  template_string: Text interpolation with embedded {{ }} blocks.\n' +
+        '    Hello {{name}}, cert expires {{certificate.not_after}}',
       inputSchema: z.object({
         rule: z
           .string()
           .describe(
-            "The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.",
+            'The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.',
           ),
         dictionary: z
           .record(z.string(), z.string())
-          .describe("Key-value pairs available as variables during evaluation."),
+          .describe(
+            'Key-value pairs available as variables during evaluation.',
+          ),
         mode: z
-          .enum(["computation_rule", "template_string"])
-          .default("computation_rule")
-          .describe('Expression type - "computation_rule" or "template_string".'),
+          .enum(['computation_rule', 'template_string'])
+          .default('computation_rule')
+          .describe(
+            'Expression type - "computation_rule" or "template_string".',
+          ),
       }),
     },
     async ({ rule, dictionary, mode }) => {
       const key =
-        mode === "computation_rule" ? "computationRule" : "templateString";
-      const result = await client.post(
-        "/api/v1/templatestring/playground",
-        { [key]: rule, dictionary },
-      );
+        mode === 'computation_rule' ? 'computationRule' : 'templateString';
+      const result = await client.post('/api/v1/templatestring/playground', {
+        [key]: rule,
+        dictionary,
+      });
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
 
   server.registerTool(
-    "simulate_datasource_flow",
+    'simulate_datasource_flow',
     {
       description:
-        "Test a datasource flow pipeline against an optional context.\n\n" +
-        "Safety tier: read-only\n\n" +
-        "Executes a datasource flow chain in test mode and returns the " +
-        "enriched dictionary. Each flow entry specifies a datasource name, " +
-        "input mappings, and an optional stop-on-success flag.",
+        'Test a datasource flow pipeline against an optional context.\n\n' +
+        'Safety tier: read-only\n\n' +
+        'Executes a datasource flow chain in test mode and returns the ' +
+        'enriched dictionary. Each flow entry specifies a datasource name, ' +
+        'input mappings, and an optional stop-on-success flag.',
       inputSchema: z.object({
         flow: z
           .array(
@@ -85,22 +90,19 @@ export function registerComputationTools(
               stopOnSuccess: z.boolean().default(false),
             }),
           )
-          .describe("Ordered list of flow entries."),
+          .describe('Ordered list of flow entries.'),
         context: z
           .record(z.string(), z.unknown())
           .optional()
-          .describe("Optional initial context dictionary."),
+          .describe('Optional initial context dictionary.'),
       }),
     },
     async ({ flow, context }) => {
       const body: Record<string, unknown> = { flow };
-      if (context !== undefined) body["context"] = context;
-      const result = await client.post(
-        "/api/v1/datasources/flow/test",
-        body,
-      );
+      if (context !== undefined) body['context'] = context;
+      const result = await client.post('/api/v1/datasources/flow/test', body);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );

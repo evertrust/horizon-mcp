@@ -1,8 +1,9 @@
-import * as tls from "node:tls";
-import { X509Certificate } from "node:crypto";
-import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HorizonClient } from "../../client/http.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { X509Certificate } from 'node:crypto';
+import * as tls from 'node:tls';
+import { z } from 'zod';
+
+import type { HorizonClient } from '../../client/http.js';
 
 // ---------------------------------------------------------------------------
 // Default port lookup for TLS URI parsing
@@ -28,16 +29,14 @@ function parseTlsUri(uri: string): { host: string; port: number } {
   if (schemeMatch) {
     const url = new URL(trimmed);
     const host = url.hostname;
-    const scheme = url.protocol.replace(":", "").toLowerCase();
-    const port = url.port
-      ? Number(url.port)
-      : DEFAULT_PORTS[scheme] ?? 443;
+    const scheme = url.protocol.replace(':', '').toLowerCase();
+    const port = url.port ? Number(url.port) : (DEFAULT_PORTS[scheme] ?? 443);
     return { host, port };
   }
 
   // host:port (numeric port only)
-  if (trimmed.includes(":")) {
-    const lastColon = trimmed.lastIndexOf(":");
+  if (trimmed.includes(':')) {
+    const lastColon = trimmed.lastIndexOf(':');
     const maybePort = trimmed.slice(lastColon + 1);
     const parsed = Number(maybePort);
     if (!Number.isNaN(parsed) && parsed > 0 && parsed <= 65535) {
@@ -71,14 +70,14 @@ function fetchPeerCertificate(
         const peerCert = socket.getPeerX509Certificate();
         socket.destroy();
         if (!peerCert) {
-          reject(new Error("Server did not present a certificate"));
+          reject(new Error('Server did not present a certificate'));
           return;
         }
         resolve(peerCert);
       },
     );
 
-    socket.on("timeout", () => {
+    socket.on('timeout', () => {
       socket.destroy();
       reject(
         new Error(
@@ -87,7 +86,7 @@ function fetchPeerCertificate(
       );
     });
 
-    socket.on("error", (err: Error) => {
+    socket.on('error', (err: Error) => {
       socket.destroy();
       reject(err);
     });
@@ -100,16 +99,16 @@ function fetchPeerCertificate(
 
 function extractSubjectCN(cert: X509Certificate): string {
   const match = cert.subject.match(/CN=([^\n]+)/);
-  return match?.[1] ?? "N/A";
+  return match?.[1] ?? 'N/A';
 }
 
 function extractDnsSans(cert: X509Certificate): readonly string[] {
   const raw = cert.subjectAltName;
   if (!raw) return [];
   return raw
-    .split(",")
+    .split(',')
     .map((entry) => entry.trim())
-    .filter((entry) => entry.startsWith("DNS:"))
+    .filter((entry) => entry.startsWith('DNS:'))
     .map((entry) => entry.slice(4));
 }
 
@@ -124,68 +123,68 @@ export function registerCryptoTools(
   // -- decode_x509 ----------------------------------------------------------
 
   server.registerTool(
-    "decode_x509",
+    'decode_x509',
     {
       description:
-        "Decode a PEM- or DER-encoded X.509 certificate via Horizon.\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Decode a PEM- or DER-encoded X.509 certificate via Horizon.\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the certificate to Horizon's RFC 5280 decode endpoint " +
-        "(POST /api/v1/rfc5280/x509, multipart/form-data) and returns " +
-        "every parsed field.\n\n" +
-        "When to use: after fetching a PEM with fetch_exposed_certificate, " +
-        "after retrieving a certificate from the Horizon inventory, or when a " +
-        "user pastes a PEM block and wants to understand its contents.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
-        "- dn (str): subject distinguished name.\n" +
-        "- dnElements (list): ordered list of DN attribute objects.\n" +
-        "- issuerDn (str): issuer distinguished name.\n" +
-        "- serial (str): serial number (hex).\n" +
-        "- notBefore (int): validity start as epoch milliseconds.\n" +
-        "- notAfter (int): validity end as epoch milliseconds.\n" +
-        "- keyType (str): public key algorithm, e.g. RSA, EC.\n" +
-        "- signingAlgorithm (str): signature algorithm OID / name.\n" +
-        "- pem (str): normalised PEM.\n" +
-        "- subjectKeyIdentifier (str): SKI hex string.\n" +
-        "- certificateThumbprint (str): SHA-256 thumbprint.\n" +
-        "- certificateSHAOneThumbprint (str): SHA-1 thumbprint.\n" +
-        "- publicKeyThumbprint (str): public-key SHA-256 thumbprint.\n" +
-        "- keyUsages (list[str]): key-usage flags.\n" +
-        "- isKeyUsagesCritical (bool): whether KU extension is critical.\n" +
-        "- extendedKeyUsages (list[str]): EKU OIDs.\n" +
-        "- isExtendedKeyUsagesCritical (bool): whether EKU is critical.\n" +
-        "- selfSigned (bool): true when issuer == subject and self-signed.\n" +
-        "- sans (list[{sanType, value}], optional): subject alternative names.\n" +
-        "- basicConstraints (object, optional): CA flag and path length.\n" +
-        "- extensions (list, optional): all extensions.\n" +
-        "- crldps (list[str], optional): CRL distribution points.\n" +
-        "- aias ({crt, ocsp}, optional): authority information access.\n" +
-        "- policies (list, optional): certificate policies.\n" +
-        "- authorityKeyIdentifier (str, optional): AKI.\n" +
-        "- unsupportedExtensions (list, optional): unrecognised extensions.\n\n" +
-        "See also:\n" +
-        "- fetch_exposed_certificate - grab a live server cert then feed its PEM into this tool.\n" +
-        "- decode_csr - decode a CSR instead.\n" +
-        "- detect_file - auto-detect the file type first.",
+        '(POST /api/v1/rfc5280/x509, multipart/form-data) and returns ' +
+        'every parsed field.\n\n' +
+        'When to use: after fetching a PEM with fetch_exposed_certificate, ' +
+        'after retrieving a certificate from the Horizon inventory, or when a ' +
+        'user pastes a PEM block and wants to understand its contents.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
+        '- dn (str): subject distinguished name.\n' +
+        '- dnElements (list): ordered list of DN attribute objects.\n' +
+        '- issuerDn (str): issuer distinguished name.\n' +
+        '- serial (str): serial number (hex).\n' +
+        '- notBefore (int): validity start as epoch milliseconds.\n' +
+        '- notAfter (int): validity end as epoch milliseconds.\n' +
+        '- keyType (str): public key algorithm, e.g. RSA, EC.\n' +
+        '- signingAlgorithm (str): signature algorithm OID / name.\n' +
+        '- pem (str): normalised PEM.\n' +
+        '- subjectKeyIdentifier (str): SKI hex string.\n' +
+        '- certificateThumbprint (str): SHA-256 thumbprint.\n' +
+        '- certificateSHAOneThumbprint (str): SHA-1 thumbprint.\n' +
+        '- publicKeyThumbprint (str): public-key SHA-256 thumbprint.\n' +
+        '- keyUsages (list[str]): key-usage flags.\n' +
+        '- isKeyUsagesCritical (bool): whether KU extension is critical.\n' +
+        '- extendedKeyUsages (list[str]): EKU OIDs.\n' +
+        '- isExtendedKeyUsagesCritical (bool): whether EKU is critical.\n' +
+        '- selfSigned (bool): true when issuer == subject and self-signed.\n' +
+        '- sans (list[{sanType, value}], optional): subject alternative names.\n' +
+        '- basicConstraints (object, optional): CA flag and path length.\n' +
+        '- extensions (list, optional): all extensions.\n' +
+        '- crldps (list[str], optional): CRL distribution points.\n' +
+        '- aias ({crt, ocsp}, optional): authority information access.\n' +
+        '- policies (list, optional): certificate policies.\n' +
+        '- authorityKeyIdentifier (str, optional): AKI.\n' +
+        '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
+        'See also:\n' +
+        '- fetch_exposed_certificate - grab a live server cert then feed its PEM into this tool.\n' +
+        '- decode_csr - decode a CSR instead.\n' +
+        '- detect_file - auto-detect the file type first.',
       inputSchema: z.object({
         pem: z
           .string()
           .describe(
-            "PEM-encoded X.509 certificate string (including BEGIN/END markers) " +
-              "or base64-encoded DER bytes.",
+            'PEM-encoded X.509 certificate string (including BEGIN/END markers) ' +
+              'or base64-encoded DER bytes.',
           ),
       }),
     },
     async ({ pem }) => {
-      const result = await client.postMultipart("/api/v1/rfc5280/x509", [
+      const result = await client.postMultipart('/api/v1/rfc5280/x509', [
         {
-          fieldName: "x509",
-          filename: "certificate.pem",
-          mimeType: "application/x-pem-file",
+          fieldName: 'x509',
+          filename: 'certificate.pem',
+          mimeType: 'application/x-pem-file',
           data: pem,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -193,48 +192,48 @@ export function registerCryptoTools(
   // -- decode_csr -----------------------------------------------------------
 
   server.registerTool(
-    "decode_csr",
+    'decode_csr',
     {
       description:
-        "Decode a PEM- or DER-encoded PKCS#10 Certificate Signing Request.\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Decode a PEM- or DER-encoded PKCS#10 Certificate Signing Request.\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the CSR to Horizon's RFC 5280 PKCS#10 decode endpoint " +
-        "(POST /api/v1/rfc5280/pkcs10, multipart/form-data) and returns " +
-        "the parsed fields.\n\n" +
-        "When to use: when a user provides a CSR and wants to inspect " +
-        "the subject, public key, or requested extensions before submitting " +
-        "it for enrollment.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
-        "- dn (str): requested subject distinguished name.\n" +
-        "- dnElements (list): ordered list of DN attribute objects.\n" +
-        "- keyType (str): public key algorithm.\n" +
-        "- pem (str): normalised PEM.\n" +
-        "- sans (list[{sanType, value}], optional): requested SANs.\n" +
-        "- extensions (list, optional): requested extensions.\n" +
-        "- unsupportedExtensions (list, optional): unrecognised extensions.\n\n" +
-        "See also:\n" +
-        "- decode_x509 - decode a certificate instead.\n" +
-        "- detect_file - auto-detect whether input is a cert or CSR.",
+        '(POST /api/v1/rfc5280/pkcs10, multipart/form-data) and returns ' +
+        'the parsed fields.\n\n' +
+        'When to use: when a user provides a CSR and wants to inspect ' +
+        'the subject, public key, or requested extensions before submitting ' +
+        'it for enrollment.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
+        '- dn (str): requested subject distinguished name.\n' +
+        '- dnElements (list): ordered list of DN attribute objects.\n' +
+        '- keyType (str): public key algorithm.\n' +
+        '- pem (str): normalised PEM.\n' +
+        '- sans (list[{sanType, value}], optional): requested SANs.\n' +
+        '- extensions (list, optional): requested extensions.\n' +
+        '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
+        'See also:\n' +
+        '- decode_x509 - decode a certificate instead.\n' +
+        '- detect_file - auto-detect whether input is a cert or CSR.',
       inputSchema: z.object({
         pem: z
           .string()
           .describe(
-            "PEM-encoded CSR string (including BEGIN/END markers) " +
-              "or base64-encoded DER bytes.",
+            'PEM-encoded CSR string (including BEGIN/END markers) ' +
+              'or base64-encoded DER bytes.',
           ),
       }),
     },
     async ({ pem }) => {
-      const result = await client.postMultipart("/api/v1/rfc5280/pkcs10", [
+      const result = await client.postMultipart('/api/v1/rfc5280/pkcs10', [
         {
-          fieldName: "pkcs10",
-          filename: "request.pem",
-          mimeType: "application/x-pem-file",
+          fieldName: 'pkcs10',
+          filename: 'request.pem',
+          mimeType: 'application/x-pem-file',
           data: pem,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -242,45 +241,45 @@ export function registerCryptoTools(
   // -- decode_crl -----------------------------------------------------------
 
   server.registerTool(
-    "decode_crl",
+    'decode_crl',
     {
       description:
-        "Decode a PEM- or DER-encoded Certificate Revocation List (CRL).\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Decode a PEM- or DER-encoded Certificate Revocation List (CRL).\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the CRL to Horizon's RFC 5280 CRL decode endpoint " +
-        "(POST /api/v1/rfc5280/crl, multipart/form-data) and returns " +
-        "the parsed fields.\n\n" +
-        "When to use: when a user provides a CRL and wants to check the " +
-        "issuer, update timestamps, or CRL number.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
-        "- issuerDn (str): CRL issuer distinguished name.\n" +
-        "- thisUpdate (int): issuance date as epoch milliseconds.\n" +
-        "- nextUpdate (int): next scheduled update as epoch milliseconds.\n" +
-        "- number (int, optional): CRL sequence number.\n" +
-        "- version (int, optional): CRL version.\n\n" +
-        "See also:\n" +
-        "- decode_x509 - decode the issuing CA certificate.\n" +
-        "- detect_file - auto-detect whether input is a CRL.",
+        '(POST /api/v1/rfc5280/crl, multipart/form-data) and returns ' +
+        'the parsed fields.\n\n' +
+        'When to use: when a user provides a CRL and wants to check the ' +
+        'issuer, update timestamps, or CRL number.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
+        '- issuerDn (str): CRL issuer distinguished name.\n' +
+        '- thisUpdate (int): issuance date as epoch milliseconds.\n' +
+        '- nextUpdate (int): next scheduled update as epoch milliseconds.\n' +
+        '- number (int, optional): CRL sequence number.\n' +
+        '- version (int, optional): CRL version.\n\n' +
+        'See also:\n' +
+        '- decode_x509 - decode the issuing CA certificate.\n' +
+        '- detect_file - auto-detect whether input is a CRL.',
       inputSchema: z.object({
         data: z
           .string()
           .describe(
-            "PEM-encoded CRL string (including BEGIN/END markers) " +
-              "or base64-encoded DER bytes.",
+            'PEM-encoded CRL string (including BEGIN/END markers) ' +
+              'or base64-encoded DER bytes.',
           ),
       }),
     },
     async ({ data }) => {
-      const result = await client.postMultipart("/api/v1/rfc5280/crl", [
+      const result = await client.postMultipart('/api/v1/rfc5280/crl', [
         {
-          fieldName: "crl",
-          filename: "revocation.crl",
-          mimeType: "application/x-pem-file",
+          fieldName: 'crl',
+          filename: 'revocation.crl',
+          mimeType: 'application/x-pem-file',
           data,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -288,46 +287,46 @@ export function registerCryptoTools(
   // -- decode_ocsp ----------------------------------------------------------
 
   server.registerTool(
-    "decode_ocsp",
+    'decode_ocsp',
     {
       description:
-        "Decode an OCSP response (RFC 6960).\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Decode an OCSP response (RFC 6960).\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the OCSP response to Horizon's RFC 6960 decode endpoint " +
-        "(POST /api/v1/rfc6960, multipart/form-data) and returns the " +
-        "parsed status and per-certificate responses.\n\n" +
-        "When to use: when a user has captured an OCSP response (DER " +
-        "bytes, typically base64-encoded) and wants to inspect the revocation " +
-        "status, responder identity, or per-certificate details.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
-        "- status (str): top-level response status - one of\n" +
+        '(POST /api/v1/rfc6960, multipart/form-data) and returns the ' +
+        'parsed status and per-certificate responses.\n\n' +
+        'When to use: when a user has captured an OCSP response (DER ' +
+        'bytes, typically base64-encoded) and wants to inspect the revocation ' +
+        'status, responder identity, or per-certificate details.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
+        '- status (str): top-level response status - one of\n' +
         '  "successful", "malformedRequest", "internalError",\n' +
         '  "tryLater", "sigRequired", "unauthorized".\n' +
-        "- respID (str, optional): responder identifier.\n" +
-        "- responses (list, optional): per-certificate entries, each with:\n" +
-        "    - certID (object): {serial, hashAlg, issuerKeyHash, issuerNameHash}.\n" +
-        "    - status (str): certificate status.\n" +
-        "    - thisUpdate (int): epoch milliseconds.\n" +
-        "    - nextUpdate (int): epoch milliseconds.\n\n" +
-        "See also:\n" +
-        "- decode_x509 - decode the certificate referenced in the OCSP response.",
+        '- respID (str, optional): responder identifier.\n' +
+        '- responses (list, optional): per-certificate entries, each with:\n' +
+        '    - certID (object): {serial, hashAlg, issuerKeyHash, issuerNameHash}.\n' +
+        '    - status (str): certificate status.\n' +
+        '    - thisUpdate (int): epoch milliseconds.\n' +
+        '    - nextUpdate (int): epoch milliseconds.\n\n' +
+        'See also:\n' +
+        '- decode_x509 - decode the certificate referenced in the OCSP response.',
       inputSchema: z.object({
         data: z
           .string()
-          .describe("Base64-encoded DER bytes of the OCSP response."),
+          .describe('Base64-encoded DER bytes of the OCSP response.'),
       }),
     },
     async ({ data }) => {
-      const result = await client.postMultipart("/api/v1/rfc6960", [
+      const result = await client.postMultipart('/api/v1/rfc6960', [
         {
-          fieldName: "ocsp-response",
-          filename: "response.der",
-          mimeType: "application/octet-stream",
+          fieldName: 'ocsp-response',
+          filename: 'response.der',
+          mimeType: 'application/octet-stream',
           data,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -335,42 +334,40 @@ export function registerCryptoTools(
   // -- decode_tsa -----------------------------------------------------------
 
   server.registerTool(
-    "decode_tsa",
+    'decode_tsa',
     {
       description:
-        "Decode a TSA (Time-Stamp Authority) response (RFC 3161).\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Decode a TSA (Time-Stamp Authority) response (RFC 3161).\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the timestamping response to Horizon's RFC 3161 decode " +
-        "endpoint (POST /api/v1/rfc3161, multipart/form-data) and returns " +
-        "the parsed fields.\n\n" +
-        "When to use: when a user has captured a timestamping response " +
-        "(DER bytes, typically base64-encoded) and wants to verify the " +
-        "timestamp policy and status.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
-        "- policy (str): OID of the TSA policy.\n" +
-        "- status (str|int): response status.\n" +
-        "- failInfo (str, optional): failure reason when status is not granted.\n\n" +
-        "See also:\n" +
-        "- decode_x509 - decode the TSA signing certificate.",
+        'endpoint (POST /api/v1/rfc3161, multipart/form-data) and returns ' +
+        'the parsed fields.\n\n' +
+        'When to use: when a user has captured a timestamping response ' +
+        '(DER bytes, typically base64-encoded) and wants to verify the ' +
+        'timestamp policy and status.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
+        '- policy (str): OID of the TSA policy.\n' +
+        '- status (str|int): response status.\n' +
+        '- failInfo (str, optional): failure reason when status is not granted.\n\n' +
+        'See also:\n' +
+        '- decode_x509 - decode the TSA signing certificate.',
       inputSchema: z.object({
         data: z
           .string()
-          .describe(
-            "Base64-encoded DER bytes of the timestamping response.",
-          ),
+          .describe('Base64-encoded DER bytes of the timestamping response.'),
       }),
     },
     async ({ data }) => {
-      const result = await client.postMultipart("/api/v1/rfc3161", [
+      const result = await client.postMultipart('/api/v1/rfc3161', [
         {
-          fieldName: "timestamping-response",
-          filename: "timestamp.der",
-          mimeType: "application/octet-stream",
+          fieldName: 'timestamping-response',
+          filename: 'timestamp.der',
+          mimeType: 'application/octet-stream',
           data,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -378,49 +375,49 @@ export function registerCryptoTools(
   // -- detect_file ----------------------------------------------------------
 
   server.registerTool(
-    "detect_file",
+    'detect_file',
     {
       description:
-        "Auto-detect and decode any cryptographic file.\n\n" +
-        "Safety tier: read-only\n\n" +
+        'Auto-detect and decode any cryptographic file.\n\n' +
+        'Safety tier: read-only\n\n' +
         "Sends the raw data to Horizon's crypto detection endpoint " +
-        "(POST /api/v1/crypto/detect, multipart/form-data). Horizon " +
-        "identifies the file type and returns both the type label and the " +
-        "decoded content.\n\n" +
-        "When to use: when the user provides an unknown blob of PEM, " +
-        "DER, or PKCS#7 data and you need to figure out what it is before " +
-        "choosing the right decode tool.\n\n" +
-        "Returns: JSON object with the following fields:\n" +
+        '(POST /api/v1/crypto/detect, multipart/form-data). Horizon ' +
+        'identifies the file type and returns both the type label and the ' +
+        'decoded content.\n\n' +
+        'When to use: when the user provides an unknown blob of PEM, ' +
+        'DER, or PKCS#7 data and you need to figure out what it is before ' +
+        'choosing the right decode tool.\n\n' +
+        'Returns: JSON object with the following fields:\n' +
         '- type (str): detected type - one of "certificate",\n' +
         '  "csr", "crl", "bundle", "ocsp-response",\n' +
         '  "timestamping-response", "openssh-cert".\n' +
-        "- value (object): decoded content whose schema matches the\n" +
-        "  corresponding decode tool (e.g., same fields as decode_x509\n" +
+        '- value (object): decoded content whose schema matches the\n' +
+        '  corresponding decode tool (e.g., same fields as decode_x509\n' +
         '  when type is "certificate").\n\n' +
-        "See also:\n" +
-        "- decode_x509, decode_csr, decode_crl,\n" +
-        "  decode_ocsp, decode_tsa - specialised decode tools\n" +
-        "  for when the file type is already known.",
+        'See also:\n' +
+        '- decode_x509, decode_csr, decode_crl,\n' +
+        '  decode_ocsp, decode_tsa - specialised decode tools\n' +
+        '  for when the file type is already known.',
       inputSchema: z.object({
         data: z
           .string()
           .describe(
-            "The cryptographic data to detect and parse. Can be " +
-              "PEM-encoded, base64-encoded DER, or PKCS#7 content.",
+            'The cryptographic data to detect and parse. Can be ' +
+              'PEM-encoded, base64-encoded DER, or PKCS#7 content.',
           ),
       }),
     },
     async ({ data }) => {
-      const result = await client.postMultipart("/api/v1/crypto/detect", [
+      const result = await client.postMultipart('/api/v1/crypto/detect', [
         {
-          fieldName: "file",
-          filename: "unknown.bin",
-          mimeType: "application/octet-stream",
+          fieldName: 'file',
+          filename: 'unknown.bin',
+          mimeType: 'application/octet-stream',
           data,
         },
       ]);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -428,42 +425,42 @@ export function registerCryptoTools(
   // -- fetch_exposed_certificate --------------------------------------------
 
   server.registerTool(
-    "fetch_exposed_certificate",
+    'fetch_exposed_certificate',
     {
       description:
-        "Fetch the TLS certificate exposed by a remote server.\n\n" +
-        "Safety tier: read-only (outbound TLS connection only, no data sent)\n\n" +
-        "Connects to the specified host and port, performs a TLS handshake, " +
+        'Fetch the TLS certificate exposed by a remote server.\n\n' +
+        'Safety tier: read-only (outbound TLS connection only, no data sent)\n\n' +
+        'Connects to the specified host and port, performs a TLS handshake, ' +
         "and retrieves the server's leaf certificate. Useful for:\n" +
-        "- Verifying a certificate deployed through the CLM is actually live\n" +
-        "- Comparing the exposed certificate against what Horizon manages\n" +
-        "- Feeding the PEM into decode_x509 for detailed parsing\n" +
-        "- Importing discovered certificates into Horizon via discovery feed\n\n" +
-        "The URI format is protocol://fqdn:port or just fqdn:port.\n" +
-        "The protocol is used only to determine the default port if omitted:\n" +
-        "- https -> 443\n" +
-        "- ldaps -> 636\n" +
-        "- imaps -> 993\n" +
-        "- smtps -> 465\n" +
-        "- ftps  -> 990\n" +
-        "If no protocol and no port, defaults to 443.\n\n" +
-        "See also: decode_x509 - decode the fetched PEM for detailed parsing.",
+        '- Verifying a certificate deployed through the CLM is actually live\n' +
+        '- Comparing the exposed certificate against what Horizon manages\n' +
+        '- Feeding the PEM into decode_x509 for detailed parsing\n' +
+        '- Importing discovered certificates into Horizon via discovery feed\n\n' +
+        'The URI format is protocol://fqdn:port or just fqdn:port.\n' +
+        'The protocol is used only to determine the default port if omitted:\n' +
+        '- https -> 443\n' +
+        '- ldaps -> 636\n' +
+        '- imaps -> 993\n' +
+        '- smtps -> 465\n' +
+        '- ftps  -> 990\n' +
+        'If no protocol and no port, defaults to 443.\n\n' +
+        'See also: decode_x509 - decode the fetched PEM for detailed parsing.',
       inputSchema: z.object({
         uri: z
           .string()
           .describe(
-            "Target endpoint. Examples: " +
-              "https://www.example.com, " +
-              "ldaps://dc01.corp.local:636, " +
-              "192.168.1.1:8443, " +
-              "mail.example.com:993",
+            'Target endpoint. Examples: ' +
+              'https://www.example.com, ' +
+              'ldaps://dc01.corp.local:636, ' +
+              '192.168.1.1:8443, ' +
+              'mail.example.com:993',
           ),
         timeout: z
           .number()
           .int()
           .positive()
           .default(10)
-          .describe("Connection timeout in seconds (default 10)."),
+          .describe('Connection timeout in seconds (default 10).'),
       }),
     },
     async ({ uri, timeout }) => {
@@ -474,15 +471,14 @@ export function registerCryptoTools(
       try {
         cert = await fetchPeerCertificate(host, port, timeoutMs);
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : String(err);
+        const message = err instanceof Error ? err.message : String(err);
 
         // Timeout errors
-        if (message.includes("timed out")) {
+        if (message.includes('timed out')) {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   error: true,
                   content: `Connection to ${host}:${port} timed out after ${timeout}s.`,
@@ -496,7 +492,7 @@ export function registerCryptoTools(
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 error: true,
                 content: `Cannot connect to ${host}:${port}: ${message}`,
@@ -509,9 +505,7 @@ export function registerCryptoTools(
       const pem = cert.toString();
       const cn = extractSubjectCN(cert);
       const dnsSans = extractDnsSans(cert);
-      const thumbprint = cert
-        .fingerprint256.replace(/:/g, "")
-        .toLowerCase();
+      const thumbprint = cert.fingerprint256.replace(/:/g, '').toLowerCase();
 
       const result = {
         content:
@@ -531,7 +525,7 @@ export function registerCryptoTools(
       };
 
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -539,35 +533,31 @@ export function registerCryptoTools(
   // -- convert_pkcs12_to_jks (stub) -----------------------------------------
 
   server.registerTool(
-    "convert_pkcs12_to_jks",
+    'convert_pkcs12_to_jks',
     {
       description:
-        "Convert a PKCS#12 (.p12/.pfx) bundle to a Java KeyStore (.jks) file. " +
-        "Takes a base64-encoded PKCS#12 bundle and password, returns a base64-encoded JKS " +
-        "keystore. Chain with download_certificate (format=pkcs12) for Java deployments.",
+        'Convert a PKCS#12 (.p12/.pfx) bundle to a Java KeyStore (.jks) file. ' +
+        'Takes a base64-encoded PKCS#12 bundle and password, returns a base64-encoded JKS ' +
+        'keystore. Chain with download_certificate (format=pkcs12) for Java deployments.',
       inputSchema: z.object({
-        pkcs12_base64: z
-          .string()
-          .describe("Base64-encoded PKCS#12 bundle"),
-        pkcs12_password: z
-          .string()
-          .describe("Password for the PKCS#12 bundle"),
+        pkcs12_base64: z.string().describe('Base64-encoded PKCS#12 bundle'),
+        pkcs12_password: z.string().describe('Password for the PKCS#12 bundle'),
         jks_password: z
           .string()
           .optional()
           .describe(
-            "Password for the output JKS keystore (defaults to pkcs12_password)",
+            'Password for the output JKS keystore (defaults to pkcs12_password)',
           ),
         alias: z
           .string()
-          .default("horizon")
-          .describe("Key entry alias in the JKS keystore"),
+          .default('horizon')
+          .describe('Key entry alias in the JKS keystore'),
       }),
     },
     async (_params) => {
       throw new Error(
-        "convert_pkcs12_to_jks is not yet implemented. " +
-          "JKS conversion support will be added in a future release.",
+        'convert_pkcs12_to_jks is not yet implemented. ' +
+          'JKS conversion support will be added in a future release.',
       );
     },
   );

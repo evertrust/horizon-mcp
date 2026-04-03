@@ -16,32 +16,33 @@
  *   - horizon://knowledge/validation-rules
  *   - horizon://knowledge/dictionary-entries
  */
-import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HorizonClient } from "../client/http.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import type { HorizonClient } from '../client/http.js';
 import {
   applyNameFilter,
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
   getStripMergePut,
-} from "./helpers.js";
+} from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const DS_BASE = "/api/v1/datasources";
+const DS_BASE = '/api/v1/datasources';
 const MAX_LIST_ITEMS = 50;
 
-const VALID_DS_TYPES = new Set(["dns", "ldap", "rest"]);
-const VALID_RECORD_TYPES = new Set(["a", "aaaa", "cname", "ptr", "txt"]);
+const VALID_DS_TYPES = new Set(['dns', 'ldap', 'rest']);
+const VALID_RECORD_TYPES = new Set(['a', 'aaaa', 'cname', 'ptr', 'txt']);
 const VALID_AUTH_TYPES = new Set([
-  "noauth",
-  "basic",
-  "x509",
-  "bearer",
-  "custom",
+  'noauth',
+  'basic',
+  'x509',
+  'bearer',
+  'custom',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ const dsAttributeSchema = z
     }),
   )
   .optional()
-  .describe("Attributes to return. Each: {key, multi, selected}.");
+  .describe('Attributes to return. Each: {key, multi, selected}.');
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -106,7 +107,7 @@ function validateAuthType(authType: string): string | undefined {
 function normalizeItems(data: unknown): Record<string, unknown>[] {
   if (Array.isArray(data)) return data as Record<string, unknown>[];
   const obj = data as Record<string, unknown>;
-  return (obj["items"] as Record<string, unknown>[] | undefined) ?? [obj];
+  return (obj['items'] as Record<string, unknown>[] | undefined) ?? [obj];
 }
 
 function applyTypeFilter(
@@ -114,7 +115,7 @@ function applyTypeFilter(
   dsType?: string,
 ): Record<string, unknown>[] {
   if (!dsType) return items;
-  return items.filter((it) => it["type"] === dsType);
+  return items.filter((it) => it['type'] === dsType);
 }
 
 // ---------------------------------------------------------------------------
@@ -130,14 +131,14 @@ export function registerDatasourceTools(
   // =======================================================================
 
   server.registerTool(
-    "list_datasources",
+    'list_datasources',
     {
       description:
-        "List external datasources with optional filtering.\n\n" +
-        "Safety tier: read-only\n" +
-        "Knowledge: horizon://knowledge/datasources\n\n" +
-        "See also: get_datasource, create_dns_datasource, create_ldap_datasource, " +
-        "create_rest_datasource, test_datasource.",
+        'List external datasources with optional filtering.\n\n' +
+        'Safety tier: read-only\n' +
+        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'See also: get_datasource, create_dns_datasource, create_ldap_datasource, ' +
+        'create_rest_datasource, test_datasource.',
       inputSchema: z.object({
         max_items: z
           .number()
@@ -145,11 +146,11 @@ export function registerDatasourceTools(
           .positive()
           .max(100)
           .default(MAX_LIST_ITEMS)
-          .describe("Maximum items to return (default 50)."),
+          .describe('Maximum items to return (default 50).'),
         name_contains: z
           .string()
           .optional()
-          .describe("Case-insensitive substring filter on datasource name."),
+          .describe('Case-insensitive substring filter on datasource name.'),
         ds_type: z
           .string()
           .optional()
@@ -160,7 +161,7 @@ export function registerDatasourceTools(
       if (ds_type !== undefined) {
         const err = validateDsType(ds_type);
         if (err !== undefined) {
-          return { content: [{ type: "text" as const, text: err }] };
+          return { content: [{ type: 'text' as const, text: err }] };
         }
       }
 
@@ -171,8 +172,8 @@ export function registerDatasourceTools(
       return {
         content: [
           {
-            type: "text" as const,
-            text: buildListResponse(items, max_items, "datasource"),
+            type: 'text' as const,
+            text: buildListResponse(items, max_items, 'datasource'),
           },
         ],
       };
@@ -180,21 +181,21 @@ export function registerDatasourceTools(
   );
 
   server.registerTool(
-    "get_datasource",
+    'get_datasource',
     {
       description:
-        "Get a single datasource by name.\n\n" +
-        "Safety tier: read-only\n" +
-        "Knowledge: horizon://knowledge/datasources\n\n" +
-        "See also: list_datasources, update_datasource, test_datasource, delete_datasource.",
+        'Get a single datasource by name.\n\n' +
+        'Safety tier: read-only\n' +
+        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'See also: list_datasources, update_datasource, test_datasource, delete_datasource.',
       inputSchema: z.object({
-        name: z.string().describe("Exact datasource name."),
+        name: z.string().describe('Exact datasource name.'),
       }),
     },
     async ({ name }) => {
       const result = await client.get(`${DS_BASE}/${name}`);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
@@ -204,64 +205,72 @@ export function registerDatasourceTools(
   // =======================================================================
 
   server.registerTool(
-    "create_dns_datasource",
+    'create_dns_datasource',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Create a DNS datasource for hostname lookups during enrollment.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
-        "DNS datasources query DNS servers and return record data (A, AAAA, " +
-        "CNAME, PTR, TXT) used in computation/validation rules via " +
-        "ds.<flowIndex>.<resultIndex>.<recordType> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
-        "the user for the name before creating.\n\n" +
-        "The lookup field is a TemplateString that supports {{key}} syntax for\n" +
+        'Create a DNS datasource for hostname lookups during enrollment.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
+        'DNS datasources query DNS servers and return record data (A, AAAA, ' +
+        'CNAME, PTR, TXT) used in computation/validation rules via ' +
+        'ds.<flowIndex>.<resultIndex>.<recordType> entries.\n\n' +
+        'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
+        'the user for the name before creating.\n\n' +
+        'The lookup field is a TemplateString that supports {{key}} syntax for\n' +
         'dynamic DNS queries. For example: "{{csr.san.dnsname.1}}" will look up\n' +
-        "the first DNS SAN from the CSR.\n\n" +
-        "Typical workflow:\n" +
-        "    1. Use test_datasource first to validate your DNS config works\n" +
-        "    2. Call this tool to create the datasource\n" +
+        'the first DNS SAN from the CSR.\n\n' +
+        'Typical workflow:\n' +
+        '    1. Use test_datasource first to validate your DNS config works\n' +
+        '    2. Call this tool to create the datasource\n' +
         "    3. Add the datasource to a profile's dsFlow (via profile configuration)\n" +
-        "    4. Use ds.<flowIndex>.<resultIndex>.<recordType> in computation\n" +
-        "       rules or validation rule conditions\n\n" +
-        "When to use DNS datasources:\n" +
-        "    - Validate that a SAN hostname has a specific CNAME target\n" +
-        "    - Check if a hostname resolves (A/AAAA records exist)\n" +
-        "    - Look up TXT records for domain ownership verification\n" +
-        "    - Reverse-lookup IP addresses via PTR records\n\n" +
-        "Example - CNAME validation for PaaS deployment:\n" +
+        '    4. Use ds.<flowIndex>.<resultIndex>.<recordType> in computation\n' +
+        '       rules or validation rule conditions\n\n' +
+        'When to use DNS datasources:\n' +
+        '    - Validate that a SAN hostname has a specific CNAME target\n' +
+        '    - Check if a hostname resolves (A/AAAA records exist)\n' +
+        '    - Look up TXT records for domain ownership verification\n' +
+        '    - Reverse-lookup IP addresses via PTR records\n\n' +
+        'Example - CNAME validation for PaaS deployment:\n' +
         '    name="san-cname-check"\n' +
         '    lookup="{{csr.san.dnsname.1}}"\n' +
         '    record_types=["cname"]\n' +
-        "    -> After creation, add to profile dsFlow with input mapping:\n" +
+        '    -> After creation, add to profile dsFlow with input mapping:\n' +
         '       {"hostname": "{{csr.san.dnsname.1}}"}\n' +
         '    -> Reference in validation rule: {{ds.1.1.cname}} matches ".*\\.paas\\.internal$"\n\n' +
-        "See also: test_datasource (validate before creating),\n" +
-        "    simulate_datasource_flow (test entire flow pipeline),\n" +
-        "    list_datasources (verify creation).",
+        'See also: test_datasource (validate before creating),\n' +
+        '    simulate_datasource_flow (test entire flow pipeline),\n' +
+        '    list_datasources (verify creation).',
       inputSchema: z.object({
-        name: z.string().describe("Unique datasource name (immutable primary key)."),
+        name: z
+          .string()
+          .describe('Unique datasource name (immutable primary key).'),
         lookup: z
           .string()
           .describe(
-            "DNS hostname to look up - supports {{key}} TemplateString syntax.",
+            'DNS hostname to look up - supports {{key}} TemplateString syntax.',
           ),
         display_name: localizedNameSchema,
         description: z
           .string()
           .optional()
-          .describe("Human-readable description."),
+          .describe('Human-readable description.'),
         host: z
           .string()
           .optional()
-          .describe("DNS server IP address. Omit for Horizon's default resolver."),
-        port: z.number().int().default(53).describe("DNS server port (default 53)."),
+          .describe(
+            "DNS server IP address. Omit for Horizon's default resolver.",
+          ),
+        port: z
+          .number()
+          .int()
+          .default(53)
+          .describe('DNS server port (default 53).'),
         timeout: z
           .string()
-          .default("10 seconds")
+          .default('10 seconds')
           .describe('Query timeout in duration format (default "10 seconds").'),
         record_types: z
           .array(z.string())
@@ -284,21 +293,21 @@ export function registerDatasourceTools(
       if (record_types !== undefined) {
         const err = validateRecordTypes(record_types);
         if (err !== undefined) {
-          return { content: [{ type: "text" as const, text: err }] };
+          return { content: [{ type: 'text' as const, text: err }] };
         }
       }
 
       const payload: Record<string, unknown> = {
-        type: "dns",
+        type: 'dns',
         name,
         lookup,
         port,
         timeout,
       };
-      if (display_name !== undefined) payload["displayName"] = display_name;
-      if (description !== undefined) payload["description"] = description;
-      if (host !== undefined) payload["host"] = host;
-      if (record_types !== undefined) payload["recordTypes"] = record_types;
+      if (display_name !== undefined) payload['displayName'] = display_name;
+      if (description !== undefined) payload['description'] = description;
+      if (host !== undefined) payload['host'] = host;
+      if (record_types !== undefined) payload['recordTypes'] = record_types;
 
       const result = await client.post<Record<string, unknown>>(
         DS_BASE,
@@ -307,10 +316,10 @@ export function registerDatasourceTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: buildMutateResponse({
-              action: "created",
-              kind: "datasource",
+              action: 'created',
+              kind: 'datasource',
               name,
               data: result,
             }),
@@ -321,104 +330,110 @@ export function registerDatasourceTools(
   );
 
   server.registerTool(
-    "create_ldap_datasource",
+    'create_ldap_datasource',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Create an LDAP datasource for directory lookups during enrollment.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
-        "LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return " +
-        "user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
-        "the user for the name before creating.\n\n" +
-        "Prerequisites: The referenced credentials object must already exist in\n" +
-        "Horizon (type: PasswordCredentials with LDAP bind DN + password).\n\n" +
-        "The baseDn and filter fields support TemplateString syntax with {{key}}\n" +
+        'Create an LDAP datasource for directory lookups during enrollment.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
+        'LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return ' +
+        'user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
+        'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
+        'the user for the name before creating.\n\n' +
+        'Prerequisites: The referenced credentials object must already exist in\n' +
+        'Horizon (type: PasswordCredentials with LDAP bind DN + password).\n\n' +
+        'The baseDn and filter fields support TemplateString syntax with {{key}}\n' +
         'for dynamic LDAP queries. Example filter: "(sAMAccountName={{username}})".\n\n' +
-        "Special LDAP attributes are auto-decoded:\n" +
-        "    - objectSid, objectGuid: decoded from binary\n" +
-        "    - userCertificate: parsed as X.509 PEM + subject elements\n" +
-        "    - dn: parsed into subject components (cn, o, ou, etc.)\n\n" +
-        "Typical workflow:\n" +
-        "    1. Ensure the PasswordCredentials for LDAP bind already exist\n" +
-        "    2. Use test_datasource first to validate LDAP connectivity and filter\n" +
-        "    3. Call this tool to create the datasource\n" +
+        'Special LDAP attributes are auto-decoded:\n' +
+        '    - objectSid, objectGuid: decoded from binary\n' +
+        '    - userCertificate: parsed as X.509 PEM + subject elements\n' +
+        '    - dn: parsed into subject components (cn, o, ou, etc.)\n\n' +
+        'Typical workflow:\n' +
+        '    1. Ensure the PasswordCredentials for LDAP bind already exist\n' +
+        '    2. Use test_datasource first to validate LDAP connectivity and filter\n' +
+        '    3. Call this tool to create the datasource\n' +
         "    4. Add the datasource to a profile's dsFlow\n" +
-        "    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n" +
-        "       or validation rule conditions\n\n" +
-        "When to use LDAP datasources:\n" +
-        "    - Enrich certificates with user attributes (department, email, manager)\n" +
-        "    - Validate user group membership before auto-approving enrollment\n" +
-        "    - Look up computer objects for server certificate enrichment\n" +
-        "    - Resolve AD attributes for certificate naming policies\n\n" +
-        "Example - Active Directory user enrichment:\n" +
+        '    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n' +
+        '       or validation rule conditions\n\n' +
+        'When to use LDAP datasources:\n' +
+        '    - Enrich certificates with user attributes (department, email, manager)\n' +
+        '    - Validate user group membership before auto-approving enrollment\n' +
+        '    - Look up computer objects for server certificate enrichment\n' +
+        '    - Resolve AD attributes for certificate naming policies\n\n' +
+        'Example - Active Directory user enrichment:\n' +
         '    name="corp-ad"\n' +
         '    hostname="ldaps://dc01.corp.local"\n' +
         '    credentials="ad-bind-creds"\n' +
         '    base_dn="OU=Users,DC=corp,DC=local"\n' +
         '    filter="(sAMAccountName={{principal.identifier}})"\n' +
-        "    secure=True\n" +
+        '    secure=True\n' +
         '    timeout="10s"\n' +
-        "    limit=1\n" +
-        "    attributes=[\n" +
+        '    limit=1\n' +
+        '    attributes=[\n' +
         '        {"key": "department", "multi": false, "selected": true},\n' +
         '        {"key": "mail", "multi": false, "selected": true},\n' +
         '        {"key": "memberOf", "multi": true, "selected": true}\n' +
-        "    ]\n\n" +
-        "See also: test_datasource (validate LDAP connectivity before creating),\n" +
-        "    simulate_datasource_flow (test full flow pipeline),\n" +
-        "    list_datasources (verify creation).",
+        '    ]\n\n' +
+        'See also: test_datasource (validate LDAP connectivity before creating),\n' +
+        '    simulate_datasource_flow (test full flow pipeline),\n' +
+        '    list_datasources (verify creation).',
       inputSchema: z.object({
-        name: z.string().describe("Unique datasource name (immutable primary key)."),
+        name: z
+          .string()
+          .describe('Unique datasource name (immutable primary key).'),
         hostname: z
           .string()
           .describe('LDAP server URL (e.g. "ldaps://ldap.corp.example.com").'),
         credentials: z
           .string()
-          .describe("Name of existing PasswordCredentials for LDAP bind."),
+          .describe('Name of existing PasswordCredentials for LDAP bind.'),
         base_dn: z
           .string()
-          .describe("LDAP search base DN - supports {{key}} TemplateString syntax."),
+          .describe(
+            'LDAP search base DN - supports {{key}} TemplateString syntax.',
+          ),
         filter: z
           .string()
-          .describe("LDAP search filter - supports {{key}} TemplateString syntax."),
-        secure: z
-          .boolean()
-          .describe("Use secure LDAP (LDAPS)."),
+          .describe(
+            'LDAP search filter - supports {{key}} TemplateString syntax.',
+          ),
+        secure: z.boolean().describe('Use secure LDAP (LDAPS).'),
         timeout: z
           .string()
-          .describe('Query timeout in duration format (e.g. "10s", "30 seconds").'),
+          .describe(
+            'Query timeout in duration format (e.g. "10s", "30 seconds").',
+          ),
         display_name: localizedNameSchema,
         description: z
           .string()
           .optional()
-          .describe("Human-readable description."),
+          .describe('Human-readable description.'),
         port: z
           .number()
           .int()
           .optional()
-          .describe("LDAP port. Default: 389 (LDAP) or 636 (LDAPS)."),
+          .describe('LDAP port. Default: 389 (LDAP) or 636 (LDAPS).'),
         disable_hostname_validation: z
           .boolean()
           .default(false)
-          .describe("Skip hostname validation on TLS (default false)."),
+          .describe('Skip hostname validation on TLS (default false).'),
         attributes: dsAttributeSchema,
         limit: z
           .number()
           .int()
           .optional()
-          .describe("Maximum number of LDAP results to return."),
+          .describe('Maximum number of LDAP results to return.'),
         follow_referrals: z
           .boolean()
           .optional()
-          .describe("Enable LDAP referral traversal."),
+          .describe('Enable LDAP referral traversal.'),
         proxy: z
           .string()
           .optional()
-          .describe("Name of an existing HTTP proxy object."),
+          .describe('Name of an existing HTTP proxy object.'),
       }),
     },
     async ({
@@ -439,7 +454,7 @@ export function registerDatasourceTools(
       proxy,
     }) => {
       const payload: Record<string, unknown> = {
-        type: "ldap",
+        type: 'ldap',
         name,
         hostname,
         credentials,
@@ -448,18 +463,18 @@ export function registerDatasourceTools(
         secure,
         timeout,
       };
-      if (display_name !== undefined) payload["displayName"] = display_name;
-      if (description !== undefined) payload["description"] = description;
-      if (port !== undefined) payload["port"] = port;
+      if (display_name !== undefined) payload['displayName'] = display_name;
+      if (description !== undefined) payload['description'] = description;
+      if (port !== undefined) payload['port'] = port;
       if (disable_hostname_validation) {
-        payload["disableHostnameValidation"] = true;
+        payload['disableHostnameValidation'] = true;
       }
-      if (attributes !== undefined) payload["attributes"] = attributes;
-      if (limit !== undefined) payload["limit"] = limit;
+      if (attributes !== undefined) payload['attributes'] = attributes;
+      if (limit !== undefined) payload['limit'] = limit;
       if (follow_referrals !== undefined) {
-        payload["followReferrals"] = follow_referrals;
+        payload['followReferrals'] = follow_referrals;
       }
-      if (proxy !== undefined) payload["proxy"] = proxy;
+      if (proxy !== undefined) payload['proxy'] = proxy;
 
       const result = await client.post<Record<string, unknown>>(
         DS_BASE,
@@ -468,10 +483,10 @@ export function registerDatasourceTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: buildMutateResponse({
-              action: "created",
-              kind: "datasource",
+              action: 'created',
+              kind: 'datasource',
               name,
               data: result,
             }),
@@ -482,52 +497,56 @@ export function registerDatasourceTools(
   );
 
   server.registerTool(
-    "create_rest_datasource",
+    'create_rest_datasource',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Create a REST datasource for HTTP API lookups during enrollment.\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
-        "REST datasources call HTTP APIs and return parsed response data via " +
-        "ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n" +
-        "IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n" +
-        "the user for the name before creating.\n\n" +
+        'Create a REST datasource for HTTP API lookups during enrollment.\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
+        'REST datasources call HTTP APIs and return parsed response data via ' +
+        'ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
+        'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
+        'the user for the name before creating.\n\n' +
         "Prerequisites: When authenticationType is not 'noauth', the referenced\n" +
-        "credentials object must already exist in Horizon.\n\n" +
-        "The url, headers, and payload fields support TemplateString syntax\n" +
-        "with {{key}} for dynamic values.\n\n" +
-        "Typical workflow:\n" +
-        "    1. Ensure credentials exist (unless using noauth)\n" +
-        "    2. Use test_datasource first to validate the API call works\n" +
-        "    3. Call this tool to create the datasource\n" +
+        'credentials object must already exist in Horizon.\n\n' +
+        'The url, headers, and payload fields support TemplateString syntax\n' +
+        'with {{key}} for dynamic values.\n\n' +
+        'Typical workflow:\n' +
+        '    1. Ensure credentials exist (unless using noauth)\n' +
+        '    2. Use test_datasource first to validate the API call works\n' +
+        '    3. Call this tool to create the datasource\n' +
         "    4. Add the datasource to a profile's dsFlow\n" +
-        "    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n\n" +
-        "When to use REST datasources:\n" +
-        "    - Query a CMDB API for host ownership information\n" +
-        "    - Call an internal service to validate hostnames or domains\n" +
-        "    - Fetch user metadata from an HR system API\n" +
-        "    - Integrate with any HTTP-based external data source\n\n" +
-        "Example - CMDB host ownership lookup:\n" +
+        '    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n\n' +
+        'When to use REST datasources:\n' +
+        '    - Query a CMDB API for host ownership information\n' +
+        '    - Call an internal service to validate hostnames or domains\n' +
+        '    - Fetch user metadata from an HR system API\n' +
+        '    - Integrate with any HTTP-based external data source\n\n' +
+        'Example - CMDB host ownership lookup:\n' +
         '    name="cmdb-lookup"\n' +
         '    method="GET"\n' +
         '    url="https://cmdb.corp.local/api/v1/hosts/{{csr.san.dnsname.1}}"\n' +
         '    authentication_type="bearer"\n' +
         '    credentials="cmdb-api-token"\n' +
         '    timeout="10s"\n' +
-        "    expected_http_codes=[200]\n" +
+        '    expected_http_codes=[200]\n' +
         '    attributes=[{"key": "owner", "multi": false, "selected": true}]\n\n' +
-        "See also: test_datasource (validate API call before creating),\n" +
-        "    simulate_datasource_flow (test full flow pipeline),\n" +
-        "    list_datasources (verify creation).",
+        'See also: test_datasource (validate API call before creating),\n' +
+        '    simulate_datasource_flow (test full flow pipeline),\n' +
+        '    list_datasources (verify creation).',
       inputSchema: z.object({
-        name: z.string().describe("Unique datasource name (immutable primary key)."),
-        method: z.string().describe("HTTP method (GET, POST, PUT, DELETE, etc.)."),
+        name: z
+          .string()
+          .describe('Unique datasource name (immutable primary key).'),
+        method: z
+          .string()
+          .describe('HTTP method (GET, POST, PUT, DELETE, etc.).'),
         url: z
           .string()
-          .describe("Endpoint URL - supports {{key}} TemplateString syntax."),
+          .describe('Endpoint URL - supports {{key}} TemplateString syntax.'),
         authentication_type: z
           .string()
           .describe(
@@ -538,12 +557,12 @@ export function registerDatasourceTools(
           .describe('Request timeout in duration format (e.g. "10s").'),
         expected_http_codes: z
           .array(z.number().int())
-          .describe("HTTP status codes indicating success (e.g. [200, 201])."),
+          .describe('HTTP status codes indicating success (e.g. [200, 201]).'),
         display_name: localizedNameSchema,
         description: z
           .string()
           .optional()
-          .describe("Human-readable description."),
+          .describe('Human-readable description.'),
         credentials: z
           .string()
           .optional()
@@ -553,7 +572,7 @@ export function registerDatasourceTools(
         headers: z
           .array(z.object({ name: z.string(), value: z.string() }))
           .optional()
-          .describe("Custom HTTP headers as [{name, value}]."),
+          .describe('Custom HTTP headers as [{name, value}].'),
         payload_type: z
           .string()
           .optional()
@@ -561,11 +580,11 @@ export function registerDatasourceTools(
         payload: z
           .string()
           .optional()
-          .describe("Request body - supports {{key}} TemplateString syntax."),
+          .describe('Request body - supports {{key}} TemplateString syntax.'),
         proxy: z
           .string()
           .optional()
-          .describe("Name of an existing HTTP proxy object."),
+          .describe('Name of an existing HTTP proxy object.'),
         attributes: dsAttributeSchema,
       }),
     },
@@ -587,18 +606,18 @@ export function registerDatasourceTools(
     }) => {
       const authErr = validateAuthType(authentication_type);
       if (authErr !== undefined) {
-        return { content: [{ type: "text" as const, text: authErr }] };
+        return { content: [{ type: 'text' as const, text: authErr }] };
       }
 
-      if (authentication_type !== "noauth" && !credentials) {
+      if (authentication_type !== 'noauth' && !credentials) {
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 error:
                   "credentials is required when authentication_type is not 'noauth'.",
-                hint: "Provide the name of an existing credentials object.",
+                hint: 'Provide the name of an existing credentials object.',
               }),
             },
           ],
@@ -609,11 +628,11 @@ export function registerDatasourceTools(
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 error:
-                  "expected_http_codes must contain at least one HTTP status code.",
-                hint: "Common values: [200], [200, 201], [200, 204].",
+                  'expected_http_codes must contain at least one HTTP status code.',
+                hint: 'Common values: [200], [200, 201], [200, 204].',
               }),
             },
           ],
@@ -621,7 +640,7 @@ export function registerDatasourceTools(
       }
 
       const body: Record<string, unknown> = {
-        type: "rest",
+        type: 'rest',
         name,
         method,
         url,
@@ -629,23 +648,23 @@ export function registerDatasourceTools(
         timeout,
         expectedHttpCodes: expected_http_codes,
       };
-      if (display_name !== undefined) body["displayName"] = display_name;
-      if (description !== undefined) body["description"] = description;
-      if (credentials !== undefined) body["credentials"] = credentials;
-      if (headers !== undefined) body["headers"] = headers;
-      if (payload_type !== undefined) body["payloadType"] = payload_type;
-      if (payload !== undefined) body["payload"] = payload;
-      if (proxy !== undefined) body["proxy"] = proxy;
-      if (attributes !== undefined) body["attributes"] = attributes;
+      if (display_name !== undefined) body['displayName'] = display_name;
+      if (description !== undefined) body['description'] = description;
+      if (credentials !== undefined) body['credentials'] = credentials;
+      if (headers !== undefined) body['headers'] = headers;
+      if (payload_type !== undefined) body['payloadType'] = payload_type;
+      if (payload !== undefined) body['payload'] = payload;
+      if (proxy !== undefined) body['proxy'] = proxy;
+      if (attributes !== undefined) body['attributes'] = attributes;
 
       const result = await client.post<Record<string, unknown>>(DS_BASE, body);
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: buildMutateResponse({
-              action: "created",
-              kind: "datasource",
+              action: 'created',
+              kind: 'datasource',
               name,
               data: result,
             }),
@@ -660,103 +679,97 @@ export function registerDatasourceTools(
   // =======================================================================
 
   server.registerTool(
-    "update_datasource",
+    'update_datasource',
     {
       description:
-        "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool. Do not proceed without a clear " +
+        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
+        'confirmation before calling this tool. Do not proceed without a clear ' +
         '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        "Update an existing datasource (GET -> strip -> merge -> PUT).\n\n" +
-        "Safety tier: mutating-safe\n" +
-        "Knowledge: horizon://knowledge/datasources\n\n" +
-        "Parameters are type-specific - only set fields relevant to the datasource " +
-        "type (dns, ldap, or rest). Irrelevant fields are ignored.\n\n" +
-        "IMPORTANT: The datasource name and type cannot be changed after creation.\n\n" +
-        "See also: get_datasource, test_datasource.",
+        'Update an existing datasource (GET -> strip -> merge -> PUT).\n\n' +
+        'Safety tier: mutating-safe\n' +
+        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'Parameters are type-specific - only set fields relevant to the datasource ' +
+        'type (dns, ldap, or rest). Irrelevant fields are ignored.\n\n' +
+        'IMPORTANT: The datasource name and type cannot be changed after creation.\n\n' +
+        'See also: get_datasource, test_datasource.',
       inputSchema: z.object({
         name: z
           .string()
-          .describe("Datasource name to update (cannot be changed)."),
+          .describe('Datasource name to update (cannot be changed).'),
         display_name: localizedNameSchema,
-        description: z.string().optional().describe("New description."),
-        host: z.string().optional().describe("(DNS) New DNS server IP."),
-        port: z.number().int().optional().describe("(DNS/LDAP) New port number."),
-        timeout: z
-          .string()
-          .optional()
-          .describe("New timeout in duration format."),
-        lookup: z
-          .string()
-          .optional()
-          .describe("(DNS) New lookup TemplateString."),
-        record_types: z
-          .array(z.string())
-          .optional()
-          .describe("(DNS) New record type filter."),
-        hostname: z
-          .string()
-          .optional()
-          .describe("(LDAP) New LDAP server URL."),
-        credentials: z
-          .string()
-          .optional()
-          .describe("(LDAP/REST) New credentials name."),
-        base_dn: z
-          .string()
-          .optional()
-          .describe("(LDAP) New base DN TemplateString."),
-        filter: z
-          .string()
-          .optional()
-          .describe("(LDAP) New search filter TemplateString."),
-        secure: z
-          .boolean()
-          .optional()
-          .describe("(LDAP) New secure flag."),
-        disable_hostname_validation: z
-          .boolean()
-          .optional()
-          .describe("(LDAP) New hostname validation flag."),
-        attributes: dsAttributeSchema,
-        limit: z
+        description: z.string().optional().describe('New description.'),
+        host: z.string().optional().describe('(DNS) New DNS server IP.'),
+        port: z
           .number()
           .int()
           .optional()
-          .describe("(LDAP) New result limit."),
+          .describe('(DNS/LDAP) New port number.'),
+        timeout: z
+          .string()
+          .optional()
+          .describe('New timeout in duration format.'),
+        lookup: z
+          .string()
+          .optional()
+          .describe('(DNS) New lookup TemplateString.'),
+        record_types: z
+          .array(z.string())
+          .optional()
+          .describe('(DNS) New record type filter.'),
+        hostname: z.string().optional().describe('(LDAP) New LDAP server URL.'),
+        credentials: z
+          .string()
+          .optional()
+          .describe('(LDAP/REST) New credentials name.'),
+        base_dn: z
+          .string()
+          .optional()
+          .describe('(LDAP) New base DN TemplateString.'),
+        filter: z
+          .string()
+          .optional()
+          .describe('(LDAP) New search filter TemplateString.'),
+        secure: z.boolean().optional().describe('(LDAP) New secure flag.'),
+        disable_hostname_validation: z
+          .boolean()
+          .optional()
+          .describe('(LDAP) New hostname validation flag.'),
+        attributes: dsAttributeSchema,
+        limit: z.number().int().optional().describe('(LDAP) New result limit.'),
         follow_referrals: z
           .boolean()
           .optional()
-          .describe("(LDAP) New referral traversal flag."),
-        method: z.string().optional().describe("(REST) New HTTP method."),
+          .describe('(LDAP) New referral traversal flag.'),
+        method: z.string().optional().describe('(REST) New HTTP method.'),
         url: z
           .string()
           .optional()
-          .describe("(REST) New endpoint URL TemplateString."),
+          .describe('(REST) New endpoint URL TemplateString.'),
         authentication_type: z
           .string()
           .optional()
-          .describe("(REST) New auth type."),
+          .describe('(REST) New auth type.'),
         headers: z
           .array(z.object({ name: z.string(), value: z.string() }))
           .optional()
-          .describe("(REST) New HTTP headers."),
+          .describe('(REST) New HTTP headers.'),
         payload_type: z
           .string()
           .optional()
-          .describe("(REST) New payload format hint."),
+          .describe('(REST) New payload format hint.'),
         payload: z
           .string()
           .optional()
-          .describe("(REST) New request body TemplateString."),
+          .describe('(REST) New request body TemplateString.'),
         expected_http_codes: z
           .array(z.number().int())
           .optional()
-          .describe("(REST) New success HTTP codes."),
-        proxy: z.string().optional().describe("(LDAP/REST) New proxy name."),
+          .describe('(REST) New success HTTP codes.'),
+        proxy: z.string().optional().describe('(LDAP/REST) New proxy name.'),
         clear_fields: z
           .array(z.string())
           .optional()
-          .describe("Top-level field names to explicitly set to null."),
+          .describe('Top-level field names to explicitly set to null.'),
       }),
     },
     async ({
@@ -790,65 +803,65 @@ export function registerDatasourceTools(
       if (record_types !== undefined) {
         const err = validateRecordTypes(record_types);
         if (err !== undefined) {
-          return { content: [{ type: "text" as const, text: err }] };
+          return { content: [{ type: 'text' as const, text: err }] };
         }
       }
       if (authentication_type !== undefined) {
         const err = validateAuthType(authentication_type);
         if (err !== undefined) {
-          return { content: [{ type: "text" as const, text: err }] };
+          return { content: [{ type: 'text' as const, text: err }] };
         }
       }
 
       const overrides: Record<string, unknown> = {};
-      if (display_name !== undefined) overrides["displayName"] = display_name;
-      if (description !== undefined) overrides["description"] = description;
-      if (host !== undefined) overrides["host"] = host;
-      if (port !== undefined) overrides["port"] = port;
-      if (timeout !== undefined) overrides["timeout"] = timeout;
-      if (lookup !== undefined) overrides["lookup"] = lookup;
-      if (record_types !== undefined) overrides["recordTypes"] = record_types;
-      if (hostname !== undefined) overrides["hostname"] = hostname;
-      if (credentials !== undefined) overrides["credentials"] = credentials;
-      if (base_dn !== undefined) overrides["baseDn"] = base_dn;
-      if (filter !== undefined) overrides["filter"] = filter;
-      if (secure !== undefined) overrides["secure"] = secure;
+      if (display_name !== undefined) overrides['displayName'] = display_name;
+      if (description !== undefined) overrides['description'] = description;
+      if (host !== undefined) overrides['host'] = host;
+      if (port !== undefined) overrides['port'] = port;
+      if (timeout !== undefined) overrides['timeout'] = timeout;
+      if (lookup !== undefined) overrides['lookup'] = lookup;
+      if (record_types !== undefined) overrides['recordTypes'] = record_types;
+      if (hostname !== undefined) overrides['hostname'] = hostname;
+      if (credentials !== undefined) overrides['credentials'] = credentials;
+      if (base_dn !== undefined) overrides['baseDn'] = base_dn;
+      if (filter !== undefined) overrides['filter'] = filter;
+      if (secure !== undefined) overrides['secure'] = secure;
       if (disable_hostname_validation !== undefined) {
-        overrides["disableHostnameValidation"] = disable_hostname_validation;
+        overrides['disableHostnameValidation'] = disable_hostname_validation;
       }
-      if (attributes !== undefined) overrides["attributes"] = attributes;
-      if (limit !== undefined) overrides["limit"] = limit;
+      if (attributes !== undefined) overrides['attributes'] = attributes;
+      if (limit !== undefined) overrides['limit'] = limit;
       if (follow_referrals !== undefined) {
-        overrides["followReferrals"] = follow_referrals;
+        overrides['followReferrals'] = follow_referrals;
       }
-      if (method !== undefined) overrides["method"] = method;
-      if (url !== undefined) overrides["url"] = url;
+      if (method !== undefined) overrides['method'] = method;
+      if (url !== undefined) overrides['url'] = url;
       if (authentication_type !== undefined) {
-        overrides["authenticationType"] = authentication_type;
+        overrides['authenticationType'] = authentication_type;
       }
-      if (headers !== undefined) overrides["headers"] = headers;
-      if (payload_type !== undefined) overrides["payloadType"] = payload_type;
-      if (payload !== undefined) overrides["payload"] = payload;
+      if (headers !== undefined) overrides['headers'] = headers;
+      if (payload_type !== undefined) overrides['payloadType'] = payload_type;
+      if (payload !== undefined) overrides['payload'] = payload;
       if (expected_http_codes !== undefined) {
-        overrides["expectedHttpCodes"] = expected_http_codes;
+        overrides['expectedHttpCodes'] = expected_http_codes;
       }
-      if (proxy !== undefined) overrides["proxy"] = proxy;
+      if (proxy !== undefined) overrides['proxy'] = proxy;
 
       const result = await getStripMergePut(
         client,
         `${DS_BASE}/${name}`,
         DS_BASE,
-        "datasource",
+        'datasource',
         overrides,
         clear_fields,
       );
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: buildMutateResponse({
-              action: "updated",
-              kind: "datasource",
+              action: 'updated',
+              kind: 'datasource',
               name,
               data: result,
             }),
@@ -863,24 +876,24 @@ export function registerDatasourceTools(
   // =======================================================================
 
   server.registerTool(
-    "delete_datasource",
+    'delete_datasource',
     {
       description:
-        "STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST " +
-        "ask the user for explicit confirmation before calling this tool. Do not " +
+        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
+        'ask the user for explicit confirmation before calling this tool. Do not ' +
         'proceed without a clear "yes" from the user. Present what will be ' +
-        "permanently destroyed and wait.\n\n" +
-        "Delete a datasource. Requires name confirmation.\n\n" +
-        "A datasource cannot be deleted if it is still referenced by any " +
+        'permanently destroyed and wait.\n\n' +
+        'Delete a datasource. Requires name confirmation.\n\n' +
+        'A datasource cannot be deleted if it is still referenced by any ' +
         "profile's dsFlow.\n\n" +
-        "Safety tier: mutating-destructive\n" +
-        "Knowledge: horizon://knowledge/datasources\n\n" +
-        "See also: get_datasource, list_datasources.",
+        'Safety tier: mutating-destructive\n' +
+        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'See also: get_datasource, list_datasources.',
       inputSchema: z.object({
-        name: z.string().describe("Datasource name to delete."),
+        name: z.string().describe('Datasource name to delete.'),
         expected_name: z
           .string()
-          .describe("Must exactly match name as a deletion safeguard."),
+          .describe('Must exactly match name as a deletion safeguard.'),
       }),
     },
     async ({ name, expected_name }) => {
@@ -889,11 +902,11 @@ export function registerDatasourceTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               deleted: true,
               name,
-              kind: "datasource",
+              kind: 'datasource',
             }),
           },
         ],
@@ -906,116 +919,96 @@ export function registerDatasourceTools(
   // =======================================================================
 
   server.registerTool(
-    "test_datasource",
+    'test_datasource',
     {
       description:
-        "Test a datasource configuration against a context dictionary.\n\n" +
-        "Safety tier: read-only (performs a live query but does not persist anything)\n" +
-        "Knowledge: horizon://knowledge/datasources\n\n" +
-        "Sends the datasource definition and an optional context dictionary to " +
-        "Horizon for a one-off test execution. Useful for validating datasource\n" +
-        "configuration before creating or after modifying it.\n\n" +
-        "For DNS: returns resolved records (A, AAAA, CNAME, PTR, TXT).\n" +
-        "For LDAP: returns matched attributes and computed DN/filter.\n" +
-        "For REST: returns response code, headers, body, and extracted attributes.\n\n" +
-        "Typical workflow:\n" +
-        "    1. Call test_datasource with your planned configuration\n" +
+        'Test a datasource configuration against a context dictionary.\n\n' +
+        'Safety tier: read-only (performs a live query but does not persist anything)\n' +
+        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'Sends the datasource definition and an optional context dictionary to ' +
+        'Horizon for a one-off test execution. Useful for validating datasource\n' +
+        'configuration before creating or after modifying it.\n\n' +
+        'For DNS: returns resolved records (A, AAAA, CNAME, PTR, TXT).\n' +
+        'For LDAP: returns matched attributes and computed DN/filter.\n' +
+        'For REST: returns response code, headers, body, and extracted attributes.\n\n' +
+        'Typical workflow:\n' +
+        '    1. Call test_datasource with your planned configuration\n' +
         '    2. Check the result: status should be "success"\n' +
-        "    3. If successful, proceed to create_dns/ldap/rest_datasource\n" +
-        "    4. If failed, adjust configuration and test again\n\n" +
-        "Example - Test DNS CNAME lookup:\n" +
+        '    3. If successful, proceed to create_dns/ldap/rest_datasource\n' +
+        '    4. If failed, adjust configuration and test again\n\n' +
+        'Example - Test DNS CNAME lookup:\n' +
         '    ds_type="dns", name="test-cname",\n' +
         '    lookup="{{hostname}}", record_types=["cname"],\n' +
         '    context={"hostname": "app.corp.local"}\n' +
-        "    -> Expect: status=\"success\", dictionary contains cname record\n\n" +
-        "Example - Test LDAP user lookup:\n" +
+        '    -> Expect: status="success", dictionary contains cname record\n\n' +
+        'Example - Test LDAP user lookup:\n' +
         '    ds_type="ldap", name="test-ldap",\n' +
         '    hostname="ldaps://ldap.corp.local", credentials="ldap-creds",\n' +
         '    base_dn="DC=corp,DC=local", filter="(sAMAccountName={{user}})",\n' +
-        "    secure=True,\n" +
+        '    secure=True,\n' +
         '    context={"user": "jdoe"}\n' +
-        "    -> Expect: status=\"success\", dictionary contains user attributes\n\n" +
-        "See also: create_dns_datasource / create_ldap_datasource /\n" +
-        "    create_rest_datasource (create after testing),\n" +
-        "    simulate_datasource_flow (test full flow pipeline with chaining).",
+        '    -> Expect: status="success", dictionary contains user attributes\n\n' +
+        'See also: create_dns_datasource / create_ldap_datasource /\n' +
+        '    create_rest_datasource (create after testing),\n' +
+        '    simulate_datasource_flow (test full flow pipeline with chaining).',
       inputSchema: z.object({
         ds_type: z
           .string()
           .describe('Datasource type: "dns", "ldap", or "rest".'),
-        name: z.string().describe("Datasource name (for identification)."),
+        name: z.string().describe('Datasource name (for identification).'),
         context: z
           .record(z.string(), z.string())
           .optional()
           .describe(
-            "Key-value pairs to resolve TemplateString variables. " +
-            'Example: {"hostname": "web01.corp.local"}.',
+            'Key-value pairs to resolve TemplateString variables. ' +
+              'Example: {"hostname": "web01.corp.local"}.',
           ),
-        lookup: z
-          .string()
-          .optional()
-          .describe("(DNS) Hostname to look up."),
-        host: z.string().optional().describe("(DNS) DNS server IP."),
-        port: z
-          .number()
-          .int()
-          .optional()
-          .describe("(DNS/LDAP) Port number."),
-        timeout: z
-          .string()
-          .optional()
-          .describe("Timeout in duration format."),
+        lookup: z.string().optional().describe('(DNS) Hostname to look up.'),
+        host: z.string().optional().describe('(DNS) DNS server IP.'),
+        port: z.number().int().optional().describe('(DNS/LDAP) Port number.'),
+        timeout: z.string().optional().describe('Timeout in duration format.'),
         record_types: z
           .array(z.string())
           .optional()
-          .describe("(DNS) Record types to query."),
-        hostname: z
-          .string()
-          .optional()
-          .describe("(LDAP) LDAP server URL."),
+          .describe('(DNS) Record types to query.'),
+        hostname: z.string().optional().describe('(LDAP) LDAP server URL.'),
         credentials: z
           .string()
           .optional()
-          .describe("(LDAP/REST) Credentials name."),
+          .describe('(LDAP/REST) Credentials name.'),
         base_dn: z
           .string()
           .optional()
-          .describe("(LDAP) Base DN TemplateString."),
+          .describe('(LDAP) Base DN TemplateString.'),
         filter: z
           .string()
           .optional()
-          .describe("(LDAP) Search filter TemplateString."),
-        secure: z.boolean().optional().describe("(LDAP) Use LDAPS."),
+          .describe('(LDAP) Search filter TemplateString.'),
+        secure: z.boolean().optional().describe('(LDAP) Use LDAPS.'),
         attributes: dsAttributeSchema,
-        limit: z
-          .number()
-          .int()
-          .optional()
-          .describe("(LDAP) Max results."),
-        method: z.string().optional().describe("(REST) HTTP method."),
+        limit: z.number().int().optional().describe('(LDAP) Max results.'),
+        method: z.string().optional().describe('(REST) HTTP method.'),
         url: z
           .string()
           .optional()
-          .describe("(REST) Endpoint URL TemplateString."),
+          .describe('(REST) Endpoint URL TemplateString.'),
         authentication_type: z
           .string()
           .optional()
-          .describe("(REST) Auth type."),
+          .describe('(REST) Auth type.'),
         headers: z
           .array(z.object({ name: z.string(), value: z.string() }))
           .optional()
-          .describe("(REST) HTTP headers."),
-        payload_type: z
-          .string()
-          .optional()
-          .describe("(REST) Payload format."),
+          .describe('(REST) HTTP headers.'),
+        payload_type: z.string().optional().describe('(REST) Payload format.'),
         payload: z
           .string()
           .optional()
-          .describe("(REST) Request body TemplateString."),
+          .describe('(REST) Request body TemplateString.'),
         expected_http_codes: z
           .array(z.number().int())
           .optional()
-          .describe("(REST) Success HTTP codes."),
+          .describe('(REST) Success HTTP codes.'),
       }),
     },
     async ({
@@ -1044,83 +1037,83 @@ export function registerDatasourceTools(
     }) => {
       const typeErr = validateDsType(ds_type);
       if (typeErr !== undefined) {
-        return { content: [{ type: "text" as const, text: typeErr }] };
+        return { content: [{ type: 'text' as const, text: typeErr }] };
       }
 
       const ds: Record<string, unknown> = { type: ds_type, name };
 
-      if (ds_type === "dns") {
+      if (ds_type === 'dns') {
         if (!lookup) {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
-                  error: "lookup is required for DNS datasource tests.",
+                  error: 'lookup is required for DNS datasource tests.',
                 }),
               },
             ],
           };
         }
-        ds["lookup"] = lookup;
-        if (host !== undefined) ds["host"] = host;
-        if (port !== undefined) ds["port"] = port;
-        if (timeout !== undefined) ds["timeout"] = timeout;
-        if (record_types !== undefined) ds["recordTypes"] = record_types;
-      } else if (ds_type === "ldap") {
+        ds['lookup'] = lookup;
+        if (host !== undefined) ds['host'] = host;
+        if (port !== undefined) ds['port'] = port;
+        if (timeout !== undefined) ds['timeout'] = timeout;
+        if (record_types !== undefined) ds['recordTypes'] = record_types;
+      } else if (ds_type === 'ldap') {
         if (!hostname || !credentials || !base_dn || !filter) {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   error:
-                    "hostname, credentials, base_dn, and filter are all required for LDAP tests.",
+                    'hostname, credentials, base_dn, and filter are all required for LDAP tests.',
                 }),
               },
             ],
           };
         }
-        ds["hostname"] = hostname;
-        ds["credentials"] = credentials;
-        ds["baseDn"] = base_dn;
-        ds["filter"] = filter;
-        ds["secure"] = secure ?? false;
-        if (port !== undefined) ds["port"] = port;
-        if (timeout !== undefined) ds["timeout"] = timeout;
-        if (attributes !== undefined) ds["attributes"] = attributes;
-        if (limit !== undefined) ds["limit"] = limit;
-      } else if (ds_type === "rest") {
+        ds['hostname'] = hostname;
+        ds['credentials'] = credentials;
+        ds['baseDn'] = base_dn;
+        ds['filter'] = filter;
+        ds['secure'] = secure ?? false;
+        if (port !== undefined) ds['port'] = port;
+        if (timeout !== undefined) ds['timeout'] = timeout;
+        if (attributes !== undefined) ds['attributes'] = attributes;
+        if (limit !== undefined) ds['limit'] = limit;
+      } else if (ds_type === 'rest') {
         if (!method || !url || !authentication_type) {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   error:
-                    "method, url, and authentication_type are all required for REST tests.",
+                    'method, url, and authentication_type are all required for REST tests.',
                 }),
               },
             ],
           };
         }
-        ds["method"] = method;
-        ds["url"] = url;
-        ds["authenticationType"] = authentication_type;
-        if (timeout !== undefined) ds["timeout"] = timeout;
+        ds['method'] = method;
+        ds['url'] = url;
+        ds['authenticationType'] = authentication_type;
+        if (timeout !== undefined) ds['timeout'] = timeout;
         if (expected_http_codes !== undefined) {
-          ds["expectedHttpCodes"] = expected_http_codes;
+          ds['expectedHttpCodes'] = expected_http_codes;
         }
-        if (credentials !== undefined) ds["credentials"] = credentials;
-        if (headers !== undefined) ds["headers"] = headers;
-        if (payload_type !== undefined) ds["payloadType"] = payload_type;
-        if (payload !== undefined) ds["payload"] = payload;
-        if (attributes !== undefined) ds["attributes"] = attributes;
+        if (credentials !== undefined) ds['credentials'] = credentials;
+        if (headers !== undefined) ds['headers'] = headers;
+        if (payload_type !== undefined) ds['payloadType'] = payload_type;
+        if (payload !== undefined) ds['payload'] = payload;
+        if (attributes !== undefined) ds['attributes'] = attributes;
       }
 
       const body: Record<string, unknown> = { ds };
       if (context !== undefined) {
-        body["context"] = Object.entries(context).map(([key, value]) => ({
+        body['context'] = Object.entries(context).map(([key, value]) => ({
           key,
           value,
         }));
@@ -1128,7 +1121,7 @@ export function registerDatasourceTools(
 
       const result = await client.patch(DS_BASE, body);
       return {
-        content: [{ type: "text" as const, text: JSON.stringify(result) }],
+        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
