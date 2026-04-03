@@ -208,7 +208,8 @@ export function registerDatasourceTools(
     {
       description:
         "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool.\n\n" +
+        "confirmation before calling this tool. Do not proceed without a clear " +
+        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Create a DNS datasource for hostname lookups during enrollment.\n\n" +
         "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
@@ -324,7 +325,8 @@ export function registerDatasourceTools(
     {
       description:
         "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool.\n\n" +
+        "confirmation before calling this tool. Do not proceed without a clear " +
+        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Create an LDAP datasource for directory lookups during enrollment.\n\n" +
         "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
@@ -484,7 +486,8 @@ export function registerDatasourceTools(
     {
       description:
         "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool.\n\n" +
+        "confirmation before calling this tool. Do not proceed without a clear " +
+        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Create a REST datasource for HTTP API lookups during enrollment.\n\n" +
         "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n" +
@@ -661,7 +664,8 @@ export function registerDatasourceTools(
     {
       description:
         "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool.\n\n" +
+        "confirmation before calling this tool. Do not proceed without a clear " +
+        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Update an existing datasource (GET -> strip -> merge -> PUT).\n\n" +
         "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/datasources\n\n" +
@@ -863,7 +867,9 @@ export function registerDatasourceTools(
     {
       description:
         "STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST " +
-        "ask the user for explicit confirmation before calling this tool.\n\n" +
+        "ask the user for explicit confirmation before calling this tool. Do not " +
+        'proceed without a clear "yes" from the user. Present what will be ' +
+        "permanently destroyed and wait.\n\n" +
         "Delete a datasource. Requires name confirmation.\n\n" +
         "A datasource cannot be deleted if it is still referenced by any " +
         "profile's dsFlow.\n\n" +

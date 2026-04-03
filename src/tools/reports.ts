@@ -133,7 +133,9 @@ export function registerReportTools(
     {
       description:
         "STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST " +
-        "ask the user for explicit confirmation before calling this tool.\n\n" +
+        "ask the user for explicit confirmation before calling this tool. Do not " +
+        'proceed without a clear "yes" from the user. Present what will be ' +
+        "permanently destroyed and wait.\n\n" +
         "Delete a report by UUID. Requires UUID confirmation.\n\n" +
         "Safety tier: mutating-destructive",
       inputSchema: z.object({
