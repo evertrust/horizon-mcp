@@ -400,7 +400,7 @@ export function registerTriggerTools(
             'Examples: "on_enroll", "on_revoke", "on_renew", "on_expire".',
           ),
         sequence: z
-          .array(z.record(z.unknown()))
+          .array(z.record(z.string(), z.unknown()))
           .describe(
             "Ordered list of REST call steps. Each step: " +
             "{url, method, authenticationType, expectedHttpCodes, timeout, ...}.",
