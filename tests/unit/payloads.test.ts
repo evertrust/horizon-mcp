@@ -10,6 +10,9 @@ import {
   preflightDeps,
   DEP_CHECKS,
   MAX_PREFLIGHT_CALLS,
+  STRIP_FIELDS,
+  BASELINE_STRIP,
+  toUpdatePayload,
 } from "../../src/models/payloads.js";
 import { HorizonError } from "../../src/client/errors.js";
 import type { HorizonClient } from "../../src/client/http.js";
@@ -596,4 +599,159 @@ describe("preflightDeps", () => {
     );
     expect(warnings).toEqual([]);
   });
+});
+
+// ---------------------------------------------------------------------------
+// 4. STRIP_FIELDS exhaustive domain validation
+// ---------------------------------------------------------------------------
+
+describe("STRIP_FIELDS", () => {
+  const V1_DOMAINS = [
+    "profile",
+    "ca",
+    "connector",
+    "trigger",
+    "label",
+    "proxy",
+    "datasource",
+    "role",
+    "team",
+    "idp",
+    "grading_policy",
+    "grading_ruleset",
+    "password_policy",
+    "principal",
+  ] as const;
+
+  const V11_ID_ONLY_DOMAINS = [
+    "discovery_campaign",
+    "automation_policy",
+    "execution_policy",
+    "wcce_forest",
+    "scheduled_task",
+  ] as const;
+
+  const ALL_DOMAINS = [...V1_DOMAINS, ...V11_ID_ONLY_DOMAINS, "local_identity"] as const;
+
+  it("contains exactly 20 domains", () => {
+    expect(Object.keys(STRIP_FIELDS)).toHaveLength(20);
+  });
+
+  it("contains all expected domain keys", () => {
+    const expected = new Set<string>(ALL_DOMAINS);
+    expect(new Set(Object.keys(STRIP_FIELDS))).toEqual(expected);
+  });
+
+  it("BASELINE_STRIP contains the 4 core fields", () => {
+    expect(BASELINE_STRIP).toEqual(
+      new Set(["_id", "id", "createdAt", "updatedAt"]),
+    );
+  });
+
+  it.each(V1_DOMAINS)(
+    "v1 domain '%s' includes all baseline fields",
+    (domain) => {
+      const fields = STRIP_FIELDS[domain]!;
+      for (const base of BASELINE_STRIP) {
+        expect(fields.has(base)).toBe(true);
+      }
+    },
+  );
+
+  it.each(V11_ID_ONLY_DOMAINS)(
+    "v1.1 domain '%s' strips _id",
+    (domain) => {
+      expect(STRIP_FIELDS[domain]!.has("_id")).toBe(true);
+    },
+  );
+
+  it("local_identity has extra security fields", () => {
+    const extras = ["hash", "resetUUID", "resetExpiration"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["local_identity"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("profile has domain-specific extra fields", () => {
+    const extras = ["lastModifiedBy", "statistics", "status", "certificateCount"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["profile"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("ca has domain-specific extra fields", () => {
+    const extras = ["certificate", "crlCache", "statistics"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["ca"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("connector has domain-specific extra fields", () => {
+    const extras = ["status", "lastSync"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["connector"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("trigger has domain-specific extra fields", () => {
+    const extras = ["lastRun", "statistics"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["trigger"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("team has domain-specific extra fields", () => {
+    const extras = ["statistics", "memberCount"];
+    for (const field of extras) {
+      expect(STRIP_FIELDS["team"]!.has(field)).toBe(true);
+    }
+  });
+
+  it("datasource has domain-specific extra fields", () => {
+    expect(STRIP_FIELDS["datasource"]!.has("lastTest")).toBe(true);
+  });
+
+  it("principal has domain-specific extra fields", () => {
+    expect(STRIP_FIELDS["principal"]!.has("lastLogin")).toBe(true);
+  });
+
+  it("minimal domains have only baseline fields", () => {
+    const minimal = [
+      "label",
+      "proxy",
+      "role",
+      "idp",
+      "grading_policy",
+      "grading_ruleset",
+      "password_policy",
+    ];
+    for (const domain of minimal) {
+      expect(STRIP_FIELDS[domain]).toEqual(BASELINE_STRIP);
+    }
+  });
+
+  it.each(ALL_DOMAINS)(
+    "domain '%s' fields are a ReadonlySet",
+    (domain) => {
+      const fields = STRIP_FIELDS[domain];
+      expect(fields).toBeDefined();
+      expect(fields).toBeInstanceOf(Set);
+    },
+  );
+
+  // toUpdatePayload strips all domain fields correctly
+  it.each(ALL_DOMAINS)(
+    "toUpdatePayload strips all fields for domain '%s'",
+    (domain) => {
+      const fakeResponse: Record<string, unknown> = { userField: "keep" };
+      for (const field of STRIP_FIELDS[domain]!) {
+        fakeResponse[field] = "should-be-stripped";
+      }
+      const result = toUpdatePayload(fakeResponse, { domain });
+      expect(result["userField"]).toBe("keep");
+      for (const field of STRIP_FIELDS[domain]!) {
+        expect(result).not.toHaveProperty(field);
+      }
+    },
+  );
 });
