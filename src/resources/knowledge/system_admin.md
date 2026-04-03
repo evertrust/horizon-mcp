@@ -27,26 +27,26 @@ files. Archives are create-only resources with no update route.
 
 Archives are discriminated by the `archive_type` field:
 
-| Type                 | Description                                        |
-|----------------------|----------------------------------------------------|
-| `CertificateArchive` | Exports certificates matching an HCQL filter      |
-| `EventArchive`       | Exports events older than a specified timestamp   |
+| Type                 | Description                                     |
+| -------------------- | ----------------------------------------------- |
+| `CertificateArchive` | Exports certificates matching an HCQL filter    |
+| `EventArchive`       | Exports events older than a specified timestamp |
 
 ### CertificateArchive
 
-| Field          | Type    | Description                                              |
-|----------------|---------|----------------------------------------------------------|
-| `name`         | string  | Unique filename across all archives                      |
-| `archive_type` | string  | Must be `"CertificateArchive"`                           |
-| `filter`       | string  | Raw HCQL query string (e.g., `"profile is TLS"`)        |
-| `archive_keys` | boolean | Optional. Include private keys in the export if `true`   |
+| Field          | Type    | Description                                            |
+| -------------- | ------- | ------------------------------------------------------ |
+| `name`         | string  | Unique filename across all archives                    |
+| `archive_type` | string  | Must be `"CertificateArchive"`                         |
+| `filter`       | string  | Raw HCQL query string (e.g., `"profile is TLS"`)       |
+| `archive_keys` | boolean | Optional. Include private keys in the export if `true` |
 
 ### EventArchive
 
-| Field          | Type   | Description                                               |
-|----------------|--------|-----------------------------------------------------------|
-| `name`         | string | Unique filename across all archives                       |
-| `archive_type` | string | Must be `"EventArchive"`                                  |
+| Field          | Type   | Description                                                                |
+| -------------- | ------ | -------------------------------------------------------------------------- |
+| `name`         | string | Unique filename across all archives                                        |
+| `archive_type` | string | Must be `"EventArchive"`                                                   |
 | `before`       | number | Epoch milliseconds (NOT ISO 8601). Example: `1704067200000` for 2024-01-01 |
 
 **Warning**: The `before` timestamp must be older than the server's configured
@@ -63,20 +63,20 @@ grace period. Attempting to archive recent events will be rejected.
 
 ### Archive Actions
 
-| Action   | Method | Path                              | Description                        |
-|----------|--------|-----------------------------------|------------------------------------|
-| Retry    | GET    | `/api/v1/archives/{name}/retry`   | Retry a failed archive generation  |
-| Cancel   | GET    | `/api/v1/archives/{name}/cancel`  | Cancel an in-progress archive      |
-| Download | GET    | `/api/v1/archives/{name}/download`| Download the completed archive file|
+| Action   | Method | Path                               | Description                         |
+| -------- | ------ | ---------------------------------- | ----------------------------------- |
+| Retry    | GET    | `/api/v1/archives/{name}/retry`    | Retry a failed archive generation   |
+| Cancel   | GET    | `/api/v1/archives/{name}/cancel`   | Cancel an in-progress archive       |
+| Download | GET    | `/api/v1/archives/{name}/download` | Download the completed archive file |
 
 ### Archive API Operations
 
-| Operation       | Method | Path                        |
-|-----------------|--------|-----------------------------|
-| List archives   | GET    | `/api/v1/archives`          |
-| Get archive     | GET    | `/api/v1/archives/{name}`   |
-| Create archive  | POST   | `/api/v1/archives`          |
-| Delete archive  | DELETE | `/api/v1/archives/{name}`   |
+| Operation      | Method | Path                      |
+| -------------- | ------ | ------------------------- |
+| List archives  | GET    | `/api/v1/archives`        |
+| Get archive    | GET    | `/api/v1/archives/{name}` |
+| Create archive | POST   | `/api/v1/archives`        |
+| Delete archive | DELETE | `/api/v1/archives/{name}` |
 
 ---
 
@@ -87,35 +87,35 @@ discriminated by the `type` field.
 
 ### Task Types
 
-| Type          | Description                                                  |
-|---------------|--------------------------------------------------------------|
-| `thirdparty`  | Third-party connector synchronization (enroll/revoke/renew)  |
-| `report`      | Scheduled report generation with email delivery              |
+| Type         | Description                                                 |
+| ------------ | ----------------------------------------------------------- |
+| `thirdparty` | Third-party connector synchronization (enroll/revoke/renew) |
+| `report`     | Scheduled report generation with email delivery             |
 
 ### Common Fields (All Task Types)
 
-| Field         | Type    | Description                                           |
-|---------------|---------|-------------------------------------------------------|
-| `name`        | string  | Unique task name                                      |
-| `type`        | string  | Discriminator: `"thirdparty"` or `"report"`           |
-| `cron`        | string  | Quartz cron expression (e.g., `"0 0 2 * * ?"`)       |
-| `enabled`     | boolean | Whether the task is active                            |
-| `description` | string  | Human-readable description                            |
-| `dryRun`      | boolean | If `true`, simulate without making changes            |
-| `host`        | string  | Target host for task execution                        |
+| Field         | Type    | Description                                    |
+| ------------- | ------- | ---------------------------------------------- |
+| `name`        | string  | Unique task name                               |
+| `type`        | string  | Discriminator: `"thirdparty"` or `"report"`    |
+| `cron`        | string  | Quartz cron expression (e.g., `"0 0 2 * * ?"`) |
+| `enabled`     | boolean | Whether the task is active                     |
+| `description` | string  | Human-readable description                     |
+| `dryRun`      | boolean | If `true`, simulate without making changes     |
+| `host`        | string  | Target host for task execution                 |
 
 ### ThirdPartyScheduledTask (type="thirdparty")
 
 Additional fields for third-party sync tasks:
 
-| Field       | Type    | Description                                    |
-|-------------|---------|------------------------------------------------|
-| `module`    | string  | The module to synchronize                      |
-| `profile`   | string  | Certificate profile to operate on              |
-| `connector` | string  | Name of the third-party connector              |
-| `enroll`    | boolean | Enable enrollment synchronization              |
-| `revoke`    | boolean | Enable revocation synchronization              |
-| `renew`     | boolean | Enable renewal synchronization                 |
+| Field       | Type    | Description                       |
+| ----------- | ------- | --------------------------------- |
+| `module`    | string  | The module to synchronize         |
+| `profile`   | string  | Certificate profile to operate on |
+| `connector` | string  | Name of the third-party connector |
+| `enroll`    | boolean | Enable enrollment synchronization |
+| `revoke`    | boolean | Enable revocation synchronization |
+| `renew`     | boolean | Enable renewal synchronization    |
 
 ### Report Scheduled Tasks (type="report")
 
@@ -126,17 +126,17 @@ subtypes:
 
 Generates a CSV report and sends it as an email attachment.
 
-| Field         | Type    | Description                                  |
-|---------------|---------|----------------------------------------------|
-| `reportType`  | string  | Must be `"attachment_email"`                 |
-| `compressCsv` | boolean | Compress the CSV attachment (gzip)           |
+| Field         | Type    | Description                        |
+| ------------- | ------- | ---------------------------------- |
+| `reportType`  | string  | Must be `"attachment_email"`       |
+| `compressCsv` | boolean | Compress the CSV attachment (gzip) |
 
 #### LinkReportScheduledTask (reportType="link_email")
 
 Generates a CSV report stored on the server and sends a download link by email.
 
 | Field             | Type   | Description                                     |
-|-------------------|--------|-------------------------------------------------|
+| ----------------- | ------ | ----------------------------------------------- |
 | `reportType`      | string | Must be `"link_email"`                          |
 | `retentionPeriod` | string | Required. How long to retain the report on disk |
 
@@ -148,8 +148,8 @@ delivery:
 ```json
 {
   "recipients": [
-    {"type": "static", "email": "admin@example.com"},
-    {"type": "team", "team": "platform-team"}
+    { "type": "static", "email": "admin@example.com" },
+    { "type": "team", "team": "platform-team" }
   ]
 }
 ```
@@ -159,23 +159,23 @@ delivery:
 
 ### Run Task Manually
 
-| Action | Method | Path                                    | Description              |
-|--------|--------|-----------------------------------------|--------------------------|
-| Run    | GET    | `/api/v1/scheduledtasks/{name}/run`     | Trigger immediate execution |
+| Action | Method | Path                                | Description                 |
+| ------ | ------ | ----------------------------------- | --------------------------- |
+| Run    | GET    | `/api/v1/scheduledtasks/{name}/run` | Trigger immediate execution |
 
 **Note**: This uses GET for a mutation operation. This is an unusual pattern
 confirmed in the Horizon source code -- it is NOT a mistake.
 
 ### Scheduled Task API Operations
 
-| Operation          | Method | Path                              |
-|--------------------|--------|-----------------------------------|
-| List tasks         | GET    | `/api/v1/scheduledtasks`          |
-| Get task           | GET    | `/api/v1/scheduledtasks/{name}`   |
-| Create task        | POST   | `/api/v1/scheduledtasks`          |
-| Update task        | PUT    | `/api/v1/scheduledtasks/` (name in body) |
-| Delete task        | DELETE | `/api/v1/scheduledtasks/{name}`   |
-| Run task           | GET    | `/api/v1/scheduledtasks/{name}/run` |
+| Operation   | Method | Path                                     |
+| ----------- | ------ | ---------------------------------------- |
+| List tasks  | GET    | `/api/v1/scheduledtasks`                 |
+| Get task    | GET    | `/api/v1/scheduledtasks/{name}`          |
+| Create task | POST   | `/api/v1/scheduledtasks`                 |
+| Update task | PUT    | `/api/v1/scheduledtasks/` (name in body) |
+| Delete task | DELETE | `/api/v1/scheduledtasks/{name}`          |
+| Run task    | GET    | `/api/v1/scheduledtasks/{name}/run`      |
 
 ---
 
@@ -184,20 +184,20 @@ confirmed in the Horizon source code -- it is NOT a mistake.
 System configuration manages global platform settings. There are three
 configuration entry types defined by `SystemConfigurationEntryType`:
 
-| Type                        | Description                                   |
-|-----------------------------|-----------------------------------------------|
-| `license`                   | License key and activation status             |
-| `internal_monitor`          | Internal monitoring and health check settings |
-| `interface_customization`   | UI branding, theme, and display settings      |
+| Type                      | Description                                   |
+| ------------------------- | --------------------------------------------- |
+| `license`                 | License key and activation status             |
+| `internal_monitor`        | Internal monitoring and health check settings |
+| `interface_customization` | UI branding, theme, and display settings      |
 
 ### System Configuration API
 
 Singular routes operate on a single configuration entry:
 
-| Operation            | Method | Path                                |
-|----------------------|--------|-------------------------------------|
-| Get configuration    | GET    | `/api/v1/system/configuration`      |
-| Update configuration | PUT    | `/api/v1/system/configuration`      |
+| Operation            | Method | Path                           |
+| -------------------- | ------ | ------------------------------ |
+| Get configuration    | GET    | `/api/v1/system/configuration` |
+| Update configuration | PUT    | `/api/v1/system/configuration` |
 
 ---
 
@@ -218,7 +218,7 @@ The request body is a `HorizonExportableItems` object with 19 named boolean
 fields controlling which configuration types to export:
 
 | Field                | Description                          |
-|----------------------|--------------------------------------|
+| -------------------- | ------------------------------------ |
 | `cas`                | Certificate authorities              |
 | `pkiConnectors`      | PKI connector configurations         |
 | `roles`              | RBAC roles                           |
@@ -284,12 +284,12 @@ by UUID.
 
 ### Report API
 
-| Operation        | Method | Path                                  | Description                  |
-|------------------|--------|---------------------------------------|------------------------------|
-| List reports     | GET    | `/api/v1/reports`                     | List all generated reports   |
-| Get by name      | GET    | `/api/v1/reports/{reportName}`        | Returns a LIST of reports matching that name |
-| Delete report    | DELETE | `/api/v1/reports/{uuid}`              | Delete a specific report     |
-| Download CSV     | GET    | `/reports/{uuid}`                     | Download the CSV file        |
+| Operation     | Method | Path                           | Description                                  |
+| ------------- | ------ | ------------------------------ | -------------------------------------------- |
+| List reports  | GET    | `/api/v1/reports`              | List all generated reports                   |
+| Get by name   | GET    | `/api/v1/reports/{reportName}` | Returns a LIST of reports matching that name |
+| Delete report | DELETE | `/api/v1/reports/{uuid}`       | Delete a specific report                     |
+| Download CSV  | GET    | `/reports/{uuid}`              | Download the CSV file                        |
 
 **Critical path difference**: The CSV download endpoint does NOT have the
 `/api/v1` prefix. It is served at `/reports/{uuid}` directly, not at
@@ -308,11 +308,11 @@ platform. They are GET-only endpoints returning status summaries.
 
 ### Available Analytics Endpoints
 
-| Endpoint                              | Description                           |
-|---------------------------------------|---------------------------------------|
-| `GET /api/v1/analytics/certificates`  | Certificate inventory statistics      |
-| `GET /api/v1/analytics/events`        | Event activity statistics             |
-| `GET /api/v1/analytics/discovery/events` | Discovery event statistics         |
+| Endpoint                                 | Description                      |
+| ---------------------------------------- | -------------------------------- |
+| `GET /api/v1/analytics/certificates`     | Certificate inventory statistics |
+| `GET /api/v1/analytics/events`           | Event activity statistics        |
+| `GET /api/v1/analytics/discovery/events` | Discovery event statistics       |
 
 ### Constraints
 

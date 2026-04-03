@@ -18,12 +18,12 @@ actions when conditions match.
 
 ### Trigger Types
 
-| Type        | Description                                                   |
-|-------------|---------------------------------------------------------------|
-| `email`     | Send email notifications using configurable templates         |
-| `webhook`   | Call an external HTTP endpoint with a JSON payload             |
-| `thirdparty`| Invoke a third-party connector (publish, sync, etc.)          |
-| `groupware` | Integration with groupware systems (calendars, ticketing)     |
+| Type         | Description                                               |
+| ------------ | --------------------------------------------------------- |
+| `email`      | Send email notifications using configurable templates     |
+| `webhook`    | Call an external HTTP endpoint with a JSON payload        |
+| `thirdparty` | Invoke a third-party connector (publish, sync, etc.)      |
+| `groupware`  | Integration with groupware systems (calendars, ticketing) |
 
 ### Trigger Structure
 
@@ -50,45 +50,45 @@ to a hook field on the profile's `triggerHooks` object.
 
 #### Enrollment Events
 
-| Event                | Fires when                                  | Hook Type |
-|----------------------|---------------------------------------------|-----------|
-| `on_enroll`          | Certificate is enrolled (issued)            | sync      |
-| `on_pending_enroll`  | Enrollment enters pending queue             | async     |
-| `on_submit_enroll`   | Enrollment request is submitted             | sync      |
-| `on_approve_enroll`  | Enrollment request is approved              | sync      |
-| `on_deny_enroll`     | Enrollment request is denied                | sync      |
-| `on_cancel_enroll`   | Enrollment request is cancelled             | sync      |
+| Event               | Fires when                       | Hook Type |
+| ------------------- | -------------------------------- | --------- |
+| `on_enroll`         | Certificate is enrolled (issued) | sync      |
+| `on_pending_enroll` | Enrollment enters pending queue  | async     |
+| `on_submit_enroll`  | Enrollment request is submitted  | sync      |
+| `on_approve_enroll` | Enrollment request is approved   | sync      |
+| `on_deny_enroll`    | Enrollment request is denied     | sync      |
+| `on_cancel_enroll`  | Enrollment request is cancelled  | sync      |
 
 #### Revocation Events
 
-| Event                | Fires when                                  | Hook Type |
-|----------------------|---------------------------------------------|-----------|
-| `on_revoke`          | Certificate is revoked                      | sync      |
-| `on_submit_revoke`   | Revocation request is submitted             | sync      |
-| `on_approve_revoke`  | Revocation request is approved              | sync      |
-| `on_deny_revoke`     | Revocation request is denied                | sync      |
-| `on_cancel_revoke`   | Revocation request is cancelled             | sync      |
+| Event               | Fires when                      | Hook Type |
+| ------------------- | ------------------------------- | --------- |
+| `on_revoke`         | Certificate is revoked          | sync      |
+| `on_submit_revoke`  | Revocation request is submitted | sync      |
+| `on_approve_revoke` | Revocation request is approved  | sync      |
+| `on_deny_revoke`    | Revocation request is denied    | sync      |
+| `on_cancel_revoke`  | Revocation request is cancelled | sync      |
 
 #### Renewal Events
 
-| Event                | Fires when                                  | Hook Type |
-|----------------------|---------------------------------------------|-----------|
-| `on_renew`           | Certificate is renewed                      | sync      |
-| `on_pending_renew`   | Renewal enters pending queue                | async     |
-| `on_submit_renew`    | Renewal request is submitted                | sync      |
-| `on_approve_renew`   | Renewal request is approved                 | sync      |
-| `on_deny_renew`      | Renewal request is denied                   | sync      |
-| `on_cancel_renew`    | Renewal request is cancelled                | sync      |
+| Event              | Fires when                   | Hook Type |
+| ------------------ | ---------------------------- | --------- |
+| `on_renew`         | Certificate is renewed       | sync      |
+| `on_pending_renew` | Renewal enters pending queue | async     |
+| `on_submit_renew`  | Renewal request is submitted | sync      |
+| `on_approve_renew` | Renewal request is approved  | sync      |
+| `on_deny_renew`    | Renewal request is denied    | sync      |
+| `on_cancel_renew`  | Renewal request is cancelled | sync      |
 
 #### Other Lifecycle Events
 
-| Event                | Fires when                                  | Hook Type |
-|----------------------|---------------------------------------------|-----------|
-| `on_update`          | Certificate metadata is updated             | sync      |
-| `on_recover`         | Key is recovered                            | sync      |
-| `on_migrate`         | Certificate is migrated                     | sync      |
-| `on_import`          | Certificate is imported                     | sync      |
-| `on_expire`          | Certificate expiration check triggers       | async     |
+| Event        | Fires when                            | Hook Type |
+| ------------ | ------------------------------------- | --------- |
+| `on_update`  | Certificate metadata is updated       | sync      |
+| `on_recover` | Key is recovered                      | sync      |
+| `on_migrate` | Certificate is migrated               | sync      |
+| `on_import`  | Certificate is imported               | sync      |
+| `on_expire`  | Certificate expiration check triggers | async     |
 
 Each event also has submit/approve/deny/cancel variants for the full
 request lifecycle.
@@ -119,12 +119,12 @@ at the profile level.
 
 ### Policy Settings
 
-| Setting              | Type    | Description                                           |
-|----------------------|---------|-------------------------------------------------------|
-| `autoRenewalEnabled` | boolean | Enable automatic renewal for this profile             |
-| `autoRenewalDays`    | number  | Days before expiry to trigger auto-renewal            |
-| `maxConcurrentOps`   | number  | Maximum concurrent automated operations               |
-| `retryPolicy`        | object  | Retry behavior for failed operations                  |
+| Setting              | Type    | Description                                |
+| -------------------- | ------- | ------------------------------------------ |
+| `autoRenewalEnabled` | boolean | Enable automatic renewal for this profile  |
+| `autoRenewalDays`    | number  | Days before expiry to trigger auto-renewal |
+| `maxConcurrentOps`   | number  | Maximum concurrent automated operations    |
+| `retryPolicy`        | object  | Retry behavior for failed operations       |
 
 ### Retry Policy
 
@@ -158,23 +158,23 @@ CA certificate chain. Horizon manages trust chains as CA objects.
 
 ### Chain Sources
 
-| Source          | Description                                     |
-|-----------------|-------------------------------------------------|
-| `manual`        | Manually uploaded CA certificates               |
-| `pki-connector` | Automatically fetched from the PKI connector    |
-| `discovery`     | Extracted from discovered certificate chains    |
+| Source          | Description                                  |
+| --------------- | -------------------------------------------- |
+| `manual`        | Manually uploaded CA certificates            |
+| `pki-connector` | Automatically fetched from the PKI connector |
+| `discovery`     | Extracted from discovered certificate chains |
 
 ---
 
 ## Trigger API Operations
 
-| Operation        | Method | Path                            |
-|------------------|--------|---------------------------------|
-| List triggers    | GET    | `/api/v1/triggers`              |
-| Get trigger      | GET    | `/api/v1/triggers/{name}`       |
-| Create trigger   | POST   | `/api/v1/triggers`              |
+| Operation        | Method | Path                                    |
+| ---------------- | ------ | --------------------------------------- |
+| List triggers    | GET    | `/api/v1/triggers`                      |
+| Get trigger      | GET    | `/api/v1/triggers/{name}`               |
+| Create trigger   | POST   | `/api/v1/triggers`                      |
 | Update trigger   | PUT    | `/api/v1/triggers/` (name in JSON body) |
-| Delete trigger   | DELETE | `/api/v1/triggers/{name}`       |
+| Delete trigger   | DELETE | `/api/v1/triggers/{name}`               |
 | Simulate trigger | PATCH  | `/api/v1/triggers/` (name in JSON body) |
 
 ---
@@ -257,10 +257,10 @@ Notification triggers send alerts about certificate lifecycle events.
 They are fully user-configured and support event selection, retries, and
 run periods.
 
-| Type      | Description                                      | Key Configuration                           |
-|-----------|--------------------------------------------------|---------------------------------------------|
-| `email`   | Send email with optional certificate attachments | `emailTemplate`, 7 attachment flags         |
-| `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps       |
+| Type      | Description                                      | Key Configuration                            |
+| --------- | ------------------------------------------------ | -------------------------------------------- |
+| `email`   | Send email with optional certificate attachments | `emailTemplate`, 7 attachment flags          |
+| `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
 ### Third-Party Triggers (7)
@@ -269,15 +269,15 @@ Third-party triggers push or remove certificates to/from external systems.
 They require a third-party connector and have minimal user-configurable
 fields -- events, retries, and runPeriod are auto-computed per type.
 
-| Type         | Description                                 | Requires              |
-|--------------|---------------------------------------------|-----------------------|
-| `akv`        | Azure Key Vault                             | Third-party connector |
-| `aws`        | AWS Certificate Manager / Secrets Manager   | Third-party connector |
-| `f5client`   | F5 BIG-IP (client certificate)              | Third-party connector |
-| `f5as3`      | F5 AS3 (Application Services 3)             | Third-party connector |
-| `intunepkcs` | Microsoft Intune PKCS                       | Third-party connector |
-| `ldappub`    | LDAP publish                                | Third-party connector |
-| `gcm`        | Google Cloud Certificate Manager            | Third-party connector |
+| Type         | Description                               | Requires              |
+| ------------ | ----------------------------------------- | --------------------- |
+| `akv`        | Azure Key Vault                           | Third-party connector |
+| `aws`        | AWS Certificate Manager / Secrets Manager | Third-party connector |
+| `f5client`   | F5 BIG-IP (client certificate)            | Third-party connector |
+| `f5as3`      | F5 AS3 (Application Services 3)           | Third-party connector |
+| `intunepkcs` | Microsoft Intune PKCS                     | Third-party connector |
+| `ldappub`    | LDAP publish                              | Third-party connector |
+| `gcm`        | Google Cloud Certificate Manager          | Third-party connector |
 
 ---
 
@@ -290,20 +290,20 @@ third-party triggers do not use.
 ### Base Fields (All Triggers)
 
 | Field      | Type         | Description                                                        |
-|------------|--------------|--------------------------------------------------------------------|
+| ---------- | ------------ | ------------------------------------------------------------------ |
 | `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
 | `type`     | string       | One of the 10 types listed above                                   |
 | `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
 
-| Field                 | Type         | Description                                                                 | Constraints                                                                                                                  |
-|-----------------------|--------------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| `events`              | list[string] | Event(s) this trigger subscribes to                                         | MUST contain EXACTLY 1 event -- multiple events → HTTP 400                                                                   |
-| `retries`             | int or null  | Retry count on error                                                        | Default: 10                                                                                                                  |
-| `runPeriod`           | string/null  | FiniteDuration (e.g. `"24h"`, `"7d"`)                                       | MANDATORY for `on_pending_*`, `on_expire`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others.   |
-| `runOnRenewed`        | bool or null | Keep firing after certificate is renewed                                    | MANDATORY for `on_expire` ONLY. FORBIDDEN for all other events.                                                              |
-| `licenceUsagePercent` | int or null  | Threshold percentage (1-100)                                                | MANDATORY for `on_license_usage`. FORBIDDEN for all other events.                                                            |
+| Field                 | Type         | Description                              | Constraints                                                                                                                |
+| --------------------- | ------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `events`              | list[string] | Event(s) this trigger subscribes to      | MUST contain EXACTLY 1 event -- multiple events → HTTP 400                                                                 |
+| `retries`             | int or null  | Retry count on error                     | Default: 10                                                                                                                |
+| `runPeriod`           | string/null  | FiniteDuration (e.g. `"24h"`, `"7d"`)    | MANDATORY for `on_pending_*`, `on_expire`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. |
+| `runOnRenewed`        | bool or null | Keep firing after certificate is renewed | MANDATORY for `on_expire` ONLY. FORBIDDEN for all other events.                                                            |
+| `licenceUsagePercent` | int or null  | Threshold percentage (1-100)             | MANDATORY for `on_license_usage`. FORBIDDEN for all other events.                                                          |
 
 > **Critical constraint**: Each notification trigger binds to exactly ONE
 > event. To fire on multiple events, create separate triggers.
@@ -317,37 +317,37 @@ third-party triggers do not use.
 Each of the 7 workflows produces 6 events following a consistent naming
 pattern:
 
-| Pattern                    | Description                          |
-|----------------------------|--------------------------------------|
-| `on_<workflow>`            | Workflow action completes            |
-| `on_submit_<workflow>`     | Request is submitted                 |
-| `on_cancel_<workflow>`     | Request is cancelled                 |
-| `on_approve_<workflow>`    | Request is approved                  |
-| `on_deny_<workflow>`       | Request is denied                    |
-| `on_pending_<workflow>`    | Request enters pending queue (async) |
+| Pattern                 | Description                          |
+| ----------------------- | ------------------------------------ |
+| `on_<workflow>`         | Workflow action completes            |
+| `on_submit_<workflow>`  | Request is submitted                 |
+| `on_cancel_<workflow>`  | Request is cancelled                 |
+| `on_approve_<workflow>` | Request is approved                  |
+| `on_deny_<workflow>`    | Request is denied                    |
+| `on_pending_<workflow>` | Request enters pending queue (async) |
 
 The 7 workflows:
 
-| Workflow   | Example Events                                                   |
-|------------|------------------------------------------------------------------|
-| `enroll`   | `on_enroll`, `on_submit_enroll`, `on_cancel_enroll`, `on_approve_enroll`, `on_deny_enroll`, `on_pending_enroll`   |
-| `revoke`   | `on_revoke`, `on_submit_revoke`, `on_cancel_revoke`, `on_approve_revoke`, `on_deny_revoke`, `on_pending_revoke`   |
-| `update`   | `on_update`, `on_submit_update`, `on_cancel_update`, `on_approve_update`, `on_deny_update`, `on_pending_update`   |
-| `recover`  | `on_recover`, `on_submit_recover`, `on_cancel_recover`, `on_approve_recover`, `on_deny_recover`, `on_pending_recover` |
-| `migrate`  | `on_migrate`, `on_submit_migrate`, `on_cancel_migrate`, `on_approve_migrate`, `on_deny_migrate`, `on_pending_migrate` |
-| `renew`    | `on_renew`, `on_submit_renew`, `on_cancel_renew`, `on_approve_renew`, `on_deny_renew`, `on_pending_renew`       |
-| `import`   | `on_import`, `on_submit_import`, `on_cancel_import`, `on_approve_import`, `on_deny_import`, `on_pending_import`   |
+| Workflow  | Example Events                                                                                                        |
+| --------- | --------------------------------------------------------------------------------------------------------------------- |
+| `enroll`  | `on_enroll`, `on_submit_enroll`, `on_cancel_enroll`, `on_approve_enroll`, `on_deny_enroll`, `on_pending_enroll`       |
+| `revoke`  | `on_revoke`, `on_submit_revoke`, `on_cancel_revoke`, `on_approve_revoke`, `on_deny_revoke`, `on_pending_revoke`       |
+| `update`  | `on_update`, `on_submit_update`, `on_cancel_update`, `on_approve_update`, `on_deny_update`, `on_pending_update`       |
+| `recover` | `on_recover`, `on_submit_recover`, `on_cancel_recover`, `on_approve_recover`, `on_deny_recover`, `on_pending_recover` |
+| `migrate` | `on_migrate`, `on_submit_migrate`, `on_cancel_migrate`, `on_approve_migrate`, `on_deny_migrate`, `on_pending_migrate` |
+| `renew`   | `on_renew`, `on_submit_renew`, `on_cancel_renew`, `on_approve_renew`, `on_deny_renew`, `on_pending_renew`             |
+| `import`  | `on_import`, `on_submit_import`, `on_cancel_import`, `on_approve_import`, `on_deny_import`, `on_pending_import`       |
 
 ### System Events (6)
 
-| Event                        | Description                                           | Notes                                                    |
-|------------------------------|-------------------------------------------------------|----------------------------------------------------------|
-| `on_expire`                  | Certificate expiration check fires                    | Requires `runPeriod` and `runOnRenewed`                  |
-| `on_license_expiration`      | Horizon license is approaching expiration             | Requires `runPeriod`                                     |
-| `on_credentials_expiration`  | Stored credentials are approaching expiration         | Requires `runPeriod`                                     |
-| `on_license_usage`           | License usage crosses threshold                       | Requires `licenceUsagePercent` (1-100)                   |
-| `on_test`                    | Manual test fire via simulate                         | Used with `PATCH /api/v1/triggers/`                      |
-| `on_trigger_error`           | A trigger execution failed                            | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
+| Event                       | Description                                   | Notes                                                       |
+| --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
+| `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed`                     |
+| `on_license_expiration`     | Horizon license is approaching expiration     | Requires `runPeriod`                                        |
+| `on_credentials_expiration` | Stored credentials are approaching expiration | Requires `runPeriod`                                        |
+| `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
+| `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
+| `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
 
 ---
 
@@ -358,14 +358,14 @@ The 7 workflows:
 ```json
 {
   "emailTemplate": {
-    "to": [{"type": "static", "email": "admin@example.com"}],
+    "to": [{ "type": "static", "email": "admin@example.com" }],
     "cc": [],
     "bcc": [],
     "from": "horizon@example.com",
     "title": "Certificate issued: {{ csr.subject.cn }}",
     "body": "<p>Certificate issued.</p>",
     "isHtml": true,
-    "headers": [{"key": "X-Priority", "value": "1"}]
+    "headers": [{ "key": "X-Priority", "value": "1" }]
   },
   "attachPemCertificate": true,
   "attachPkcs7Bundle": false
@@ -380,18 +380,18 @@ The 7 workflows:
 **EmailRecipientType values (11)**:
 
 | Type                     | `email` field | `label` field | Notes                              |
-|--------------------------|:-------------:|:-------------:|------------------------------------|
-| `static`                 | required      | forbidden     | Send to a fixed email address      |
-| `label`                  | forbidden     | required      | Resolve address from a label value |
-| `certificate_owner`      | forbidden     | forbidden     | Certificate holder's email         |
-| `certificate_rfc822name` | forbidden     | forbidden     | Email from certificate SAN         |
-| `contact`                | forbidden     | forbidden     | Profile contact email              |
-| `approver`               | forbidden     | forbidden     | Request approver                   |
-| `requester`              | forbidden     | forbidden     | Request submitter                  |
-| `lifecycle_operators`    | forbidden     | forbidden     | All lifecycle operators            |
-| `team_contact`           | forbidden     | forbidden     | Team contact email                 |
-| `team_manager`           | forbidden     | forbidden     | Team manager email                 |
-| `team_members`           | forbidden     | forbidden     | All team member emails             |
+| ------------------------ | :-----------: | :-----------: | ---------------------------------- |
+| `static`                 |   required    |   forbidden   | Send to a fixed email address      |
+| `label`                  |   forbidden   |   required    | Resolve address from a label value |
+| `certificate_owner`      |   forbidden   |   forbidden   | Certificate holder's email         |
+| `certificate_rfc822name` |   forbidden   |   forbidden   | Email from certificate SAN         |
+| `contact`                |   forbidden   |   forbidden   | Profile contact email              |
+| `approver`               |   forbidden   |   forbidden   | Request approver                   |
+| `requester`              |   forbidden   |   forbidden   | Request submitter                  |
+| `lifecycle_operators`    |   forbidden   |   forbidden   | All lifecycle operators            |
+| `team_contact`           |   forbidden   |   forbidden   | Team contact email                 |
+| `team_manager`           |   forbidden   |   forbidden   | Team manager email                 |
+| `team_members`           |   forbidden   |   forbidden   | All team member emails             |
 
 ### Custom REST Notification (`rest`)
 
@@ -403,7 +403,7 @@ The 7 workflows:
       "authenticationType": "bearer",
       "credentials": "my-cred",
       "method": "POST",
-      "headers": [{"name": "Content-Type", "value": "application/json"}],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"cn\": \"{{ csr.subject.cn }}\"}",
       "expectedHttpCodes": [200, 201],
@@ -445,6 +445,7 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 **WebhookType values**: `TEAMS`, `SLACK`, `MATTERMOST`.
 
 **WebhookRecipientType values**: `static`, `team`.
+
 - `static` -- the webhook URL is provided directly in the `webhook` object.
 - `team` -- the webhook URL is resolved from the certificate's team configuration.
 
@@ -452,11 +453,11 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 
 Third-party triggers have only 3 user-configurable fields:
 
-| Field       | Type         | Description                                                    |
-|-------------|--------------|----------------------------------------------------------------|
-| `name`      | string       | Trigger identifier                                             |
-| `connector` | string       | Name of the third-party connector to invoke                    |
-| `triggers`  | dict or null | Sub-triggers for error handling                                |
+| Field       | Type         | Description                                 |
+| ----------- | ------------ | ------------------------------------------- |
+| `name`      | string       | Trigger identifier                          |
+| `connector` | string       | Name of the third-party connector to invoke |
+| `triggers`  | dict or null | Sub-triggers for error handling             |
 
 All other fields (`events`, `retries`, `runPeriod`, etc.) are
 **auto-computed** per trigger type. User-supplied values for these fields
@@ -472,13 +473,13 @@ under WHICH rules.
 
 ### Automation Policy Fields
 
-| Field              | Type            | Required | Description                                                                      |
-|--------------------|-----------------|----------|----------------------------------------------------------------------------------|
-| `name`             | string          | yes      | Unique policy identifier                                                         |
-| `profile`          | string          | yes      | Certificate profile name this policy applies to                                  |
-| `executionPolicy`  | string or null  | no       | NAME reference to an Execution Policy (NOT an embedded object)                   |
-| `compliancePolicy` | object or null  | no       | Inline compliance constraints (see below)                                        |
-| `trustChains`      | list[str]/null  | no       | List of CA names for trust chain validation                                      |
+| Field              | Type           | Required | Description                                                    |
+| ------------------ | -------------- | -------- | -------------------------------------------------------------- |
+| `name`             | string         | yes      | Unique policy identifier                                       |
+| `profile`          | string         | yes      | Certificate profile name this policy applies to                |
+| `executionPolicy`  | string or null | no       | NAME reference to an Execution Policy (NOT an embedded object) |
+| `compliancePolicy` | object or null | no       | Inline compliance constraints (see below)                      |
+| `trustChains`      | list[str]/null | no       | List of CA names for trust chain validation                    |
 
 ### Compliance Policy Object
 
@@ -509,24 +510,24 @@ It uses authorized and forbidden time windows to control scheduling.
 
 ### Execution Policy Fields
 
-| Field               | Type                       | Required | Description                                          |
-|---------------------|----------------------------|----------|------------------------------------------------------|
-| `name`              | string                     | yes      | Unique policy identifier                             |
-| `description`       | string or null             | no       | Human-readable description                           |
-| `authorizedPeriods` | list[ExecutionPeriod]/null | no       | Time windows when execution IS allowed               |
-| `forbiddenPeriods`  | list[ExecutionPeriod]/null | no       | Time windows when execution is NOT allowed           |
+| Field               | Type                       | Required | Description                                |
+| ------------------- | -------------------------- | -------- | ------------------------------------------ |
+| `name`              | string                     | yes      | Unique policy identifier                   |
+| `description`       | string or null             | no       | Human-readable description                 |
+| `authorizedPeriods` | list[ExecutionPeriod]/null | no       | Time windows when execution IS allowed     |
+| `forbiddenPeriods`  | list[ExecutionPeriod]/null | no       | Time windows when execution is NOT allowed |
 
 ### ExecutionPeriod Structure
 
 Each period can combine multiple constraints. All specified constraints
 must match simultaneously for the period to apply.
 
-| Field       | Type                                              | Description                                      |
-|-------------|---------------------------------------------------|--------------------------------------------------|
-| `dateRange` | `{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}` or null | Calendar date range (inclusive)                |
-| `weeks`     | list[int] or null                                 | ISO week numbers (1-52)                          |
-| `weekDays`  | list[string] or null                              | Days of week, ALL CAPS: `MONDAY` through `SUNDAY` |
-| `timeRange` | `{"start": "HH:mm:ss", "end": "HH:mm:ss"}` or null    | Time-of-day range (24-hour format)            |
+| Field       | Type                                                   | Description                                       |
+| ----------- | ------------------------------------------------------ | ------------------------------------------------- |
+| `dateRange` | `{"start": "YYYY-MM-DD", "end": "YYYY-MM-DD"}` or null | Calendar date range (inclusive)                   |
+| `weeks`     | list[int] or null                                      | ISO week numbers (1-52)                           |
+| `weekDays`  | list[string] or null                                   | Days of week, ALL CAPS: `MONDAY` through `SUNDAY` |
+| `timeRange` | `{"start": "HH:mm:ss", "end": "HH:mm:ss"}` or null     | Time-of-day range (24-hour format)                |
 
 ### Execution Policy Examples
 
@@ -539,7 +540,7 @@ must match simultaneously for the period to apply.
   "authorizedPeriods": [
     {
       "weekDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
-      "timeRange": {"start": "08:00:00", "end": "18:00:00"}
+      "timeRange": { "start": "08:00:00", "end": "18:00:00" }
     }
   ],
   "forbiddenPeriods": null
@@ -555,7 +556,7 @@ must match simultaneously for the period to apply.
   "authorizedPeriods": null,
   "forbiddenPeriods": [
     {
-      "dateRange": {"start": "2026-12-20", "end": "2027-01-05"}
+      "dateRange": { "start": "2026-12-20", "end": "2027-01-05" }
     }
   ]
 }
@@ -570,7 +571,7 @@ must match simultaneously for the period to apply.
   "authorizedPeriods": [
     {
       "weekDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
-      "timeRange": {"start": "09:00:00", "end": "17:00:00"}
+      "timeRange": { "start": "09:00:00", "end": "17:00:00" }
     }
   ],
   "forbiddenPeriods": [
@@ -583,20 +584,20 @@ must match simultaneously for the period to apply.
 
 ### Execution Policy API Operations
 
-| Operation              | Method | Path                                  |
-|------------------------|--------|---------------------------------------|
-| List execution policies | GET    | `/api/v1/executionpolicies`          |
-| Get execution policy   | GET    | `/api/v1/executionpolicies/{name}`    |
-| Create execution policy | POST   | `/api/v1/executionpolicies`          |
+| Operation               | Method | Path                                             |
+| ----------------------- | ------ | ------------------------------------------------ |
+| List execution policies | GET    | `/api/v1/executionpolicies`                      |
+| Get execution policy    | GET    | `/api/v1/executionpolicies/{name}`               |
+| Create execution policy | POST   | `/api/v1/executionpolicies`                      |
 | Update execution policy | PUT    | `/api/v1/executionpolicies/` (name in JSON body) |
-| Delete execution policy | DELETE | `/api/v1/executionpolicies/{name}`   |
+| Delete execution policy | DELETE | `/api/v1/executionpolicies/{name}`               |
 
 ### Automation Policy API Operations
 
-| Operation               | Method | Path                                   |
-|-------------------------|--------|----------------------------------------|
-| List automation policies | GET    | `/api/v1/automationpolicies`          |
-| Get automation policy   | GET    | `/api/v1/automationpolicies/{name}`    |
-| Create automation policy | POST   | `/api/v1/automationpolicies`          |
+| Operation                | Method | Path                                              |
+| ------------------------ | ------ | ------------------------------------------------- |
+| List automation policies | GET    | `/api/v1/automationpolicies`                      |
+| Get automation policy    | GET    | `/api/v1/automationpolicies/{name}`               |
+| Create automation policy | POST   | `/api/v1/automationpolicies`                      |
 | Update automation policy | PUT    | `/api/v1/automationpolicies/` (name in JSON body) |
-| Delete automation policy | DELETE | `/api/v1/automationpolicies/{name}`   |
+| Delete automation policy | DELETE | `/api/v1/automationpolicies/{name}`               |

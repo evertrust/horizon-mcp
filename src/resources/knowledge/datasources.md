@@ -15,17 +15,17 @@ Three types exist: **DNS**, **LDAP**, and **REST**.
 
 ## Decision Guide - Which Datasource Type to Use
 
-| Use case | Type | Why |
-|----------|------|-----|
-| Validate SAN hostnames resolve in DNS | DNS | Returns A/AAAA/CNAME/PTR/TXT records |
-| Check CNAME targets for PaaS/CDN validation | DNS | CNAME record reveals the canonical target |
-| Verify domain ownership via TXT records | DNS | TXT records contain verification tokens |
+| Use case                                                     | Type | Why                                       |
+| ------------------------------------------------------------ | ---- | ----------------------------------------- |
+| Validate SAN hostnames resolve in DNS                        | DNS  | Returns A/AAAA/CNAME/PTR/TXT records      |
+| Check CNAME targets for PaaS/CDN validation                  | DNS  | CNAME record reveals the canonical target |
+| Verify domain ownership via TXT records                      | DNS  | TXT records contain verification tokens   |
 | Enrich certificates with user attributes (department, email) | LDAP | Queries AD/LDAP directories for user data |
-| Validate user group membership for auto-approval | LDAP | Check `memberOf` attribute |
-| Look up computer/server attributes in AD | LDAP | Query computer objects by hostname |
-| Call an internal CMDB or asset management API | REST | HTTP request to any REST endpoint |
-| Validate hostnames against an internal registry | REST | Custom HTTP API lookup |
-| Fetch certificate metadata from an external system | REST | Generic HTTP integration |
+| Validate user group membership for auto-approval             | LDAP | Check `memberOf` attribute                |
+| Look up computer/server attributes in AD                     | LDAP | Query computer objects by hostname        |
+| Call an internal CMDB or asset management API                | REST | HTTP request to any REST endpoint         |
+| Validate hostnames against an internal registry              | REST | Custom HTTP API lookup                    |
+| Fetch certificate metadata from an external system           | REST | Generic HTTP integration                  |
 
 ## Step-by-Step - Creating and Using a Datasource
 
@@ -57,27 +57,27 @@ Queries DNS servers and returns record data.
 
 ### Configuration Fields
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `"dns"` |
-| `name` | string | Yes | - | Unique primary key. **IMMUTABLE after creation.** |
-| `displayName` | LocalizedString[] | No | - | Localized display names: `[{lang: "en", value: "..."}]` |
-| `description` | string | No | - | Human-readable description |
-| `host` | string | No | System DNS | DNS server IP address. If omitted, uses Horizon's default resolver |
-| `port` | integer | No | 53 | DNS server port |
-| `timeout` | FiniteDuration | No | "10 seconds" | Query timeout |
-| `recordTypes` | string[] | No | all | Filter which record types to return. Values: `a`, `aaaa`, `cname`, `ptr`, `txt`. If omitted, ALL types are fetched |
-| `lookup` | TemplateString | Yes | - | DNS hostname to look up. Supports `{{key}}` syntax for dynamic values |
+| Field         | Type              | Required | Default      | Description                                                                                                        |
+| ------------- | ----------------- | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `type`        | string            | Yes      | -            | Must be `"dns"`                                                                                                    |
+| `name`        | string            | Yes      | -            | Unique primary key. **IMMUTABLE after creation.**                                                                  |
+| `displayName` | LocalizedString[] | No       | -            | Localized display names: `[{lang: "en", value: "..."}]`                                                            |
+| `description` | string            | No       | -            | Human-readable description                                                                                         |
+| `host`        | string            | No       | System DNS   | DNS server IP address. If omitted, uses Horizon's default resolver                                                 |
+| `port`        | integer           | No       | 53           | DNS server port                                                                                                    |
+| `timeout`     | FiniteDuration    | No       | "10 seconds" | Query timeout                                                                                                      |
+| `recordTypes` | string[]          | No       | all          | Filter which record types to return. Values: `a`, `aaaa`, `cname`, `ptr`, `txt`. If omitted, ALL types are fetched |
+| `lookup`      | TemplateString    | Yes      | -            | DNS hostname to look up. Supports `{{key}}` syntax for dynamic values                                              |
 
 ### DNS Record Type Characteristics
 
-| Record Type | Multi-valued | Description |
-|-------------|:------------:|-------------|
-| `a` | Yes | IPv4 addresses (can return multiple) |
-| `aaaa` | Yes | IPv6 addresses (can return multiple) |
-| `cname` | No | Canonical name alias (single value) |
-| `ptr` | No | Reverse DNS pointer (single value) |
-| `txt` | Yes | Text records (can return multiple) |
+| Record Type | Multi-valued | Description                          |
+| ----------- | :----------: | ------------------------------------ |
+| `a`         |     Yes      | IPv4 addresses (can return multiple) |
+| `aaaa`      |     Yes      | IPv6 addresses (can return multiple) |
+| `cname`     |      No      | Canonical name alias (single value)  |
+| `ptr`       |      No      | Reverse DNS pointer (single value)   |
+| `txt`       |     Yes      | Text records (can return multiple)   |
 
 ### DNS Datasource Constraints
 
@@ -124,28 +124,29 @@ Queries LDAP directories (Active Directory, OpenLDAP, etc.) for user/object attr
 
 ### Configuration Fields
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `"ldap"` |
-| `name` | string | Yes | - | Unique primary key. **IMMUTABLE after creation.** |
-| `displayName` | LocalizedString[] | No | - | Localized display names |
-| `description` | string | No | - | Human-readable description |
-| `hostname` | string | Yes | - | LDAP server URL (e.g., `"ldaps://ldap.corp.example.com"`) |
-| `port` | integer | No | 389/636 | Connection port. Default 389 (LDAP), 636 (LDAPS) |
-| `credentials` | string | Yes | - | Name of existing PasswordCredentials for LDAP bind (DN + password) |
-| `secure` | boolean | Yes | - | Use LDAPS (TLS) |
-| `disableHostnameValidation` | boolean | No | false | Skip hostname validation on TLS |
-| `baseDn` | TemplateString | Yes | - | LDAP search base DN. Supports `{{key}}` syntax |
-| `filter` | TemplateString | Yes | - | LDAP search filter. Supports `{{key}}` syntax |
-| `attributes` | DataSourceOutput[] | No | - | Attributes to return. Each: `{key, multi, selected}` |
-| `limit` | integer | No | - | Maximum query result count |
-| `followReferrals` | boolean | No | - | Enable LDAP referral traversal |
-| `proxy` | string | No | - | Name of an HTTP proxy object |
-| `timeout` | FiniteDuration | Yes | - | Query timeout |
+| Field                       | Type               | Required | Default | Description                                                        |
+| --------------------------- | ------------------ | -------- | ------- | ------------------------------------------------------------------ |
+| `type`                      | string             | Yes      | -       | Must be `"ldap"`                                                   |
+| `name`                      | string             | Yes      | -       | Unique primary key. **IMMUTABLE after creation.**                  |
+| `displayName`               | LocalizedString[]  | No       | -       | Localized display names                                            |
+| `description`               | string             | No       | -       | Human-readable description                                         |
+| `hostname`                  | string             | Yes      | -       | LDAP server URL (e.g., `"ldaps://ldap.corp.example.com"`)          |
+| `port`                      | integer            | No       | 389/636 | Connection port. Default 389 (LDAP), 636 (LDAPS)                   |
+| `credentials`               | string             | Yes      | -       | Name of existing PasswordCredentials for LDAP bind (DN + password) |
+| `secure`                    | boolean            | Yes      | -       | Use LDAPS (TLS)                                                    |
+| `disableHostnameValidation` | boolean            | No       | false   | Skip hostname validation on TLS                                    |
+| `baseDn`                    | TemplateString     | Yes      | -       | LDAP search base DN. Supports `{{key}}` syntax                     |
+| `filter`                    | TemplateString     | Yes      | -       | LDAP search filter. Supports `{{key}}` syntax                      |
+| `attributes`                | DataSourceOutput[] | No       | -       | Attributes to return. Each: `{key, multi, selected}`               |
+| `limit`                     | integer            | No       | -       | Maximum query result count                                         |
+| `followReferrals`           | boolean            | No       | -       | Enable LDAP referral traversal                                     |
+| `proxy`                     | string             | No       | -       | Name of an HTTP proxy object                                       |
+| `timeout`                   | FiniteDuration     | Yes      | -       | Query timeout                                                      |
 
 ### Special LDAP Attribute Handling
 
 The LDAP datasource automatically decodes these attributes:
+
 - `objectSid`: decoded from binary SID format to string representation
 - `objectGuid`: decoded from binary GUID format to hex string
 - `userCertificate`: parsed as X.509 PEM with subject elements extracted
@@ -159,6 +160,7 @@ The LDAP datasource automatically decodes these attributes:
 
 LDAP results are indexed like DNS: `ds.<flowIndex>.<resultIndex>.<attribute>`.
 Multiple LDAP results (when `limit > 1`) get separate result indexes:
+
 - `ds.1.1.department` = department of first LDAP result
 - `ds.1.2.department` = department of second LDAP result
 
@@ -172,6 +174,7 @@ multi-valued attribute across all results.
 
 The `attributes` array controls which LDAP attributes appear in the dsFlow
 results:
+
 - `selected: true` - attribute IS included in the dictionary output
 - `selected: false` - attribute is known but EXCLUDED from output
 - `multi: true` - attribute may have multiple values (sub-indexed as `.1`, `.2`, etc.)
@@ -188,6 +191,7 @@ it also means the attribute is not requested from the LDAP server.
 
 The `filter` field uses standard LDAP filter syntax (RFC 4515) with
 TemplateString `{{key}}` substitution. Common patterns:
+
 - `(sAMAccountName={{principal.identifier}})` - match by user login
 - `(cn={{csr.subject.cn.1}})` - match by CN from CSR
 - `(&(objectClass=computer)(dNSHostName={{csr.san.dnsname.1}}))` - match computer by hostname
@@ -217,9 +221,9 @@ characters, consider sanitizing at the profile level.
   "timeout": "10s",
   "limit": 1,
   "attributes": [
-    {"key": "department", "multi": false, "selected": true},
-    {"key": "mail", "multi": false, "selected": true},
-    {"key": "memberOf", "multi": true, "selected": true}
+    { "key": "department", "multi": false, "selected": true },
+    { "key": "mail", "multi": false, "selected": true },
+    { "key": "memberOf", "multi": true, "selected": true }
   ]
 }
 ```
@@ -232,43 +236,43 @@ Calls HTTP APIs and returns parsed response data.
 
 ### Configuration Fields
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `type` | string | Yes | - | Must be `"rest"` |
-| `name` | string | Yes | - | Unique primary key. **IMMUTABLE after creation.** |
-| `displayName` | LocalizedString[] | No | - | Localized display names |
-| `description` | string | No | - | Human-readable description |
-| `method` | string | Yes | - | HTTP method (GET, POST, PUT, DELETE, etc.) |
-| `url` | TemplateString | Yes | - | Endpoint URL. Supports `{{key}}` syntax. Must not contain whitespace |
-| `authenticationType` | string | Yes | - | `"noauth"`, `"basic"`, `"x509"`, `"bearer"`, or `"custom"` |
-| `credentials` | string | Cond. | - | Credentials name. Required when authenticationType is not `"noauth"` |
-| `headers` | Header[] | No | - | Custom HTTP headers: `[{name: "X-Custom", value: "{{key}}"}]` |
-| `payloadType` | string | No | - | Payload format hint (e.g., `"json"`) for UI display |
-| `payload` | TemplateString | No | - | Request body. Supports `{{key}}` syntax |
-| `expectedHttpCodes` | integer[] | Yes | - | HTTP codes that mean success (e.g., `[200, 201]`). At least one required |
-| `proxy` | string | No | - | Name of an HTTP proxy object |
-| `timeout` | FiniteDuration | Yes | - | Request timeout |
-| `attributes` | DataSourceOutput[] | No | - | Response fields to extract |
+| Field                | Type               | Required | Default | Description                                                              |
+| -------------------- | ------------------ | -------- | ------- | ------------------------------------------------------------------------ |
+| `type`               | string             | Yes      | -       | Must be `"rest"`                                                         |
+| `name`               | string             | Yes      | -       | Unique primary key. **IMMUTABLE after creation.**                        |
+| `displayName`        | LocalizedString[]  | No       | -       | Localized display names                                                  |
+| `description`        | string             | No       | -       | Human-readable description                                               |
+| `method`             | string             | Yes      | -       | HTTP method (GET, POST, PUT, DELETE, etc.)                               |
+| `url`                | TemplateString     | Yes      | -       | Endpoint URL. Supports `{{key}}` syntax. Must not contain whitespace     |
+| `authenticationType` | string             | Yes      | -       | `"noauth"`, `"basic"`, `"x509"`, `"bearer"`, or `"custom"`               |
+| `credentials`        | string             | Cond.    | -       | Credentials name. Required when authenticationType is not `"noauth"`     |
+| `headers`            | Header[]           | No       | -       | Custom HTTP headers: `[{name: "X-Custom", value: "{{key}}"}]`            |
+| `payloadType`        | string             | No       | -       | Payload format hint (e.g., `"json"`) for UI display                      |
+| `payload`            | TemplateString     | No       | -       | Request body. Supports `{{key}}` syntax                                  |
+| `expectedHttpCodes`  | integer[]          | Yes      | -       | HTTP codes that mean success (e.g., `[200, 201]`). At least one required |
+| `proxy`              | string             | No       | -       | Name of an HTTP proxy object                                             |
+| `timeout`            | FiniteDuration     | Yes      | -       | Request timeout                                                          |
+| `attributes`         | DataSourceOutput[] | No       | -       | Response fields to extract                                               |
 
 ### Authentication Types and Credential Mappings
 
 Each authentication type requires a specific Horizon credential type.
 Using the wrong combination causes a validation error.
 
-| Auth type | Required credential type | Auto-generated behavior |
-|-----------|------------------------|------------------------|
-| `noauth` | None (MUST NOT provide) | No auth headers added |
-| `basic` | PasswordCredentials | `Authorization: Basic base64(login:password)` auto-generated |
-| `bearer` | RawCredentials | `Authorization: Bearer <secret>` auto-generated |
-| `x509` | CertificateCredentials | mTLS client certificate attached to request |
-| `custom` | PasswordCredentials OR RawCredentials | NO auto-headers. Credentials exposed as dictionary keys (see below) |
+| Auth type | Required credential type              | Auto-generated behavior                                             |
+| --------- | ------------------------------------- | ------------------------------------------------------------------- |
+| `noauth`  | None (MUST NOT provide)               | No auth headers added                                               |
+| `basic`   | PasswordCredentials                   | `Authorization: Basic base64(login:password)` auto-generated        |
+| `bearer`  | RawCredentials                        | `Authorization: Bearer <secret>` auto-generated                     |
+| `x509`    | CertificateCredentials                | mTLS client certificate attached to request                         |
+| `custom`  | PasswordCredentials OR RawCredentials | NO auto-headers. Credentials exposed as dictionary keys (see below) |
 
 **Credential dictionary keys** (available in `payload` and `headers` TemplateStrings only - NOT in `url`):
 
-| Credential type | Dictionary keys |
-|----------------|-----------------|
+| Credential type     | Dictionary keys                                                           |
+| ------------------- | ------------------------------------------------------------------------- |
 | PasswordCredentials | `{{credentials.login}}` (username), `{{credentials.password}}` (password) |
-| RawCredentials | `{{credentials.key}}` (raw secret value) |
+| RawCredentials      | `{{credentials.key}}` (raw secret value)                                  |
 
 **Important**: Credential dictionary keys are excluded from the datasource's
 `getInputs` list (they are filtered out by the `filterNot(_.startsWith("credentials."))`)
@@ -282,6 +286,7 @@ Horizon doesn't have a native OAuth auth type, use two chained REST
 datasources: one to acquire a token, one to call the API.
 
 **Pattern**:
+
 1. **Datasource A** (token): POST to the OAuth token endpoint with `custom`
    auth + PasswordCredentials. The `{{credentials.login}}` provides the
    client_id and `{{credentials.password}}` provides the client_secret in
@@ -312,6 +317,7 @@ The REST datasource **only supports JSON responses**. Non-JSON responses
 
 JSON responses are automatically parsed into **flattened dot-notation
 dictionary entries**:
+
 - Nested objects: `parent.child.grandchild`
 - Arrays: `parent.1`, `parent.2` (1-based indexing)
 - Nested arrays of objects: `users.1.name`, `users.1.roles.1`, `users.2.name`
@@ -319,6 +325,7 @@ dictionary entries**:
 
 Example: a response of `{"users": [{"name": "alice", "roles": ["admin", "user"]}]}`
 produces:
+
 ```
 users =              (empty - marks array presence)
 users.1.name = alice
@@ -330,6 +337,7 @@ users.1.roles.2 = user
 ### Attribute Selection Behavior
 
 Same pattern as LDAP:
+
 - `selected: true` - attribute IS included in dictionary output
 - `selected: false` - attribute is EXCLUDED
 - `multi: true` - matches the attribute key as a prefix pattern (includes
@@ -351,6 +359,7 @@ check the response in your validation rule.
 ### REST Result Structure
 
 REST datasource results include:
+
 - `computedUrl`: the URL after TemplateString resolution
 - `computedPayload`: the payload after TemplateString resolution
 - `computedHeaders`: headers after TemplateString resolution
@@ -376,8 +385,8 @@ at `ds.<flowIndex>.<jsonPath>`.
   "timeout": "10s",
   "expectedHttpCodes": [200],
   "attributes": [
-    {"key": "owner", "multi": false, "selected": true},
-    {"key": "environment", "multi": false, "selected": true}
+    { "key": "owner", "multi": false, "selected": true },
+    { "key": "environment", "multi": false, "selected": true }
   ]
 }
 ```
@@ -391,20 +400,20 @@ of `DataSourceFlowEntry` objects.
 
 ### DataSourceFlowEntry Structure
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `ds` | string | Name of a configured datasource |
-| `inputs` | DataSourceInput[] | Input mappings: `[{key: "param", value: "{{dict.entry}}"}]` |
-| `stopOnSuccess` | boolean | If true and this datasource returns results, skip remaining entries |
+| Field           | Type              | Description                                                         |
+| --------------- | ----------------- | ------------------------------------------------------------------- |
+| `ds`            | string            | Name of a configured datasource                                     |
+| `inputs`        | DataSourceInput[] | Input mappings: `[{key: "param", value: "{{dict.entry}}"}]`         |
+| `stopOnSuccess` | boolean           | If true and this datasource returns results, skip remaining entries |
 
 ### Result Access Patterns
 
 Results are indexed by flow position (1-based in dictionary):
 
-| Pattern | Description |
-|---------|-------------|
-| `ds.<flowIndex>.<resultIndex>.<key>` | Specific result attribute |
-| `ds.<flowIndex>.*.<key>` | Wildcard over all results (multi-valued) |
+| Pattern                              | Description                              |
+| ------------------------------------ | ---------------------------------------- |
+| `ds.<flowIndex>.<resultIndex>.<key>` | Specific result attribute                |
+| `ds.<flowIndex>.*.<key>`             | Wildcard over all results (multi-valued) |
 
 ### Flow Execution
 
@@ -421,12 +430,12 @@ Results are indexed by flow position (1-based in dictionary):
     {
       "ds": "primary-ldap",
       "stopOnSuccess": true,
-      "inputs": [{"key": "uid", "value": "{{principal.identifier}}"}]
+      "inputs": [{ "key": "uid", "value": "{{principal.identifier}}" }]
     },
     {
       "ds": "backup-ldap",
       "stopOnSuccess": false,
-      "inputs": [{"key": "uid", "value": "{{principal.identifier}}"}]
+      "inputs": [{ "key": "uid", "value": "{{principal.identifier}}" }]
     }
   ]
 }
@@ -444,15 +453,15 @@ validation rule conditions.
 
 Pattern: `ds.<flowIndex>.<lookupIndex>.<recordType>[.<subIndex>]`
 
-| Key pattern | Example | Description |
-|-------------|---------|-------------|
-| `ds.1.1.cname` | `"app.paas.internal"` | CNAME target for 1st hostname (single-valued) |
-| `ds.1.1.a.1` | `"10.0.0.1"` | First A record for 1st hostname |
-| `ds.1.1.a.2` | `"10.0.0.2"` | Second A record for 1st hostname |
-| `ds.1.2.cname` | `"app2.paas.internal"` | CNAME for 2nd hostname (when using Join comma-split) |
-| `ds.1.1.aaaa.1` | `"2001:db8::1"` | First AAAA record |
-| `ds.1.1.txt.1` | `"v=spf1 ..."` | First TXT record |
-| `ds.1.1.ptr` | `"host.example.com"` | PTR record (single-valued) |
+| Key pattern     | Example                | Description                                          |
+| --------------- | ---------------------- | ---------------------------------------------------- |
+| `ds.1.1.cname`  | `"app.paas.internal"`  | CNAME target for 1st hostname (single-valued)        |
+| `ds.1.1.a.1`    | `"10.0.0.1"`           | First A record for 1st hostname                      |
+| `ds.1.1.a.2`    | `"10.0.0.2"`           | Second A record for 1st hostname                     |
+| `ds.1.2.cname`  | `"app2.paas.internal"` | CNAME for 2nd hostname (when using Join comma-split) |
+| `ds.1.1.aaaa.1` | `"2001:db8::1"`        | First AAAA record                                    |
+| `ds.1.1.txt.1`  | `"v=spf1 ..."`         | First TXT record                                     |
+| `ds.1.1.ptr`    | `"host.example.com"`   | PTR record (single-valued)                           |
 
 **Wildcards**: `[[ds.1.*.cname]]` = all CNAMEs across all lookups.
 `[[ds.1.*.a.*]]` = all A records across all lookups and sub-indexes.
@@ -461,16 +470,16 @@ Pattern: `ds.<flowIndex>.<lookupIndex>.<recordType>[.<subIndex>]`
 
 Pattern: `ds.<flowIndex>.<resultIndex>.<attribute>[.<subIndex>]`
 
-| Key pattern | Example | Description |
-|-------------|---------|-------------|
-| `ds.1.1.department` | `"Engineering"` | Single-valued attribute, 1st result |
-| `ds.1.1.mail` | `"user@corp.local"` | Single-valued attribute |
-| `ds.1.1.memberOf.1` | `"CN=Admins,..."` | First value of multi-valued attribute |
-| `ds.1.1.memberOf.2` | `"CN=Users,..."` | Second value of multi-valued attribute |
-| `ds.1.2.department` | `"Marketing"` | Same attribute, 2nd LDAP result (when limit > 1) |
-| `ds.1.1.dn` | `"CN=user,OU=..."` | Auto-parsed DN (always present) |
-| `ds.1.1.subject.cn.1` | `"username"` | Auto-parsed DN component |
-| `ds.1.1.subject.ou.1` | `"Users"` | Auto-parsed DN component |
+| Key pattern           | Example             | Description                                      |
+| --------------------- | ------------------- | ------------------------------------------------ |
+| `ds.1.1.department`   | `"Engineering"`     | Single-valued attribute, 1st result              |
+| `ds.1.1.mail`         | `"user@corp.local"` | Single-valued attribute                          |
+| `ds.1.1.memberOf.1`   | `"CN=Admins,..."`   | First value of multi-valued attribute            |
+| `ds.1.1.memberOf.2`   | `"CN=Users,..."`    | Second value of multi-valued attribute           |
+| `ds.1.2.department`   | `"Marketing"`       | Same attribute, 2nd LDAP result (when limit > 1) |
+| `ds.1.1.dn`           | `"CN=user,OU=..."`  | Auto-parsed DN (always present)                  |
+| `ds.1.1.subject.cn.1` | `"username"`        | Auto-parsed DN component                         |
+| `ds.1.1.subject.ou.1` | `"Users"`           | Auto-parsed DN component                         |
 
 **Wildcards**: `[[ds.1.*.department]]` = department from all LDAP results.
 `[[ds.1.1.memberOf.*]]` = all memberOf values for 1st result.
@@ -479,14 +488,14 @@ Pattern: `ds.<flowIndex>.<resultIndex>.<attribute>[.<subIndex>]`
 
 Pattern: `ds.<flowIndex>.<jsonPath>` (no result index level)
 
-| Key pattern | Example | Description |
-|-------------|---------|-------------|
-| `ds.1.status` | `"active"` | Top-level JSON field |
-| `ds.1.user.name` | `"alice"` | Nested object field |
-| `ds.1.roles.1` | `"admin"` | First array element |
-| `ds.1.roles.2` | `"user"` | Second array element |
-| `ds.1.users.1.name` | `"alice"` | Nested array of objects |
-| `ds.1.users.1.roles.1` | `"admin"` | Deeply nested array |
+| Key pattern            | Example    | Description             |
+| ---------------------- | ---------- | ----------------------- |
+| `ds.1.status`          | `"active"` | Top-level JSON field    |
+| `ds.1.user.name`       | `"alice"`  | Nested object field     |
+| `ds.1.roles.1`         | `"admin"`  | First array element     |
+| `ds.1.roles.2`         | `"user"`   | Second array element    |
+| `ds.1.users.1.name`    | `"alice"`  | Nested array of objects |
+| `ds.1.users.1.roles.1` | `"admin"`  | Deeply nested array     |
 
 **Important**: REST has NO result index (unlike DNS/LDAP). The JSON path
 starts directly after the flow index. `ds.1.field` not `ds.1.1.field`.
@@ -534,9 +543,7 @@ definition with a context dictionary **without creating it first**.
     "name": "test-dns",
     "lookup": "{{hostname}}"
   },
-  "context": [
-    {"key": "hostname", "value": "app.corp.local"}
-  ]
+  "context": [{ "key": "hostname", "value": "app.corp.local" }]
 }
 ```
 
@@ -551,13 +558,13 @@ to test a complete flow chain with context.
 
 Timeout fields accept `"<length><unit>"` (whitespace optional):
 
-| Unit | Short | Long forms |
-|------|-------|------------|
-| Days | d | day, days |
-| Hours | h | hour, hours |
-| Minutes | m | min, mins, minute, minutes |
-| Seconds | s | sec, secs, second, seconds |
-| Milliseconds | ms | milli, millis, millisecond, milliseconds |
+| Unit         | Short | Long forms                               |
+| ------------ | ----- | ---------------------------------------- |
+| Days         | d     | day, days                                |
+| Hours        | h     | hour, hours                              |
+| Minutes      | m     | min, mins, minute, minutes               |
+| Seconds      | s     | sec, secs, second, seconds               |
+| Milliseconds | ms    | milli, millis, millisecond, milliseconds |
 
 Examples: `"10s"`, `"10 seconds"`, `"30s"`, `"5m"`, `"1h"`
 
@@ -565,14 +572,14 @@ Examples: `"10s"`, `"10 seconds"`, `"30s"`, `"5m"`, `"1h"`
 
 ## API Endpoints
 
-| Method | Path | Operation |
-|--------|------|-----------|
-| GET | /api/v1/datasources | List all datasources |
-| GET | /api/v1/datasources/{name} | Get by name |
-| POST | /api/v1/datasources | Create |
-| PUT | /api/v1/datasources | Update |
-| DELETE | /api/v1/datasources/{name} | Delete |
-| PATCH | /api/v1/datasources | Test (ad-hoc execution) |
+| Method | Path                       | Operation               |
+| ------ | -------------------------- | ----------------------- |
+| GET    | /api/v1/datasources        | List all datasources    |
+| GET    | /api/v1/datasources/{name} | Get by name             |
+| POST   | /api/v1/datasources        | Create                  |
+| PUT    | /api/v1/datasources        | Update                  |
+| DELETE | /api/v1/datasources/{name} | Delete                  |
+| PATCH  | /api/v1/datasources        | Test (ad-hoc execution) |
 
 ## RBAC Permissions
 
@@ -581,14 +588,14 @@ Examples: `"10s"`, `"10 seconds"`, `"30s"`, `"5m"`, `"1h"`
 
 ## Error Codes
 
-| Code | HTTP | Description |
-|------|------|-------------|
-| DS-001 | 500 | Unexpected error |
-| DS-002 | 400 | Invalid datasource configuration |
-| DS-003 | 404 | Datasource not found |
-| DS-004 | 400 | Datasource name already exists |
-| DS-005 | 400 | Cannot delete - datasource is still referenced by a profile's dsFlow |
-| DS-006 | 400 | Invalid test request |
+| Code   | HTTP | Description                                                          |
+| ------ | ---- | -------------------------------------------------------------------- |
+| DS-001 | 500  | Unexpected error                                                     |
+| DS-002 | 400  | Invalid datasource configuration                                     |
+| DS-003 | 404  | Datasource not found                                                 |
+| DS-004 | 400  | Datasource name already exists                                       |
+| DS-005 | 400  | Cannot delete - datasource is still referenced by a profile's dsFlow |
+| DS-006 | 400  | Invalid test request                                                 |
 
 ---
 
@@ -605,6 +612,7 @@ Combined with `Join` in the dsFlow input and `all of [[ds.1.*.cname]]` in
 the validation rule, this handles any number of SANs without hardcoding.
 
 **Step 1** - Create DNS datasource:
+
 ```
 create_dns_datasource(
     name="san-cname-check",
@@ -615,20 +623,27 @@ create_dns_datasource(
 ```
 
 **Step 2** - Add to profile dsFlow using `Join` to pass ALL SANs:
+
 ```json
 {
-  "dsFlow": [{
-    "ds": "san-cname-check",
-    "inputs": [{"key": "hostnames", "value": "Join([[csr.san.dnsname]], \",\")"}],
-    "stopOnSuccess": false
-  }]
+  "dsFlow": [
+    {
+      "ds": "san-cname-check",
+      "inputs": [
+        { "key": "hostnames", "value": "Join([[csr.san.dnsname]], \",\")" }
+      ],
+      "stopOnSuccess": false
+    }
+  ]
 }
 ```
+
 If the CSR has 3 DNS SANs, `Join` produces `"host1.corp.local,host2.corp.local,host3.corp.local"`.
 The DNS datasource splits this by comma and does 3 separate lookups, producing
 results at `ds.1.1.cname`, `ds.1.2.cname`, `ds.1.3.cname`.
 
 **Step 3** - Add validation rule with array quantifier:
+
 ```json
 {
   "validationRuleset": {
@@ -637,6 +652,7 @@ results at `ds.1.1.cname`, `ds.1.2.cname`, `ds.1.3.cname`.
   }
 }
 ```
+
 The `[[ds.1.*.cname]]` wildcard matches all CNAME results regardless of count.
 
 **Edge case**: If a SAN has no CNAME (resolves directly via A record),
@@ -650,6 +666,7 @@ this is safe. Otherwise, add SAN regex constraints in the profile template.
 user belongs to the PKI-Users group.
 
 **Step 1** - Create LDAP datasource:
+
 ```
 create_ldap_datasource(
     name="corp-ad",
@@ -668,22 +685,33 @@ create_ldap_datasource(
 ```
 
 **Step 2** - Add to profile dsFlow:
+
 ```json
 {
-  "dsFlow": [{
-    "ds": "corp-ad",
-    "inputs": [{"key": "principal.identifier", "value": "{{principal.identifier}}"}],
-    "stopOnSuccess": false
-  }]
+  "dsFlow": [
+    {
+      "ds": "corp-ad",
+      "inputs": [
+        { "key": "principal.identifier", "value": "{{principal.identifier}}" }
+      ],
+      "stopOnSuccess": false
+    }
+  ]
 }
 ```
 
 **Step 3** - Add computation rule to enrich department:
+
 ```json
-{"source": "{{ds.1.1.department}}", "target": "subject.organizationalUnit", "condition": "{{ds.1.1.department}}"}
+{
+  "source": "{{ds.1.1.department}}",
+  "target": "subject.organizationalUnit",
+  "condition": "{{ds.1.1.department}}"
+}
 ```
 
 **Step 4** - Add validation rule for group membership:
+
 ```json
 {
   "validationRuleset": {
@@ -699,6 +727,7 @@ create_ldap_datasource(
 the certificate contact email.
 
 **Step 1** - Create REST datasource:
+
 ```
 create_rest_datasource(
     name="cmdb-lookup",
@@ -716,19 +745,26 @@ create_rest_datasource(
 ```
 
 **Step 2** - Add to profile dsFlow:
+
 ```json
 {
-  "dsFlow": [{
-    "ds": "cmdb-lookup",
-    "inputs": [{"key": "hostname", "value": "{{csr.san.dnsname.1}}"}],
-    "stopOnSuccess": false
-  }]
+  "dsFlow": [
+    {
+      "ds": "cmdb-lookup",
+      "inputs": [{ "key": "hostname", "value": "{{csr.san.dnsname.1}}" }],
+      "stopOnSuccess": false
+    }
+  ]
 }
 ```
 
 **Step 3** - Add computation rule:
+
 ```json
-{"source": "OrElse({{ds.1.1.owner_email}}, {{principal.mail}})", "target": "contactEmail"}
+{
+  "source": "OrElse({{ds.1.1.owner_email}}, {{principal.mail}})",
+  "target": "contactEmail"
+}
 ```
 
 ---
@@ -736,6 +772,6 @@ create_rest_datasource(
 ## Related Resources
 
 - horizon://knowledge/computation-and-data-flow - computation rule syntax and datasource flow chaining
-- horizon://knowledge/validation-rules - validation rule conditions that reference ds.* entries
+- horizon://knowledge/validation-rules - validation rule conditions that reference ds.\* entries
 - horizon://knowledge/dictionary-entries - all dictionary entries including datasource results
 - horizon://knowledge/profiles - profile configuration including dsFlow and authorizationMode

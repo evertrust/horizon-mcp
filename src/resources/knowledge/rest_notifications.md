@@ -9,6 +9,7 @@ notifications are fully user-defined - you control the URL, authentication,
 headers, body, and can chain multiple API calls in sequence.
 
 **Use REST notifications to:**
+
 - Deploy certificates to load balancers, API gateways, or IoT platforms
 - Update DNS records for ACME DNS-01 challenges
 - Push certificate data to SIEM, CMDB, or ticketing systems
@@ -31,12 +32,12 @@ headers, body, and can chain multiple API calls in sequence.
 
 ### REST Notification vs Other Trigger Types
 
-| Type | Use case | User-configurable |
-|------|----------|-------------------|
-| `rest` | Any REST API - fully custom URL, auth, headers, body | Yes - everything |
-| `webhook` | Teams / Slack / Mattermost messages | Partial - fixed format |
-| `email` | Email notifications with optional cert attachments | Partial - template-based |
-| Third-party (`akv`, `aws`, `f5client`, etc.) | Built-in connectors | Minimal - just connector name |
+| Type                                         | Use case                                             | User-configurable             |
+| -------------------------------------------- | ---------------------------------------------------- | ----------------------------- |
+| `rest`                                       | Any REST API - fully custom URL, auth, headers, body | Yes - everything              |
+| `webhook`                                    | Teams / Slack / Mattermost messages                  | Partial - fixed format        |
+| `email`                                      | Email notifications with optional cert attachments   | Partial - template-based      |
+| Third-party (`akv`, `aws`, `f5client`, etc.) | Built-in connectors                                  | Minimal - just connector name |
 
 **Choose REST notifications when** no built-in connector exists for your target
 system, or when you need custom payload formatting, multi-step API flows, or
@@ -67,9 +68,7 @@ Content-Type: application/json
       "authenticationType": "bearer",
       "credentials": "lb-api-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"cert\": \"{{certificate.pem}}\"}",
       "timeout": "30 seconds",
@@ -85,45 +84,45 @@ Content-Type: application/json
 
 ### Top-Level Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | yes | Unique identifier (IMMUTABLE - cannot be changed after creation) |
-| `type` | string | yes | Must be `"rest"` |
-| `events` | list[string] | yes | Exactly ONE event - e.g., `["on_enroll"]` |
-| `retries` | integer | no | Retry count on failure (default: 10, exponential backoff) |
-| `runPeriod` | string | conditional | Duration string - MANDATORY for `on_expire`, `on_pending_*`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. Examples: `"24h"`, `"7d"`, `"30 days"` |
-| `runOnRenewed` | boolean | conditional | MANDATORY for `on_expire` only. If true, fires even if certificate was already renewed |
-| `licenceUsagePercent` | integer | conditional | MANDATORY for `on_license_usage` only. Threshold 1-100 |
-| `sequence` | list[object] | yes | Ordered list of REST call steps (see below) |
-| `triggers.onTriggerError` | list[string] | no | Names of triggers to fire if this notification fails |
+| Field                     | Type         | Required    | Description                                                                                                                                                                         |
+| ------------------------- | ------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                    | string       | yes         | Unique identifier (IMMUTABLE - cannot be changed after creation)                                                                                                                    |
+| `type`                    | string       | yes         | Must be `"rest"`                                                                                                                                                                    |
+| `events`                  | list[string] | yes         | Exactly ONE event - e.g., `["on_enroll"]`                                                                                                                                           |
+| `retries`                 | integer      | no          | Retry count on failure (default: 10, exponential backoff)                                                                                                                           |
+| `runPeriod`               | string       | conditional | Duration string - MANDATORY for `on_expire`, `on_pending_*`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. Examples: `"24h"`, `"7d"`, `"30 days"` |
+| `runOnRenewed`            | boolean      | conditional | MANDATORY for `on_expire` only. If true, fires even if certificate was already renewed                                                                                              |
+| `licenceUsagePercent`     | integer      | conditional | MANDATORY for `on_license_usage` only. Threshold 1-100                                                                                                                              |
+| `sequence`                | list[object] | yes         | Ordered list of REST call steps (see below)                                                                                                                                         |
+| `triggers.onTriggerError` | list[string] | no          | Names of triggers to fire if this notification fails                                                                                                                                |
 
 ### Sequence Step Fields
 
 Each object in the `sequence` array defines one HTTP request:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `url` | string | yes | Target URL - supports template strings (`{{certificate.serial}}`) |
-| `method` | string | yes | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD` |
-| `authenticationType` | string | yes | One of: `noauth`, `basic`, `bearer`, `x509`, `custom` |
-| `credentials` | string | conditional | Name of credential stored in Horizon. Required for all auth types except `noauth` |
-| `headers` | list[object] | no | Each has `name` (string) and `value` (string, supports templates) |
-| `payload` | string | no | Request body - supports template strings |
-| `payloadType` | string | no | `"json"`, `"text"`, or `"none"` (affects UI formatting only) |
-| `expectedHttpCodes` | list[int] | yes | HTTP status codes that mean success. Any other code = failure |
-| `timeout` | string | yes | Connection timeout as duration string: `"30 seconds"`, `"1 minute"` |
-| `proxy` | string | no | Name of HTTP proxy configured in Horizon |
+| Field                | Type         | Required    | Description                                                                       |
+| -------------------- | ------------ | ----------- | --------------------------------------------------------------------------------- |
+| `url`                | string       | yes         | Target URL - supports template strings (`{{certificate.serial}}`)                 |
+| `method`             | string       | yes         | HTTP method: `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `HEAD`                      |
+| `authenticationType` | string       | yes         | One of: `noauth`, `basic`, `bearer`, `x509`, `custom`                             |
+| `credentials`        | string       | conditional | Name of credential stored in Horizon. Required for all auth types except `noauth` |
+| `headers`            | list[object] | no          | Each has `name` (string) and `value` (string, supports templates)                 |
+| `payload`            | string       | no          | Request body - supports template strings                                          |
+| `payloadType`        | string       | no          | `"json"`, `"text"`, or `"none"` (affects UI formatting only)                      |
+| `expectedHttpCodes`  | list[int]    | yes         | HTTP status codes that mean success. Any other code = failure                     |
+| `timeout`            | string       | yes         | Connection timeout as duration string: `"30 seconds"`, `"1 minute"`               |
+| `proxy`              | string       | no          | Name of HTTP proxy configured in Horizon                                          |
 
 ### API Operations
 
-| Operation | Method | Path |
-|-----------|--------|------|
-| Create | POST | `/api/v1/triggers` |
-| List all | GET | `/api/v1/triggers` |
-| Get by name | GET | `/api/v1/triggers/{name}` |
-| Update | PUT | `/api/v1/triggers/` (name in JSON body) |
-| Delete | DELETE | `/api/v1/triggers/{name}` |
-| Simulate (test-fire) | PATCH | `/api/v1/triggers/` (name in JSON body) |
+| Operation            | Method | Path                                    |
+| -------------------- | ------ | --------------------------------------- |
+| Create               | POST   | `/api/v1/triggers`                      |
+| List all             | GET    | `/api/v1/triggers`                      |
+| Get by name          | GET    | `/api/v1/triggers/{name}`               |
+| Update               | PUT    | `/api/v1/triggers/` (name in JSON body) |
+| Delete               | DELETE | `/api/v1/triggers/{name}`               |
+| Simulate (test-fire) | PATCH  | `/api/v1/triggers/` (name in JSON body) |
 
 ---
 
@@ -193,13 +192,12 @@ custom headers or the payload body.
 {
   "authenticationType": "custom",
   "credentials": "my-api-key",
-  "headers": [
-    {"name": "X-API-Key", "value": "{{credentials.key}}"}
-  ]
+  "headers": [{ "name": "X-API-Key", "value": "{{credentials.key}}" }]
 }
 ```
 
 **Available template variables for custom auth:**
+
 - Raw credentials: `{{credentials.key}}` (the secret value)
 - Password credentials: `{{credentials.login}}` and `{{credentials.password}}`
 
@@ -208,11 +206,11 @@ in a custom header, HMAC signature, or OAuth token in a specific format).
 
 ### Credential Types Summary
 
-| Credential Type | Fields | Used by |
-|-----------------|--------|---------|
-| Password (Login) | `login`, `password` | `basic`, `custom` |
-| Raw (API Token) | `secret` (single value) | `bearer`, `custom` |
-| Certificate (X.509) | PKCS#12 store + password | `x509` |
+| Credential Type     | Fields                   | Used by            |
+| ------------------- | ------------------------ | ------------------ |
+| Password (Login)    | `login`, `password`      | `basic`, `custom`  |
+| Raw (API Token)     | `secret` (single value)  | `bearer`, `custom` |
+| Certificate (X.509) | PKCS#12 store + password | `x509`             |
 
 Credentials are managed at: **Administration > Security > Credentials**
 API: `GET/POST /api/v1/security/credentials`
@@ -236,6 +234,7 @@ earlier steps is available to later steps via the `rest.response.N.key` pattern.
 ### JSON Response Parsing
 
 Given step 1 returns:
+
 ```json
 {
   "id": "cert-abc123",
@@ -249,6 +248,7 @@ Given step 1 returns:
 ```
 
 Available dictionary keys for subsequent steps:
+
 - `rest.response.1.id` = `"cert-abc123"`
 - `rest.response.1.status` = `"pending"`
 - `rest.response.1.endpoints.activate` = `"/api/certs/cert-abc123/activate"`
@@ -259,6 +259,7 @@ Available dictionary keys for subsequent steps:
 ### Non-JSON Response
 
 If the response is not valid JSON, the entire body is stored as:
+
 - `rest.response.N.body` = `"<raw text content>"`
 
 ### Index Convention
@@ -278,11 +279,13 @@ notification is marked as failed and follows the retry policy.
 Use this decision guide to determine whether chaining is needed:
 
 **Single step is enough when:**
+
 - The target API accepts everything in one call (cert + key + metadata)
 - Authentication is static (API key, basic auth, bearer token)
 - No resource needs to be created before another operation
 
 **Multi-step chaining is needed when:**
+
 - The API requires **OAuth/OIDC token acquisition** before the actual call
 - You need to **create a resource first**, then **update or activate** it
 - The API requires a **lookup step** (find resource ID by name) before updating
@@ -306,10 +309,12 @@ must obtain a token, and step 2+ use `{{rest.response.1.access_token}}` in
 the Authorization header.
 
 **Steps:**
+
 1. `POST` to token endpoint with client credentials - returns `{"access_token": "..."}`
 2. Use `{{rest.response.1.access_token}}` as Bearer token in actual API call
 
 **Typical token endpoint payloads:**
+
 - Form-encoded: `grant_type=client_credentials&scope=certificates:write`
 - JSON: `{"grant_type": "client_credentials"}`
 
@@ -325,6 +330,7 @@ not the domain name - this means step 1 searches by a known field, and
 step 2 updates by the returned ID.
 
 **Steps:**
+
 1. `GET` search endpoint with `{{certificate.san.dnsname.1}}` - returns `{"id": "abc123"}`
 2. `PUT` to update endpoint using `{{rest.response.1.id}}`
 
@@ -337,6 +343,7 @@ and private key, or requires them uploaded sequentially.
 first, then the key" or "certificate and key go to different API endpoints."
 
 **Steps:**
+
 1. `POST` certificate PEM to cert endpoint - returns `{"certId": "..."}`
 2. `POST` private key to key endpoint, referencing `{{rest.response.1.certId}}`
 
@@ -349,6 +356,7 @@ in draft/pending state, then explicitly activating it.
 "certificates need to be activated after upload."
 
 **Steps:**
+
 1. `POST` to create resource - returns `{"id": "...", "status": "pending"}`
 2. `POST`/`PATCH` to activate endpoint using `{{rest.response.1.id}}`
 
@@ -361,6 +369,7 @@ cache, restart a service, or trigger a reload.
 config", or "restart after deploy."
 
 **Steps:**
+
 1. `PUT` certificate to deployment endpoint
 2. `POST` to cache purge or reload endpoint
 
@@ -373,6 +382,7 @@ be explicitly committed.
 must be committed after upload."
 
 **Steps:**
+
 1. `POST` to begin transaction - returns `{"txId": "..."}`
 2. `PUT` certificate data, referencing `{{rest.response.1.txId}}`
 3. `POST` to commit endpoint using `{{rest.response.1.txId}}`
@@ -388,6 +398,7 @@ from the notification dictionary.
 ### Syntax
 
 **Simple variable substitution:**
+
 ```
 {{certificate.serial}}
 {{certificate.subject.cn.1}}
@@ -395,6 +406,7 @@ from the notification dictionary.
 ```
 
 **With computation rules (functions):**
+
 ```
 {{Upper({{certificate.subject.cn.1}})}}
 {{Lower({{certificate.san.dnsname.1}})}}
@@ -403,6 +415,7 @@ from the notification dictionary.
 ```
 
 **Behavior when variable is missing:**
+
 - Simple variables: the `{{...}}` placeholder is left as literal text
 - Computation rules returning `None`: replaced with an empty string
 - Computation rules returning an array: joined as comma-separated string
@@ -415,9 +428,11 @@ prevents JSON injection from certificate fields that contain quotes,
 backslashes, or newlines (e.g., PEM certificates).
 
 This means you can safely write:
+
 ```json
-{"pem": "{{certificate.pem}}"}
+{ "pem": "{{certificate.pem}}" }
 ```
+
 And the PEM's newlines and special characters will be properly escaped.
 
 ### Available Computation Rules in Templates
@@ -425,6 +440,7 @@ And the PEM's newlines and special characters will be properly escaped.
 These functions can wrap dictionary keys in template strings:
 
 **String functions:**
+
 - `Upper(expr)` - uppercase
 - `Lower(expr)` - lowercase
 - `Trim(expr)` - strip whitespace
@@ -432,17 +448,20 @@ These functions can wrap dictionary keys in template strings:
 - `Concat(expr1, expr2, ...)` - concatenate
 
 **Pattern functions:**
+
 - `Extract(expr, regex)` - extract regex match
 - `Replace(expr, regex, replacement)` - regex replace
 - `Match(expr, regex)` - test if matches
 
 **Domain functions:**
+
 - `ShortenDNS(expr)` - hostname from FQDN
 - `DomainDNS(expr)` - domain from FQDN
 - `EmailUser(expr)` - user part of email
 - `EmailDomain(expr)` - domain part of email
 
 **Utility functions:**
+
 - `OrElse(expr, fallback)` - default if null
 - `First(expr)` - first element of list
 - `Last(expr)` - last element of list
@@ -464,64 +483,73 @@ computation rule reference.
 Available for events: `on_enroll`, `on_revoke`, `on_update`, `on_recover`,
 `on_migrate`, `on_expire`, `on_renew`, `on_import`
 
-| Key | Description | Example Value |
-|-----|-------------|---------------|
-| `certificate.id` | Horizon internal ID | `"507f1f77bcf86cd799439011"` |
-| `certificate.module` | Module name | `"webra"` |
-| `certificate.dn` | Full subject DN | `"CN=web.example.com, O=ACME Corp"` |
-| `certificate.serial` | Serial number | `"1a2b3c4d"` |
-| `certificate.thumbprint` | SHA-256 thumbprint | `"ab12cd34..."` |
-| `certificate.public_key_thumbprint` | Public key thumbprint | `"ef56gh78..."` |
-| `certificate.pem` | Full PEM-encoded certificate | `"-----BEGIN CERTIFICATE-----\n..."` |
-| `certificate.not_before` | Start date (ISO-8601) | `"2025-01-15T10:30:00Z"` |
-| `certificate.not_after` | Expiration date (ISO-8601) | `"2026-01-15T10:30:00Z"` |
-| `certificate.key_type` | Key algorithm and size | `"rsa-2048"` |
-| `certificate.signing_algorithm` | Signature algorithm | `"SHA256withRSA"` |
-| `certificate.revoked` | Revocation status | `"true"` or `"false"` |
-| `certificate.revocation_date` | When revoked (ISO-8601) | `"2025-06-01T12:00:00Z"` |
-| `certificate.revocation_reason` | Revocation reason | `"keyCompromise"` |
-| `certificate.issuer` | Issuer DN | `"CN=Issuing CA, O=ACME"` |
-| `certificate.profile` | Profile name | `"web-tls-1y"` |
-| `certificate.holder_id` | Unique holder identifier | `"holder-abc123"` |
-| `certificate.friendly_name` | Friendly name | `"Production Web Cert"` |
-| `certificate.owner` | Owner principal | `"john.doe"` |
-| `certificate.mail` | Contact email | `"admin@example.com"` |
-| `certificate.auto_renew` | Auto-renewal status | `"true"` or `"false"` |
+| Key                                 | Description                  | Example Value                        |
+| ----------------------------------- | ---------------------------- | ------------------------------------ |
+| `certificate.id`                    | Horizon internal ID          | `"507f1f77bcf86cd799439011"`         |
+| `certificate.module`                | Module name                  | `"webra"`                            |
+| `certificate.dn`                    | Full subject DN              | `"CN=web.example.com, O=ACME Corp"`  |
+| `certificate.serial`                | Serial number                | `"1a2b3c4d"`                         |
+| `certificate.thumbprint`            | SHA-256 thumbprint           | `"ab12cd34..."`                      |
+| `certificate.public_key_thumbprint` | Public key thumbprint        | `"ef56gh78..."`                      |
+| `certificate.pem`                   | Full PEM-encoded certificate | `"-----BEGIN CERTIFICATE-----\n..."` |
+| `certificate.not_before`            | Start date (ISO-8601)        | `"2025-01-15T10:30:00Z"`             |
+| `certificate.not_after`             | Expiration date (ISO-8601)   | `"2026-01-15T10:30:00Z"`             |
+| `certificate.key_type`              | Key algorithm and size       | `"rsa-2048"`                         |
+| `certificate.signing_algorithm`     | Signature algorithm          | `"SHA256withRSA"`                    |
+| `certificate.revoked`               | Revocation status            | `"true"` or `"false"`                |
+| `certificate.revocation_date`       | When revoked (ISO-8601)      | `"2025-06-01T12:00:00Z"`             |
+| `certificate.revocation_reason`     | Revocation reason            | `"keyCompromise"`                    |
+| `certificate.issuer`                | Issuer DN                    | `"CN=Issuing CA, O=ACME"`            |
+| `certificate.profile`               | Profile name                 | `"web-tls-1y"`                       |
+| `certificate.holder_id`             | Unique holder identifier     | `"holder-abc123"`                    |
+| `certificate.friendly_name`         | Friendly name                | `"Production Web Cert"`              |
+| `certificate.owner`                 | Owner principal              | `"john.doe"`                         |
+| `certificate.mail`                  | Contact email                | `"admin@example.com"`                |
+| `certificate.auto_renew`            | Auto-renewal status          | `"true"` or `"false"`                |
 
 **Subject fields** (one per DN element type):
+
 - `certificate.subject.cn`, `certificate.subject.cn.1`, `certificate.subject.cn.2`, ...
 - `certificate.subject.o`, `certificate.subject.ou`, `certificate.subject.c`, ...
 - Valid types: `cn`, `uid`, `serialnumber`, `surname`, `givenname`, `ou`, `o`, `c`, `l`, `st`, `street`, `dc`, `e`, `description`, `organizationidentifier`, `uniqueidentifier`, `unstructuredaddress`, `unstructuredname`
 
 **SAN fields** (one per SAN type):
+
 - `certificate.san.dnsname`, `certificate.san.dnsname.1`, ...
 - `certificate.san.ipaddress`, `certificate.san.rfc822name`, ...
 - Valid types: `dnsname`, `ipaddress`, `rfc822name`, `uri`, `othername_upn`, `othername_guid`, `registered_id`
 
 **Extension fields:**
+
 - `certificate.extension.ms_sid`, `certificate.extension.ms_template`, `certificate.extension.ms_template_v2`
 
 **Label fields:**
+
 - `certificate.label.<label-name>` - value of a specific label
 
 **Metadata fields:**
+
 - `certificate.metadata.<metadata-name>` - value of a specific metadata entry
 
 **Aggregate string fields** (comma-separated summaries):
+
 - `certificate.sans` - all SANs as `"dnsname: web.example.com, ipaddress: 10.0.0.1"`
 - `certificate.extensions` - all extensions formatted
 - `certificate.metadata` - all metadata formatted
 - `certificate.labels` - all labels formatted
 
 **Team fields:**
+
 - `certificate.team` - team name
 
 **Private key fields** (available when key is centrally generated):
+
 - `certificate.private_key` - PEM private key
 - `certificate.private_key_pkcs8` - PKCS#8 PEM format
 - `certificate.private_key_pkcs1` - PKCS#1 PEM format (RSA only)
 
 **PKCS#12 fields** (available on enrollment/recovery/renewal):
+
 - `pkcs12` - base64-encoded PKCS#12 bundle
 - `pkcs12.password` - PKCS#12 password
 
@@ -540,24 +568,24 @@ Example: `{{previous.certificate.serial}}`, `{{previous.certificate.thumbprint}}
 Available for events: `on_submit_*`, `on_cancel_*`, `on_approve_*`,
 `on_deny_*`, `on_pending_*`
 
-| Key | Description |
-|-----|-------------|
-| `request.id` | Request ID |
-| `request.workflow` | Workflow type: `ENROLL`, `REVOKE`, `UPDATE`, `RECOVER`, `MIGRATE`, `RENEW` |
-| `request.module` | Module name |
-| `request.status` | Request status |
-| `request.profile` | Profile name |
-| `request.requester` | Who submitted the request |
-| `request.approver` | Who approved/denied (if applicable) |
-| `request.requester_comment` | Requester's justification text |
-| `request.approver_comment` | Approver's comment |
-| `request.registration_date` | Submission date (ISO-8601) |
-| `request.last_modification_date` | Last update (ISO-8601) |
-| `request.password` | PKCS#12 password or challenge value |
-| `request.owner` | Owner principal |
-| `request.mail` | Contact email |
-| `request.my.url` | Link to "My Requests" drawer in Horizon UI |
-| `request.manage.url` | Link to "Manage Requests" drawer in Horizon UI |
+| Key                              | Description                                                                |
+| -------------------------------- | -------------------------------------------------------------------------- |
+| `request.id`                     | Request ID                                                                 |
+| `request.workflow`               | Workflow type: `ENROLL`, `REVOKE`, `UPDATE`, `RECOVER`, `MIGRATE`, `RENEW` |
+| `request.module`                 | Module name                                                                |
+| `request.status`                 | Request status                                                             |
+| `request.profile`                | Profile name                                                               |
+| `request.requester`              | Who submitted the request                                                  |
+| `request.approver`               | Who approved/denied (if applicable)                                        |
+| `request.requester_comment`      | Requester's justification text                                             |
+| `request.approver_comment`       | Approver's comment                                                         |
+| `request.registration_date`      | Submission date (ISO-8601)                                                 |
+| `request.last_modification_date` | Last update (ISO-8601)                                                     |
+| `request.password`               | PKCS#12 password or challenge value                                        |
+| `request.owner`                  | Owner principal                                                            |
+| `request.mail`                   | Contact email                                                              |
+| `request.my.url`                 | Link to "My Requests" drawer in Horizon UI                                 |
+| `request.manage.url`             | Link to "Manage Requests" drawer in Horizon UI                             |
 
 Request also has subject, SAN, label, metadata, extension, and team
 sub-dictionaries with the same structure as certificate (prefixed with
@@ -570,59 +598,59 @@ certificate dictionary is available under `request.certificate.*`.
 
 Available in all notification contexts:
 
-| Key | Description |
-|-----|-------------|
-| `profile.name` | Technical profile name |
-| `profile.module` | Module name |
-| `profile.displaynames` | All display names formatted |
+| Key                          | Description                                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| `profile.name`               | Technical profile name                                             |
+| `profile.module`             | Module name                                                        |
+| `profile.displaynames`       | All display names formatted                                        |
 | `profile.displayname.<lang>` | Display name in specific language (e.g., `profile.displayname.en`) |
-| `profile.descriptions` | All descriptions formatted |
-| `profile.description.<lang>` | Description in specific language |
+| `profile.descriptions`       | All descriptions formatted                                         |
+| `profile.description.<lang>` | Description in specific language                                   |
 
 ### Credentials Dictionary
 
 Available for: `on_credentials_expiration`
 
-| Key | Description |
-|-----|-------------|
-| `credentials.name` | Credential name |
-| `credentials.description` | Description |
-| `credentials.type` | Type (`password`, `raw`, `x509`) |
-| `credentials.expiration_date` | Expiration date |
+| Key                           | Description                      |
+| ----------------------------- | -------------------------------- |
+| `credentials.name`            | Credential name                  |
+| `credentials.description`     | Description                      |
+| `credentials.type`            | Type (`password`, `raw`, `x509`) |
+| `credentials.expiration_date` | Expiration date                  |
 
 ### License Dictionary
 
 Available for: `on_license_expiration`, `on_license_usage`
 
-| Key | Description |
-|-----|-------------|
-| `license.expiration_date` | License expiration |
-| `license.used` | Current holder count |
-| `license.percent_used` | Usage percentage |
+| Key                       | Description          |
+| ------------------------- | -------------------- |
+| `license.expiration_date` | License expiration   |
+| `license.used`            | Current holder count |
+| `license.percent_used`    | Usage percentage     |
 
 ### Trigger Error Dictionary
 
 Available for: `on_trigger_error`
 
-| Key | Description |
-|-----|-------------|
-| `trigger.name` | Failed trigger name |
-| `trigger.event` | Event that was being processed |
-| `trigger.lastExecutionDate` | Last execution timestamp |
-| `trigger.status` | Trigger status |
-| `trigger.retryable` | `"true"` or `"false"` |
-| `trigger.retries` | Remaining retry count |
-| `trigger.nextExecutionDate` | Next retry timestamp |
-| `trigger.detail` | Error details |
+| Key                         | Description                    |
+| --------------------------- | ------------------------------ |
+| `trigger.name`              | Failed trigger name            |
+| `trigger.event`             | Event that was being processed |
+| `trigger.lastExecutionDate` | Last execution timestamp       |
+| `trigger.status`            | Trigger status                 |
+| `trigger.retryable`         | `"true"` or `"false"`          |
+| `trigger.retries`           | Remaining retry count          |
+| `trigger.nextExecutionDate` | Next retry timestamp           |
+| `trigger.detail`            | Error details                  |
 
 ### REST Response Chaining Dictionary
 
 Available for: steps 2+ in a multi-step sequence
 
-| Key Pattern | Description |
-|-------------|-------------|
-| `rest.response.<N>.<json.path>` | Parsed JSON field from step N response |
-| `rest.response.<N>.body` | Full body text if response is not valid JSON |
+| Key Pattern                     | Description                                  |
+| ------------------------------- | -------------------------------------------- |
+| `rest.response.<N>.<json.path>` | Parsed JSON field from step N response       |
+| `rest.response.<N>.body`        | Full body text if response is not valid JSON |
 
 N is 1-based (first step = 1, second step = 2, etc.).
 
@@ -632,25 +660,25 @@ N is 1-based (first step = 1, second step = 2, etc.).
 
 ### Certificate Events (for `events` field)
 
-| Event | Fires when | Requires |
-|-------|-----------|----------|
-| `on_enroll` | Certificate is enrolled/issued | - |
-| `on_revoke` | Certificate is revoked | - |
-| `on_update` | Certificate metadata is updated | - |
-| `on_recover` | Private key is recovered | - |
-| `on_migrate` | Certificate is migrated between profiles | - |
-| `on_renew` | Certificate is renewed | - |
-| `on_import` | Certificate is imported | - |
-| `on_expire` | Certificate expiration check | `runPeriod` and `runOnRenewed` |
+| Event        | Fires when                               | Requires                       |
+| ------------ | ---------------------------------------- | ------------------------------ |
+| `on_enroll`  | Certificate is enrolled/issued           | -                              |
+| `on_revoke`  | Certificate is revoked                   | -                              |
+| `on_update`  | Certificate metadata is updated          | -                              |
+| `on_recover` | Private key is recovered                 | -                              |
+| `on_migrate` | Certificate is migrated between profiles | -                              |
+| `on_renew`   | Certificate is renewed                   | -                              |
+| `on_import`  | Certificate is imported                  | -                              |
+| `on_expire`  | Certificate expiration check             | `runPeriod` and `runOnRenewed` |
 
 ### Request Events
 
-| Event | Fires when |
-|-------|-----------|
-| `on_submit_enroll` | Enrollment request submitted |
-| `on_approve_enroll` | Enrollment request approved |
-| `on_deny_enroll` | Enrollment request denied |
-| `on_cancel_enroll` | Enrollment request cancelled |
+| Event               | Fires when                                                 |
+| ------------------- | ---------------------------------------------------------- |
+| `on_submit_enroll`  | Enrollment request submitted                               |
+| `on_approve_enroll` | Enrollment request approved                                |
+| `on_deny_enroll`    | Enrollment request denied                                  |
+| `on_cancel_enroll`  | Enrollment request cancelled                               |
 | `on_pending_enroll` | Enrollment request pending too long (requires `runPeriod`) |
 
 The same pattern applies for all 7 workflows: `enroll`, `revoke`, `update`,
@@ -659,12 +687,12 @@ name to get the event name.
 
 ### System Events
 
-| Event | Fires when | Requires |
-|-------|-----------|----------|
-| `on_license_expiration` | License approaching expiration | `runPeriod` |
-| `on_credentials_expiration` | Credentials approaching expiration | `runPeriod` |
-| `on_license_usage` | License usage crosses threshold | `licenceUsagePercent` |
-| `on_trigger_error` | Another trigger execution failed | - |
+| Event                       | Fires when                         | Requires              |
+| --------------------------- | ---------------------------------- | --------------------- |
+| `on_license_expiration`     | License approaching expiration     | `runPeriod`           |
+| `on_credentials_expiration` | Credentials approaching expiration | `runPeriod`           |
+| `on_license_usage`          | License usage crosses threshold    | `licenceUsagePercent` |
+| `on_trigger_error`          | Another trigger execution failed   | -                     |
 
 ### Critical Constraint
 
@@ -685,6 +713,7 @@ are available.
 Horizon supports two authorization models for lifecycle operations:
 
 **Path 1 - Direct action** (user has full permissions on the profile):
+
 ```
 User submits enrollment
   -> on_approve_enroll fires (auto-approved)
@@ -692,6 +721,7 @@ User submits enrollment
 ```
 
 **Path 2 - Request/approve workflow** (user has only request permissions):
+
 ```
 User submits enrollment request
   -> on_submit_enroll fires (request created, pending)
@@ -711,11 +741,11 @@ migrate, renew, import.
 
 This is the most important distinction for certificate deployment:
 
-| Data needed | Available in event | NOT available in |
-|-------------|-------------------|------------------|
-| **PKCS#12 bundle** (cert + key in one file) | `on_approve_enroll`, `on_approve_renew`, `on_approve_recover` | `on_enroll`, `on_renew`, `on_recover` |
-| **PEM certificate + PEM private key** (separate) | `on_enroll`, `on_renew`, `on_recover` | `on_approve_enroll`, `on_approve_renew`, `on_approve_recover` |
-| **PEM certificate only** (no key) | ALL certificate and request events | - |
+| Data needed                                      | Available in event                                            | NOT available in                                              |
+| ------------------------------------------------ | ------------------------------------------------------------- | ------------------------------------------------------------- |
+| **PKCS#12 bundle** (cert + key in one file)      | `on_approve_enroll`, `on_approve_renew`, `on_approve_recover` | `on_enroll`, `on_renew`, `on_recover`                         |
+| **PEM certificate + PEM private key** (separate) | `on_enroll`, `on_renew`, `on_recover`                         | `on_approve_enroll`, `on_approve_renew`, `on_approve_recover` |
+| **PEM certificate only** (no key)                | ALL certificate and request events                            | -                                                             |
 
 **Why?** The PKCS#12 bundle is generated during request processing and stored
 transiently on the request object. It is available during request events
@@ -727,42 +757,42 @@ certificate issuance event (`on_enroll`, `on_renew`, `on_recover`).
 
 #### Certificate events (`on_enroll`, `on_revoke`, `on_renew`, etc.)
 
-| Dictionary | Available | Notes |
-|-----------|:---------:|-------|
-| `certificate.*` | YES | Full certificate data |
-| `certificate.private_key` | YES | Only if key was centrally generated (not CSR-based) |
-| `certificate.private_key_pkcs8` | YES | Only if key was centrally generated |
-| `certificate.private_key_pkcs1` | YES | Only for RSA keys, centrally generated |
-| `pkcs12` | **NO** | Not available on certificate events |
-| `pkcs12.password` | **NO** | Not available on certificate events |
-| `request.*` | **NO** | No request context on certificate events |
-| `previous.certificate.*` | only `on_renew` | The certificate being replaced |
-| `profile.*` | YES | Profile configuration |
+| Dictionary                      |    Available    | Notes                                               |
+| ------------------------------- | :-------------: | --------------------------------------------------- |
+| `certificate.*`                 |       YES       | Full certificate data                               |
+| `certificate.private_key`       |       YES       | Only if key was centrally generated (not CSR-based) |
+| `certificate.private_key_pkcs8` |       YES       | Only if key was centrally generated                 |
+| `certificate.private_key_pkcs1` |       YES       | Only for RSA keys, centrally generated              |
+| `pkcs12`                        |     **NO**      | Not available on certificate events                 |
+| `pkcs12.password`               |     **NO**      | Not available on certificate events                 |
+| `request.*`                     |     **NO**      | No request context on certificate events            |
+| `previous.certificate.*`        | only `on_renew` | The certificate being replaced                      |
+| `profile.*`                     |       YES       | Profile configuration                               |
 
 #### Request events (`on_submit_enroll`, `on_approve_enroll`, etc.)
 
-| Dictionary | Available | Notes |
-|-----------|:---------:|-------|
-| `certificate.*` | YES | Via `request.certificate.*` (after approval) |
-| `certificate.private_key*` | **NO** | Raw key not available on request events |
-| `pkcs12` | YES | Only on approval events (`on_approve_enroll/renew/recover`) and only for centralized enrollment |
-| `pkcs12.password` | YES | Same as above |
-| `request.*` | YES | Full request data including workflow, requester, comments |
-| `request.certificate.*` | YES | Certificate nested in request (after issuance) |
-| `previous.certificate.*` | only `on_*_renew` | On renewal request events |
-| `profile.*` | YES | Profile configuration |
+| Dictionary                 |     Available     | Notes                                                                                           |
+| -------------------------- | :---------------: | ----------------------------------------------------------------------------------------------- |
+| `certificate.*`            |        YES        | Via `request.certificate.*` (after approval)                                                    |
+| `certificate.private_key*` |      **NO**       | Raw key not available on request events                                                         |
+| `pkcs12`                   |        YES        | Only on approval events (`on_approve_enroll/renew/recover`) and only for centralized enrollment |
+| `pkcs12.password`          |        YES        | Same as above                                                                                   |
+| `request.*`                |        YES        | Full request data including workflow, requester, comments                                       |
+| `request.certificate.*`    |        YES        | Certificate nested in request (after issuance)                                                  |
+| `previous.certificate.*`   | only `on_*_renew` | On renewal request events                                                                       |
+| `profile.*`                |        YES        | Profile configuration                                                                           |
 
 ### Choosing the Right Event for Your Use Case
 
-| I need to... | Use this event | Why |
-|-------------|---------------|-----|
-| Deploy cert PEM + private key separately | `on_enroll` / `on_renew` | Only certificate events have `certificate.private_key` |
-| Deploy PKCS#12 bundle | `on_approve_enroll` / `on_approve_renew` | Only request approval events have `pkcs12` |
-| Notify requester about approval decision | `on_approve_enroll` / `on_deny_enroll` | Request events have `request.requester` |
-| Create a ticket when request is submitted | `on_submit_enroll` | Fires immediately when user submits |
-| Track the old serial being replaced | `on_renew` or `on_approve_renew` | `previous.certificate.serial` available |
-| Alert on certificate expiration | `on_expire` | Requires `runPeriod` and `runOnRenewed` |
-| Alert on license threshold | `on_license_usage` | Requires `licenceUsagePercent` |
+| I need to...                              | Use this event                           | Why                                                    |
+| ----------------------------------------- | ---------------------------------------- | ------------------------------------------------------ |
+| Deploy cert PEM + private key separately  | `on_enroll` / `on_renew`                 | Only certificate events have `certificate.private_key` |
+| Deploy PKCS#12 bundle                     | `on_approve_enroll` / `on_approve_renew` | Only request approval events have `pkcs12`             |
+| Notify requester about approval decision  | `on_approve_enroll` / `on_deny_enroll`   | Request events have `request.requester`                |
+| Create a ticket when request is submitted | `on_submit_enroll`                       | Fires immediately when user submits                    |
+| Track the old serial being replaced       | `on_renew` or `on_approve_renew`         | `previous.certificate.serial` available                |
+| Alert on certificate expiration           | `on_expire`                              | Requires `runPeriod` and `runOnRenewed`                |
+| Alert on license threshold                | `on_license_usage`                       | Requires `licenceUsagePercent`                         |
 
 ---
 
@@ -770,13 +800,13 @@ certificate issuance event (`on_enroll`, `on_renew`, `on_recover`).
 
 The `timeout` and `runPeriod` fields accept duration strings:
 
-| Unit | Short | Long |
-|------|-------|------|
-| Days | `d` | `day`, `days` |
-| Hours | `h` | `hour`, `hours` |
-| Minutes | `m` | `min`, `mins`, `minute`, `minutes` |
-| Seconds | `s` | `sec`, `secs`, `second`, `seconds` |
-| Milliseconds | `ms` | `milli`, `millis`, `millisecond`, `milliseconds` |
+| Unit         | Short | Long                                             |
+| ------------ | ----- | ------------------------------------------------ |
+| Days         | `d`   | `day`, `days`                                    |
+| Hours        | `h`   | `hour`, `hours`                                  |
+| Minutes      | `m`   | `min`, `mins`, `minute`, `minutes`               |
+| Seconds      | `s`   | `sec`, `secs`, `second`, `seconds`               |
+| Milliseconds | `ms`  | `milli`, `millis`, `millisecond`, `milliseconds` |
 
 Examples: `"30 seconds"`, `"5m"`, `"24h"`, `"7 days"`, `"30000ms"`
 
@@ -787,6 +817,7 @@ Examples: `"30 seconds"`, `"5m"`, `"24h"`, `"7 days"`, `"30000ms"`
 ### Retry Behavior
 
 When a REST notification fails:
+
 1. A `TriggerResult` with status `FAILURE` is recorded
 2. If `retries > 0`, the notification is rescheduled with exponential backoff
 3. Each retry doubles the delay: 1st retry after ~1 delay, 2nd after ~2x delay, etc.
@@ -841,9 +872,7 @@ When a certificate is enrolled or renewed, push it to a load balancer:
       "authenticationType": "bearer",
       "credentials": "lb-api-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"domain\": \"{{certificate.san.dnsname.1}}\", \"certificate\": \"{{certificate.pem}}\", \"private_key\": \"{{certificate.private_key}}\", \"serial\": \"{{certificate.serial}}\"}",
       "timeout": "30 seconds",
@@ -873,7 +902,7 @@ First obtain an OAuth token, then use it to deploy:
       "credentials": "oauth-client-creds",
       "method": "POST",
       "headers": [
-        {"name": "Content-Type", "value": "application/x-www-form-urlencoded"}
+        { "name": "Content-Type", "value": "application/x-www-form-urlencoded" }
       ],
       "payloadType": "text",
       "payload": "grant_type=client_credentials&scope=certificates:write",
@@ -885,8 +914,11 @@ First obtain an OAuth token, then use it to deploy:
       "authenticationType": "noauth",
       "method": "PUT",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "Authorization", "value": "Bearer {{rest.response.1.access_token}}"}
+        { "name": "Content-Type", "value": "application/json" },
+        {
+          "name": "Authorization",
+          "value": "Bearer {{rest.response.1.access_token}}"
+        }
       ],
       "payloadType": "json",
       "payload": "{\"pem\": \"{{certificate.pem}}\", \"key\": \"{{certificate.private_key}}\", \"chain\": \"{{certificate.pem}}\"}",
@@ -898,6 +930,7 @@ First obtain an OAuth token, then use it to deploy:
 ```
 
 **How it works:**
+
 1. Step 1 calls the OAuth endpoint with Basic auth (client ID + secret)
 2. The OAuth response `{"access_token": "eyJ..."}` is parsed
 3. Step 2 references `{{rest.response.1.access_token}}` in the Authorization header
@@ -919,8 +952,8 @@ Create a TXT record for DNS-01 validation:
       "credentials": "dns-api-key",
       "method": "POST",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "X-API-Key", "value": "{{credentials.key}}"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "X-API-Key", "value": "{{credentials.key}}" }
       ],
       "payloadType": "json",
       "payload": "{\"type\": \"TXT\", \"name\": \"_acme-challenge.{{certificate.san.dnsname.1}}\", \"content\": \"{{certificate.metadata.acme_challenge}}\", \"ttl\": 300}",
@@ -948,8 +981,8 @@ Deploy certificates with embedded private key data for Wi-Fi EAP-TLS profiles:
       "credentials": "iot-api-key",
       "method": "PATCH",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "x-api-key", "value": "{{credentials.key}}"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "x-api-key", "value": "{{credentials.key}}" }
       ],
       "payloadType": "json",
       "payload": "{\"clientCert\": {\"data\": \"{{Base64(Raw({{certificate.pem}}))}}\", \"name\": \"{{certificate.serial}}.pem\"}, \"clientKey\": {\"data\": \"{{Base64(Raw({{certificate.private_key_pkcs1}}))}}\", \"name\": \"{{certificate.serial}}.key\"}}",
@@ -980,9 +1013,7 @@ Push revocation events to a SIEM or log aggregation system:
       "authenticationType": "bearer",
       "credentials": "siem-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"event_type\": \"certificate_revoked\", \"severity\": \"high\", \"certificate_dn\": \"{{certificate.dn}}\", \"serial\": \"{{certificate.serial}}\", \"revocation_reason\": \"{{certificate.revocation_reason}}\", \"revocation_date\": \"{{certificate.revocation_date}}\", \"profile\": \"{{certificate.profile}}\", \"owner\": \"{{certificate.owner}}\"}",
       "timeout": "10 seconds",
@@ -1008,9 +1039,7 @@ Some APIs require creating a resource first, then activating it:
       "authenticationType": "bearer",
       "credentials": "api-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"cn\": \"{{certificate.subject.cn.1}}\", \"pem\": \"{{certificate.pem}}\"}",
       "timeout": "30 seconds",
@@ -1021,9 +1050,7 @@ Some APIs require creating a resource first, then activating it:
       "authenticationType": "bearer",
       "credentials": "api-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"activate\": true}",
       "timeout": "30 seconds",
@@ -1034,6 +1061,7 @@ Some APIs require creating a resource first, then activating it:
 ```
 
 **How it works:**
+
 1. Step 1 creates the certificate resource and returns `{"id": "cert-abc123", ...}`
 2. Step 2 uses `{{rest.response.1.id}}` in the URL to activate the newly created resource
 
@@ -1055,9 +1083,7 @@ Create a ticket 30 days before certificate expiration:
       "authenticationType": "basic",
       "credentials": "jira-service-account",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"fields\": {\"project\": {\"key\": \"OPS\"}, \"summary\": \"Certificate expiring: {{certificate.subject.cn.1}}\", \"description\": \"Certificate {{certificate.dn}} (serial: {{certificate.serial}}) expires on {{DateTimeFormat({{certificate.not_after}}, \\\"yyyy-MM-dd\\\")}}. Profile: {{certificate.profile}}. Owner: {{OrElse({{certificate.owner}}, \\\"unassigned\\\")}}\", \"issuetype\": {\"name\": \"Task\"}, \"priority\": {\"name\": \"High\"}}}",
       "timeout": "15 seconds",
@@ -1068,6 +1094,7 @@ Create a ticket 30 days before certificate expiration:
 ```
 
 **Key points:**
+
 - `runPeriod: "30 days"` means this fires 30 days before expiration
 - `runOnRenewed: false` means it won't fire if the certificate was already renewed
 - Uses `DateTimeFormat()` to format the expiration date
@@ -1105,8 +1132,8 @@ only has the team name. Step 1 looks up the sys_id, step 2 creates the incident.
       "credentials": "servicenow-api-creds",
       "method": "GET",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "Accept", "value": "application/json"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Accept", "value": "application/json" }
       ],
       "timeout": "15 seconds",
       "expectedHttpCodes": [200]
@@ -1117,8 +1144,8 @@ only has the team name. Step 1 looks up the sys_id, step 2 creates the incident.
       "credentials": "servicenow-api-creds",
       "method": "POST",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "Accept", "value": "application/json"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Accept", "value": "application/json" }
       ],
       "payloadType": "json",
       "payload": "{\"short_description\": \"Certificate expiring: {{certificate.subject.cn.1}}\", \"description\": \"Certificate {{certificate.dn}} (serial: {{certificate.serial}}) expires on {{DateTimeFormat({{certificate.not_after}}, \\\"yyyy-MM-dd\\\")}}. Profile: {{certificate.profile}}. Owner: {{OrElse({{certificate.owner}}, \\\"unassigned\\\")}}.\", \"urgency\": \"2\", \"impact\": \"2\", \"assignment_group\": \"{{rest.response.1.result.1.sys_id}}\", \"category\": \"certificate\", \"subcategory\": \"expiration\"}",
@@ -1130,6 +1157,7 @@ only has the team name. Step 1 looks up the sys_id, step 2 creates the incident.
 ```
 
 **How chaining works:**
+
 1. Step 1 queries ServiceNow's `sys_user_group` table filtering by the
    certificate's team name (`{{certificate.team}}`). ServiceNow returns
    JSON: `{"result": [{"sys_id": "abc123", "name": "DevOps"}]}`
@@ -1142,6 +1170,7 @@ only has the team name. Step 1 looks up the sys_id, step 2 creates the incident.
 about to expire or when the license cap is about to be reached.
 
 **For license expiration:**
+
 ```json
 {
   "name": "jira-license-expiry",
@@ -1155,9 +1184,7 @@ about to expire or when the license cap is about to be reached.
       "authenticationType": "basic",
       "credentials": "jira-service-account",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"fields\": {\"project\": {\"key\": \"OPS\"}, \"summary\": \"Horizon license expiring on {{license.expiration_date}}\", \"description\": \"The Horizon CLM license expires on {{license.expiration_date}}. Current usage: {{license.used}} / {{license.limit}} holders ({{license.percent_used}}%). Please renew the license before expiration to avoid service disruption.\", \"issuetype\": {\"name\": \"Task\"}, \"priority\": {\"name\": \"High\"}}}",
       "timeout": "15 seconds",
@@ -1168,6 +1195,7 @@ about to expire or when the license cap is about to be reached.
 ```
 
 **For license usage threshold (e.g., 80%):**
+
 ```json
 {
   "name": "jira-license-usage-80pct",
@@ -1181,9 +1209,7 @@ about to expire or when the license cap is about to be reached.
       "authenticationType": "basic",
       "credentials": "jira-service-account",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"fields\": {\"project\": {\"key\": \"OPS\"}, \"summary\": \"Horizon license usage at {{license.percent_used}}%\", \"description\": \"License usage has reached {{license.percent_used}}% ({{license.used}} / {{license.limit}} holders, {{license.available}} remaining). Consider upgrading the license.\", \"issuetype\": {\"name\": \"Task\"}, \"priority\": {\"name\": \"High\"}}}",
       "timeout": "15 seconds",
@@ -1218,8 +1244,8 @@ in a custom field. When closing, search ServiceNow by that correlation key.
       "credentials": "servicenow-api-creds",
       "method": "GET",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "Accept", "value": "application/json"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Accept", "value": "application/json" }
       ],
       "timeout": "15 seconds",
       "expectedHttpCodes": [200]
@@ -1230,8 +1256,8 @@ in a custom field. When closing, search ServiceNow by that correlation key.
       "credentials": "servicenow-api-creds",
       "method": "PATCH",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "Accept", "value": "application/json"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "Accept", "value": "application/json" }
       ],
       "payloadType": "json",
       "payload": "{\"state\": \"7\", \"close_code\": \"Solved (Permanently)\", \"close_notes\": \"Certificate renewed. New serial: {{certificate.serial}}, new expiry: {{DateTimeFormat({{certificate.not_after}}, \\\"yyyy-MM-dd\\\")}}\"}",
@@ -1243,6 +1269,7 @@ in a custom field. When closing, search ServiceNow by that correlation key.
 ```
 
 **How it works:**
+
 1. Step 1 searches ServiceNow for open incidents (`state!=7`) in the
    `certificate/expiration` category that mention the **previous** certificate's
    CN (`{{previous.certificate.subject.cn.1}}` - available on `on_renew`).
@@ -1255,6 +1282,7 @@ certificate's CN. The `previous.certificate.*` dictionary is only available
 on `on_renew` events.
 
 **Alternative correlation approaches:**
+
 - Store the certificate thumbprint in a ServiceNow custom field during creation,
   search by `{{previous.certificate.thumbprint}}` during closure
 - Use a label on the certificate to store an external reference (if the external
@@ -1285,9 +1313,7 @@ This is Pattern A (token acquisition + API call).
       "authenticationType": "basic",
       "credentials": "vcenter-admin",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{}",
       "timeout": "15 seconds",
@@ -1298,8 +1324,8 @@ This is Pattern A (token acquisition + API call).
       "authenticationType": "noauth",
       "method": "PUT",
       "headers": [
-        {"name": "Content-Type", "value": "application/json"},
-        {"name": "vmware-api-session-id", "value": "{{rest.response.1.body}}"}
+        { "name": "Content-Type", "value": "application/json" },
+        { "name": "vmware-api-session-id", "value": "{{rest.response.1.body}}" }
       ],
       "payloadType": "json",
       "payload": "{\"spec\": {\"cert\": \"{{certificate.pem}}\", \"key\": \"{{certificate.private_key}}\"}}",
@@ -1311,6 +1337,7 @@ This is Pattern A (token acquisition + API call).
 ```
 
 **How it works:**
+
 1. Step 1 authenticates to the vSphere API with Basic auth, receiving a session
    token in the response body.
 2. Step 2 uses `noauth` (because auth is in the custom header) and passes the
@@ -1323,6 +1350,7 @@ available when the key was centrally generated by Horizon (not CSR-based
 enrollment).
 
 For PKCS#12-based deployment (e.g., systems that accept .pfx files):
+
 ```json
 {
   "name": "deploy-pkcs12-to-target",
@@ -1334,9 +1362,7 @@ For PKCS#12-based deployment (e.g., systems that accept .pfx files):
       "authenticationType": "bearer",
       "credentials": "target-api-token",
       "method": "POST",
-      "headers": [
-        {"name": "Content-Type", "value": "application/json"}
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"pkcs12\": \"{{pkcs12}}\", \"password\": \"{{pkcs12.password}}\", \"hostname\": \"{{request.certificate.san.dnsname.1}}\"}",
       "timeout": "30 seconds",

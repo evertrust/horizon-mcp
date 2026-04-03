@@ -1,6 +1,6 @@
-import { getLogger } from "../logging.js";
+import { getLogger } from '../logging.js';
 
-const logger = getLogger("horizon_mcp.client.retry");
+const logger = getLogger('horizon_mcp.client.retry');
 
 const RETRYABLE_STATUSES = new Set([429, 502, 503, 504]);
 
@@ -42,7 +42,7 @@ export async function withRetry(
 
       // Respect Retry-After header on 429
       if (response.status === 429) {
-        const retryAfter = response.headers.get("Retry-After");
+        const retryAfter = response.headers.get('Retry-After');
         if (retryAfter) {
           const retryAfterSeconds = parseInt(retryAfter, 10);
           if (!isNaN(retryAfterSeconds)) {
