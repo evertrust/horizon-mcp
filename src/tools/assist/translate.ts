@@ -264,7 +264,11 @@ function extractDateConditions(
 }
 
 function globToRegex(glob: string): string {
-  return glob.replace(/\./g, '\\.').replace(/\*/g, '.*').replace(/\?/g, '.');
+  return glob
+    .replace(/\\/g, '\\\\')
+    .replace(/\./g, '\\.')
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.');
 }
 
 function chooseOperator(
