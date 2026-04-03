@@ -64,20 +64,20 @@ connector that is referenced by an active profile.
 
 Horizon modules define the protocol-specific behavior of a profile:
 
-| Module       | Enum Value    | Category  | Key Characteristics                                       |
-|--------------|---------------|-----------|-----------------------------------------------------------|
-| WebRA        | `webra`       | Managed   | Web-based enrollment, richest configuration surface       |
-| ACME         | `acme`        | Managed   | RFC 8555, automated domain validation, always auto-approve|
-| SCEP         | `scep`        | Managed   | Network device enrollment, challenge-based auth           |
-| EST          | `est`         | Managed   | RFC 7030, TLS-secured enrollment, modern devices          |
-| WCCE         | `wcce`        | Managed   | Windows Certificate auto-enrollment (AD-integrated)       |
-| CRMP         | `crmp`        | Managed   | CMP (Certificate Management Protocol) enrollment         |
-| Intune       | `intune`      | Managed   | Microsoft Intune MDM enrollment (SCEP-based)              |
-| IntunePKCS   | `intunepkcs`  | Managed   | Microsoft Intune MDM enrollment (PKCS-based)              |
-| Jamf         | `jamf`        | Managed   | Jamf MDM enrollment                                       |
-| ACME External| `acmeexternal`| Managed   | ACME enrollment via external ACME CA                      |
-| Monitored    | `monitored`   | Monitored | No issuance - observation, labeling, ownership, and notifications |
-| Discovery    | `discovery`   | Discovered | Inventory only - stores discovery data, no enrichment             |
+| Module        | Enum Value     | Category   | Key Characteristics                                               |
+| ------------- | -------------- | ---------- | ----------------------------------------------------------------- |
+| WebRA         | `webra`        | Managed    | Web-based enrollment, richest configuration surface               |
+| ACME          | `acme`         | Managed    | RFC 8555, automated domain validation, always auto-approve        |
+| SCEP          | `scep`         | Managed    | Network device enrollment, challenge-based auth                   |
+| EST           | `est`          | Managed    | RFC 7030, TLS-secured enrollment, modern devices                  |
+| WCCE          | `wcce`         | Managed    | Windows Certificate auto-enrollment (AD-integrated)               |
+| CRMP          | `crmp`         | Managed    | CMP (Certificate Management Protocol) enrollment                  |
+| Intune        | `intune`       | Managed    | Microsoft Intune MDM enrollment (SCEP-based)                      |
+| IntunePKCS    | `intunepkcs`   | Managed    | Microsoft Intune MDM enrollment (PKCS-based)                      |
+| Jamf          | `jamf`         | Managed    | Jamf MDM enrollment                                               |
+| ACME External | `acmeexternal` | Managed    | ACME enrollment via external ACME CA                              |
+| Monitored     | `monitored`    | Monitored  | No issuance - observation, labeling, ownership, and notifications |
+| Discovery     | `discovery`    | Discovered | Inventory only - stores discovery data, no enrichment             |
 
 ### Certificate Lifecycle Stages
 
@@ -110,69 +110,69 @@ metadata with no enrichment or lifecycle control.
 
 ## PKI Connector Types (22)
 
-| Type          | CA / Protocol                        |
-|---------------|--------------------------------------|
-| `stream`      | Stream CA (generic)                  |
-| `acmeenroll`  | ACME enrollment connector            |
-| `acmerevoke`  | ACME revocation connector            |
-| `evtadcs`     | Evertrust ADCS connector             |
-| `msadcs`      | Microsoft AD Certificate Services    |
-| `awsacmpca`   | AWS ACM Private CA                   |
-| `certeurope`  | CertEurope CA                        |
-| `cmp`         | Certificate Management Protocol      |
-| `digicert`    | DigiCert CertCentral                 |
-| `ejbca`       | EJBCA                                |
-| `entrust`     | Entrust                              |
-| `idca`        | IDCA                                 |
-| `integrated`  | Integrated CA (built-in)             |
-| `fcms`        | FCMS                                 |
-| `gsatlas`     | GlobalSign Atlas                     |
-| `gsmssl`      | GlobalSign MSSL                      |
-| `otpki`       | OpenTrust PKI                        |
-| `metapki`     | MetaPKI                              |
-| `nameshield`  | Nameshield                           |
-| `nexuscm`     | Nexus Certificate Manager            |
-| `sectigo`     | Sectigo                              |
-| `swisssign`   | SwissSign                            |
+| Type         | CA / Protocol                     |
+| ------------ | --------------------------------- |
+| `stream`     | Stream CA (generic)               |
+| `acmeenroll` | ACME enrollment connector         |
+| `acmerevoke` | ACME revocation connector         |
+| `evtadcs`    | Evertrust ADCS connector          |
+| `msadcs`     | Microsoft AD Certificate Services |
+| `awsacmpca`  | AWS ACM Private CA                |
+| `certeurope` | CertEurope CA                     |
+| `cmp`        | Certificate Management Protocol   |
+| `digicert`   | DigiCert CertCentral              |
+| `ejbca`      | EJBCA                             |
+| `entrust`    | Entrust                           |
+| `idca`       | IDCA                              |
+| `integrated` | Integrated CA (built-in)          |
+| `fcms`       | FCMS                              |
+| `gsatlas`    | GlobalSign Atlas                  |
+| `gsmssl`     | GlobalSign MSSL                   |
+| `otpki`      | OpenTrust PKI                     |
+| `metapki`    | MetaPKI                           |
+| `nameshield` | Nameshield                        |
+| `nexuscm`    | Nexus Certificate Manager         |
+| `sectigo`    | Sectigo                           |
+| `swisssign`  | SwissSign                         |
 
 ---
 
 ## Third-Party Connector Types (10)
 
-| Type          | Target System                        |
-|---------------|--------------------------------------|
-| `aws`         | AWS Certificate Manager / Secrets    |
-| `akv`         | Azure Key Vault                      |
-| `f5as3`       | F5 BIG-IP (AS3 declarative)          |
-| `f5client`    | F5 BIG-IP (iControl REST)            |
-| `gcm`         | Google Cloud Certificate Manager     |
-| `intune`      | Microsoft Intune (SCEP)              |
-| `intunepkcs`  | Microsoft Intune (PKCS)              |
-| `jamf`        | Jamf Pro                             |
-| `ldappub`     | LDAP Publishing                      |
-| `msad`        | Microsoft Active Directory           |
+| Type         | Target System                     |
+| ------------ | --------------------------------- |
+| `aws`        | AWS Certificate Manager / Secrets |
+| `akv`        | Azure Key Vault                   |
+| `f5as3`      | F5 BIG-IP (AS3 declarative)       |
+| `f5client`   | F5 BIG-IP (iControl REST)         |
+| `gcm`        | Google Cloud Certificate Manager  |
+| `intune`     | Microsoft Intune (SCEP)           |
+| `intunepkcs` | Microsoft Intune (PKCS)           |
+| `jamf`       | Jamf Pro                          |
+| `ldappub`    | LDAP Publishing                   |
+| `msad`       | Microsoft Active Directory        |
 
 ---
 
 ## Core API Surface
 
-| Domain           | Base Path                         | Key Operations                                          |
-|------------------|-----------------------------------|---------------------------------------------------------|
-| Certificates     | `/api/v1/certificates`            | search, get, download, enroll, revoke, renew, update    |
-| Requests         | `/api/v1/requests`                | search, get, submit, approve, deny, cancel              |
-| Profiles         | `/api/v1/certificate/profiles`    | list, get, create, update, delete                       |
-| PKI Connectors   | `/api/v1/pki/connectors`          | list, get, create, update, delete                       |
-| 3P Connectors    | `/api/v1/thirdparty/connectors`   | list, get, create, update, delete                       |
-| Datasources      | `/api/v1/datasources`             | list, get, create, update, delete, test                 |
-| CAs              | `/api/v1/cas`                     | list, get, create, update, delete, CRL cache, trust chains |
-| Security         | `/api/v1/security/*`              | roles, teams, principals, IDPs, credentials             |
-| Triggers         | `/api/v1/triggers`                | list, get, create, update, delete, test                 |
-| Discovery        | `/api/v1/discovery/*`             | campaigns, events, results                              |
-| Events           | `/api/v1/events`                  | search, get, export                                     |
-| Labels           | `/api/v1/certificate/labels`      | list, get, create, update, delete                       |
-| Proxies          | `/api/v1/proxy/httpproxies`       | list, get, create, update, delete                       |
-| Password Policies| `/api/v1/security/passwordpolicies`| list, get, generate                                    |
-| Grading          | `/api/v1/certificate/grading/*`   | list, get (policies and rulesets)                       |
+| Domain            | Base Path                           | Key Operations                                             |
+| ----------------- | ----------------------------------- | ---------------------------------------------------------- |
+| Certificates      | `/api/v1/certificates`              | search, get, download, enroll, revoke, renew, update       |
+| Requests          | `/api/v1/requests`                  | search, get, submit, approve, deny, cancel                 |
+| Profiles          | `/api/v1/certificate/profiles`      | list, get, create, update, delete                          |
+| PKI Connectors    | `/api/v1/pki/connectors`            | list, get, create, update, delete                          |
+| 3P Connectors     | `/api/v1/thirdparty/connectors`     | list, get, create, update, delete                          |
+| Datasources       | `/api/v1/datasources`               | list, get, create, update, delete, test                    |
+| CAs               | `/api/v1/cas`                       | list, get, create, update, delete, CRL cache, trust chains |
+| Security          | `/api/v1/security/*`                | roles, teams, principals, IDPs, credentials                |
+| Triggers          | `/api/v1/triggers`                  | list, get, create, update, delete, test                    |
+| Discovery         | `/api/v1/discovery/*`               | campaigns, events, results                                 |
+| Events            | `/api/v1/events`                    | search, get, export                                        |
+| Labels            | `/api/v1/certificate/labels`        | list, get, create, update, delete                          |
+| Proxies           | `/api/v1/proxy/httpproxies`         | list, get, create, update, delete                          |
+| Password Policies | `/api/v1/security/passwordpolicies` | list, get, generate                                        |
+| Grading           | `/api/v1/certificate/grading/*`     | list, get (policies and rulesets)                          |
 
 ---
 
@@ -199,12 +199,12 @@ metadata with no enrichment or lifecycle control.
    in the desired changes, and PUT the complete object back.
 
 7. **Immutable names**: ALL object names in Horizon are immutable after
-   creation  -  names are used as primary keys in the database and CANNOT be
+   creation - names are used as primary keys in the database and CANNOT be
    changed. This applies to every configuration object: profiles, connectors,
    datasources, CAs, triggers, roles, teams, dashboards, saved queries,
    labels, discovery campaigns, etc. When creating any object, you MUST ask
-   the user for the name  -  never invent or guess names on their behalf.
+   the user for the name - never invent or guess names on their behalf.
    To rename an object, the only option is to delete it and recreate it.
-   Most objects also support a **display name** (`displayName`)  -  a mutable
+   Most objects also support a **display name** (`displayName`) - a mutable
    human-friendly label shown in the Horizon UI. When a creation tool accepts
    a `display_name` parameter, always ask the user for it alongside the name.

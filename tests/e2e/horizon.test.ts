@@ -16,19 +16,19 @@
  *   - test_assist.py     (15 assist tools + 12 knowledge resources)
  *   - test_discovery.py  (13 discovery tools)
  */
+import { describe, expect, it } from 'vitest';
 
-import { describe, it, expect } from "vitest";
 import {
   E2E_CONFIGURED,
   E2E_PREFIX,
-  setupE2EStack,
+  ToolError,
   callTool,
   callToolRaw,
-  readResource,
-  getMcpClient,
   getHorizonClient,
-  ToolError,
-} from "./setup.js";
+  getMcpClient,
+  readResource,
+  setupE2EStack,
+} from './setup.js';
 
 // ---------------------------------------------------------------------------
 // Utility
@@ -42,72 +42,72 @@ function delay(ms: number): Promise<void> {
 // Entire suite is gated on E2E env vars
 // ---------------------------------------------------------------------------
 
-describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
+describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
   setupE2EStack();
 
   // =========================================================================
   // Lifecycle (ported from test_lifecycle.py)
   // =========================================================================
 
-  describe("lifecycle", () => {
+  describe('lifecycle', () => {
     // -----------------------------------------------------------------------
     // Certificate search
     // -----------------------------------------------------------------------
 
-    describe("search_certificates", () => {
-      it("returns paged results with a match-all query", async () => {
-        const result = await callTool("search_certificates", {
-          query: "profile exists",
+    describe('search_certificates', () => {
+      it('returns paged results with a match-all query', async () => {
+        const result = await callTool('search_certificates', {
+          query: 'profile exists',
         });
         expect(
-          result["results"],
+          result['results'],
           "search_certificates response lacks 'results' key. " +
-            `Got: ${Object.keys(result).join(", ")}`,
+            `Got: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        expect(Array.isArray(result["results"])).toBe(true);
-        expect(result["pageIndex"]).toBeDefined();
-        expect(result["pageSize"]).toBeDefined();
+        expect(Array.isArray(result['results'])).toBe(true);
+        expect(result['pageIndex']).toBeDefined();
+        expect(result['pageSize']).toBeDefined();
       });
 
-      it("returns count when with_count is requested", async () => {
-        const result = await callTool("search_certificates", {
-          query: "profile exists",
+      it('returns count when with_count is requested', async () => {
+        const result = await callTool('search_certificates', {
+          query: 'profile exists',
           page_size: 5,
           with_count: true,
         });
-        expect(result["results"]).toBeDefined();
-        expect(Array.isArray(result["results"])).toBe(true);
+        expect(result['results']).toBeDefined();
+        expect(Array.isArray(result['results'])).toBe(true);
         expect(
-          result["count"],
+          result['count'],
           "with_count=true should populate 'count'",
         ).toBeDefined();
       });
 
-      it("returns compact preset fields", async () => {
-        const result = await callTool("search_certificates", {
-          query: "profile exists",
-          preset: "compact",
+      it('returns compact preset fields', async () => {
+        const result = await callTool('search_certificates', {
+          query: 'profile exists',
+          preset: 'compact',
           page_size: 1,
         });
-        expect(result["results"]).toBeDefined();
-        const results = result["results"] as Record<string, unknown>[];
+        expect(result['results']).toBeDefined();
+        const results = result['results'] as Record<string, unknown>[];
         if (results.length > 0) {
           const first = results[0]!;
           const compactFields = new Set([
-            "dn",
-            "serial",
-            "profile",
-            "module",
-            "notAfter",
-            "keyType",
+            'dn',
+            'serial',
+            'profile',
+            'module',
+            'notAfter',
+            'keyType',
           ]);
           const hasCompactField = Object.keys(first).some((k) =>
             compactFields.has(k),
           );
           expect(
             hasCompactField,
-            "compact preset result missing expected fields. " +
-              `Got keys: ${Object.keys(first).join(", ")}`,
+            'compact preset result missing expected fields. ' +
+              `Got keys: ${Object.keys(first).join(', ')}`,
           ).toBe(true);
         }
       });
@@ -117,40 +117,37 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Certificate get
     // -----------------------------------------------------------------------
 
-    describe("get_certificate", () => {
-      it("returns full details for an existing certificate", async () => {
-        const search = await callTool("search_certificates", {
-          query: "profile exists",
+    describe('get_certificate', () => {
+      it('returns full details for an existing certificate', async () => {
+        const search = await callTool('search_certificates', {
+          query: 'profile exists',
           page_size: 1,
         });
-        const certs = (search["results"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const certs = (search['results'] ?? []) as Record<string, unknown>[];
         if (certs.length === 0) {
-          console.log("SKIP: No certificates found on this Horizon instance");
+          console.log('SKIP: No certificates found on this Horizon instance');
           return;
         }
 
-        const certId = certs[0]!["_id"] as string | undefined;
+        const certId = certs[0]!['_id'] as string | undefined;
         if (!certId) {
-          console.log("SKIP: First certificate result has no _id field");
+          console.log('SKIP: First certificate result has no _id field');
           return;
         }
 
-        const result = await callTool("get_certificate", {
+        const result = await callTool('get_certificate', {
           certificate_id: certId,
         });
         expect(result).toBeDefined();
-        if (!("raw" in result)) {
+        if (!('raw' in result)) {
           expect(
-            result["certificate"],
+            result['certificate'],
             "get_certificate response lacks 'certificate' key. " +
-              `Got keys: ${Object.keys(result).join(", ")}`,
+              `Got keys: ${Object.keys(result).join(', ')}`,
           ).toBeDefined();
-          const certData = result["certificate"] as Record<string, unknown>;
-          expect(typeof certData).toBe("object");
-          expect(certData["_id"]).toBe(certId);
+          const certData = result['certificate'] as Record<string, unknown>;
+          expect(typeof certData).toBe('object');
+          expect(certData['_id']).toBe(certId);
         }
       });
     });
@@ -159,76 +156,70 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Certificate download
     // -----------------------------------------------------------------------
 
-    describe("download_certificate", () => {
-      it("returns PEM content for a known certificate", async () => {
-        const search = await callTool("search_certificates", {
-          query: "profile exists",
+    describe('download_certificate', () => {
+      it('returns PEM content for a known certificate', async () => {
+        const search = await callTool('search_certificates', {
+          query: 'profile exists',
           page_size: 1,
         });
-        const certs = (search["results"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const certs = (search['results'] ?? []) as Record<string, unknown>[];
         if (certs.length === 0) {
-          console.log("SKIP: No certificates found on this Horizon instance");
+          console.log('SKIP: No certificates found on this Horizon instance');
           return;
         }
 
-        const certId = certs[0]!["_id"] as string | undefined;
+        const certId = certs[0]!['_id'] as string | undefined;
         if (!certId) {
-          console.log("SKIP: First certificate result has no _id field");
+          console.log('SKIP: First certificate result has no _id field');
           return;
         }
 
-        const result = await callTool("download_certificate", {
+        const result = await callTool('download_certificate', {
           certificate_id: certId,
-          format: "pem",
+          format: 'pem',
         });
         expect(result).toBeDefined();
-        expect("content" in result || "error" in result).toBe(true);
-        if ("content" in result) {
-          const content = result["content"];
+        expect('content' in result || 'error' in result).toBe(true);
+        if ('content' in result) {
+          const content = result['content'];
           let pemStr: string;
-          if (typeof content === "object" && content !== null) {
+          if (typeof content === 'object' && content !== null) {
             pemStr =
-              ((content as Record<string, unknown>)["certificate"] as string) ??
-              "";
+              ((content as Record<string, unknown>)['certificate'] as string) ??
+              '';
           } else {
             pemStr = String(content);
           }
-          expect(pemStr).toContain("BEGIN CERTIFICATE");
+          expect(pemStr).toContain('BEGIN CERTIFICATE');
         }
       });
 
-      it("rejects unsupported format with an error", async () => {
-        const search = await callTool("search_certificates", {
-          query: "profile exists",
+      it('rejects unsupported format with an error', async () => {
+        const search = await callTool('search_certificates', {
+          query: 'profile exists',
           page_size: 1,
         });
-        const certs = (search["results"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const certs = (search['results'] ?? []) as Record<string, unknown>[];
         if (certs.length === 0) {
-          console.log("SKIP: No certificates found on this Horizon instance");
+          console.log('SKIP: No certificates found on this Horizon instance');
           return;
         }
 
-        const certId = certs[0]!["_id"] as string | undefined;
+        const certId = certs[0]!['_id'] as string | undefined;
         if (!certId) {
-          console.log("SKIP: First certificate result has no _id field");
+          console.log('SKIP: First certificate result has no _id field');
           return;
         }
 
-        const raw = await callToolRaw("download_certificate", {
+        const raw = await callToolRaw('download_certificate', {
           certificate_id: certId,
-          format: "der",
+          format: 'der',
         });
         expect(raw).toBeTruthy();
         const data = JSON.parse(raw) as Record<string, unknown>;
         expect(
-          data["error"],
-          "download_certificate with format=der should return an error dict",
+          data['error'],
+          'download_certificate with format=der should return an error dict',
         ).toBeDefined();
       });
     });
@@ -237,112 +228,105 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // CSV exports
     // -----------------------------------------------------------------------
 
-    describe("csv exports", () => {
-      it("exports certificates as CSV", async () => {
-        const result = await callTool("export_certificates_csv", {
-          query: "profile exists",
+    describe('csv exports', () => {
+      it('exports certificates as CSV', async () => {
+        const result = await callTool('export_certificates_csv', {
+          query: 'profile exists',
         });
         expect(
-          result["csv"],
-          `export_certificates_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(", ")}`,
+          result['csv'],
+          `export_certificates_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        expect(result["truncated"]).toBeDefined();
-        expect(result["returned_rows"]).toBeDefined();
-        expect(typeof result["csv"]).toBe("string");
+        expect(result['truncated']).toBeDefined();
+        expect(result['returned_rows']).toBeDefined();
+        expect(typeof result['csv']).toBe('string');
       });
 
-      it("exports requests as CSV", async () => {
-        const result = await callTool("export_requests_csv", {
-          query: "profile exists",
+      it('exports requests as CSV', async () => {
+        const result = await callTool('export_requests_csv', {
+          query: 'profile exists',
         });
         expect(
-          result["csv"],
-          `export_requests_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(", ")}`,
+          result['csv'],
+          `export_requests_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        expect(result["truncated"]).toBeDefined();
-        expect(typeof result["csv"]).toBe("string");
+        expect(result['truncated']).toBeDefined();
+        expect(typeof result['csv']).toBe('string');
       });
 
-      it(
-        "exports events as CSV",
-        async () => {
-          try {
-            const result = await callTool(
-              "export_events_csv",
-              { query: 'code matches ".*"' },
-              { timeout: 120_000 },
+      it('exports events as CSV', async () => {
+        try {
+          const result = await callTool(
+            'export_events_csv',
+            { query: 'code matches ".*"' },
+            { timeout: 120_000 },
+          );
+          expect(
+            result['csv'],
+            `export_events_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
+          ).toBeDefined();
+          expect(result['truncated']).toBeDefined();
+          expect(typeof result['csv']).toBe('string');
+        } catch (exc) {
+          // QA instances with very large event logs may exceed V8 string
+          // limits or timeout. This is an infrastructure limitation, not
+          // a code bug. Skip gracefully.
+          const msg = String(exc);
+          if (msg.includes('string longer than') || msg.includes('timeout')) {
+            console.log(
+              `SKIP: export_events_csv failed due to data volume: ${msg.slice(0, 200)}`,
             );
-            expect(
-              result["csv"],
-              `export_events_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(", ")}`,
-            ).toBeDefined();
-            expect(result["truncated"]).toBeDefined();
-            expect(typeof result["csv"]).toBe("string");
-          } catch (exc) {
-            // QA instances with very large event logs may exceed V8 string
-            // limits or timeout. This is an infrastructure limitation, not
-            // a code bug. Skip gracefully.
-            const msg = String(exc);
-            if (msg.includes("string longer than") || msg.includes("timeout")) {
-              console.log(
-                `SKIP: export_events_csv failed due to data volume: ${msg.slice(0, 200)}`,
-              );
-              return;
-            }
-            throw exc;
+            return;
           }
-        },
-        120_000,
-      );
+          throw exc;
+        }
+      }, 120_000);
     });
 
     // -----------------------------------------------------------------------
     // Request search and get
     // -----------------------------------------------------------------------
 
-    describe("requests", () => {
-      it("searches requests with a match-all query", async () => {
-        const result = await callTool("search_requests", {
-          query: "profile exists",
+    describe('requests', () => {
+      it('searches requests with a match-all query', async () => {
+        const result = await callTool('search_requests', {
+          query: 'profile exists',
         });
         expect(
-          result["results"],
-          `search_requests response lacks 'results'. Got: ${Object.keys(result).join(", ")}`,
+          result['results'],
+          `search_requests response lacks 'results'. Got: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        expect(Array.isArray(result["results"])).toBe(true);
-        expect(result["pageIndex"]).toBeDefined();
+        expect(Array.isArray(result['results'])).toBe(true);
+        expect(result['pageIndex']).toBeDefined();
       });
 
-      it("gets a request by ID", async () => {
-        const search = await callTool("search_requests", {
-          query: "profile exists",
+      it('gets a request by ID', async () => {
+        const search = await callTool('search_requests', {
+          query: 'profile exists',
           page_size: 5,
         });
-        const requests = (search["results"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const requests = (search['results'] ?? []) as Record<string, unknown>[];
         if (requests.length === 0) {
-          console.log("SKIP: No requests found on this Horizon instance");
+          console.log('SKIP: No requests found on this Horizon instance');
           return;
         }
 
         // Try each request until we find one that the API can return
         // (some requests with unsupported workflows may cause 500 errors)
-        let lastError = "";
+        let lastError = '';
         for (const req of requests) {
-          const reqId = req["_id"] as string | undefined;
+          const reqId = req['_id'] as string | undefined;
           if (!reqId) continue;
 
           try {
-            const result = await callTool("get_request", {
+            const result = await callTool('get_request', {
               request_id: reqId,
             });
             expect(result).toBeDefined();
-            if (!("raw" in result)) {
+            if (!('raw' in result)) {
               expect(
-                "_id" in result || "workflow" in result,
-                `get_request response lacks expected keys. Got: ${Object.keys(result).join(", ")}`,
+                '_id' in result || 'workflow' in result,
+                `get_request response lacks expected keys. Got: ${Object.keys(result).join(', ')}`,
               ).toBe(true);
             }
             return; // Test passed
@@ -362,34 +346,31 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Request template
     // -----------------------------------------------------------------------
 
-    describe("get_request_template", () => {
-      it("returns a template structure for a known profile", async () => {
-        const profiles = await callTool("list_profiles");
-        const items = (profiles["items"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+    describe('get_request_template', () => {
+      it('returns a template structure for a known profile', async () => {
+        const profiles = await callTool('list_profiles');
+        const items = (profiles['items'] ?? []) as Record<string, unknown>[];
         if (items.length === 0) {
-          console.log("SKIP: No profiles configured on this Horizon instance");
+          console.log('SKIP: No profiles configured on this Horizon instance');
           return;
         }
 
-        let lastError = "";
+        let lastError = '';
         for (const item of items) {
-          const profileName = (item["name"] ?? item["identifier"]) as
+          const profileName = (item['name'] ?? item['identifier']) as
             | string
             | undefined;
-          const module = item["module"] as string | undefined;
+          const module = item['module'] as string | undefined;
           if (!profileName || !module) continue;
 
           try {
-            const result = await callTool("get_request_template", {
-              workflow: "enroll",
+            const result = await callTool('get_request_template', {
+              workflow: 'enroll',
               profile: profileName,
               module,
             });
             expect(result).toBeDefined();
-            if (!("raw" in result)) {
+            if (!('raw' in result)) {
               expect(Object.keys(result).length).toBeGreaterThan(0);
             }
             return; // Test passed - stop iterating
@@ -409,44 +390,41 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Event search and get
     // -----------------------------------------------------------------------
 
-    describe("events", () => {
-      it("searches events with a match-all HEQL query", async () => {
-        const result = await callTool("search_events", {
+    describe('events', () => {
+      it('searches events with a match-all HEQL query', async () => {
+        const result = await callTool('search_events', {
           query: 'code matches ".*"',
         });
         expect(
-          result["results"],
-          `search_events response lacks 'results'. Got: ${Object.keys(result).join(", ")}`,
+          result['results'],
+          `search_events response lacks 'results'. Got: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        expect(Array.isArray(result["results"])).toBe(true);
+        expect(Array.isArray(result['results'])).toBe(true);
       });
 
-      it("gets an event by ID", async () => {
-        const search = await callTool("search_events", {
+      it('gets an event by ID', async () => {
+        const search = await callTool('search_events', {
           query: 'code matches ".*"',
           page_size: 1,
         });
-        const events = (search["results"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const events = (search['results'] ?? []) as Record<string, unknown>[];
         if (events.length === 0) {
-          console.log("SKIP: No audit events found on this Horizon instance");
+          console.log('SKIP: No audit events found on this Horizon instance');
           return;
         }
 
-        const eventId = events[0]!["_id"] as string | undefined;
+        const eventId = events[0]!['_id'] as string | undefined;
         if (!eventId) {
-          console.log("SKIP: First event result has no _id field");
+          console.log('SKIP: First event result has no _id field');
           return;
         }
 
-        const result = await callTool("get_event", { event_id: eventId });
+        const result = await callTool('get_event', { event_id: eventId });
         expect(result).toBeDefined();
-        if (!("raw" in result)) {
+        if (!('raw' in result)) {
           expect(
-            "_id" in result || "code" in result,
-            `get_event response lacks expected keys. Got: ${Object.keys(result).join(", ")}`,
+            '_id' in result || 'code' in result,
+            `get_event response lacks expected keys. Got: ${Object.keys(result).join(', ')}`,
           ).toBe(true);
         }
       });
@@ -456,69 +434,55 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Aggregation
     // -----------------------------------------------------------------------
 
-    describe("aggregation", () => {
-      it("aggregates certificates by status", async () => {
-        const result = await callTool("aggregate_certificates", {
-          query: "profile exists",
-          group_by: ["status"],
+    describe('aggregation', () => {
+      it('aggregates certificates by status', async () => {
+        const result = await callTool('aggregate_certificates', {
+          query: 'profile exists',
+          group_by: ['status'],
         });
         expect(result).toBeDefined();
-        if (!("raw" in result)) {
-          const aggKeys = new Set([
-            "buckets",
-            "results",
-            "items",
-            "data",
-          ]);
-          const hasAggKey = Object.keys(result).some((k) =>
-            aggKeys.has(k),
-          );
+        if (!('raw' in result)) {
+          const aggKeys = new Set(['buckets', 'results', 'items', 'data']);
+          const hasAggKey = Object.keys(result).some((k) => aggKeys.has(k));
           expect(
             hasAggKey,
-            "aggregate_certificates response lacks expected keys. " +
-              `Got keys: ${Object.keys(result).join(", ")}`,
+            'aggregate_certificates response lacks expected keys. ' +
+              `Got keys: ${Object.keys(result).join(', ')}`,
           ).toBe(true);
         }
       });
 
-      it("aggregates certificates by profile with sort order", async () => {
-        const result = await callTool("aggregate_certificates", {
-          query: "profile exists",
-          group_by: ["profile"],
-          sort_order: "Desc",
+      it('aggregates certificates by profile with sort order', async () => {
+        const result = await callTool('aggregate_certificates', {
+          query: 'profile exists',
+          group_by: ['profile'],
+          sort_order: 'Desc',
         });
         expect(result).toBeDefined();
       });
 
-      it("aggregates requests by status", async () => {
-        const result = await callTool("aggregate_requests", {
-          query: "profile exists",
-          group_by: ["status"],
+      it('aggregates requests by status', async () => {
+        const result = await callTool('aggregate_requests', {
+          query: 'profile exists',
+          group_by: ['status'],
         });
         expect(result).toBeDefined();
-        if (!("raw" in result)) {
-          const aggKeys = new Set([
-            "buckets",
-            "results",
-            "items",
-            "data",
-          ]);
-          const hasAggKey = Object.keys(result).some((k) =>
-            aggKeys.has(k),
-          );
+        if (!('raw' in result)) {
+          const aggKeys = new Set(['buckets', 'results', 'items', 'data']);
+          const hasAggKey = Object.keys(result).some((k) => aggKeys.has(k));
           expect(
             hasAggKey,
-            "aggregate_requests response lacks expected keys. " +
-              `Got keys: ${Object.keys(result).join(", ")}`,
+            'aggregate_requests response lacks expected keys. ' +
+              `Got keys: ${Object.keys(result).join(', ')}`,
           ).toBe(true);
         }
       });
 
-      it("aggregates requests by workflow with sort order", async () => {
-        const result = await callTool("aggregate_requests", {
-          query: "profile exists",
-          group_by: ["workflow"],
-          sort_order: "Desc",
+      it('aggregates requests by workflow with sort order', async () => {
+        const result = await callTool('aggregate_requests', {
+          query: 'profile exists',
+          group_by: ['workflow'],
+          sort_order: 'Desc',
         });
         expect(result).toBeDefined();
       });
@@ -528,37 +492,34 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Submit and cancel flow
     // -----------------------------------------------------------------------
 
-    describe("submit and cancel flow", () => {
-      it("submits and cancels an enrollment request on a webra profile", async () => {
+    describe('submit and cancel flow', () => {
+      it('submits and cancels an enrollment request on a webra profile', async () => {
         // Find a webra profile
-        const profiles = await callTool("list_profiles", {
-          module: "webra",
+        const profiles = await callTool('list_profiles', {
+          module: 'webra',
         });
-        const items = (profiles["items"] ?? []) as Record<
-          string,
-          unknown
-        >[];
+        const items = (profiles['items'] ?? []) as Record<string, unknown>[];
         if (items.length === 0) {
           console.log(
-            "SKIP: No webra profiles configured - skipping submit/cancel flow test",
+            'SKIP: No webra profiles configured - skipping submit/cancel flow test',
           );
           return;
         }
 
-        const profileName = (items[0]!["name"] ??
-          items[0]!["identifier"]) as string;
+        const profileName = (items[0]!['name'] ??
+          items[0]!['identifier']) as string;
         if (!profileName) {
-          console.log("SKIP: Could not extract name from first webra profile");
+          console.log('SKIP: Could not extract name from first webra profile');
           return;
         }
 
         // Get template (may fail for misconfigured profiles)
         let templateResult: Record<string, unknown>;
         try {
-          templateResult = await callTool("get_request_template", {
-            workflow: "enroll",
+          templateResult = await callTool('get_request_template', {
+            workflow: 'enroll',
             profile: profileName,
-            module: "webra",
+            module: 'webra',
           });
         } catch (exc) {
           console.log(
@@ -566,7 +527,7 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           );
           return;
         }
-        if (templateResult["error"]) {
+        if (templateResult['error']) {
           console.log(
             `SKIP: get_request_template returned error for profile '${profileName}'`,
           );
@@ -577,19 +538,19 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         const cn = `${E2E_PREFIX}.test.local`;
         let submitRaw: string;
         try {
-          submitRaw = await callToolRaw("submit_request", {
-            workflow: "enroll",
+          submitRaw = await callToolRaw('submit_request', {
+            workflow: 'enroll',
             profile: profileName,
-            module: "webra",
+            module: 'webra',
             template: {
-              subject: [{ element: "cn.1", type: "CN", value: cn }],
-              sans: [{ type: "DNSNAME", value: [cn] }],
-              keyType: "rsa-2048",
+              subject: [{ element: 'cn.1', type: 'CN', value: cn }],
+              sans: [{ type: 'DNSNAME', value: [cn] }],
+              keyType: 'rsa-2048',
             },
           });
         } catch {
           console.log(
-            "SKIP: submit_request failed (profile may require approvals or special config)",
+            'SKIP: submit_request failed (profile may require approvals or special config)',
           );
           return;
         }
@@ -602,27 +563,27 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           console.log(`SKIP: submit_request returned non-JSON`);
           return;
         }
-        if (submitData["error"]) {
+        if (submitData['error']) {
           console.log(
-            "SKIP: submit_request failed (profile may require approvals or special config)",
+            'SKIP: submit_request failed (profile may require approvals or special config)',
           );
           return;
         }
 
         // Extract request ID
-        const requestId = (submitData["_id"] ??
-          submitData["id"] ??
-          submitData["requestId"]) as string | undefined;
+        const requestId = (submitData['_id'] ??
+          submitData['id'] ??
+          submitData['requestId']) as string | undefined;
         if (!requestId) {
           console.log(
-            `SKIP: Could not extract request ID from submit response. Keys: ${Object.keys(submitData).join(", ")}`,
+            `SKIP: Could not extract request ID from submit response. Keys: ${Object.keys(submitData).join(', ')}`,
           );
           return;
         }
 
         // Cancel the just-submitted request
         try {
-          await callToolRaw("cancel_request", {
+          await callToolRaw('cancel_request', {
             request_id: requestId,
           });
         } catch {
@@ -636,61 +597,55 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
   // Profiles (ported from test_profiles.py)
   // =========================================================================
 
-  describe("profiles", () => {
-    it("list_profiles returns items with count metadata", async () => {
-      const result = await callTool("list_profiles");
-      expect(result["items"], "list_profiles response missing 'items' key").toBeDefined();
-      expect(Array.isArray(result["items"])).toBe(true);
-      expect(result["count"]).toBeDefined();
-      expect(result["total_available"]).toBeDefined();
-      expect(result["kind"]).toBe("profile");
+  describe('profiles', () => {
+    it('list_profiles returns items with count metadata', async () => {
+      const result = await callTool('list_profiles');
+      expect(
+        result['items'],
+        "list_profiles response missing 'items' key",
+      ).toBeDefined();
+      expect(Array.isArray(result['items'])).toBe(true);
+      expect(result['count']).toBeDefined();
+      expect(result['total_available']).toBeDefined();
+      expect(result['kind']).toBe('profile');
     });
 
-    it("list_profiles filters by module type", async () => {
-      for (const module of [
-        "webra",
-        "acme",
-        "scep",
-        "est",
-        "monitored",
-      ]) {
-        const result = await callTool("list_profiles", { module });
-        expect(result["items"]).toBeDefined();
-        const items = result["items"] as Record<string, unknown>[];
+    it('list_profiles filters by module type', async () => {
+      for (const module of ['webra', 'acme', 'scep', 'est', 'monitored']) {
+        const result = await callTool('list_profiles', { module });
+        expect(result['items']).toBeDefined();
+        const items = result['items'] as Record<string, unknown>[];
         for (const item of items) {
           expect(
-            (item["module"] as string).toLowerCase(),
-            `list_profiles(module='${module}') returned item with module='${item["module"]}'`,
+            (item['module'] as string).toLowerCase(),
+            `list_profiles(module='${module}') returned item with module='${item['module']}'`,
           ).toBe(module);
         }
       }
     });
 
-    it("list_profiles filters by name_contains (no match)", async () => {
-      const result = await callTool("list_profiles", {
-        name_contains: "zzznomatch",
+    it('list_profiles filters by name_contains (no match)', async () => {
+      const result = await callTool('list_profiles', {
+        name_contains: 'zzznomatch',
       });
-      expect(result["items"]).toBeDefined();
-      const items = result["items"] as unknown[];
+      expect(result['items']).toBeDefined();
+      const items = result['items'] as unknown[];
       expect(items.length === 0 || Array.isArray(items)).toBe(true);
     });
 
-    it("get_profile returns profile details", async () => {
-      const profiles = await callTool("list_profiles");
-      const items = (profiles["items"] ?? []) as Record<
-        string,
-        unknown
-      >[];
+    it('get_profile returns profile details', async () => {
+      const profiles = await callTool('list_profiles');
+      const items = (profiles['items'] ?? []) as Record<string, unknown>[];
       if (items.length === 0) {
-        console.log("SKIP: No profiles configured on this instance");
+        console.log('SKIP: No profiles configured on this instance');
         return;
       }
 
-      const name = (items[0]!["name"] ?? items[0]!["identifier"]) as string;
-      expect(name, "First profile item has no name or identifier").toBeTruthy();
+      const name = (items[0]!['name'] ?? items[0]!['identifier']) as string;
+      expect(name, 'First profile item has no name or identifier').toBeTruthy();
 
-      const detail = await callTool("get_profile", { name });
-      expect(detail["name"] === name || "name" in detail).toBe(true);
+      const detail = await callTool('get_profile', { name });
+      expect(detail['name'] === name || 'name' in detail).toBe(true);
     });
   });
 
@@ -698,73 +653,71 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
   // Dashboards (ported from test_dashboards.py)
   // =========================================================================
 
-  describe("dashboards", () => {
+  describe('dashboards', () => {
     // -----------------------------------------------------------------------
     // Read-only smoke tests
     // -----------------------------------------------------------------------
 
-    it("list_dashboards returns a valid list envelope", async () => {
-      const data = await callTool("list_dashboards");
-      expect(data["items"]).toBeDefined();
-      expect(data["count"]).toBeDefined();
-      expect(data["total_available"]).toBeDefined();
-      expect(data["truncated"]).toBeDefined();
-      expect(Array.isArray(data["items"])).toBe(true);
-      expect(data["count"]).toBe(
-        (data["items"] as unknown[]).length,
-      );
+    it('list_dashboards returns a valid list envelope', async () => {
+      const data = await callTool('list_dashboards');
+      expect(data['items']).toBeDefined();
+      expect(data['count']).toBeDefined();
+      expect(data['total_available']).toBeDefined();
+      expect(data['truncated']).toBeDefined();
+      expect(Array.isArray(data['items'])).toBe(true);
+      expect(data['count']).toBe((data['items'] as unknown[]).length);
     });
 
-    it("list_dashboards name_contains filter returns only matching items", async () => {
-      const data = await callTool("list_dashboards", {
-        name_contains: "__nonexistent_xyz_abc__",
+    it('list_dashboards name_contains filter returns only matching items', async () => {
+      const data = await callTool('list_dashboards', {
+        name_contains: '__nonexistent_xyz_abc__',
       });
-      expect(data["items"]).toEqual([]);
-      expect(data["count"]).toBe(0);
+      expect(data['items']).toEqual([]);
+      expect(data['count']).toBe(0);
     });
 
-    it("list_dashboards with dashboard_type=certificate does not error", async () => {
-      const data = await callTool("list_dashboards", {
-        dashboard_type: "certificate",
+    it('list_dashboards with dashboard_type=certificate does not error', async () => {
+      const data = await callTool('list_dashboards', {
+        dashboard_type: 'certificate',
       });
-      expect(data["items"]).toBeDefined();
-      expect(Array.isArray(data["items"])).toBe(true);
+      expect(data['items']).toBeDefined();
+      expect(Array.isArray(data['items'])).toBe(true);
     });
 
-    it("list_saved_queries returns a valid list envelope", async () => {
-      const data = await callTool("list_saved_queries");
-      expect(data["items"]).toBeDefined();
-      expect(data["count"]).toBeDefined();
-      expect(Array.isArray(data["items"])).toBe(true);
+    it('list_saved_queries returns a valid list envelope', async () => {
+      const data = await callTool('list_saved_queries');
+      expect(data['items']).toBeDefined();
+      expect(data['count']).toBeDefined();
+      expect(Array.isArray(data['items'])).toBe(true);
     });
 
-    it("list_saved_queries with query_type=hcql does not error", async () => {
-      const data = await callTool("list_saved_queries", {
-        query_type: "hcql",
+    it('list_saved_queries with query_type=hcql does not error', async () => {
+      const data = await callTool('list_saved_queries', {
+        query_type: 'hcql',
       });
-      expect(data["items"]).toBeDefined();
-      expect(Array.isArray(data["items"])).toBe(true);
+      expect(data['items']).toBeDefined();
+      expect(Array.isArray(data['items'])).toBe(true);
     });
 
     // -----------------------------------------------------------------------
     // Dashboard full CRUD lifecycle
     // -----------------------------------------------------------------------
 
-    describe("dashboard CRUD lifecycle", () => {
-      it("create_dashboard returns a mutate response with correct name", async () => {
+    describe('dashboard CRUD lifecycle', () => {
+      it('create_dashboard returns a mutate response with correct name', async () => {
         const name = `${E2E_PREFIX}-crud-dash`;
         try {
-          const data = await callTool("create_dashboard", {
+          const data = await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
-            description: "E2E test dashboard",
+            dashboard_type: 'certificate',
+            description: 'E2E test dashboard',
           });
-          expect(data["status"]).toBe("created");
-          expect(data["kind"]).toBe("dashboard");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('created');
+          expect(data['kind']).toBe('dashboard');
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -774,20 +727,20 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("get_dashboard returns the created dashboard", async () => {
+      it('get_dashboard returns the created dashboard', async () => {
         const name = `${E2E_PREFIX}-get-dash`;
         try {
-          await callTool("create_dashboard", {
+          await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
+            dashboard_type: 'certificate',
           });
           await delay(1000);
 
-          const data = await callTool("get_dashboard", { name });
-          expect(data["name"]).toBe(name);
+          const data = await callTool('get_dashboard', { name });
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -797,23 +750,23 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("add_dashboard_chart appends a chart and returns its ID", async () => {
+      it('add_dashboard_chart appends a chart and returns its ID', async () => {
         const name = `${E2E_PREFIX}-chart-dash`;
         const chartId = `${E2E_PREFIX}-c1`;
         try {
-          await callTool("create_dashboard", {
+          await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
+            dashboard_type: 'certificate',
           });
           await delay(1000);
 
-          const data = await callTool("add_dashboard_chart", {
+          const data = await callTool('add_dashboard_chart', {
             dashboard_name: name,
             chart: {
-              type: "donut",
+              type: 'donut',
               title: `${E2E_PREFIX} chart`,
-              localQuery: "status is valid",
-              fields: ["keyType"],
+              localQuery: 'status is valid',
+              fields: ['keyType'],
               i: chartId,
               x: 0,
               y: 0,
@@ -822,17 +775,17 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
             },
           });
 
-          expect(data["chart_id"]).toBe(chartId);
-          expect(data["dashboard"]).toBeDefined();
+          expect(data['chart_id']).toBe(chartId);
+          expect(data['dashboard']).toBeDefined();
 
-          const dashboard = data["dashboard"] as Record<string, unknown>;
+          const dashboard = data['dashboard'] as Record<string, unknown>;
           const chartIds = (
-            (dashboard["charts"] ?? []) as Record<string, unknown>[]
-          ).map((c) => c["i"]);
+            (dashboard['charts'] ?? []) as Record<string, unknown>[]
+          ).map((c) => c['i']);
           expect(chartIds).toContain(chartId);
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -842,23 +795,23 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("update_dashboard_chart modifies chart fields", async () => {
+      it('update_dashboard_chart modifies chart fields', async () => {
         const name = `${E2E_PREFIX}-upd-chart-dash`;
         const chartId = `${E2E_PREFIX}-upd-c1`;
         try {
-          await callTool("create_dashboard", {
+          await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
+            dashboard_type: 'certificate',
           });
           await delay(1000);
 
-          await callTool("add_dashboard_chart", {
+          await callTool('add_dashboard_chart', {
             dashboard_name: name,
             chart: {
-              type: "pie",
-              title: "Original Title",
-              localQuery: "status is valid",
-              fields: ["keyType"],
+              type: 'pie',
+              title: 'Original Title',
+              localQuery: 'status is valid',
+              fields: ['keyType'],
               i: chartId,
               x: 0,
               y: 0,
@@ -868,24 +821,21 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           });
           await delay(1000);
 
-          const updated = await callTool("update_dashboard_chart", {
+          const updated = await callTool('update_dashboard_chart', {
             dashboard_name: name,
             chart_id: chartId,
-            title: "Updated Title",
-            chart_type: "bar-vertical",
+            title: 'Updated Title',
+            chart_type: 'bar-vertical',
           });
 
-          const charts = (updated["charts"] ?? []) as Record<
-            string,
-            unknown
-          >[];
-          const matching = charts.filter((c) => c["i"] === chartId);
+          const charts = (updated['charts'] ?? []) as Record<string, unknown>[];
+          const matching = charts.filter((c) => c['i'] === chartId);
           expect(matching.length).toBe(1);
-          expect(matching[0]!["title"]).toBe("Updated Title");
-          expect(matching[0]!["type"]).toBe("bar-vertical");
+          expect(matching[0]!['title']).toBe('Updated Title');
+          expect(matching[0]!['type']).toBe('bar-vertical');
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -895,23 +845,23 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("remove_dashboard_chart removes the chart", async () => {
+      it('remove_dashboard_chart removes the chart', async () => {
         const name = `${E2E_PREFIX}-rem-chart-dash`;
         const chartId = `${E2E_PREFIX}-rem-c1`;
         try {
-          await callTool("create_dashboard", {
+          await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
+            dashboard_type: 'certificate',
           });
           await delay(1000);
 
-          await callTool("add_dashboard_chart", {
+          await callTool('add_dashboard_chart', {
             dashboard_name: name,
             chart: {
-              type: "metric",
-              title: "To Be Removed",
-              localQuery: "status is valid",
-              fields: ["keyType"],
+              type: 'metric',
+              title: 'To Be Removed',
+              localQuery: 'status is valid',
+              fields: ['keyType'],
               i: chartId,
               x: 0,
               y: 0,
@@ -921,23 +871,23 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           });
           await delay(1000);
 
-          const data = await callTool("remove_dashboard_chart", {
+          const data = await callTool('remove_dashboard_chart', {
             dashboard_name: name,
             chart_id: chartId,
           });
 
-          expect(data["removed_chart"]).toBe(chartId);
-          const dashboard = (data["dashboard"] ?? {}) as Record<
+          expect(data['removed_chart']).toBe(chartId);
+          const dashboard = (data['dashboard'] ?? {}) as Record<
             string,
             unknown
           >;
           const chartIds = (
-            (dashboard["charts"] ?? []) as Record<string, unknown>[]
-          ).map((c) => c["i"]);
+            (dashboard['charts'] ?? []) as Record<string, unknown>[]
+          ).map((c) => c['i']);
           expect(chartIds).not.toContain(chartId);
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -947,36 +897,33 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("update_dashboard changes the description", async () => {
+      it('update_dashboard changes the description', async () => {
         const name = `${E2E_PREFIX}-upd-desc-dash`;
         const newDescription = `${E2E_PREFIX} updated description`;
         try {
-          await callTool("create_dashboard", {
+          await callTool('create_dashboard', {
             name,
-            dashboard_type: "certificate",
+            dashboard_type: 'certificate',
           });
           await delay(1000);
 
-          const data = await callTool("update_dashboard", {
+          const data = await callTool('update_dashboard', {
             name,
             description: newDescription,
           });
 
-          expect(data["status"]).toBe("updated");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('updated');
+          expect(data['name']).toBe(name);
 
-          const responseData = (data["data"] ?? {}) as Record<
-            string,
-            unknown
-          >;
+          const responseData = (data['data'] ?? {}) as Record<string, unknown>;
           expect(
-            responseData["description"],
+            responseData['description'],
             `update_dashboard response data does not reflect updated description. ` +
-              `Expected '${newDescription}', got: '${responseData["description"]}'`,
+              `Expected '${newDescription}', got: '${responseData['description']}'`,
           ).toBe(newDescription);
         } finally {
           try {
-            await callTool("delete_dashboard", {
+            await callTool('delete_dashboard', {
               name,
               expected_name: name,
             });
@@ -986,21 +933,21 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("delete_dashboard removes the dashboard", async () => {
+      it('delete_dashboard removes the dashboard', async () => {
         const name = `${E2E_PREFIX}-delete-me`;
-        await callTool("create_dashboard", {
+        await callTool('create_dashboard', {
           name,
-          dashboard_type: "certificate",
+          dashboard_type: 'certificate',
         });
 
-        const data = await callTool("delete_dashboard", {
+        const data = await callTool('delete_dashboard', {
           name,
           expected_name: name,
         });
 
-        expect(data["deleted"]).toBe(true);
-        expect(data["name"]).toBe(name);
-        expect(data["kind"]).toBe("dashboard");
+        expect(data['deleted']).toBe(true);
+        expect(data['name']).toBe(name);
+        expect(data['kind']).toBe('dashboard');
       });
     });
 
@@ -1008,23 +955,23 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Saved query lifecycle
     // -----------------------------------------------------------------------
 
-    describe("saved query lifecycle", () => {
-      it("upsert_saved_query creates with correct response", async () => {
+    describe('saved query lifecycle', () => {
+      it('upsert_saved_query creates with correct response', async () => {
         const name = `${E2E_PREFIX}-sq-create`;
         try {
-          const data = await callTool("upsert_saved_query", {
+          const data = await callTool('upsert_saved_query', {
             name,
-            query_type: "hcql",
-            query: "profile exists",
-            description: "E2E created saved query",
+            query_type: 'hcql',
+            query: 'profile exists',
+            description: 'E2E created saved query',
           });
 
-          expect(data["status"]).toBe("upserted");
-          expect(data["kind"]).toBe("saved_query");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('upserted');
+          expect(data['kind']).toBe('saved_query');
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_saved_query", {
+            await callTool('delete_saved_query', {
               name,
               expected_name: name,
             });
@@ -1034,20 +981,20 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("get_saved_query returns the created query", async () => {
+      it('get_saved_query returns the created query', async () => {
         const name = `${E2E_PREFIX}-sq-get`;
         try {
-          await callTool("upsert_saved_query", {
+          await callTool('upsert_saved_query', {
             name,
-            query_type: "hcql",
-            query: "profile exists",
+            query_type: 'hcql',
+            query: 'profile exists',
           });
 
-          const data = await callTool("get_saved_query", { name });
-          expect(data["name"]).toBe(name);
+          const data = await callTool('get_saved_query', { name });
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_saved_query", {
+            await callTool('delete_saved_query', {
               name,
               expected_name: name,
             });
@@ -1057,30 +1004,30 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("upsert_saved_query updates an existing query", async () => {
+      it('upsert_saved_query updates an existing query', async () => {
         const name = `${E2E_PREFIX}-sq-update`;
-        const newQuery = "profile exists and status is valid";
+        const newQuery = 'profile exists and status is valid';
         try {
-          await callTool("upsert_saved_query", {
+          await callTool('upsert_saved_query', {
             name,
-            query_type: "hcql",
-            query: "profile exists",
+            query_type: 'hcql',
+            query: 'profile exists',
           });
 
-          const data = await callTool("upsert_saved_query", {
+          const data = await callTool('upsert_saved_query', {
             name,
-            query_type: "hcql",
+            query_type: 'hcql',
             query: newQuery,
           });
-          expect(data["status"]).toBe("upserted");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('upserted');
+          expect(data['name']).toBe(name);
 
           // Verify the new query persisted
-          const fetched = await callTool("get_saved_query", { name });
-          expect(fetched["query"]).toBe(newQuery);
+          const fetched = await callTool('get_saved_query', { name });
+          expect(fetched['query']).toBe(newQuery);
         } finally {
           try {
-            await callTool("delete_saved_query", {
+            await callTool('delete_saved_query', {
               name,
               expected_name: name,
             });
@@ -1090,30 +1037,30 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("delete_saved_query removes the query", async () => {
+      it('delete_saved_query removes the query', async () => {
         const name = `${E2E_PREFIX}-sq-delete-me`;
-        await callTool("upsert_saved_query", {
+        await callTool('upsert_saved_query', {
           name,
-          query_type: "hcql",
-          query: "profile exists",
+          query_type: 'hcql',
+          query: 'profile exists',
         });
 
-        const data = await callTool("delete_saved_query", {
+        const data = await callTool('delete_saved_query', {
           name,
           expected_name: name,
         });
 
-        expect(data["deleted"]).toBe(true);
-        expect(data["name"]).toBe(name);
-        expect(data["kind"]).toBe("saved_query");
+        expect(data['deleted']).toBe(true);
+        expect(data['name']).toBe(name);
+        expect(data['kind']).toBe('saved_query');
 
         // Confirm it is gone
-        const listData = await callTool("list_saved_queries", {
+        const listData = await callTool('list_saved_queries', {
           name_contains: name,
         });
         const names = (
-          (listData["items"] ?? []) as Record<string, unknown>[]
-        ).map((item) => item["name"]);
+          (listData['items'] ?? []) as Record<string, unknown>[]
+        ).map((item) => item['name']);
         expect(names).not.toContain(name);
       });
     });
@@ -1123,67 +1070,69 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
   // Reports (ported from test_reports.py)
   // =========================================================================
 
-  describe("reports", () => {
-    it("list_reports returns a valid list envelope", async () => {
-      const result = await callTool("list_reports");
-      expect(result["items"], "list_reports response missing 'items' key").toBeDefined();
-      expect(Array.isArray(result["items"])).toBe(true);
-      expect(result["count"]).toBeDefined();
-      expect(result["total_available"]).toBeDefined();
-      expect(result["truncated"]).toBeDefined();
-      expect(result["kind"]).toBe("report");
-      expect(result["count"]).toBe(
-        (result["items"] as unknown[]).length,
-      );
+  describe('reports', () => {
+    it('list_reports returns a valid list envelope', async () => {
+      const result = await callTool('list_reports');
+      expect(
+        result['items'],
+        "list_reports response missing 'items' key",
+      ).toBeDefined();
+      expect(Array.isArray(result['items'])).toBe(true);
+      expect(result['count']).toBeDefined();
+      expect(result['total_available']).toBeDefined();
+      expect(result['truncated']).toBeDefined();
+      expect(result['kind']).toBe('report');
+      expect(result['count']).toBe((result['items'] as unknown[]).length);
     });
 
-    it("list_reports with expired flag does not error", async () => {
-      const result = await callTool("list_reports", { expired: true });
-      expect(result["items"]).toBeDefined();
-      expect(Array.isArray(result["items"])).toBe(true);
+    it('list_reports with expired flag does not error', async () => {
+      const result = await callTool('list_reports', { expired: true });
+      expect(result['items']).toBeDefined();
+      expect(Array.isArray(result['items'])).toBe(true);
     });
 
-    it("list_reports by non-existent name returns empty", async () => {
-      const result = await callTool("list_reports", {
-        report_name: "zzznomatch-e2e-report",
+    it('list_reports by non-existent name returns empty', async () => {
+      const result = await callTool('list_reports', {
+        report_name: 'zzznomatch-e2e-report',
       });
       // When no report matches the name the server may return [] or a 404-style empty
-      expect("items" in result || Object.keys(result).length === 0).toBe(
-        true,
-      );
+      expect('items' in result || Object.keys(result).length === 0).toBe(true);
     });
 
-    it("download_report returns CSV content when reports exist", async () => {
-      const reports = await callTool("list_reports");
-      const items = (reports["items"] ?? []) as Record<
-        string,
-        unknown
-      >[];
+    it('download_report returns CSV content when reports exist', async () => {
+      const reports = await callTool('list_reports');
+      const items = (reports['items'] ?? []) as Record<string, unknown>[];
       if (items.length === 0) {
-        console.log("SKIP: No reports available on this instance");
+        console.log('SKIP: No reports available on this instance');
         return;
       }
 
       let reportUuid: string | undefined;
       for (const item of items) {
-        reportUuid = (item["uuid"] ??
-          item["id"] ??
-          item["_id"]) as string | undefined;
+        reportUuid = (item['uuid'] ?? item['id'] ?? item['_id']) as
+          | string
+          | undefined;
         if (reportUuid) break;
       }
       if (!reportUuid) {
-        console.log("SKIP: No report UUID found in list_reports items");
+        console.log('SKIP: No report UUID found in list_reports items');
         return;
       }
 
-      const result = await callTool("download_report", {
+      const result = await callTool('download_report', {
         report_uuid: reportUuid,
       });
-      expect(result["csv"], "download_report response missing 'csv' key").toBeDefined();
-      expect(result["rows"], "download_report response missing 'rows' key").toBeDefined();
-      expect(result["content"]).toBeDefined();
-      expect(typeof result["rows"]).toBe("number");
-      expect(result["rows"] as number).toBeGreaterThanOrEqual(0);
+      expect(
+        result['csv'],
+        "download_report response missing 'csv' key",
+      ).toBeDefined();
+      expect(
+        result['rows'],
+        "download_report response missing 'rows' key",
+      ).toBeDefined();
+      expect(result['content']).toBeDefined();
+      expect(typeof result['rows']).toBe('number');
+      expect(result['rows'] as number).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -1191,57 +1140,53 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
   // Assist (ported from test_assist.py)
   // =========================================================================
 
-  describe("assist", () => {
+  describe('assist', () => {
     // -----------------------------------------------------------------------
     // Knowledge resource tests (12 URIs read via MCP protocol)
     // -----------------------------------------------------------------------
 
     const KNOWLEDGE_URIS = [
-      "horizon://knowledge/profiles",
-      "horizon://knowledge/computation-and-data-flow",
-      "horizon://knowledge/workflows",
-      "horizon://knowledge/query-languages",
-      "horizon://knowledge/rbac",
-      "horizon://knowledge/architecture",
-      "horizon://knowledge/dictionary-matrix",
-      "horizon://knowledge/discovery",
-      "horizon://knowledge/automation",
-      "horizon://knowledge/integrations",
-      "horizon://knowledge/dashboards",
-      "horizon://knowledge/system-admin",
+      'horizon://knowledge/profiles',
+      'horizon://knowledge/computation-and-data-flow',
+      'horizon://knowledge/workflows',
+      'horizon://knowledge/query-languages',
+      'horizon://knowledge/rbac',
+      'horizon://knowledge/architecture',
+      'horizon://knowledge/dictionary-matrix',
+      'horizon://knowledge/discovery',
+      'horizon://knowledge/automation',
+      'horizon://knowledge/integrations',
+      'horizon://knowledge/dashboards',
+      'horizon://knowledge/system-admin',
     ] as const;
 
-    describe.each(KNOWLEDGE_URIS)(
-      "knowledge resource %s",
-      (uri) => {
-        it("is accessible and non-empty", async () => {
-          const content = await readResource(uri);
-          expect(content).toBeTruthy();
-          expect(
-            content.length,
-            `Resource ${uri} is suspiciously short (${content.length} chars)`,
-          ).toBeGreaterThan(100);
-        });
+    describe.each(KNOWLEDGE_URIS)('knowledge resource %s', (uri) => {
+      it('is accessible and non-empty', async () => {
+        const content = await readResource(uri);
+        expect(content).toBeTruthy();
+        expect(
+          content.length,
+          `Resource ${uri} is suspiciously short (${content.length} chars)`,
+        ).toBeGreaterThan(100);
+      });
 
-        it("contains structured content (headers or tables)", async () => {
-          const content = await readResource(uri);
-          const hasHeaders =
-            content.includes("## ") || content.includes("# ");
-          const hasTables = content.includes("|");
-          expect(
-            hasHeaders || hasTables,
-            `Resource ${uri} does not contain markdown headers (##) or tables (|). ` +
-              `First 200 chars: ${content.slice(0, 200)}`,
-          ).toBe(true);
-        });
-      },
-    );
+      it('contains structured content (headers or tables)', async () => {
+        const content = await readResource(uri);
+        const hasHeaders = content.includes('## ') || content.includes('# ');
+        const hasTables = content.includes('|');
+        expect(
+          hasHeaders || hasTables,
+          `Resource ${uri} does not contain markdown headers (##) or tables (|). ` +
+            `First 200 chars: ${content.slice(0, 200)}`,
+        ).toBe(true);
+      });
+    });
 
     // -----------------------------------------------------------------------
     // Server instructions
     // -----------------------------------------------------------------------
 
-    it("server instructions are non-empty", async () => {
+    it('server instructions are non-empty', async () => {
       const client = getMcpClient();
       const instructions = client.getInstructions();
       // Instructions must exist and be non-trivially short
@@ -1253,55 +1198,51 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // System tools
     // -----------------------------------------------------------------------
 
-    it("whoami returns user info with identity", async () => {
-      const result = await callTool("whoami");
+    it('whoami returns user info with identity', async () => {
+      const result = await callTool('whoami');
       expect(result).toBeDefined();
-      if ("raw" in result) {
-        expect(
-          (result["raw"] as string).length,
-        ).toBeGreaterThan(10);
+      if ('raw' in result) {
+        expect((result['raw'] as string).length).toBeGreaterThan(10);
       } else {
         expect(
-          result["identity"],
-          `whoami response lacks 'identity' key. Got keys: ${Object.keys(result).join(", ")}`,
+          result['identity'],
+          `whoami response lacks 'identity' key. Got keys: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
-        const identity = result["identity"] as Record<string, unknown>;
-        expect(typeof identity).toBe("object");
+        const identity = result['identity'] as Record<string, unknown>;
+        expect(typeof identity).toBe('object');
         const identityKeys = new Set([
-          "identifier",
-          "login",
-          "id",
-          "_id",
-          "name",
-          "email",
+          'identifier',
+          'login',
+          'id',
+          '_id',
+          'name',
+          'email',
         ]);
         const hasIdentifierKey = Object.keys(identity).some((k) =>
           identityKeys.has(k),
         );
         expect(
           hasIdentifierKey,
-          `whoami identity lacks any identifier key. Got keys: ${Object.keys(identity).join(", ")}`,
+          `whoami identity lacks any identifier key. Got keys: ${Object.keys(identity).join(', ')}`,
         ).toBe(true);
       }
     });
 
-    it("get_license_info returns license data", async () => {
+    it('get_license_info returns license data', async () => {
       try {
-        const result = await callTool("get_license_info");
+        const result = await callTool('get_license_info');
         expect(result).toBeDefined();
-        if ("raw" in result) {
-          expect(
-            (result["raw"] as string).length,
-          ).toBeGreaterThan(10);
+        if ('raw' in result) {
+          expect((result['raw'] as string).length).toBeGreaterThan(10);
         } else {
           expect(
             Object.keys(result).length,
-            "get_license_info returned empty JSON object",
+            'get_license_info returned empty JSON object',
           ).toBeGreaterThan(0);
         }
       } catch {
         console.log(
-          "SKIP: get_license_info not available on this Horizon instance",
+          'SKIP: get_license_info not available on this Horizon instance',
         );
       }
     });
@@ -1310,64 +1251,62 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Query validation tools
     // -----------------------------------------------------------------------
 
-    describe("query validation", () => {
-      it("validate_hcql confirms a valid HCQL expression", async () => {
-        const result = await callTool("validate_hcql", {
-          query: "profile exists",
+    describe('query validation', () => {
+      it('validate_hcql confirms a valid HCQL expression', async () => {
+        const result = await callTool('validate_hcql', {
+          query: 'profile exists',
         });
-        expect(result["valid"]).toBe(true);
-        expect(result["query_type"]).toBe("HCQL");
+        expect(result['valid']).toBe(true);
+        expect(result['query_type']).toBe('HCQL');
       });
 
-      it("validate_hcql flags a syntactically broken expression", async () => {
-        const raw = await callToolRaw("validate_hcql", {
-          query: "INVALID<<<",
+      it('validate_hcql flags a syntactically broken expression', async () => {
+        const raw = await callToolRaw('validate_hcql', {
+          query: 'INVALID<<<',
         });
         expect(raw).toBeTruthy();
         const data = JSON.parse(raw) as Record<string, unknown>;
         expect(
-          data["valid"],
+          data['valid'],
           `Expected valid=false for 'INVALID<<<', got: ${JSON.stringify(data)}`,
         ).toBe(false);
       });
 
-      it("validate_hrql confirms a valid HRQL expression", async () => {
-        const result = await callTool("validate_hrql", {
-          query: "profile exists",
+      it('validate_hrql confirms a valid HRQL expression', async () => {
+        const result = await callTool('validate_hrql', {
+          query: 'profile exists',
         });
-        expect(result["valid"]).toBe(true);
-        expect(result["query_type"]).toBe("HRQL");
+        expect(result['valid']).toBe(true);
+        expect(result['query_type']).toBe('HRQL');
       });
 
-      it("validate_heql confirms a valid HEQL expression", async () => {
-        const result = await callTool("validate_heql", {
+      it('validate_heql confirms a valid HEQL expression', async () => {
+        const result = await callTool('validate_heql', {
           query: 'code matches ".*"',
         });
-        expect(result["valid"]).toBe(true);
-        expect(result["query_type"]).toBe("HEQL");
+        expect(result['valid']).toBe(true);
+        expect(result['query_type']).toBe('HEQL');
       });
 
-      it("validate_hdql confirms a valid HDQL expression", async () => {
-        const result = await callTool("validate_hdql", {
-          query: "status exists",
+      it('validate_hdql confirms a valid HDQL expression', async () => {
+        const result = await callTool('validate_hdql', {
+          query: 'status exists',
         });
-        expect(result["valid"]).toBe(true);
-        expect(result["query_type"]).toBe("HDQL");
+        expect(result['valid']).toBe(true);
+        expect(result['query_type']).toBe('HDQL');
       });
 
-      it.each(["hcql", "hrql", "heql", "hdql"] as const)(
-        "describe_query_fields returns metadata for %s",
+      it.each(['hcql', 'hrql', 'heql', 'hdql'] as const)(
+        'describe_query_fields returns metadata for %s',
         async (queryType) => {
-          const result = await callTool("describe_query_fields", {
+          const result = await callTool('describe_query_fields', {
             query_type: queryType,
           });
-          expect(result["error"]).toBeUndefined();
-          expect(result["query_type"]).toBe(queryType);
-          expect(Array.isArray(result["fields"])).toBe(true);
-          expect(
-            (result["fields"] as unknown[]).length,
-          ).toBeGreaterThan(0);
-          expect(Array.isArray(result["examples"])).toBe(true);
+          expect(result['error']).toBeUndefined();
+          expect(result['query_type']).toBe(queryType);
+          expect(Array.isArray(result['fields'])).toBe(true);
+          expect((result['fields'] as unknown[]).length).toBeGreaterThan(0);
+          expect(Array.isArray(result['examples'])).toBe(true);
         },
       );
     });
@@ -1376,136 +1315,145 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Crypto tools
     // -----------------------------------------------------------------------
 
-    describe("crypto tools", () => {
+    describe('crypto tools', () => {
       /**
        * Fetch a real PEM certificate from a well-known host.
        * Uses fetch_exposed_certificate MCP tool (full stack).
        */
       async function getLiveCertPem(): Promise<string> {
-        const result = await callTool("fetch_exposed_certificate", {
-          uri: "https://www.google.com",
+        const result = await callTool('fetch_exposed_certificate', {
+          uri: 'https://www.google.com',
         });
-        return result["pem"] as string;
+        return result['pem'] as string;
       }
 
-      it("decode_x509 returns all expected RFC 5280 fields", async () => {
+      it('decode_x509 returns all expected RFC 5280 fields', async () => {
         const pem = await getLiveCertPem();
-        const result = await callTool("decode_x509", { pem });
+        const result = await callTool('decode_x509', { pem });
 
         // Core fields must be present
-        expect(result["dn"], `Missing 'dn'. Keys: ${Object.keys(result).join(", ")}`).toBeDefined();
-        expect(result["issuerDn"], "Missing 'issuerDn'").toBeDefined();
-        expect(result["serial"], "Missing 'serial'").toBeDefined();
-        expect(result["notBefore"], "Missing 'notBefore'").toBeDefined();
-        expect(result["notAfter"], "Missing 'notAfter'").toBeDefined();
-        expect(result["keyType"], "Missing 'keyType'").toBeDefined();
-        expect(result["signingAlgorithm"], "Missing 'signingAlgorithm'").toBeDefined();
-        expect(result["pem"], "Missing 'pem'").toBeDefined();
-        expect(result["certificateThumbprint"], "Missing 'certificateThumbprint'").toBeDefined();
-        expect(result["selfSigned"], "Missing 'selfSigned'").toBeDefined();
+        expect(
+          result['dn'],
+          `Missing 'dn'. Keys: ${Object.keys(result).join(', ')}`,
+        ).toBeDefined();
+        expect(result['issuerDn'], "Missing 'issuerDn'").toBeDefined();
+        expect(result['serial'], "Missing 'serial'").toBeDefined();
+        expect(result['notBefore'], "Missing 'notBefore'").toBeDefined();
+        expect(result['notAfter'], "Missing 'notAfter'").toBeDefined();
+        expect(result['keyType'], "Missing 'keyType'").toBeDefined();
+        expect(
+          result['signingAlgorithm'],
+          "Missing 'signingAlgorithm'",
+        ).toBeDefined();
+        expect(result['pem'], "Missing 'pem'").toBeDefined();
+        expect(
+          result['certificateThumbprint'],
+          "Missing 'certificateThumbprint'",
+        ).toBeDefined();
+        expect(result['selfSigned'], "Missing 'selfSigned'").toBeDefined();
 
         // dnElements should be a list of {type, value} objects
-        expect(result["dnElements"]).toBeDefined();
-        expect(Array.isArray(result["dnElements"])).toBe(true);
-        const dnElements = result["dnElements"] as Record<
-          string,
-          unknown
-        >[];
-        expect(
-          dnElements.every((e) => "type" in e && "value" in e),
-        ).toBe(true);
+        expect(result['dnElements']).toBeDefined();
+        expect(Array.isArray(result['dnElements'])).toBe(true);
+        const dnElements = result['dnElements'] as Record<string, unknown>[];
+        expect(dnElements.every((e) => 'type' in e && 'value' in e)).toBe(true);
       });
 
-      it("decode_x509 parses SANs into typed entries", async () => {
+      it('decode_x509 parses SANs into typed entries', async () => {
         const pem = await getLiveCertPem();
-        const result = await callTool("decode_x509", { pem });
+        const result = await callTool('decode_x509', { pem });
 
         // The cert may or may not have SANs depending on how the fetch went
         // (SNI issues could return a cert without SANs)
-        if (result["sans"]) {
-          const sans = result["sans"] as Record<string, unknown>[];
+        if (result['sans']) {
+          const sans = result['sans'] as Record<string, unknown>[];
           expect(Array.isArray(sans)).toBe(true);
           if (sans.length > 0) {
             expect(
-              sans.every((s) => "sanType" in s && "value" in s),
+              sans.every((s) => 'sanType' in s && 'value' in s),
               `SAN entries should have sanType + value. Got: ${JSON.stringify(sans.slice(0, 2))}`,
             ).toBe(true);
           }
         }
       });
 
-      it("decode_x509 returns key usage fields", async () => {
+      it('decode_x509 returns key usage fields', async () => {
         const pem = await getLiveCertPem();
-        const result = await callTool("decode_x509", { pem });
+        const result = await callTool('decode_x509', { pem });
 
-        expect(result["keyUsages"]).toBeDefined();
-        expect(Array.isArray(result["keyUsages"])).toBe(true);
-        expect(result["isKeyUsagesCritical"]).toBeDefined();
+        expect(result['keyUsages']).toBeDefined();
+        expect(Array.isArray(result['keyUsages'])).toBe(true);
+        expect(result['isKeyUsagesCritical']).toBeDefined();
       });
 
-      it("decode_x509 returns AIA and CRL DPs for non-root certs", async () => {
+      it('decode_x509 returns AIA and CRL DPs for non-root certs', async () => {
         const pem = await getLiveCertPem();
-        const result = await callTool("decode_x509", { pem });
+        const result = await callTool('decode_x509', { pem });
 
-        if (!result["selfSigned"]) {
-          expect(result["aias"], "Non-root cert should have AIA").toBeDefined();
-          expect(result["crldps"], "Non-root cert should have CRL DPs").toBeDefined();
+        if (!result['selfSigned']) {
+          expect(result['aias'], 'Non-root cert should have AIA').toBeDefined();
+          expect(
+            result['crldps'],
+            'Non-root cert should have CRL DPs',
+          ).toBeDefined();
         }
       });
 
-      it("decode_csr rejects invalid data", async () => {
+      it('decode_csr rejects invalid data', async () => {
         // The MCP server returns the error as isError=true content;
         // callTool() throws a ToolError in that case.
         await expect(
-          callTool("decode_csr", { pem: "not-a-csr" }),
+          callTool('decode_csr', { pem: 'not-a-csr' }),
         ).rejects.toThrow(ToolError);
       });
 
-      it("detect_file identifies a PEM certificate", async () => {
+      it('detect_file identifies a PEM certificate', async () => {
         const pem = await getLiveCertPem();
-        const result = await callTool("detect_file", { data: pem });
+        const result = await callTool('detect_file', { data: pem });
         expect(
-          result["type"],
-          `Expected type='certificate', got type='${result["type"]}'`,
-        ).toBe("certificate");
-        expect(result["value"], "detect_file should return decoded value").toBeDefined();
+          result['type'],
+          `Expected type='certificate', got type='${result['type']}'`,
+        ).toBe('certificate');
+        expect(
+          result['value'],
+          'detect_file should return decoded value',
+        ).toBeDefined();
       });
 
-      it("decode_crl rejects invalid data", async () => {
+      it('decode_crl rejects invalid data', async () => {
         await expect(
-          callTool("decode_crl", { data: "not-a-crl" }),
+          callTool('decode_crl', { data: 'not-a-crl' }),
         ).rejects.toThrow(ToolError);
       });
 
-      it("decode_ocsp rejects invalid data", async () => {
+      it('decode_ocsp rejects invalid data', async () => {
         await expect(
-          callTool("decode_ocsp", { data: "not-an-ocsp-response" }),
+          callTool('decode_ocsp', { data: 'not-an-ocsp-response' }),
         ).rejects.toThrow(ToolError);
       });
 
-      it("decode_tsa rejects invalid data", async () => {
+      it('decode_tsa rejects invalid data', async () => {
         await expect(
-          callTool("decode_tsa", { data: "not-a-tsa-response" }),
+          callTool('decode_tsa', { data: 'not-a-tsa-response' }),
         ).rejects.toThrow(ToolError);
       });
 
-      it("fetch then decode workflow: fetch live cert and decode via Horizon", async () => {
-        const fetchResult = await callTool(
-          "fetch_exposed_certificate",
-          { uri: "https://www.google.com" },
-        );
-        expect(fetchResult["pem"]).toBeDefined();
+      it('fetch then decode workflow: fetch live cert and decode via Horizon', async () => {
+        const fetchResult = await callTool('fetch_exposed_certificate', {
+          uri: 'https://www.google.com',
+        });
+        expect(fetchResult['pem']).toBeDefined();
 
-        const decodeResult = await callTool("decode_x509", {
-          pem: fetchResult["pem"],
+        const decodeResult = await callTool('decode_x509', {
+          pem: fetchResult['pem'],
         });
 
         // The fetched and decoded cert must have matching thumbprints.
         // The DN may differ from "google" if SNI is not supported by the
         // egress network, so we only assert structural consistency.
-        expect(decodeResult["dn"]).toBeDefined();
-        expect(decodeResult["certificateThumbprint"]).toBe(
-          fetchResult["thumbprint_sha256"],
+        expect(decodeResult['dn']).toBeDefined();
+        expect(decodeResult['certificateThumbprint']).toBe(
+          fetchResult['thumbprint_sha256'],
         );
       });
     });
@@ -1514,18 +1462,18 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Computation tools
     // -----------------------------------------------------------------------
 
-    describe("computation tools", () => {
+    describe('computation tools', () => {
       async function runComputation(
         rule: string,
         dictionary: Record<string, string>,
       ): Promise<Record<string, unknown>> {
         try {
-          return await callTool("simulate_computation_rule", {
+          return await callTool('simulate_computation_rule', {
             rule,
             dictionary,
           });
         } catch (exc) {
-          if (String(exc).includes("404")) {
+          if (String(exc).includes('404')) {
             // Playground endpoint not available - skip
             return { _skipped: true };
           }
@@ -1535,75 +1483,70 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
 
       function computedValue(result: Record<string, unknown>): string {
         const val =
-          result["computedValueSingle"] ??
-          result["raw"] ??
-          String(result);
+          result['computedValueSingle'] ?? result['raw'] ?? String(result);
         return String(val);
       }
 
-      it("basic dictionary lookup resolves", async () => {
-        const result = await runComputation("{{owner}}", {
-          owner: "test-user",
+      it('basic dictionary lookup resolves', async () => {
+        const result = await runComputation('{{owner}}', {
+          owner: 'test-user',
         });
-        if (result["_skipped"]) return;
-        expect(computedValue(result)).toContain("test-user");
+        if (result['_skipped']) return;
+        expect(computedValue(result)).toContain('test-user');
       });
 
-      it("Upper function returns uppercase", async () => {
-        const result = await runComputation("Upper({{cn}})", {
-          cn: "hello",
+      it('Upper function returns uppercase', async () => {
+        const result = await runComputation('Upper({{cn}})', {
+          cn: 'hello',
         });
-        if (result["_skipped"]) return;
-        expect(computedValue(result)).toContain("HELLO");
+        if (result['_skipped']) return;
+        expect(computedValue(result)).toContain('HELLO');
       });
 
-      it("Extract with capture group extracts user part", async () => {
-        const result = await runComputation(
-          'Extract({{email}}, "(.*)@", 1)',
-          { email: "alice@example.com" },
-        );
-        if (result["_skipped"]) return;
-        expect(computedValue(result).toLowerCase()).toContain("alice");
-      });
-
-      it("DomainDNS extracts parent domain", async () => {
-        const result = await runComputation("DomainDNS({{fqdn}})", {
-          fqdn: "machine.domain.local",
+      it('Extract with capture group extracts user part', async () => {
+        const result = await runComputation('Extract({{email}}, "(.*)@", 1)', {
+          email: 'alice@example.com',
         });
-        if (result["_skipped"]) return;
-        expect(computedValue(result).toLowerCase()).toContain(
-          "domain.local",
-        );
+        if (result['_skipped']) return;
+        expect(computedValue(result).toLowerCase()).toContain('alice');
       });
 
-      it("ShortenDNS extracts hostname", async () => {
-        const result = await runComputation("ShortenDNS({{fqdn}})", {
-          fqdn: "web01.corp.example.com",
+      it('DomainDNS extracts parent domain', async () => {
+        const result = await runComputation('DomainDNS({{fqdn}})', {
+          fqdn: 'machine.domain.local',
         });
-        if (result["_skipped"]) return;
-        expect(computedValue(result).toLowerCase()).toContain("web01");
+        if (result['_skipped']) return;
+        expect(computedValue(result).toLowerCase()).toContain('domain.local');
       });
 
-      it("Concat+OrElse builds string with fallback", async () => {
+      it('ShortenDNS extracts hostname', async () => {
+        const result = await runComputation('ShortenDNS({{fqdn}})', {
+          fqdn: 'web01.corp.example.com',
+        });
+        if (result['_skipped']) return;
+        expect(computedValue(result).toLowerCase()).toContain('web01');
+      });
+
+      it('Concat+OrElse builds string with fallback', async () => {
         const result = await runComputation(
           'Concat(OrElse({{prefix}}, "default"), "-", {{name}})',
-          { name: "server01" },
+          { name: 'server01' },
         );
-        if (result["_skipped"]) return;
+        if (result['_skipped']) return;
         expect(computedValue(result).toLowerCase()).toContain(
-          "default-server01",
+          'default-server01',
         );
       });
 
-      it("datasource flow with empty flow does not crash", async () => {
+      it('datasource flow with empty flow does not crash', async () => {
         try {
-          const raw = await callToolRaw("simulate_datasource_flow", {
+          const raw = await callToolRaw('simulate_datasource_flow', {
             flow: [],
           });
           expect(raw).toBeTruthy();
         } catch {
           console.log(
-            "SKIP: simulate_datasource_flow not available on this Horizon instance",
+            'SKIP: simulate_datasource_flow not available on this Horizon instance',
           );
         }
       });
@@ -1613,36 +1556,36 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Translation tools
     // -----------------------------------------------------------------------
 
-    describe("translate_to_hql", () => {
-      it("translates a certificate description to HCQL", async () => {
-        const result = await callTool("translate_to_hql", {
-          natural_language: "expired RSA certificates",
+    describe('translate_to_hql', () => {
+      it('translates a certificate description to HCQL', async () => {
+        const result = await callTool('translate_to_hql', {
+          natural_language: 'expired RSA certificates',
         });
         expect(result).toBeDefined();
-        expect(result["query_type"]).toBe("hcql");
+        expect(result['query_type']).toBe('hcql');
         expect(
-          result["query"] ?? result["message"],
-          "translate_to_hql returned neither query nor message",
+          result['query'] ?? result['message'],
+          'translate_to_hql returned neither query nor message',
         ).toBeTruthy();
       });
 
-      it("respects a forced target_type of hrql", async () => {
-        const result = await callTool("translate_to_hql", {
-          natural_language: "pending requests",
-          target_type: "hrql",
+      it('respects a forced target_type of hrql', async () => {
+        const result = await callTool('translate_to_hql', {
+          natural_language: 'pending requests',
+          target_type: 'hrql',
         });
         expect(result).toBeDefined();
-        expect(result["query_type"]).toBe("hrql");
+        expect(result['query_type']).toBe('hrql');
       });
 
-      it("validates against live instance when validate=true", async () => {
-        const result = await callTool("translate_to_hql", {
-          natural_language: "valid certificates",
+      it('validates against live instance when validate=true', async () => {
+        const result = await callTool('translate_to_hql', {
+          natural_language: 'valid certificates',
           validate: true,
         });
-        if (result["query"]) {
+        if (result['query']) {
           expect(
-            result["validation"],
+            result['validation'],
             "translate_to_hql with validate=true must include 'validation' key",
           ).toBeDefined();
         }
@@ -1657,89 +1600,93 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // policies/rulesets, then call the explain tools through MCP.
     // -----------------------------------------------------------------------
 
-    describe("grading", () => {
-      it("explain_grading_policy returns details for the first policy found", async () => {
+    describe('grading', () => {
+      it('explain_grading_policy returns details for the first policy found', async () => {
         const client = getHorizonClient();
         let policies: Record<string, unknown>[];
         try {
-          const data = await client.get<unknown>(
-            "/api/v1/grading/policies",
-          );
+          const data = await client.get<unknown>('/api/v1/grading/policies');
           policies = Array.isArray(data)
             ? (data as Record<string, unknown>[])
             : [];
         } catch {
-          console.log("SKIP: Grading policies endpoint not available");
+          console.log('SKIP: Grading policies endpoint not available');
           return;
         }
 
         if (policies.length === 0) {
-          console.log("SKIP: No grading policies configured on this Horizon instance");
+          console.log(
+            'SKIP: No grading policies configured on this Horizon instance',
+          );
           return;
         }
 
-        const name = (policies[0]!["name"] ??
-          policies[0]!["identifier"]) as string | undefined;
+        const name = (policies[0]!['name'] ?? policies[0]!['identifier']) as
+          | string
+          | undefined;
         if (!name) {
-          console.log("SKIP: Could not extract name from first grading policy");
+          console.log('SKIP: Could not extract name from first grading policy');
           return;
         }
 
         try {
-          const result = await callTool("explain_grading_policy", {
+          const result = await callTool('explain_grading_policy', {
             policy_name: name,
           });
           expect(result).toBeDefined();
           expect(
-            result["policy"],
-            `explain_grading_policy response lacks 'policy' key. Got: ${Object.keys(result).join(", ")}`,
+            result['policy'],
+            `explain_grading_policy response lacks 'policy' key. Got: ${Object.keys(result).join(', ')}`,
           ).toBeDefined();
         } catch {
           console.log(
-            "SKIP: explain_grading_policy not available on this Horizon instance",
+            'SKIP: explain_grading_policy not available on this Horizon instance',
           );
         }
       });
 
-      it("explain_grading_ruleset returns details for the first ruleset found", async () => {
+      it('explain_grading_ruleset returns details for the first ruleset found', async () => {
         const client = getHorizonClient();
         let rulesets: Record<string, unknown>[];
         try {
-          const data = await client.get<unknown>(
-            "/api/v1/grading/rulesets",
-          );
+          const data = await client.get<unknown>('/api/v1/grading/rulesets');
           rulesets = Array.isArray(data)
             ? (data as Record<string, unknown>[])
             : [];
         } catch {
-          console.log("SKIP: Grading rulesets endpoint not available");
+          console.log('SKIP: Grading rulesets endpoint not available');
           return;
         }
 
         if (rulesets.length === 0) {
-          console.log("SKIP: No grading rulesets configured on this Horizon instance");
+          console.log(
+            'SKIP: No grading rulesets configured on this Horizon instance',
+          );
           return;
         }
 
-        const name = (rulesets[0]!["name"] ??
-          rulesets[0]!["identifier"]) as string | undefined;
+        const name = (rulesets[0]!['name'] ?? rulesets[0]!['identifier']) as
+          | string
+          | undefined;
         if (!name) {
-          console.log("SKIP: Could not extract name from first grading ruleset");
+          console.log(
+            'SKIP: Could not extract name from first grading ruleset',
+          );
           return;
         }
 
         try {
-          const result = await callTool("explain_grading_ruleset", {
+          const result = await callTool('explain_grading_ruleset', {
             ruleset_name: name,
           });
           expect(result).toBeDefined();
           expect(
-            result["ruleset"],
-            `explain_grading_ruleset response lacks 'ruleset' key. Got: ${Object.keys(result).join(", ")}`,
+            result['ruleset'],
+            `explain_grading_ruleset response lacks 'ruleset' key. Got: ${Object.keys(result).join(', ')}`,
           ).toBeDefined();
         } catch {
           console.log(
-            "SKIP: explain_grading_ruleset not available on this Horizon instance",
+            'SKIP: explain_grading_ruleset not available on this Horizon instance',
           );
         }
       });
@@ -1750,67 +1697,65 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
   // Discovery (ported from test_discovery.py)
   // =========================================================================
 
-  describe("discovery", () => {
+  describe('discovery', () => {
     const AUTH_LEVELS = {
-      search: { accessLevel: "authenticated" },
-      feed: { accessLevel: "authorized" },
+      search: { accessLevel: 'authenticated' },
+      feed: { accessLevel: 'authorized' },
     };
 
     const TEST_CERT_PEM =
-      "-----BEGIN CERTIFICATE-----\n" +
-      "MIIBkTCB+wIUEpGSHqKzsPm2G22V2GEHzTxkSZ4wDQYJKoZIhvcNAQELBQAwFDES\n" +
-      "MBAGA1UEAwwJdGVzdC1jZXJ0MB4XDTI0MDEwMTAwMDAwMFoXDTI1MDEwMTAwMDAw\n" +
-      "MFowFDESMBAGA1UEAwwJdGVzdC1jZXJ0MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJB\n" +
-      "AL7+aty3S1iBA/+yOXKpfJZBSFxWYGOcaGes0MfZnHMHh10rOHcMiSaVKcggBz8D\n" +
-      "BMHW8IOEA2MtiVEbfPLK3aECAwEAATANBgkqhkiG9w0BAQsFAANBADKs+jE5bOu0\n" +
-      "BNQD8APB3PAKJbCw2JJJGX9RdkFgMk5MREGPyoOHbJHqMYGxlINk3KtpEm4y6Ha\n" +
-      "YdBwIiKBKRo=\n" +
-      "-----END CERTIFICATE-----";
+      '-----BEGIN CERTIFICATE-----\n' +
+      'MIIBkTCB+wIUEpGSHqKzsPm2G22V2GEHzTxkSZ4wDQYJKoZIhvcNAQELBQAwFDES\n' +
+      'MBAGA1UEAwwJdGVzdC1jZXJ0MB4XDTI0MDEwMTAwMDAwMFoXDTI1MDEwMTAwMDAw\n' +
+      'MFowFDESMBAGA1UEAwwJdGVzdC1jZXJ0MFwwDQYJKoZIhvcNAQEBBQADSwAwSAJB\n' +
+      'AL7+aty3S1iBA/+yOXKpfJZBSFxWYGOcaGes0MfZnHMHh10rOHcMiSaVKcggBz8D\n' +
+      'BMHW8IOEA2MtiVEbfPLK3aECAwEAATANBgkqhkiG9w0BAQsFAANBADKs+jE5bOu0\n' +
+      'BNQD8APB3PAKJbCw2JJJGX9RdkFgMk5MREGPyoOHbJHqMYGxlINk3KtpEm4y6Ha\n' +
+      'YdBwIiKBKRo=\n' +
+      '-----END CERTIFICATE-----';
 
     // -----------------------------------------------------------------------
     // Read-only smoke tests
     // -----------------------------------------------------------------------
 
-    it("list_discovery_campaigns returns a valid list envelope", async () => {
-      const data = await callTool("list_discovery_campaigns");
-      expect(data["items"]).toBeDefined();
-      expect(data["count"]).toBeDefined();
-      expect(data["total_available"]).toBeDefined();
-      expect(data["truncated"]).toBeDefined();
-      expect(Array.isArray(data["items"])).toBe(true);
-      expect(data["count"]).toBe(
-        (data["items"] as unknown[]).length,
-      );
+    it('list_discovery_campaigns returns a valid list envelope', async () => {
+      const data = await callTool('list_discovery_campaigns');
+      expect(data['items']).toBeDefined();
+      expect(data['count']).toBeDefined();
+      expect(data['total_available']).toBeDefined();
+      expect(data['truncated']).toBeDefined();
+      expect(Array.isArray(data['items'])).toBe(true);
+      expect(data['count']).toBe((data['items'] as unknown[]).length);
     });
 
-    it("list_discovery_campaigns name filter returns only matching items", async () => {
-      const data = await callTool("list_discovery_campaigns", {
-        name_contains: "__nonexistent_xyz_abc__",
+    it('list_discovery_campaigns name filter returns only matching items', async () => {
+      const data = await callTool('list_discovery_campaigns', {
+        name_contains: '__nonexistent_xyz_abc__',
       });
-      expect(data["items"]).toEqual([]);
-      expect(data["count"]).toBe(0);
+      expect(data['items']).toEqual([]);
+      expect(data['count']).toBe(0);
     });
 
     // -----------------------------------------------------------------------
     // Campaign full CRUD lifecycle
     // -----------------------------------------------------------------------
 
-    describe("campaign CRUD lifecycle", () => {
-      it("create_discovery_campaign returns correct response", async () => {
+    describe('campaign CRUD lifecycle', () => {
+      it('create_discovery_campaign returns correct response', async () => {
         const name = `${E2E_PREFIX}-crud-cmp`;
         try {
-          const data = await callTool("create_discovery_campaign", {
+          const data = await callTool('create_discovery_campaign', {
             name,
             authorization_levels: AUTH_LEVELS,
-            description: "E2E test campaign",
+            description: 'E2E test campaign',
             enabled: false,
           });
-          expect(data["status"]).toBe("created");
-          expect(data["kind"]).toBe("discovery_campaign");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('created');
+          expect(data['kind']).toBe('discovery_campaign');
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_discovery_campaign", {
+            await callTool('delete_discovery_campaign', {
               name,
               expected_name: name,
             });
@@ -1820,22 +1765,22 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("get_discovery_campaign returns the campaign", async () => {
+      it('get_discovery_campaign returns the campaign', async () => {
         const name = `${E2E_PREFIX}-get-cmp`;
         try {
-          await callTool("create_discovery_campaign", {
+          await callTool('create_discovery_campaign', {
             name,
             authorization_levels: AUTH_LEVELS,
             enabled: false,
           });
 
-          const data = await callTool("get_discovery_campaign", {
+          const data = await callTool('get_discovery_campaign', {
             name,
           });
-          expect(data["name"]).toBe(name);
+          expect(data['name']).toBe(name);
         } finally {
           try {
-            await callTool("delete_discovery_campaign", {
+            await callTool('delete_discovery_campaign', {
               name,
               expected_name: name,
             });
@@ -1845,33 +1790,33 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("update_discovery_campaign modifies campaign configuration", async () => {
+      it('update_discovery_campaign modifies campaign configuration', async () => {
         const name = `${E2E_PREFIX}-upd-cmp`;
         const newDescription = `${E2E_PREFIX} updated description`;
         try {
-          await callTool("create_discovery_campaign", {
+          await callTool('create_discovery_campaign', {
             name,
             authorization_levels: AUTH_LEVELS,
             enabled: false,
           });
 
-          const data = await callTool("update_discovery_campaign", {
+          const data = await callTool('update_discovery_campaign', {
             name,
             description: newDescription,
             event_on_failure: false,
           });
-          expect(data["status"]).toBe("updated");
-          expect(data["name"]).toBe(name);
+          expect(data['status']).toBe('updated');
+          expect(data['name']).toBe(name);
 
           // Verify changes persisted
-          const fetched = await callTool("get_discovery_campaign", {
+          const fetched = await callTool('get_discovery_campaign', {
             name,
           });
-          expect(fetched["description"]).toBe(newDescription);
-          expect(fetched["eventOnFailure"]).toBe(false);
+          expect(fetched['description']).toBe(newDescription);
+          expect(fetched['eventOnFailure']).toBe(false);
         } finally {
           try {
-            await callTool("delete_discovery_campaign", {
+            await callTool('delete_discovery_campaign', {
               name,
               expected_name: name,
             });
@@ -1881,25 +1826,25 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("flush_discovery_campaign purges events and returns confirmation", async () => {
+      it('flush_discovery_campaign purges events and returns confirmation', async () => {
         const name = `${E2E_PREFIX}-flush-cmp`;
         try {
-          await callTool("create_discovery_campaign", {
+          await callTool('create_discovery_campaign', {
             name,
             authorization_levels: AUTH_LEVELS,
             enabled: false,
           });
 
-          const data = await callTool("flush_discovery_campaign", {
+          const data = await callTool('flush_discovery_campaign', {
             name,
             expected_name: name,
           });
-          expect(data["flushed"]).toBe(true);
-          expect(data["name"]).toBe(name);
-          expect(data["kind"]).toBe("discovery_campaign");
+          expect(data['flushed']).toBe(true);
+          expect(data['name']).toBe(name);
+          expect(data['kind']).toBe('discovery_campaign');
         } finally {
           try {
-            await callTool("delete_discovery_campaign", {
+            await callTool('delete_discovery_campaign', {
               name,
               expected_name: name,
             });
@@ -1909,29 +1854,29 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         }
       });
 
-      it("delete_discovery_campaign removes the campaign", async () => {
+      it('delete_discovery_campaign removes the campaign', async () => {
         const name = `${E2E_PREFIX}-delete-me-cmp`;
-        await callTool("create_discovery_campaign", {
+        await callTool('create_discovery_campaign', {
           name,
           authorization_levels: AUTH_LEVELS,
           enabled: false,
         });
 
-        const data = await callTool("delete_discovery_campaign", {
+        const data = await callTool('delete_discovery_campaign', {
           name,
           expected_name: name,
         });
-        expect(data["deleted"]).toBe(true);
-        expect(data["name"]).toBe(name);
-        expect(data["kind"]).toBe("discovery_campaign");
+        expect(data['deleted']).toBe(true);
+        expect(data['name']).toBe(name);
+        expect(data['kind']).toBe('discovery_campaign');
 
         // Confirm it is gone
-        const listData = await callTool("list_discovery_campaigns", {
+        const listData = await callTool('list_discovery_campaigns', {
           name_contains: name,
         });
         const names = (
-          (listData["items"] ?? []) as Record<string, unknown>[]
-        ).map((item) => item["name"]);
+          (listData['items'] ?? []) as Record<string, unknown>[]
+        ).map((item) => item['name']);
         expect(names).not.toContain(name);
       });
     });
@@ -1943,16 +1888,16 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // to avoid timing issues between create and feed start.
     // -----------------------------------------------------------------------
 
-    describe("feed session lifecycle", () => {
+    describe('feed session lifecycle', () => {
       const feedCampaignName = `${E2E_PREFIX}-feed`;
       let feedCampaignReady = false;
 
-      it("setup: create campaign for feed tests", async () => {
+      it('setup: create campaign for feed tests', async () => {
         try {
-          await callTool("create_discovery_campaign", {
+          await callTool('create_discovery_campaign', {
             name: feedCampaignName,
             authorization_levels: AUTH_LEVELS,
-            hosts: ["127.0.0.1"],
+            hosts: ['127.0.0.1'],
             ports: [443],
             enabled: false,
           });
@@ -1961,26 +1906,26 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           await delay(2000);
           feedCampaignReady = true;
         } catch (exc) {
-          console.log(
-            `SKIP: Could not create feed test campaign: ${exc}`,
-          );
+          console.log(`SKIP: Could not create feed test campaign: ${exc}`);
         }
       });
 
-      it("full feed lifecycle: start, feed certificate, end", async () => {
+      it('full feed lifecycle: start, feed certificate, end', async () => {
         if (!feedCampaignReady) {
-          console.log("SKIP: Feed campaign not created - skipping feed lifecycle test");
+          console.log(
+            'SKIP: Feed campaign not created - skipping feed lifecycle test',
+          );
           return;
         }
 
         // Verify campaign is visible before starting feed
         try {
-          await callTool("get_discovery_campaign", {
+          await callTool('get_discovery_campaign', {
             name: feedCampaignName,
           });
         } catch {
           console.log(
-            "SKIP: Feed campaign not visible via get_discovery_campaign yet",
+            'SKIP: Feed campaign not visible via get_discovery_campaign yet',
           );
           return;
         }
@@ -1988,40 +1933,34 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         // 1. Start feed session
         let startData: Record<string, unknown>;
         try {
-          startData = await callTool(
-            "start_discovery_feed_session",
-            { campaign_name: feedCampaignName },
-          );
+          startData = await callTool('start_discovery_feed_session', {
+            campaign_name: feedCampaignName,
+          });
         } catch (exc) {
           // The feed endpoint may lag behind the campaigns endpoint.
           // Some Horizon versions require additional time or have
           // separate internal caches for the discovery feed module.
-          console.log(
-            `SKIP: start_discovery_feed_session failed: ${exc}`,
-          );
+          console.log(`SKIP: start_discovery_feed_session failed: ${exc}`);
           return;
         }
-        expect(startData["data"]).toBeDefined();
-        const sessionId = (
-          startData["data"] as Record<string, unknown>
-        )["id"] as string;
+        expect(startData['data']).toBeDefined();
+        const sessionId = (startData['data'] as Record<string, unknown>)[
+          'id'
+        ] as string;
         expect(sessionId).toBeTruthy();
 
         try {
           // 2. Feed a certificate
           try {
-            const feedData = await callTool(
-              "feed_discovery_certificate",
-              {
-                session_id: sessionId,
-                campaign_name: feedCampaignName,
-                certificate: TEST_CERT_PEM,
-                ip: "127.0.0.1",
-                hostnames: ["test.example.com"],
-                tls_ports: [{ port: 443, version: "TLSv1.3" }],
-              },
-            );
-            expect(feedData["data"]).toBeDefined();
+            const feedData = await callTool('feed_discovery_certificate', {
+              session_id: sessionId,
+              campaign_name: feedCampaignName,
+              certificate: TEST_CERT_PEM,
+              ip: '127.0.0.1',
+              hostnames: ['test.example.com'],
+              tls_ports: [{ port: 443, version: 'TLSv1.3' }],
+            });
+            expect(feedData['data']).toBeDefined();
           } catch (exc) {
             console.log(
               `SKIP: feed_discovery_certificate failed (API schema mismatch or invalid cert): ${exc}`,
@@ -2030,27 +1969,22 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         } finally {
           // 3. End session (always clean up)
           try {
-            const endData = await callTool(
-              "end_discovery_feed_session",
-              {
-                campaign_name: feedCampaignName,
-                session_id: sessionId,
-              },
-            );
-            expect(endData["content"]).toBeDefined();
-            expect(endData["content"] as string).toContain(
-              sessionId,
-            );
+            const endData = await callTool('end_discovery_feed_session', {
+              campaign_name: feedCampaignName,
+              session_id: sessionId,
+            });
+            expect(endData['content']).toBeDefined();
+            expect(endData['content'] as string).toContain(sessionId);
           } catch {
             // Best-effort cleanup
           }
         }
       });
 
-      it("teardown: delete feed campaign", async () => {
+      it('teardown: delete feed campaign', async () => {
         if (!feedCampaignReady) return;
         try {
-          await callTool("delete_discovery_campaign", {
+          await callTool('delete_discovery_campaign', {
             name: feedCampaignName,
             expected_name: feedCampaignName,
           });
@@ -2064,61 +1998,59 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Discovery event read-only tests
     // -----------------------------------------------------------------------
 
-    describe("discovery events", () => {
-      it("search_discovery_events returns a valid response", async () => {
-        const data = await callTool("search_discovery_events", {
-          query: "timestamp after -24h",
+    describe('discovery events', () => {
+      it('search_discovery_events returns a valid response', async () => {
+        const data = await callTool('search_discovery_events', {
+          query: 'timestamp after -24h',
           page_size: 10,
           with_count: true,
         });
-        expect(data["results"]).toBeDefined();
-        expect(Array.isArray(data["results"])).toBe(true);
-        expect(data["pageIndex"]).toBeDefined();
-        expect(data["pageSize"]).toBeDefined();
+        expect(data['results']).toBeDefined();
+        expect(Array.isArray(data['results'])).toBe(true);
+        expect(data['pageIndex']).toBeDefined();
+        expect(data['pageSize']).toBeDefined();
       });
 
-      it("get_discovery_event returns details for an available event", async () => {
-        const searchData = await callTool("search_discovery_events", {
-          query: "timestamp after -30d",
+      it('get_discovery_event returns details for an available event', async () => {
+        const searchData = await callTool('search_discovery_events', {
+          query: 'timestamp after -30d',
           page_size: 1,
         });
-        const events = (searchData["results"] ?? []) as Record<
+        const events = (searchData['results'] ?? []) as Record<
           string,
           unknown
         >[];
         if (events.length === 0) {
-          console.log("SKIP: No discovery events available on the QA instance");
+          console.log('SKIP: No discovery events available on the QA instance');
           return;
         }
 
-        const eventId = (events[0]!["id"] ??
-          events[0]!["_id"]) as string | undefined;
+        const eventId = (events[0]!['id'] ?? events[0]!['_id']) as
+          | string
+          | undefined;
         if (!eventId) {
-          console.log("SKIP: First event has no recognisable ID field");
+          console.log('SKIP: First event has no recognisable ID field');
           return;
         }
 
-        const eventData = await callTool("get_discovery_event", {
+        const eventData = await callTool('get_discovery_event', {
           event_id: String(eventId),
         });
         expect(
-          eventData["id"] === eventId ||
-            eventData["_id"] === eventId,
+          eventData['id'] === eventId || eventData['_id'] === eventId,
         ).toBe(true);
       });
 
-      it("export_discovery_events_csv returns CSV envelope", async () => {
-        const data = await callTool("export_discovery_events_csv", {
-          query: "timestamp after -7d",
+      it('export_discovery_events_csv returns CSV envelope', async () => {
+        const data = await callTool('export_discovery_events_csv', {
+          query: 'timestamp after -7d',
         });
-        expect(data["csv"]).toBeDefined();
-        expect(data["truncated"]).toBeDefined();
-        expect(data["returned_rows"]).toBeDefined();
-        expect(data["max_rows"]).toBeDefined();
-        expect(typeof data["csv"]).toBe("string");
-        expect(data["returned_rows"] as number).toBeGreaterThanOrEqual(
-          0,
-        );
+        expect(data['csv']).toBeDefined();
+        expect(data['truncated']).toBeDefined();
+        expect(data['returned_rows']).toBeDefined();
+        expect(data['max_rows']).toBeDefined();
+        expect(typeof data['csv']).toBe('string');
+        expect(data['returned_rows'] as number).toBeGreaterThanOrEqual(0);
       });
     });
 
@@ -2126,13 +2058,13 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
     // Discovery import integration test
     // -----------------------------------------------------------------------
 
-    describe("discovery import workflow", () => {
-      const QA_CAMPAIGN = "sbo-claude-qa";
+    describe('discovery import workflow', () => {
+      const QA_CAMPAIGN = 'sbo-claude-qa';
 
-      it("feeds a cert into a QA campaign and verifies import", async () => {
+      it('feeds a cert into a QA campaign and verifies import', async () => {
         // 0. Verify QA campaign exists
         try {
-          await callTool("get_discovery_campaign", {
+          await callTool('get_discovery_campaign', {
             name: QA_CAMPAIGN,
           });
         } catch {
@@ -2147,14 +2079,13 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         const certPem = TEST_CERT_PEM;
 
         // 2. Start feed session
-        const startData = await callTool(
-          "start_discovery_feed_session",
-          { campaign_name: QA_CAMPAIGN },
-        );
-        expect(startData["data"]).toBeDefined();
-        const sessionId = (
-          startData["data"] as Record<string, unknown>
-        )["id"] as string;
+        const startData = await callTool('start_discovery_feed_session', {
+          campaign_name: QA_CAMPAIGN,
+        });
+        expect(startData['data']).toBeDefined();
+        const sessionId = (startData['data'] as Record<string, unknown>)[
+          'id'
+        ] as string;
         expect(sessionId).toBeTruthy();
 
         const uniqueCn = `${E2E_PREFIX}-import-test.example.com`;
@@ -2162,18 +2093,15 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
         try {
           // 3. Feed the certificate
           try {
-            const feedData = await callTool(
-              "feed_discovery_certificate",
-              {
-                session_id: sessionId,
-                campaign_name: QA_CAMPAIGN,
-                certificate: certPem,
-                ip: "10.255.255.1",
-                hostnames: [uniqueCn],
-                tls_ports: [{ port: 443, version: "TLSv1.3" }],
-              },
-            );
-            expect(feedData["data"]).toBeDefined();
+            const feedData = await callTool('feed_discovery_certificate', {
+              session_id: sessionId,
+              campaign_name: QA_CAMPAIGN,
+              certificate: certPem,
+              ip: '10.255.255.1',
+              hostnames: [uniqueCn],
+              tls_ports: [{ port: 443, version: 'TLSv1.3' }],
+            });
+            expect(feedData['data']).toBeDefined();
           } catch (exc) {
             // The static test cert may fail to parse on some Horizon
             // versions (PEM format incompatibility). The Python tests
@@ -2185,7 +2113,7 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
           }
         } finally {
           // 4. End feed session (always)
-          await callTool("end_discovery_feed_session", {
+          await callTool('end_discovery_feed_session', {
             campaign_name: QA_CAMPAIGN,
             session_id: sessionId,
           });
@@ -2193,19 +2121,19 @@ describe.skipIf(!E2E_CONFIGURED)("Horizon E2E", () => {
 
         // 5. Search for the imported certificate
         await delay(3000);
-        const searchData = await callTool("search_certificates", {
+        const searchData = await callTool('search_certificates', {
           query: 'dn contains "test-cert"',
           page_size: 10,
           with_count: true,
         });
-        const results = (searchData["results"] ?? []) as Record<
+        const results = (searchData['results'] ?? []) as Record<
           string,
           unknown
         >[];
         // The static cert has CN=test-cert, so we verify it was imported
         expect(
           results.length,
-          "Expected to find the imported certificate",
+          'Expected to find the imported certificate',
         ).toBeGreaterThanOrEqual(1);
       });
     });
