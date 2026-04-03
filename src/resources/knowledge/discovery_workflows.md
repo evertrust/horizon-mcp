@@ -22,13 +22,13 @@ the scan completes.
 
 ## Discovery Types
 
-| Type | CLI Command | Purpose |
-|------|-------------|---------|
-| Network scan | `horizon-cli netscan` | Scan IP ranges/hosts for TLS certificates on open ports |
-| Local scan | `horizon-cli localscan` | Scan local filesystem and service configs for certificates |
-| Net import | `horizon-cli netimport <service>` | Import certificates from external cloud/appliance services |
-| Import scan | `horizon-cli importscan <tool>` | Import results from third-party scanning tools |
-| Local import | `horizon-cli localimport` | Bulk import certificates from a folder or CSV file |
+| Type         | CLI Command                       | Purpose                                                    |
+| ------------ | --------------------------------- | ---------------------------------------------------------- |
+| Network scan | `horizon-cli netscan`             | Scan IP ranges/hosts for TLS certificates on open ports    |
+| Local scan   | `horizon-cli localscan`           | Scan local filesystem and service configs for certificates |
+| Net import   | `horizon-cli netimport <service>` | Import certificates from external cloud/appliance services |
+| Import scan  | `horizon-cli importscan <tool>`   | Import results from third-party scanning tools             |
+| Local import | `horizon-cli localimport`         | Bulk import certificates from a folder or CSV file         |
 
 ---
 
@@ -45,12 +45,14 @@ Scans network hosts for TLS certificates by connecting to specified ports.
 ### Campaign setup
 
 Configure the campaign in Horizon with:
+
 - **Hosts**: individual IPs, IP ranges (`10.0.0.1-10.0.0.50`), CIDR ranges (`10.0.0.0/24`), or DNS names
 - **Ports**: specific ports to scan
 
 ### Default ports
 
 If no ports are configured on the campaign, the CLI scans:
+
 - 21 (SFTP)
 - 443 (HTTPS)
 - 8443 (alternative HTTPS)
@@ -81,19 +83,20 @@ horizon-cli netscan --campaign <campaign-name> --remove-periodic-task
 
 ### Key parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--campaign` | (required) | Campaign name in Horizon |
-| `--ping-first` | false | Pre-check host reachability via ping |
-| `--log-details` | false | Verbose network scan logging |
-| `--scan-workers` | 100 | Concurrent scan threads |
-| `--certificate-workers` | 1 | Certificate upload threads |
-| `--event-workers` | 1 | Event upload threads |
-| `--events-batch` | 100 | Events per batch |
+| Parameter               | Default    | Description                          |
+| ----------------------- | ---------- | ------------------------------------ |
+| `--campaign`            | (required) | Campaign name in Horizon             |
+| `--ping-first`          | false      | Pre-check host reachability via ping |
+| `--log-details`         | false      | Verbose network scan logging         |
+| `--scan-workers`        | 100        | Concurrent scan threads              |
+| `--certificate-workers` | 1          | Certificate upload threads           |
+| `--event-workers`       | 1          | Event upload threads                 |
+| `--events-batch`        | 100        | Events per batch                     |
 
 ### Discovery data produced
 
 Netscan populates these `discoveryData` fields on each certificate:
+
 - `ip` - always
 - `hostnames` - from reverse DNS
 - `tlsPorts` - always (port + TLS version)
@@ -117,6 +120,7 @@ CLI is installed. Requires **admin/root privileges**.
 ### How it works
 
 The local scan:
+
 1. Searches configured paths for certificate files by extension
 2. Reads supported service configuration files to find certificate references
 3. Excludes CA certificates by default (only sends end-entity certs)
@@ -125,12 +129,14 @@ The local scan:
 ### Default scan paths
 
 **Linux/Unix:**
+
 - `/etc`
 - `/opt`
 - `/usr/local/etc`
 - Current user's home directory (`~`)
 
 **Windows:**
+
 - `C:\ProgramData`
 - `C:\Program Files`
 - `C:\Program Files (x86)`
@@ -149,14 +155,14 @@ If `--all-paths` is enabled, it scans the entire filesystem (`/` on Linux, all d
 The CLI can parse configurations of these services to discover which
 certificates they reference:
 
-| Service | Typical paths found | Typical usages found |
-|---------|---------------------|----------------------|
-| Tomcat | `/opt/tomcat/conf/keystore.jks` | `tomcat-*:8443` |
-| Apache | `/etc/apache2/ssl/server.crt` | `apache:443` |
-| Nginx | `/etc/nginx/ssl/cert.pem` | `nginx:443` |
-| WildFly | `/opt/wildfly/.../keystore.jks` | `wildfly:8443` |
-| HAProxy | `/etc/haproxy/certs/frontend.pem` | `haproxy:443` |
-| IIS | Windows certificate store | `IIS:443` |
+| Service | Typical paths found               | Typical usages found |
+| ------- | --------------------------------- | -------------------- |
+| Tomcat  | `/opt/tomcat/conf/keystore.jks`   | `tomcat-*:8443`      |
+| Apache  | `/etc/apache2/ssl/server.crt`     | `apache:443`         |
+| Nginx   | `/etc/nginx/ssl/cert.pem`         | `nginx:443`          |
+| WildFly | `/opt/wildfly/.../keystore.jks`   | `wildfly:8443`       |
+| HAProxy | `/etc/haproxy/certs/frontend.pem` | `haproxy:443`        |
+| IIS     | Windows certificate store         | `IIS:443`            |
 
 ### CLI usage
 
@@ -194,21 +200,22 @@ sudo horizon-cli localscan --campaign <campaign-name> \
 
 ### Key parameters
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `--campaign` | (required) | Campaign name in Horizon |
-| `--paths` | OS defaults | Additional scan paths (comma-separated) |
-| `--cert-extensions` | see above | Additional certificate file extensions |
-| `--conf-extensions` | see above | Additional config file extensions |
-| `--exclude-files` | none | Absolute paths to exclude |
-| `--exclude-default-paths` | false | Don't add OS default paths |
-| `--containers-passwords` | none | Passwords to try on PKCS#12/JKS |
-| `--all-certs` | false | Include CA certificates |
-| `--all-paths` | false | Scan entire filesystem |
+| Parameter                 | Default     | Description                             |
+| ------------------------- | ----------- | --------------------------------------- |
+| `--campaign`              | (required)  | Campaign name in Horizon                |
+| `--paths`                 | OS defaults | Additional scan paths (comma-separated) |
+| `--cert-extensions`       | see above   | Additional certificate file extensions  |
+| `--conf-extensions`       | see above   | Additional config file extensions       |
+| `--exclude-files`         | none        | Absolute paths to exclude               |
+| `--exclude-default-paths` | false       | Don't add OS default paths              |
+| `--containers-passwords`  | none        | Passwords to try on PKCS#12/JKS         |
+| `--all-certs`             | false       | Include CA certificates                 |
+| `--all-paths`             | false       | Scan entire filesystem                  |
 
 ### Discovery data produced
 
 Localscan populates all `discoveryData` fields:
+
 - `ip` - always
 - `hostnames` - from hostname
 - `paths` - certificate file paths found
@@ -226,17 +233,17 @@ Each service has its own subcommand with service-specific authentication.
 
 ### Available services
 
-| Subcommand | Service | Type |
-|------------|---------|------|
-| `aws-acm` | AWS Certificate Manager | Cloud certificate store |
-| `akv` | Azure Key Vault | Cloud certificate store |
-| `akamai` | Akamai CPS | CDN/network appliance |
-| `bigip` | F5 BigIP (iControl REST or AS3) | Load balancer |
-| `digicert` | DigiCert CertCentral | Public PKI |
-| `globalsign` | GlobalSign | Public PKI |
-| `gandi` | Gandi | Public certificate broker |
-| `vault` | HashiCorp Vault PKI | Secrets engine |
-| `nameshield` | Nameshield | Public certificate broker |
+| Subcommand   | Service                         | Type                      |
+| ------------ | ------------------------------- | ------------------------- |
+| `aws-acm`    | AWS Certificate Manager         | Cloud certificate store   |
+| `akv`        | Azure Key Vault                 | Cloud certificate store   |
+| `akamai`     | Akamai CPS                      | CDN/network appliance     |
+| `bigip`      | F5 BigIP (iControl REST or AS3) | Load balancer             |
+| `digicert`   | DigiCert CertCentral            | Public PKI                |
+| `globalsign` | GlobalSign                      | Public PKI                |
+| `gandi`      | Gandi                           | Public certificate broker |
+| `vault`      | HashiCorp Vault PKI             | Secrets engine            |
+| `nameshield` | Nameshield                      | Public certificate broker |
 
 ### AWS ACM
 
@@ -462,6 +469,7 @@ horizon-cli localimport --campaign <campaign-name> \
 ### PKI migration patterns
 
 **ADCS migration:** Export certificates from AD Certificate Services, then:
+
 ```bash
 horizon-cli localimport --campaign adcs-migration \
   --path /export/adcs-certs \
@@ -470,6 +478,7 @@ horizon-cli localimport --campaign adcs-migration \
 ```
 
 **EJBCA migration:** Export from EJBCA database, then:
+
 ```bash
 horizon-cli localimport --campaign ejbca-migration \
   --csv /export/ejbca-export.csv \
@@ -477,6 +486,7 @@ horizon-cli localimport --campaign ejbca-migration \
 ```
 
 **OpenTrust PKI migration:** Export certificate store, then:
+
 ```bash
 horizon-cli localimport --campaign opentrust-migration \
   --path /export/opentrust \
@@ -518,6 +528,7 @@ Show me how many certificates were found and their grade distribution.
 ```
 
 The LLM can use:
+
 - `search_certificates` with HCQL: `discoveryinfo.campaign equals "prod-netscan"`
 - `aggregate_certificates` to get grade/status distributions
 - `search_discovery_events` to check for scan errors or warnings
@@ -525,6 +536,7 @@ The LLM can use:
 ### Step 4: Promote certificates (optional)
 
 Discovered certificates can be promoted through the lifecycle:
+
 - **Discovered -> Monitored**: import into a monitored profile for labeling, ownership, and notifications
 - **Monitored -> Managed**: move to a managed profile for full lifecycle control
 
@@ -557,10 +569,10 @@ Available periods: `daily`, `weekly`, `monthly`.
 
 ### Common issues
 
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| No certificates found (netscan) | Ports not open or filtered | Check with `nmap -p <port> <host>` first |
-| No certificates found (localscan) | Not running as admin | Use `sudo` (Linux) or run as Administrator (Windows) |
-| Campaign not found | Campaign name mismatch | Verify name with `list_discovery_campaigns` |
-| Feed session error | Concurrent session open | End existing sessions or wait for timeout |
-| Certificates not in search results | Processing delay | Wait a few seconds after scan completes |
+| Symptom                            | Cause                      | Fix                                                  |
+| ---------------------------------- | -------------------------- | ---------------------------------------------------- |
+| No certificates found (netscan)    | Ports not open or filtered | Check with `nmap -p <port> <host>` first             |
+| No certificates found (localscan)  | Not running as admin       | Use `sudo` (Linux) or run as Administrator (Windows) |
+| Campaign not found                 | Campaign name mismatch     | Verify name with `list_discovery_campaigns`          |
+| Feed session error                 | Concurrent session open    | End existing sessions or wait for timeout            |
+| Certificates not in search results | Processing delay           | Wait a few seconds after scan completes              |

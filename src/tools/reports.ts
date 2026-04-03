@@ -10,17 +10,18 @@
  *   - CSV downloads use /reports/{uuid} (NO /api/v1 prefix).
  *   - API management (list / delete) uses /api/v1/reports/.
  */
-import { z } from "zod";
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { HorizonClient } from "../client/http.js";
-import { deleteGuard } from "./helpers.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+
+import type { HorizonClient } from '../client/http.js';
+import { deleteGuard } from './helpers.js';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const REPORT_API_BASE = "/api/v1/reports";
-const REPORT_CSV_BASE = "/reports";
+const REPORT_API_BASE = '/api/v1/reports';
+const REPORT_CSV_BASE = '/reports';
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -31,14 +32,14 @@ export function registerReportTools(
   client: HorizonClient,
 ): void {
   server.registerTool(
-    "list_reports",
+    'list_reports',
     {
       description:
-        "List available reports, optionally filtered by name.\n\n" +
-        "Safety tier: read-only\n\n" +
-        "When report_name is provided the server returns all report entries " +
-        "matching that name (there can be more than one). Without a name the " +
-        "full report catalogue is returned.",
+        'List available reports, optionally filtered by name.\n\n' +
+        'Safety tier: read-only\n\n' +
+        'When report_name is provided the server returns all report entries ' +
+        'matching that name (there can be more than one). Without a name the ' +
+        'full report catalogue is returned.',
       inputSchema: z.object({
         max_items: z
           .number()
@@ -46,15 +47,15 @@ export function registerReportTools(
           .positive()
           .max(100)
           .default(50)
-          .describe("Maximum items to return (default 50)."),
+          .describe('Maximum items to return (default 50).'),
         report_name: z
           .string()
           .optional()
-          .describe("Exact report name to filter on (server-side)."),
+          .describe('Exact report name to filter on (server-side).'),
         expired: z
           .boolean()
           .default(false)
-          .describe("Include expired reports (default false)."),
+          .describe('Include expired reports (default false).'),
       }),
     },
     async ({ max_items, report_name, expired }) => {
@@ -79,13 +80,13 @@ export function registerReportTools(
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               items: sliced,
               count: sliced.length,
               total_available: total,
               truncated,
-              kind: "report",
+              kind: 'report',
             }),
           },
         ],
@@ -94,29 +95,27 @@ export function registerReportTools(
   );
 
   server.registerTool(
-    "download_report",
+    'download_report',
     {
       description:
-        "Download a report as CSV by its UUID.\n\n" +
-        "Safety tier: read-only\n\n" +
-        "CRITICAL: The CSV endpoint lives at /reports/{uuid} - there is " +
-        "NO /api/v1 prefix for this path.",
+        'Download a report as CSV by its UUID.\n\n' +
+        'Safety tier: read-only\n\n' +
+        'CRITICAL: The CSV endpoint lives at /reports/{uuid} - there is ' +
+        'NO /api/v1 prefix for this path.',
       inputSchema: z.object({
-        report_uuid: z.string().describe("UUID of the report to download."),
+        report_uuid: z.string().describe('UUID of the report to download.'),
       }),
     },
     async ({ report_uuid }) => {
-      const csvText = await client.getText(
-        `${REPORT_CSV_BASE}/${report_uuid}`,
-      );
+      const csvText = await client.getText(`${REPORT_CSV_BASE}/${report_uuid}`);
 
-      const lines = csvText.trim().split("\n");
+      const lines = csvText.trim().split('\n');
       const rowCount = lines.length > 0 ? Math.max(0, lines.length - 1) : 0;
 
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               content: `Report ${report_uuid} downloaded (${rowCount} rows).`,
               csv: csvText,
@@ -129,35 +128,33 @@ export function registerReportTools(
   );
 
   server.registerTool(
-    "delete_report",
+    'delete_report',
     {
       description:
-        "STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST " +
-        "ask the user for explicit confirmation before calling this tool. Do not " +
+        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
+        'ask the user for explicit confirmation before calling this tool. Do not ' +
         'proceed without a clear "yes" from the user. Present what will be ' +
-        "permanently destroyed and wait.\n\n" +
-        "Delete a report by UUID. Requires UUID confirmation.\n\n" +
-        "Safety tier: mutating-destructive",
+        'permanently destroyed and wait.\n\n' +
+        'Delete a report by UUID. Requires UUID confirmation.\n\n' +
+        'Safety tier: mutating-destructive',
       inputSchema: z.object({
-        report_uuid: z
-          .string()
-          .describe("UUID of the report to delete."),
+        report_uuid: z.string().describe('UUID of the report to delete.'),
         expected_uuid: z
           .string()
-          .describe("Must exactly match report_uuid as a deletion safeguard."),
+          .describe('Must exactly match report_uuid as a deletion safeguard.'),
       }),
     },
     async ({ report_uuid, expected_uuid }) => {
-      deleteGuard(report_uuid, expected_uuid, "uuid");
+      deleteGuard(report_uuid, expected_uuid, 'uuid');
       await client.delete(`${REPORT_API_BASE}/${report_uuid}`);
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               deleted: true,
               uuid: report_uuid,
-              kind: "report",
+              kind: 'report',
             }),
           },
         ],

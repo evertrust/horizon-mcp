@@ -7,37 +7,36 @@
  *   HORIZON_E2E_API_ID   - API key identifier
  *   HORIZON_E2E_API_KEY  - API key secret
  */
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { afterAll, beforeAll } from 'vitest';
 
-import { afterAll, beforeAll } from "vitest";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { Client } from "@modelcontextprotocol/sdk/client/index.js";
-import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
-
-import { HorizonClient } from "../../src/client/http.js";
-import { ApiKeyAuthProvider } from "../../src/auth/apikey.js";
-import { registerAllResources } from "../../src/resources/index.js";
-import { registerProfileTools } from "../../src/tools/profiles.js";
-import { registerLifecycleTools } from "../../src/tools/lifecycle.js";
-import { registerDashboardTools } from "../../src/tools/dashboards.js";
-import { registerDiscoveryTools } from "../../src/tools/discovery.js";
-import { registerDiscoveryEventTools } from "../../src/tools/discovery-events.js";
-import { registerDiscoveryFeedTools } from "../../src/tools/discovery-feed.js";
-import { registerDatasourceTools } from "../../src/tools/datasources.js";
-import { registerReportTools } from "../../src/tools/reports.js";
-import { registerTriggerTools } from "../../src/tools/triggers.js";
-import { registerSystemTools } from "../../src/tools/assist/system.js";
-import { registerQueryTools } from "../../src/tools/assist/query.js";
-import { registerCryptoTools } from "../../src/tools/assist/crypto.js";
-import { registerComputationTools } from "../../src/tools/assist/computation.js";
-import { registerTranslateTools } from "../../src/tools/assist/translate.js";
+import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
+import { HorizonClient } from '../../src/client/http.js';
+import { registerAllResources } from '../../src/resources/index.js';
+import { registerComputationTools } from '../../src/tools/assist/computation.js';
+import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
+import { registerQueryTools } from '../../src/tools/assist/query.js';
+import { registerSystemTools } from '../../src/tools/assist/system.js';
+import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerDashboardTools } from '../../src/tools/dashboards.js';
+import { registerDatasourceTools } from '../../src/tools/datasources.js';
+import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
+import { registerDiscoveryFeedTools } from '../../src/tools/discovery-feed.js';
+import { registerDiscoveryTools } from '../../src/tools/discovery.js';
+import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
+import { registerProfileTools } from '../../src/tools/profiles.js';
+import { registerReportTools } from '../../src/tools/reports.js';
+import { registerTriggerTools } from '../../src/tools/triggers.js';
 
 // ---------------------------------------------------------------------------
 // Environment gating
 // ---------------------------------------------------------------------------
 
-export const E2E_URL = process.env["HORIZON_E2E_URL"] ?? "";
-export const E2E_API_ID = process.env["HORIZON_E2E_API_ID"] ?? "";
-export const E2E_API_KEY = process.env["HORIZON_E2E_API_KEY"] ?? "";
+export const E2E_URL = process.env['HORIZON_E2E_URL'] ?? '';
+export const E2E_API_ID = process.env['HORIZON_E2E_API_ID'] ?? '';
+export const E2E_API_KEY = process.env['HORIZON_E2E_API_KEY'] ?? '';
 
 export const E2E_CONFIGURED = Boolean(E2E_URL && E2E_API_ID && E2E_API_KEY);
 
@@ -53,8 +52,8 @@ export const E2E_PREFIX = `e2e-${hex8}`;
 // ---------------------------------------------------------------------------
 
 const SERVER_INSTRUCTIONS =
-  "Production MCP server for Evertrust Horizon CLM - " +
-  "certificate lifecycle management, configuration, RBAC, and discovery.";
+  'Production MCP server for Evertrust Horizon CLM - ' +
+  'certificate lifecycle management, configuration, RBAC, and discovery.';
 
 // ---------------------------------------------------------------------------
 // Shared MCP Client + HorizonClient - created once per test suite
@@ -66,7 +65,7 @@ let horizonClient: HorizonClient | undefined;
 export function getMcpClient(): Client {
   if (!mcpClient) {
     throw new Error(
-      "MCP client not initialized - call setupE2EStack() in a beforeAll block",
+      'MCP client not initialized - call setupE2EStack() in a beforeAll block',
     );
   }
   return mcpClient;
@@ -75,7 +74,7 @@ export function getMcpClient(): Client {
 export function getHorizonClient(): HorizonClient {
   if (!horizonClient) {
     throw new Error(
-      "Horizon client not initialized - call setupE2EStack() in a beforeAll block",
+      'Horizon client not initialized - call setupE2EStack() in a beforeAll block',
     );
   }
   return horizonClient;
@@ -91,7 +90,7 @@ export class ToolError extends Error {
     message: string,
   ) {
     super(message);
-    this.name = "ToolError";
+    this.name = 'ToolError';
   }
 }
 
@@ -125,7 +124,7 @@ export async function callTool(
     throw new ToolError(name, `Tool '${name}' returned empty content`);
   }
 
-  const textItem = content.find((c) => c.type === "text");
+  const textItem = content.find((c) => c.type === 'text');
   if (!textItem?.text) {
     throw new ToolError(name, `Tool '${name}' returned no text content`);
   }
@@ -142,7 +141,7 @@ export async function callTool(
     return { raw: textItem.text };
   }
 
-  if (data["error"]) {
+  if (data['error']) {
     throw new ToolError(
       name,
       `Tool '${name}' returned error: ${JSON.stringify(data)}`,
@@ -179,7 +178,7 @@ export async function callToolRaw(
     throw new Error(`Tool '${name}' returned empty content`);
   }
 
-  const textItem = content.find((c) => c.type === "text");
+  const textItem = content.find((c) => c.type === 'text');
   if (!textItem?.text) {
     throw new Error(`Tool '${name}' returned no text content`);
   }
@@ -200,7 +199,7 @@ export async function readResource(uri: string): Promise<string> {
   }
 
   const item = contents[0]!;
-  if ("text" in item && typeof item.text === "string") {
+  if ('text' in item && typeof item.text === 'string') {
     return item.text;
   }
 
@@ -244,7 +243,7 @@ export function setupE2EStack(): void {
 
     // 2. Real McpServer with all tools and resources
     const server = new McpServer(
-      { name: "e2e-test", version: "0.0.0" },
+      { name: 'e2e-test', version: '0.0.0' },
       { instructions: SERVER_INSTRUCTIONS },
     );
     registerAllResources(server);
@@ -254,7 +253,7 @@ export function setupE2EStack(): void {
     const [clientTransport, serverTransport] =
       InMemoryTransport.createLinkedPair();
 
-    mcpClient = new Client({ name: "e2e-test-client", version: "0.0.0" });
+    mcpClient = new Client({ name: 'e2e-test-client', version: '0.0.0' });
     await Promise.all([
       mcpClient.connect(clientTransport),
       server.connect(serverTransport),

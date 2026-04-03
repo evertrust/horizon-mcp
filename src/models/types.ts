@@ -6,7 +6,7 @@
  * Note: ToolResult is NOT ported - it was dead code in Python (never imported
  * by any tool module). Tools return CallToolResult directly via the MCP SDK.
  */
-import { z } from "zod";
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // 1. AuthorizationLevels - WHO can do WHAT (28 fields incl import)
@@ -126,7 +126,7 @@ export type TriggerHooks = z.infer<typeof triggerHooksSchema>;
 // ---------------------------------------------------------------------------
 
 export const managedCryptoPolicySchema = z.object({
-  type: z.literal("managed"),
+  type: z.literal('managed'),
   defaultKeyType: z.string().optional(),
   authorizedKeyTypes: z.array(z.string()).default([]),
   preferredEnrollmentMode: z.string().optional(),
@@ -140,12 +140,12 @@ export const managedCryptoPolicySchema = z.object({
 export type ManagedCryptoPolicy = z.infer<typeof managedCryptoPolicySchema>;
 
 export const monitoredCryptoPolicySchema = z.object({
-  type: z.literal("monitored"),
+  type: z.literal('monitored'),
   authorizedKeyTypes: z.array(z.string()).default([]),
 });
 export type MonitoredCryptoPolicy = z.infer<typeof monitoredCryptoPolicySchema>;
 
-export const cryptoPolicySchema = z.discriminatedUnion("type", [
+export const cryptoPolicySchema = z.discriminatedUnion('type', [
   managedCryptoPolicySchema,
   monitoredCryptoPolicySchema,
 ]);

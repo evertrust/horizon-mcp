@@ -17,12 +17,12 @@ the principal's collection.
 
 ### Dashboard Fields
 
-| Field         | Type          | Description                                      |
-|---------------|---------------|--------------------------------------------------|
-| `name`        | str           | Plain string identifier (unique per principal). **Immutable after creation.** |
-| `description` | str or None   | Optional human-readable description              |
-| `charts`      | list[Chart]   | Ordered list of chart objects (defaults to `[]`)  |
-| `type`        | str           | Either `"certificate"` or `"request"`            |
+| Field         | Type        | Description                                                                   |
+| ------------- | ----------- | ----------------------------------------------------------------------------- |
+| `name`        | str         | Plain string identifier (unique per principal). **Immutable after creation.** |
+| `description` | str or None | Optional human-readable description                                           |
+| `charts`      | list[Chart] | Ordered list of chart objects (defaults to `[]`)                              |
+| `type`        | str         | Either `"certificate"` or `"request"`                                         |
 
 The `type` field determines which query language applies to `localQuery`
 filters (HCQL for certificate dashboards, HRQL for request dashboards) and
@@ -35,21 +35,21 @@ which aggregation fields are valid in chart `fields`.
 Horizon supports 13 chart types. Each type is suited to different
 analytical goals.
 
-| Chart Type                | Best For                                              |
-|---------------------------|-------------------------------------------------------|
-| `area`                    | Trends over time with volume emphasis                 |
-| `donut`                   | Part-of-whole distribution (single dimension)         |
-| `heatmap`                 | Density / intensity across two dimensions             |
-| `bar-horizontal`          | Comparing categories when labels are long             |
-| `line`                    | Trends over time with precise value tracking          |
-| `metric`                  | Single KPI / headline number                          |
-| `pie`                     | Similar to donut; classic proportional view           |
-| `polar`                   | Radial category comparison                            |
-| `pyramid`                 | Ranked funnel or tiered distribution                  |
-| `radar`                   | Multi-axis profile comparison                         |
-| `table`                   | Detailed tabular breakdowns                           |
-| `treemap`                 | Hierarchical proportional view (e.g. grade breakdown) |
-| `bar-vertical`            | Comparing categories with short labels                |
+| Chart Type       | Best For                                              |
+| ---------------- | ----------------------------------------------------- |
+| `area`           | Trends over time with volume emphasis                 |
+| `donut`          | Part-of-whole distribution (single dimension)         |
+| `heatmap`        | Density / intensity across two dimensions             |
+| `bar-horizontal` | Comparing categories when labels are long             |
+| `line`           | Trends over time with precise value tracking          |
+| `metric`         | Single KPI / headline number                          |
+| `pie`            | Similar to donut; classic proportional view           |
+| `polar`          | Radial category comparison                            |
+| `pyramid`        | Ranked funnel or tiered distribution                  |
+| `radar`          | Multi-axis profile comparison                         |
+| `table`          | Detailed tabular breakdowns                           |
+| `treemap`        | Hierarchical proportional view (e.g. grade breakdown) |
+| `bar-vertical`   | Comparing categories with short labels                |
 
 ---
 
@@ -57,24 +57,24 @@ analytical goals.
 
 Each chart object within a dashboard has the following structure:
 
-| Field        | Type          | Description                                                    |
-|--------------|---------------|----------------------------------------------------------------|
-| `type`          | str           | One of the 13 chart types listed above                      |
-| `title`         | str           | Display title for the chart                                 |
-| `description`   | str or None   | Optional chart description                                  |
-| `fields`        | list[str]     | groupBy dimensions for the aggregate query                  |
-| `limit`         | int or None   | Maximum number of buckets returned; must be >= 0            |
-| `having`        | dict or None  | Post-aggregation filter: `{"operator": "gte", "value": 10}` |
-| `sortOrder`     | str or None   | Data sort order: `Asc`, `Desc`, `KeyAsc`, or `KeyDesc`     |
-| `localQuery`    | str or None   | HCQL (certificate) or HRQL (request) filter expression      |
-| `direction`     | str or None   | Visual rendering direction: `asc` or `desc`                 |
-| `colors`        | list[str]     | Hex color codes: `["#A6ADF7", "#4D54A2", ...]`              |
-| `log`            | bool          | Enable logarithmic scale on value axis (default false)      |
-| `i`             | str or None   | Chart identifier for grid layout                            |
-| `x`             | int or None   | Grid column position (0-based)                              |
-| `y`             | int or None   | Grid row position                                           |
-| `w`             | int or None   | Grid column span                                            |
-| `h`             | int or None   | Grid row span                                               |
+| Field         | Type         | Description                                                 |
+| ------------- | ------------ | ----------------------------------------------------------- |
+| `type`        | str          | One of the 13 chart types listed above                      |
+| `title`       | str          | Display title for the chart                                 |
+| `description` | str or None  | Optional chart description                                  |
+| `fields`      | list[str]    | groupBy dimensions for the aggregate query                  |
+| `limit`       | int or None  | Maximum number of buckets returned; must be >= 0            |
+| `having`      | dict or None | Post-aggregation filter: `{"operator": "gte", "value": 10}` |
+| `sortOrder`   | str or None  | Data sort order: `Asc`, `Desc`, `KeyAsc`, or `KeyDesc`      |
+| `localQuery`  | str or None  | HCQL (certificate) or HRQL (request) filter expression      |
+| `direction`   | str or None  | Visual rendering direction: `asc` or `desc`                 |
+| `colors`      | list[str]    | Hex color codes: `["#A6ADF7", "#4D54A2", ...]`              |
+| `log`         | bool         | Enable logarithmic scale on value axis (default false)      |
+| `i`           | str or None  | Chart identifier for grid layout                            |
+| `x`           | int or None  | Grid column position (0-based)                              |
+| `y`           | int or None  | Grid row position                                           |
+| `w`           | int or None  | Grid column span                                            |
+| `h`           | int or None  | Grid row span                                               |
 
 ---
 
@@ -104,10 +104,10 @@ Chart B: x=6, y=0, w=6, h=4, i="chart-b"
 
 These two fields serve different purposes and must not be confused:
 
-| Property    | Case Style  | Purpose                                          | Values                         |
-|-------------|-------------|--------------------------------------------------|--------------------------------|
-| `sortOrder` | PascalCase  | Controls data sort order sent to aggregate API   | `Asc`, `Desc`, `KeyAsc`, `KeyDesc` |
-| `direction` | lowercase   | Controls visual rendering direction in the UI    | `asc`, `desc`                  |
+| Property    | Case Style | Purpose                                        | Values                             |
+| ----------- | ---------- | ---------------------------------------------- | ---------------------------------- |
+| `sortOrder` | PascalCase | Controls data sort order sent to aggregate API | `Asc`, `Desc`, `KeyAsc`, `KeyDesc` |
+| `direction` | lowercase  | Controls visual rendering direction in the UI  | `asc`, `desc`                      |
 
 `sortOrder` determines how the Horizon server orders aggregation buckets
 before returning them. `direction` tells the front-end which end of the
@@ -131,12 +131,13 @@ Fields usable in chart `fields` for certificate aggregation:
 `revocationDate.day`, `revocationDate.month`, `revocationDate.year`
 
 **Dynamic fields (instance-specific):**
-- `label.<name>`  -  Labels defined on the instance. Use `list_labels` to
+
+- `label.<name>` - Labels defined on the instance. Use `list_labels` to
   discover available label names. Example: `label.environment`.
-- `grade.<name>`  -  Grading policies defined on the instance. Use
+- `grade.<name>` - Grading policies defined on the instance. Use
   `list_grading_policies` to discover available policy names.
   Example: `grade.Horizon-Grading-Policy`.
-- `metadata.*`  -  Certificate metadata keys.
+- `metadata.*` - Certificate metadata keys.
 
 > **Important**: `owner` is NOT a valid groupBy field for certificate
 > aggregation. Use `holderId` instead.
@@ -153,8 +154,9 @@ Fields usable in chart `fields` for request aggregation:
 `registrationDate.day`, `registrationDate.month`, `registrationDate.year`
 
 **Dynamic fields (instance-specific):**
-- `label.<name>`  -  Labels defined on the instance. Use `list_labels`.
-- `metadata.*`  -  Request metadata keys.
+
+- `label.<name>` - Labels defined on the instance. Use `list_labels`.
+- `metadata.*` - Request metadata keys.
 
 ---
 
@@ -162,14 +164,14 @@ Fields usable in chart `fields` for request aggregation:
 
 The `having` object applies a post-aggregation filter on bucket counts.
 
-| Operator | Meaning                 |
-|----------|-------------------------|
-| `gt`     | Greater than            |
-| `gte`    | Greater than or equal   |
-| `lt`     | Less than               |
-| `lte`    | Less than or equal      |
-| `eq`     | Equal                   |
-| `ne`     | Not equal               |
+| Operator | Meaning               |
+| -------- | --------------------- |
+| `gt`     | Greater than          |
+| `gte`    | Greater than or equal |
+| `lt`     | Less than             |
+| `lte`    | Less than or equal    |
+| `eq`     | Equal                 |
+| `ne`     | Not equal             |
 
 Example: show only buckets with 10 or more certificates:
 
@@ -198,13 +200,13 @@ expressions for quick recall.
 
 ### Saved Query Types
 
-| Type   | Query Language | Description                          |
-|--------|----------------|--------------------------------------|
-| `hcql` | HCQL           | Certificate search queries           |
-| `hrql` | HRQL           | Request search queries               |
-| `heql` | HEQL           | Event / audit log queries            |
-| `hdql` | HDQL           | Discovery event queries              |
-| `hpql` | HPQL           | Principal queries                    |
+| Type   | Query Language | Description                |
+| ------ | -------------- | -------------------------- |
+| `hcql` | HCQL           | Certificate search queries |
+| `hrql` | HRQL           | Request search queries     |
+| `heql` | HEQL           | Event / audit log queries  |
+| `hdql` | HDQL           | Discovery event queries    |
+| `hpql` | HPQL           | Principal queries          |
 
 All type values are **lowercase**.
 
@@ -226,10 +228,18 @@ with a descriptive error message.
 Visualize certificates expiring within 30 days, grouped by profile.
 
 ```json
-{"type": "bar-horizontal", "title": "Expiring Certs by Profile",
- "localQuery": "status is valid and valid.until before 30d",
- "fields": ["profile"], "sortOrder": "Desc",
- "i": "1", "x": 0, "y": 0, "w": 6, "h": 4}
+{
+  "type": "bar-horizontal",
+  "title": "Expiring Certs by Profile",
+  "localQuery": "status is valid and valid.until before 30d",
+  "fields": ["profile"],
+  "sortOrder": "Desc",
+  "i": "1",
+  "x": 0,
+  "y": 0,
+  "w": 6,
+  "h": 4
+}
 ```
 
 ### Issuance by Module (Last 7 Days)
@@ -237,10 +247,17 @@ Visualize certificates expiring within 30 days, grouped by profile.
 Show certificate issuance distribution by module for the past week.
 
 ```json
-{"type": "donut", "title": "Issuance by Module",
- "localQuery": "valid.from after 7d",
- "fields": ["module"],
- "i": "2", "x": 6, "y": 0, "w": 6, "h": 4}
+{
+  "type": "donut",
+  "title": "Issuance by Module",
+  "localQuery": "valid.from after 7d",
+  "fields": ["module"],
+  "i": "2",
+  "x": 6,
+  "y": 0,
+  "w": 6,
+  "h": 4
+}
 ```
 
 ### Key Type Distribution
@@ -248,11 +265,19 @@ Show certificate issuance distribution by module for the past week.
 Show the distribution of key types across all valid certificates.
 
 ```json
-{"type": "donut", "title": "Key Type Distribution",
- "localQuery": "status is valid",
- "fields": ["keyType"], "sortOrder": "Desc",
- "colors": ["#A6ADF7", "#4D54A2", "#3E459A", "#114446", "#21969A"],
- "i": "3", "x": 0, "y": 4, "w": 6, "h": 4}
+{
+  "type": "donut",
+  "title": "Key Type Distribution",
+  "localQuery": "status is valid",
+  "fields": ["keyType"],
+  "sortOrder": "Desc",
+  "colors": ["#A6ADF7", "#4D54A2", "#3E459A", "#114446", "#21969A"],
+  "i": "3",
+  "x": 0,
+  "y": 4,
+  "w": 6,
+  "h": 4
+}
 ```
 
 ### Grade Distribution
@@ -261,10 +286,18 @@ Display the spread of certificate grades under a grading policy.
 Use `list_grading_policies` to discover the policy name on this instance.
 
 ```json
-{"type": "treemap", "title": "Grade Distribution",
- "fields": ["grade.<policy-name>"], "sortOrder": "KeyAsc",
- "localQuery": "status is valid",
- "i": "4", "x": 6, "y": 4, "w": 6, "h": 4}
+{
+  "type": "treemap",
+  "title": "Grade Distribution",
+  "fields": ["grade.<policy-name>"],
+  "sortOrder": "KeyAsc",
+  "localQuery": "status is valid",
+  "i": "4",
+  "x": 6,
+  "y": 4,
+  "w": 6,
+  "h": 4
+}
 ```
 
 ### Request Status Overview
@@ -272,9 +305,16 @@ Use `list_grading_policies` to discover the policy name on this instance.
 Show current request pipeline status (for request-type dashboards).
 
 ```json
-{"type": "metric", "title": "Request Status",
- "fields": ["status"],
- "i": "1", "x": 0, "y": 0, "w": 12, "h": 2}
+{
+  "type": "metric",
+  "title": "Request Status",
+  "fields": ["status"],
+  "i": "1",
+  "x": 0,
+  "y": 0,
+  "w": 12,
+  "h": 2
+}
 ```
 
 ---
@@ -284,7 +324,7 @@ Show current request pipeline status (for request-type dashboards).
 Dashboards should be built iteratively:
 
 1. **Ask the user for the dashboard name** (and optionally a description).
-   The name is **immutable**  -  it cannot be changed after creation. Never
+   The name is **immutable** - it cannot be changed after creation. Never
    invent a name on the user's behalf.
 
 2. **Create a blank dashboard** using `create_dashboard` with the chosen

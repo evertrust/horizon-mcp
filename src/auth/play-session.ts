@@ -1,7 +1,7 @@
-import { AuthProvider } from "./base.js";
-import { getLogger } from "../logging.js";
+import { getLogger } from '../logging.js';
+import { AuthProvider } from './base.js';
 
-const logger = getLogger("horizon_mcp.auth.play_session");
+const logger = getLogger('horizon_mcp.auth.play_session');
 
 const DEFAULT_LOGIN_TIMEOUT_S = 300;
 const MAX_OIDC_RETRIES = 3;
@@ -9,7 +9,7 @@ const MAX_OIDC_RETRIES = 3;
 class OidcFlowError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "OidcFlowError";
+    this.name = 'OidcFlowError';
   }
 }
 
@@ -39,7 +39,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
     loginTimeout = DEFAULT_LOGIN_TIMEOUT_S,
   ) {
     super();
-    this._horizonUrl = horizonUrl.replace(/\/+$/, "");
+    this._horizonUrl = horizonUrl.replace(/\/+$/, '');
     this._verifySsl = verifySsl;
     this._loginTimeout = loginTimeout;
   }
@@ -47,14 +47,14 @@ export class PlaySessionAuthProvider extends AuthProvider {
   async getHeaders(): Promise<Record<string, string>> {
     if (!this._sessionCookie) {
       throw new Error(
-        "No Play session available. Call refreshIfNeeded() first.",
+        'No Play session available. Call refreshIfNeeded() first.',
       );
     }
     const cookieParts = [`PLAY_SESSION=${this._sessionCookie}`];
     if (this._csrfTokenValue) {
       cookieParts.push(`csrf-token=${this._csrfTokenValue}`);
     }
-    return { Cookie: cookieParts.join("; ") };
+    return { Cookie: cookieParts.join('; ') };
   }
 
   async refreshIfNeeded(): Promise<void> {
@@ -65,7 +65,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
 
   async markAuthFailed(): Promise<void> {
     logger.warning(
-      "Session expired - reopening browser for re-authentication.",
+      'Session expired - reopening browser for re-authentication.',
     );
     this._expired = true;
   }
@@ -78,16 +78,16 @@ export class PlaySessionAuthProvider extends AuthProvider {
     await PlaySessionAuthProvider._checkPlaywrightAvailable();
 
     // Dynamic import - playwright is optional
-    const { chromium } = await import("playwright");
+    const { chromium } = await import('playwright');
 
     logger.info(
       `Opening browser for Horizon authentication at ${this._horizonUrl}...`,
     );
 
-    const { mkdtempSync, rmSync } = await import("node:fs");
-    const { tmpdir } = await import("node:os");
-    const { join } = await import("node:path");
-    const userDataDir = mkdtempSync(join(tmpdir(), "horizon-mcp-"));
+    const { mkdtempSync, rmSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const userDataDir = mkdtempSync(join(tmpdir(), 'horizon-mcp-'));
 
     let context;
     try {
@@ -100,10 +100,10 @@ export class PlaySessionAuthProvider extends AuthProvider {
       const msg = String(err).toLowerCase();
       if (
         msg.includes("executable doesn't exist") ||
-        msg.includes("browsertype.launch")
+        msg.includes('browsertype.launch')
       ) {
         throw new Error(
-          "Chromium browser not found. Run: npx playwright install chromium",
+          'Chromium browser not found. Run: npx playwright install chromium',
         );
       }
       throw new Error(`Failed to launch browser: ${err}`);
@@ -117,12 +117,12 @@ export class PlaySessionAuthProvider extends AuthProvider {
     }
 
     this._expired = false;
-    logger.info("Authentication successful - browser closed.");
+    logger.info('Authentication successful - browser closed.');
   }
 
   private async _runAuthFlowWithRetry(context: unknown): Promise<void> {
     // Type the context at runtime since playwright is optional
-    const ctx = context as import("playwright").BrowserContext;
+    const ctx = context as import('playwright').BrowserContext;
     let lastError: OidcFlowError | undefined;
 
     for (let attempt = 1; attempt <= MAX_OIDC_RETRIES; attempt++) {
@@ -138,14 +138,11 @@ export class PlaySessionAuthProvider extends AuthProvider {
         );
       }
 
-      const initialSession = await this._getCookieValue(
-        ctx,
-        "PLAY_SESSION",
-      );
+      const initialSession = await this._getCookieValue(ctx, 'PLAY_SESSION');
       if (initialSession) {
         logger.info(
-          "Pre-auth PLAY_SESSION detected - waiting for " +
-            "authenticated session (cookie value change).",
+          'Pre-auth PLAY_SESSION detected - waiting for ' +
+            'authenticated session (cookie value change).',
         );
       }
 
@@ -157,10 +154,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
           this._loginTimeout,
         );
         this._sessionCookie = sessionCookie;
-        this._csrfTokenValue = await this._getCookieValue(
-          ctx,
-          "csrf-token",
-        );
+        this._csrfTokenValue = await this._getCookieValue(ctx, 'csrf-token');
         return;
       } catch (err) {
         if (err instanceof OidcFlowError) {
@@ -168,7 +162,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
           if (attempt < MAX_OIDC_RETRIES) {
             logger.warning(
               `OIDC code verifier expired (attempt ${attempt}/${MAX_OIDC_RETRIES}). ` +
-                "Retrying - IdP SSO cookies should make this instant...",
+                'Retrying - IdP SSO cookies should make this instant...',
             );
             continue;
           }
@@ -186,17 +180,17 @@ export class PlaySessionAuthProvider extends AuthProvider {
 
   private static async _checkPlaywrightAvailable(): Promise<void> {
     try {
-      await import("playwright");
+      await import('playwright');
     } catch {
       throw new Error(
-        "Play session auth requires Playwright. " +
-          "Install: npm install playwright && npx playwright install chromium",
+        'Play session auth requires Playwright. ' +
+          'Install: npm install playwright && npx playwright install chromium',
       );
     }
   }
 
   private async _getCookieValue(
-    context: import("playwright").BrowserContext,
+    context: import('playwright').BrowserContext,
     name: string,
   ): Promise<string | undefined> {
     const cookies = await context.cookies(this._horizonUrl);
@@ -205,15 +199,15 @@ export class PlaySessionAuthProvider extends AuthProvider {
   }
 
   private async _waitForAuthenticatedSession(
-    context: import("playwright").BrowserContext,
-    page: import("playwright").Page,
+    context: import('playwright').BrowserContext,
+    page: import('playwright').Page,
     initialValue: string | undefined,
     timeoutS: number,
   ): Promise<string> {
     const deadline = Date.now() + timeoutS * 1000;
 
     while (Date.now() < deadline) {
-      const current = await this._getCookieValue(context, "PLAY_SESSION");
+      const current = await this._getCookieValue(context, 'PLAY_SESSION');
       if (current !== undefined && current !== initialValue) {
         return current;
       }
@@ -225,22 +219,20 @@ export class PlaySessionAuthProvider extends AuthProvider {
 
     throw new Error(
       `Login timed out after ${timeoutS}s. ` +
-        "Complete login in the browser window within the timeout.",
+        'Complete login in the browser window within the timeout.',
     );
   }
 
-  private static _checkForOidcError(
-    page: import("playwright").Page,
-  ): void {
+  private static _checkForOidcError(page: import('playwright').Page): void {
     const urlDecoded = decodeURIComponent(page.url()).toLowerCase();
     if (
-      urlDecoded.includes("auth_error") &&
-      urlDecoded.includes("code verifier")
+      urlDecoded.includes('auth_error') &&
+      urlDecoded.includes('code verifier')
     ) {
       throw new OidcFlowError(
-        "OIDC PKCE code verifier expired server-side. " +
+        'OIDC PKCE code verifier expired server-side. ' +
           "Manual IdP login took longer than the server's " +
-          "code verifier TTL.",
+          'code verifier TTL.',
       );
     }
   }
