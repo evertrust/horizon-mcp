@@ -1,6 +1,6 @@
 {
   "name": "@evertrust/horizon-mcp",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "MCP server for Evertrust Horizon certificate lifecycle management",
   "type": "module",
   "bin": {
