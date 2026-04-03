@@ -1,10 +1,10 @@
-import { readFileSync } from "node:fs";
-import type { Agent } from "undici";
+import { readFileSync } from 'node:fs';
+import type { Agent } from 'undici';
 
-import { AuthProvider } from "./base.js";
-import { getLogger } from "../logging.js";
+import { getLogger } from '../logging.js';
+import { AuthProvider } from './base.js';
 
-const logger = getLogger("horizon_mcp.auth.mtls");
+const logger = getLogger('horizon_mcp.auth.mtls');
 
 /**
  * Authenticate via mutual TLS client certificate.
@@ -16,7 +16,7 @@ const logger = getLogger("horizon_mcp.auth.mtls");
  * No auth headers are needed - the certificate IS the credential.
  */
 export class MtlsAuthProvider extends AuthProvider {
-  private readonly _connectOptions: Agent.Options["connect"];
+  private readonly _connectOptions: Agent.Options['connect'];
 
   constructor(opts: {
     certPath?: string;
@@ -38,7 +38,7 @@ export class MtlsAuthProvider extends AuthProvider {
     // Client certs are static files
   }
 
-  getDispatcherOptions(): Agent.Options["connect"] {
+  getDispatcherOptions(): Agent.Options['connect'] {
     return this._connectOptions;
   }
 
@@ -51,29 +51,23 @@ export class MtlsAuthProvider extends AuthProvider {
       try {
         readFileSync(opts.certPath);
       } catch {
-        throw new Error(
-          `HORIZON_CLIENT_CERT file not found: ${opts.certPath}`,
-        );
+        throw new Error(`HORIZON_CLIENT_CERT file not found: ${opts.certPath}`);
       }
       if (!opts.keyPath) {
         throw new Error(
-          "HORIZON_CLIENT_KEY is required when HORIZON_CLIENT_CERT is set.",
+          'HORIZON_CLIENT_KEY is required when HORIZON_CLIENT_CERT is set.',
         );
       }
       try {
         readFileSync(opts.keyPath);
       } catch {
-        throw new Error(
-          `HORIZON_CLIENT_KEY file not found: ${opts.keyPath}`,
-        );
+        throw new Error(`HORIZON_CLIENT_KEY file not found: ${opts.keyPath}`);
       }
     } else if (opts.pfxPath) {
       try {
         readFileSync(opts.pfxPath);
       } catch {
-        throw new Error(
-          `HORIZON_CLIENT_PFX file not found: ${opts.pfxPath}`,
-        );
+        throw new Error(`HORIZON_CLIENT_PFX file not found: ${opts.pfxPath}`);
       }
     }
   }
@@ -84,16 +78,14 @@ export class MtlsAuthProvider extends AuthProvider {
     keyPassword?: string;
     pfxPath?: string;
     pfxPassword?: string;
-  }): Agent.Options["connect"] {
+  }): Agent.Options['connect'] {
     if (opts.certPath && opts.keyPath) {
-      logger.info(
-        `mTLS: loaded PEM cert=${opts.certPath} key=${opts.keyPath}`,
-      );
-      const connect: Agent.Options["connect"] = {
-        cert: readFileSync(opts.certPath, "utf-8"),
+      logger.info(`mTLS: loaded PEM cert=${opts.certPath} key=${opts.keyPath}`);
+      const connect: Agent.Options['connect'] = {
+        cert: readFileSync(opts.certPath, 'utf-8'),
         key: opts.keyPassword
-          ? readFileSync(opts.keyPath, "utf-8")
-          : readFileSync(opts.keyPath, "utf-8"),
+          ? readFileSync(opts.keyPath, 'utf-8')
+          : readFileSync(opts.keyPath, 'utf-8'),
         passphrase: opts.keyPassword || undefined,
       };
       return connect;

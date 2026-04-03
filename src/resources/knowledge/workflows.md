@@ -18,17 +18,18 @@ complete access control and lifecycle behavior for certificates in that profile.
 
 Every certificate lifecycle action maps to one of 7 workflow types:
 
-| Workflow   | Purpose                                                                       | Creates new cert? |
-|------------|-------------------------------------------------------------------------------|-------------------|
-| `enroll`   | Issue a new certificate (CSR-based or centralized key generation)             | Yes               |
-| `revoke`   | Revoke an existing certificate (add to CRL)                                  | No                |
-| `update`   | Update certificate metadata (labels, owner, contact email) without reissuing | No                |
-| `recover`  | Recover a previously escrowed private key                                     | No (key retrieval)|
-| `migrate`  | Move a certificate from one profile to another                               | No                |
-| `renew`    | Issue a replacement certificate for an expiring one                          | Yes               |
-| `import`   | Import an externally-issued certificate into Horizon                         | No (registration) |
+| Workflow  | Purpose                                                                      | Creates new cert?  |
+| --------- | ---------------------------------------------------------------------------- | ------------------ |
+| `enroll`  | Issue a new certificate (CSR-based or centralized key generation)            | Yes                |
+| `revoke`  | Revoke an existing certificate (add to CRL)                                  | No                 |
+| `update`  | Update certificate metadata (labels, owner, contact email) without reissuing | No                 |
+| `recover` | Recover a previously escrowed private key                                    | No (key retrieval) |
+| `migrate` | Move a certificate from one profile to another                               | No                 |
+| `renew`   | Issue a replacement certificate for an expiring one                          | Yes                |
+| `import`  | Import an externally-issued certificate into Horizon                         | No (registration)  |
 
 Each workflow supports up to four sub-actions:
+
 - **Direct action**: The operation completes immediately (e.g., direct enrollment issues the cert)
 - **API-specific action**: Separate access level for API callers (e.g., `enrollApi`)
 - **Request submission**: Creates a pending request requiring later approval
@@ -44,74 +45,74 @@ three access levels.
 
 ### Access Levels
 
-| Level            | Meaning                                                                          |
-|------------------|----------------------------------------------------------------------------------|
-| `everyone`       | No authentication required. Anyone with network access can perform the action.   |
-| `authenticated`  | The caller must be authenticated (valid session / API key / certificate).        |
-| `authorized`     | The caller must have an explicit permission grant for this profile + workflow.   |
+| Level           | Meaning                                                                        |
+| --------------- | ------------------------------------------------------------------------------ |
+| `everyone`      | No authentication required. Anyone with network access can perform the action. |
+| `authenticated` | The caller must be authenticated (valid session / API key / certificate).      |
+| `authorized`    | The caller must have an explicit permission grant for this profile + workflow. |
 
 ### Enrollment Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `enroll`              | Direct enrollment via web UI                             |
-| `enrollApi`           | Direct enrollment via API call                           |
-| `enrollRequest`       | Submit an enrollment request (pending approval)          |
-| `enrollApprove`       | Approve a pending enrollment request                     |
+| Field           | Description                                     |
+| --------------- | ----------------------------------------------- |
+| `enroll`        | Direct enrollment via web UI                    |
+| `enrollApi`     | Direct enrollment via API call                  |
+| `enrollRequest` | Submit an enrollment request (pending approval) |
+| `enrollApprove` | Approve a pending enrollment request            |
 
 ### Revocation Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `revoke`              | Direct revocation via web UI                             |
-| `revokeApi`           | Direct revocation via API                                |
-| `revokeRequest`       | Submit a revocation request (pending approval)           |
-| `revokeApprove`       | Approve a pending revocation request                     |
+| Field           | Description                                    |
+| --------------- | ---------------------------------------------- |
+| `revoke`        | Direct revocation via web UI                   |
+| `revokeApi`     | Direct revocation via API                      |
+| `revokeRequest` | Submit a revocation request (pending approval) |
+| `revokeApprove` | Approve a pending revocation request           |
 
 ### Update Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `update`              | Direct metadata update via web UI                        |
-| `updateApi`           | Direct metadata update via API                           |
-| `updateRequest`       | Submit an update request (pending approval)              |
-| `updateApprove`       | Approve a pending update request                         |
+| Field           | Description                                 |
+| --------------- | ------------------------------------------- |
+| `update`        | Direct metadata update via web UI           |
+| `updateApi`     | Direct metadata update via API              |
+| `updateRequest` | Submit an update request (pending approval) |
+| `updateApprove` | Approve a pending update request            |
 
 ### Recovery Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `recover`             | Direct key recovery via web UI                           |
-| `recoverApi`          | Direct key recovery via API                              |
-| `recoverRequest`      | Submit a recovery request (pending approval)             |
-| `recoverApprove`      | Approve a pending recovery request                       |
+| Field            | Description                                  |
+| ---------------- | -------------------------------------------- |
+| `recover`        | Direct key recovery via web UI               |
+| `recoverApi`     | Direct key recovery via API                  |
+| `recoverRequest` | Submit a recovery request (pending approval) |
+| `recoverApprove` | Approve a pending recovery request           |
 
 ### Migration Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `migrate`             | Direct certificate migration via web UI                  |
-| `migrateApi`          | Direct certificate migration via API                     |
-| `migrateRequest`      | Submit a migration request (pending approval)            |
-| `migrateApprove`      | Approve a pending migration request                      |
+| Field            | Description                                   |
+| ---------------- | --------------------------------------------- |
+| `migrate`        | Direct certificate migration via web UI       |
+| `migrateApi`     | Direct certificate migration via API          |
+| `migrateRequest` | Submit a migration request (pending approval) |
+| `migrateApprove` | Approve a pending migration request           |
 
 ### Renewal Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `renew`               | Direct certificate renewal via web UI                    |
-| `renewApi`            | Direct certificate renewal via API                       |
-| `renewRequest`        | Submit a renewal request (pending approval)              |
-| `renewApprove`        | Approve a pending renewal request                        |
+| Field          | Description                                 |
+| -------------- | ------------------------------------------- |
+| `renew`        | Direct certificate renewal via web UI       |
+| `renewApi`     | Direct certificate renewal via API          |
+| `renewRequest` | Submit a renewal request (pending approval) |
+| `renewApprove` | Approve a pending renewal request           |
 
 ### Import Workflow Fields
 
-| Field                 | Description                                              |
-|-----------------------|----------------------------------------------------------|
-| `import`              | Direct certificate import via web UI                     |
-| `importApi`           | Direct certificate import via API                        |
-| `importRequest`       | Submit an import request (pending approval)              |
-| `importApprove`       | Approve a pending import request                         |
+| Field           | Description                                 |
+| --------------- | ------------------------------------------- |
+| `import`        | Direct certificate import via web UI        |
+| `importApi`     | Direct certificate import via API           |
+| `importRequest` | Submit an import request (pending approval) |
+| `importApprove` | Approve a pending import request            |
 
 ### Example AuthorizationLevels Object
 
@@ -190,11 +191,11 @@ Common pattern: `enroll: "authenticated"` for UI users,
 The `requestsPolicy` object controls timing constraints for each workflow.
 Each workflow can have its own sub-object with these fields:
 
-| Field                | Type    | Description                                                                 |
-|----------------------|---------|-----------------------------------------------------------------------------|
-| `maxDuration`        | string  | Maximum duration a request can remain pending before auto-expiry (ISO 8601). |
-| `maxCertDuration`    | string  | Maximum certificate validity duration (for enroll/renew workflows).         |
-| `defaultCertDuration`| string  | Default certificate validity if not specified by the requester.             |
+| Field                 | Type   | Description                                                                  |
+| --------------------- | ------ | ---------------------------------------------------------------------------- |
+| `maxDuration`         | string | Maximum duration a request can remain pending before auto-expiry (ISO 8601). |
+| `maxCertDuration`     | string | Maximum certificate validity duration (for enroll/renew workflows).          |
+| `defaultCertDuration` | string | Default certificate validity if not specified by the requester.              |
 
 ### Example RequestsPolicy Object
 
@@ -222,6 +223,7 @@ Each workflow can have its own sub-object with these fields:
 ```
 
 Duration values use ISO 8601 duration format:
+
 - `P30D` = 30 days
 - `P365D` = 365 days (1 year)
 - `P90D` = 90 days
@@ -235,15 +237,15 @@ Duration values use ISO 8601 duration format:
 The `selfPermissions` object controls what a certificate holder can do with
 their own certificates, without needing explicit workflow permissions.
 
-| Field             | Type    | Description                                                                |
-|-------------------|---------|----------------------------------------------------------------------------|
-| `selfRecover`     | boolean | Holder can recover their own escrowed private key.                         |
-| `selfUpdate`      | boolean | Holder can update metadata on their own certificate.                       |
-| `selfRevoke`      | boolean | Holder can revoke their own certificate.                                   |
-| `selfRenew`       | boolean | Holder can renew their own certificate.                                    |
-| `selfPopRenew`    | boolean | Holder can renew using proof-of-possession (current private key signs the renewal CSR). |
-| `selfPopRevoke`   | boolean | Holder can revoke using proof-of-possession.                               |
-| `selfPopUpdate`   | boolean | Holder can update using proof-of-possession.                               |
+| Field           | Type    | Description                                                                             |
+| --------------- | ------- | --------------------------------------------------------------------------------------- |
+| `selfRecover`   | boolean | Holder can recover their own escrowed private key.                                      |
+| `selfUpdate`    | boolean | Holder can update metadata on their own certificate.                                    |
+| `selfRevoke`    | boolean | Holder can revoke their own certificate.                                                |
+| `selfRenew`     | boolean | Holder can renew their own certificate.                                                 |
+| `selfPopRenew`  | boolean | Holder can renew using proof-of-possession (current private key signs the renewal CSR). |
+| `selfPopRevoke` | boolean | Holder can revoke using proof-of-possession.                                            |
+| `selfPopUpdate` | boolean | Holder can update using proof-of-possession.                                            |
 
 ### Proof-of-Possession (PoP) Explained
 
@@ -256,6 +258,7 @@ authentication. Even if a user's Horizon session is compromised, the attacker
 cannot perform PoP actions without also possessing the private key.
 
 **When to use PoP**:
+
 - `selfPopRenew` = true: Enable when clients have their private keys and
   can sign renewal CSRs (e.g., EST re-enrollment, ACME renewal).
 - `selfPopRevoke` = true: Enable for automated clients that need to self-revoke
@@ -307,29 +310,29 @@ Example: restrict enrollment to corporate OIDC users only:
 
 ## Business Intent -> Settings Mapping
 
-| I want to...                                             | Settings to configure                                                    |
-|----------------------------------------------------------|--------------------------------------------------------------------------|
-| Let anyone request certs, admins approve                 | `enrollRequest: "everyone"`, `enrollApprove: "authorized"`               |
-| Fully automated enrollment, no human approval            | `enroll: "authenticated"`, `authorizationMode: "auto-validation"`        |
-| Only API clients can enroll, with admin approval         | `enrollApi: "authorized"`, `enrollApprove: "authorized"`                 |
-| Certificate holders can self-renew                       | `selfPermissions.selfRenew: true`                                        |
-| Certificate holders self-renew with PoP only             | `selfPermissions.selfPopRenew: true`, `selfPermissions.selfRenew: false` |
-| Requests expire after 7 days                             | `requestsPolicy.enroll.maxDuration: "P7D"`                               |
-| Certificates max 1 year validity                         | `requestsPolicy.enroll.maxCertDuration: "P365D"`                         |
-| Only OIDC-authenticated users can enroll                 | `enroll: "authenticated"` + `enrollIdp: ["my-oidc-idp"]`                 |
-| Block all enrollment on a profile                        | `enabled: false` or set all enroll fields to `authorized` with no grants |
-| Allow self-revocation without session (device decomm.)   | `selfPermissions.selfPopRevoke: true`                                    |
-| Restrict migration to authorized operators only          | `migrate: "authorized"`, `migrateApi: "authorized"`                      |
-| API enrollment only (no web UI)                          | `enrollApi: "authenticated"`, `enroll: "authorized"`                     |
-| Nobody can import certificates                           | `import: "authorized"`, `importApi: "authorized"` (no grants)            |
+| I want to...                                           | Settings to configure                                                    |
+| ------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Let anyone request certs, admins approve               | `enrollRequest: "everyone"`, `enrollApprove: "authorized"`               |
+| Fully automated enrollment, no human approval          | `enroll: "authenticated"`, `authorizationMode: "auto-validation"`        |
+| Only API clients can enroll, with admin approval       | `enrollApi: "authorized"`, `enrollApprove: "authorized"`                 |
+| Certificate holders can self-renew                     | `selfPermissions.selfRenew: true`                                        |
+| Certificate holders self-renew with PoP only           | `selfPermissions.selfPopRenew: true`, `selfPermissions.selfRenew: false` |
+| Requests expire after 7 days                           | `requestsPolicy.enroll.maxDuration: "P7D"`                               |
+| Certificates max 1 year validity                       | `requestsPolicy.enroll.maxCertDuration: "P365D"`                         |
+| Only OIDC-authenticated users can enroll               | `enroll: "authenticated"` + `enrollIdp: ["my-oidc-idp"]`                 |
+| Block all enrollment on a profile                      | `enabled: false` or set all enroll fields to `authorized` with no grants |
+| Allow self-revocation without session (device decomm.) | `selfPermissions.selfPopRevoke: true`                                    |
+| Restrict migration to authorized operators only        | `migrate: "authorized"`, `migrateApi: "authorized"`                      |
+| API enrollment only (no web UI)                        | `enrollApi: "authenticated"`, `enroll: "authorized"`                     |
+| Nobody can import certificates                         | `import: "authorized"`, `importApi: "authorized"` (no grants)            |
 
 ---
 
 ## Workflow Interaction with RBAC
 
-Authorization levels work *in conjunction with* the RBAC system:
+Authorization levels work _in conjunction with_ the RBAC system:
 
-1. The `authorizationLevels` on the profile set the *minimum bar*
+1. The `authorizationLevels` on the profile set the _minimum bar_
 2. The user's permissions (from roles/teams) determine if they pass that bar
 3. `"everyone"` = no RBAC check at all
 4. `"authenticated"` = must have a valid session, no specific permission needed
@@ -337,5 +340,5 @@ Authorization levels work *in conjunction with* the RBAC system:
    (e.g., `certificates:enroll:{profile}`)
 
 This two-layer model means you can have a profile that allows authenticated
-enrollment but still restrict *which* authenticated users can enroll by
+enrollment but still restrict _which_ authenticated users can enroll by
 narrowing the `search` authorization level or by using team-based ownership.

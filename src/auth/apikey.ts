@@ -1,4 +1,4 @@
-import { AuthProvider } from "./base.js";
+import { AuthProvider } from './base.js';
 
 /**
  * Authenticate via static API ID and API Key headers.
@@ -12,8 +12,8 @@ export class ApiKeyAuthProvider extends AuthProvider {
     super();
     if (!apiId || !apiKey) {
       throw new Error(
-        "HORIZON_API_ID and HORIZON_API_KEY must both be set. " +
-          "See .env.example for configuration.",
+        'HORIZON_API_ID and HORIZON_API_KEY must both be set. ' +
+          'See .env.example for configuration.',
       );
     }
     this._apiId = apiId;
@@ -21,7 +21,7 @@ export class ApiKeyAuthProvider extends AuthProvider {
   }
 
   async getHeaders(): Promise<Record<string, string>> {
-    return { "X-API-ID": this._apiId, "X-API-KEY": this._apiKey };
+    return { 'X-API-ID': this._apiId, 'X-API-KEY': this._apiKey };
   }
 
   async refreshIfNeeded(): Promise<void> {

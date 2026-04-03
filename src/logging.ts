@@ -23,7 +23,12 @@ interface LogExtra {
   [key: string]: unknown;
 }
 
-function emit(level: LogLevel, logger: string, msg: string, extra?: LogExtra): void {
+function emit(
+  level: LogLevel,
+  logger: string,
+  msg: string,
+  extra?: LogExtra,
+): void {
   if (LOG_LEVELS[level] < currentLevel) return;
 
   const entry: Record<string, unknown> = {
@@ -41,7 +46,7 @@ function emit(level: LogLevel, logger: string, msg: string, extra?: LogExtra): v
     }
   }
 
-  process.stderr.write(JSON.stringify(entry) + "\n");
+  process.stderr.write(JSON.stringify(entry) + '\n');
 }
 
 export interface Logger {
@@ -53,9 +58,9 @@ export interface Logger {
 
 export function getLogger(name: string): Logger {
   return {
-    debug: (msg, extra) => emit("DEBUG", name, msg, extra),
-    info: (msg, extra) => emit("INFO", name, msg, extra),
-    warning: (msg, extra) => emit("WARNING", name, msg, extra),
-    error: (msg, extra) => emit("ERROR", name, msg, extra),
+    debug: (msg, extra) => emit('DEBUG', name, msg, extra),
+    info: (msg, extra) => emit('INFO', name, msg, extra),
+    warning: (msg, extra) => emit('WARNING', name, msg, extra),
+    error: (msg, extra) => emit('ERROR', name, msg, extra),
   };
 }

@@ -5,41 +5,41 @@
  * Required: Claude Code CLI (`claude`) on PATH + ANTHROPIC_API_KEY env var
  *           + HORIZON_E2E_* env vars for the live Horizon instance.
  */
-
-import { execFile } from "node:child_process";
-import { writeFileSync, unlinkSync, existsSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
-import { randomUUID } from "node:crypto";
+import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 // ---------------------------------------------------------------------------
 // Environment gating
 // ---------------------------------------------------------------------------
 
-const E2E_URL = process.env["HORIZON_E2E_URL"] ?? "";
-const E2E_API_ID = process.env["HORIZON_E2E_API_ID"] ?? "";
-const E2E_API_KEY = process.env["HORIZON_E2E_API_KEY"] ?? "";
-const HAS_API_KEY = Boolean(process.env["ANTHROPIC_API_KEY"]);
+const E2E_URL = process.env['HORIZON_E2E_URL'] ?? '';
+const E2E_API_ID = process.env['HORIZON_E2E_API_ID'] ?? '';
+const E2E_API_KEY = process.env['HORIZON_E2E_API_KEY'] ?? '';
+const HAS_API_KEY = Boolean(process.env['ANTHROPIC_API_KEY']);
 
 export const LLM_EVAL_READY = Boolean(
   HAS_API_KEY && E2E_URL && E2E_API_ID && E2E_API_KEY,
 );
 
 export function skipReason(): string {
-  if (!HAS_API_KEY) return "ANTHROPIC_API_KEY not set";
-  if (!E2E_URL || !E2E_API_ID || !E2E_API_KEY) return "HORIZON_E2E_* env vars not set";
-  return "";
+  if (!HAS_API_KEY) return 'ANTHROPIC_API_KEY not set';
+  if (!E2E_URL || !E2E_API_ID || !E2E_API_KEY)
+    return 'HORIZON_E2E_* env vars not set';
+  return '';
 }
 
 // ---------------------------------------------------------------------------
 // MCP config file management
 // ---------------------------------------------------------------------------
 
-const PROJECT_ROOT = resolve(import.meta.dirname, "..", "..");
+const PROJECT_ROOT = resolve(import.meta.dirname, '..', '..');
 
 /** Path to the built MCP server entry point. */
 function serverCommand(): string {
-  return join(PROJECT_ROOT, "dist", "index.js");
+  return join(PROJECT_ROOT, 'dist', 'index.js');
 }
 
 let configPath: string | undefined;
@@ -54,7 +54,7 @@ export function getMcpConfigPath(): string {
   const config = {
     mcpServers: {
       horizon: {
-        command: "node",
+        command: 'node',
         args: [serverCommand()],
         env: {
           HORIZON_URL: E2E_URL,
@@ -67,7 +67,7 @@ export function getMcpConfigPath(): string {
 
   const filename = `horizon-mcp-eval-${randomUUID().slice(0, 8)}.json`;
   configPath = join(tmpdir(), filename);
-  writeFileSync(configPath, JSON.stringify(config, null, 2), "utf-8");
+  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
   return configPath;
 }
 
@@ -83,7 +83,7 @@ export function cleanupMcpConfig(): void {
 // Claude Code subprocess helper
 // ---------------------------------------------------------------------------
 
-const DEFAULT_MODEL = process.env["HORIZON_LLM_EVAL_MODEL"] ?? "sonnet";
+const DEFAULT_MODEL = process.env['HORIZON_LLM_EVAL_MODEL'] ?? 'sonnet';
 
 export interface ClaudeResponse {
   readonly text: string;
@@ -106,18 +106,22 @@ export function askClaude(
 
   return new Promise((resolve, reject) => {
     const child = execFile(
-      "claude",
+      'claude',
       [
-        "-p", question,
-        "--output-format", "json",
-        "--model", model,
-        "--mcp-config", mcpConfig,
+        '-p',
+        question,
+        '--output-format',
+        'json',
+        '--model',
+        model,
+        '--mcp-config',
+        mcpConfig,
       ],
       { timeout, maxBuffer: 10 * 1024 * 1024 },
       (error, stdout, _stderr) => {
         // execFile sets error for non-zero exit codes AND timeouts.
         // For non-zero exits we still want to return the output.
-        if (error && !("code" in error)) {
+        if (error && !('code' in error)) {
           reject(error);
           return;
         }
@@ -126,8 +130,8 @@ export function askClaude(
         let text: string;
         try {
           const parsed = JSON.parse(rawStdout) as Record<string, unknown>;
-          const result = parsed["result"] ?? parsed["text"] ?? rawStdout;
-          text = typeof result === "string" ? result : String(result);
+          const result = parsed['result'] ?? parsed['text'] ?? rawStdout;
+          text = typeof result === 'string' ? result : String(result);
         } catch {
           text = rawStdout;
         }

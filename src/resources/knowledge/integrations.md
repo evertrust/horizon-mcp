@@ -32,11 +32,11 @@ where HTTP-01 is not feasible.
 
 ### Components
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | API key           | DNS provider API credentials         |
-| PKI Connector         | CA-specific       | Connects to the target CA            |
-| Profile               | `acme`            | ACME enrollment with DNS-01          |
+| Object        | Type        | Purpose                      |
+| ------------- | ----------- | ---------------------------- |
+| Credential    | API key     | DNS provider API credentials |
+| PKI Connector | CA-specific | Connects to the target CA    |
+| Profile       | `acme`      | ACME enrollment with DNS-01  |
 
 ### Configuration Flow
 
@@ -76,30 +76,30 @@ Use case: Automatic certificate provisioning for managed devices via MDM.
 
 ### Microsoft Intune (SCEP)
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Client cert/secret| Intune API authentication            |
-| Third-Party Connector | `intune`          | Communicates with Intune             |
-| PKI Connector         | CA-specific       | Issues certificates                  |
-| Profile               | `intune`          | Intune SCEP enrollment profile       |
+| Object                | Type               | Purpose                        |
+| --------------------- | ------------------ | ------------------------------ |
+| Credential            | Client cert/secret | Intune API authentication      |
+| Third-Party Connector | `intune`           | Communicates with Intune       |
+| PKI Connector         | CA-specific        | Issues certificates            |
+| Profile               | `intune`           | Intune SCEP enrollment profile |
 
 ### Microsoft Intune (PKCS)
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Client cert/secret| Intune API authentication            |
-| Third-Party Connector | `intunepkcs`      | Communicates with Intune             |
-| PKI Connector         | CA-specific       | Issues certificates                  |
-| Profile               | `intunepkcs`      | Intune PKCS enrollment profile       |
+| Object                | Type               | Purpose                        |
+| --------------------- | ------------------ | ------------------------------ |
+| Credential            | Client cert/secret | Intune API authentication      |
+| Third-Party Connector | `intunepkcs`       | Communicates with Intune       |
+| PKI Connector         | CA-specific        | Issues certificates            |
+| Profile               | `intunepkcs`       | Intune PKCS enrollment profile |
 
 ### Jamf
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | API token         | Jamf Pro API authentication          |
-| Third-Party Connector | `jamf`            | Communicates with Jamf Pro           |
-| PKI Connector         | CA-specific       | Issues certificates                  |
-| Profile               | `jamf`            | Jamf enrollment profile              |
+| Object                | Type        | Purpose                     |
+| --------------------- | ----------- | --------------------------- |
+| Credential            | API token   | Jamf Pro API authentication |
+| Third-Party Connector | `jamf`      | Communicates with Jamf Pro  |
+| PKI Connector         | CA-specific | Issues certificates         |
+| Profile               | `jamf`      | Jamf enrollment profile     |
 
 ---
 
@@ -110,11 +110,11 @@ directory. Also used for certificate publishing to AD.
 
 ### Data Enrichment (Datasource)
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Bind credentials  | LDAP bind DN and password            |
-| Proxy (optional)      | HTTP proxy        | If LDAP is reached through a proxy   |
-| Datasource            | `ldap`            | Query user attributes during enrollment |
+| Object           | Type             | Purpose                                 |
+| ---------------- | ---------------- | --------------------------------------- |
+| Credential       | Bind credentials | LDAP bind DN and password               |
+| Proxy (optional) | HTTP proxy       | If LDAP is reached through a proxy      |
+| Datasource       | `ldap`           | Query user attributes during enrollment |
 
 ### Datasource Configuration
 
@@ -135,12 +135,13 @@ directory. Also used for certificate publishing to AD.
 ### Profile Integration
 
 1. Add the datasource to the profile's `dsFlow`:
+
    ```json
    {
      "dsFlow": [
        {
          "ds": "corp-ldap",
-         "inputs": [{"key": "username", "value": "{{ principal.name }}"}],
+         "inputs": [{ "key": "username", "value": "{{ principal.name }}" }],
          "stopOnSuccess": true
        }
      ]
@@ -151,7 +152,10 @@ directory. Also used for certificate publishing to AD.
    ```json
    {
      "computationRules": [
-       { "source": "{{ ds.1.1.department }}", "target": "subject.organizationalUnit" },
+       {
+         "source": "{{ ds.1.1.department }}",
+         "target": "subject.organizationalUnit"
+       },
        { "source": "{{ ds.1.1.mail }}", "target": "subject.email" },
        { "source": "{{ ds.1.1.displayName }}", "target": "subject.commonName" }
      ]
@@ -160,11 +164,11 @@ directory. Also used for certificate publishing to AD.
 
 ### Certificate Publishing to AD
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Bind credentials  | AD write access                      |
-| Third-Party Connector | `msad`            | Publishes certs to AD user objects   |
-| Trigger               | `thirdparty`      | Fires on enrollment to publish       |
+| Object                | Type             | Purpose                            |
+| --------------------- | ---------------- | ---------------------------------- |
+| Credential            | Bind credentials | AD write access                    |
+| Third-Party Connector | `msad`           | Publishes certs to AD user objects |
+| Trigger               | `thirdparty`     | Fires on enrollment to publish     |
 
 ---
 
@@ -175,9 +179,9 @@ Okta, etc.) for Horizon web UI and API access.
 
 ### Components
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Identity Provider     | `openid`          | OIDC IDP configuration               |
+| Object            | Type     | Purpose                |
+| ----------------- | -------- | ---------------------- |
+| Identity Provider | `openid` | OIDC IDP configuration |
 
 ### IDP Configuration
 
@@ -203,6 +207,7 @@ Okta, etc.) for Horizon web UI and API access.
 ### Profile IDP Enforcement
 
 Restrict enrollment to OIDC-authenticated users:
+
 ```json
 {
   "authorizationLevels": {
@@ -216,12 +221,12 @@ Restrict enrollment to OIDC-authenticated users:
 
 OIDC token claims can be mapped to Horizon principal attributes:
 
-| OIDC Claim            | Horizon Attribute     |
-|-----------------------|-----------------------|
-| `preferred_username`  | `principal.name`      |
-| `email`               | `principal.email`     |
-| `groups`              | Team membership       |
-| Custom claims         | Configurable mapping  |
+| OIDC Claim           | Horizon Attribute    |
+| -------------------- | -------------------- |
+| `preferred_username` | `principal.name`     |
+| `email`              | `principal.email`    |
+| `groups`             | Team membership      |
+| Custom claims        | Configurable mapping |
 
 ---
 
@@ -232,27 +237,27 @@ consumption.
 
 ### Azure Key Vault
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Service principal  | Azure AD app registration           |
-| Third-Party Connector | `akv`             | Publishes to Azure Key Vault         |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type              | Purpose                      |
+| --------------------- | ----------------- | ---------------------------- |
+| Credential            | Service principal | Azure AD app registration    |
+| Third-Party Connector | `akv`             | Publishes to Azure Key Vault |
+| Trigger               | `thirdparty`      | Fires on enrollment/renewal  |
 
 ### AWS Secrets Manager / ACM
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | IAM credentials   | AWS access key / role                |
-| Third-Party Connector | `aws`             | Publishes to AWS                     |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type            | Purpose                     |
+| --------------------- | --------------- | --------------------------- |
+| Credential            | IAM credentials | AWS access key / role       |
+| Third-Party Connector | `aws`           | Publishes to AWS            |
+| Trigger               | `thirdparty`    | Fires on enrollment/renewal |
 
 ### Google Cloud Certificate Manager
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | Service account   | GCP service account JSON key         |
-| Third-Party Connector | `gcm`             | Publishes to GCP Certificate Manager |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type            | Purpose                              |
+| --------------------- | --------------- | ------------------------------------ |
+| Credential            | Service account | GCP service account JSON key         |
+| Third-Party Connector | `gcm`           | Publishes to GCP Certificate Manager |
+| Trigger               | `thirdparty`    | Fires on enrollment/renewal          |
 
 ---
 
@@ -263,19 +268,19 @@ balancers.
 
 ### F5 AS3 (Declarative)
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | F5 admin creds    | F5 management API access             |
-| Third-Party Connector | `f5as3`           | Deploys via AS3 declarations         |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type           | Purpose                      |
+| --------------------- | -------------- | ---------------------------- |
+| Credential            | F5 admin creds | F5 management API access     |
+| Third-Party Connector | `f5as3`        | Deploys via AS3 declarations |
+| Trigger               | `thirdparty`   | Fires on enrollment/renewal  |
 
 ### F5 iControl (REST)
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | F5 admin creds    | F5 management API access             |
-| Third-Party Connector | `f5client`        | Deploys via iControl REST API        |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type           | Purpose                       |
+| --------------------- | -------------- | ----------------------------- |
+| Credential            | F5 admin creds | F5 management API access      |
+| Third-Party Connector | `f5client`     | Deploys via iControl REST API |
+| Trigger               | `thirdparty`   | Fires on enrollment/renewal   |
 
 ---
 
@@ -284,11 +289,11 @@ balancers.
 Use case: Publish issued certificates to an LDAP directory so that they
 can be discovered by email clients for S/MIME or by other LDAP consumers.
 
-| Object                | Type              | Purpose                              |
-|-----------------------|-------------------|--------------------------------------|
-| Credential            | LDAP bind creds   | Write access to the directory        |
-| Third-Party Connector | `ldappub`         | Publishes cert to LDAP user object   |
-| Trigger               | `thirdparty`      | Fires on enrollment/renewal          |
+| Object                | Type            | Purpose                            |
+| --------------------- | --------------- | ---------------------------------- |
+| Credential            | LDAP bind creds | Write access to the directory      |
+| Third-Party Connector | `ldappub`       | Publishes cert to LDAP user object |
+| Trigger               | `thirdparty`    | Fires on enrollment/renewal        |
 
 ---
 
@@ -360,7 +365,7 @@ Email triggers are created via the Horizon admin UI or the trigger API
   "type": "email",
   "events": ["on_enroll"],
   "emailTemplate": {
-    "to": [{"type": "static", "email": "admin@example.com"}],
+    "to": [{ "type": "static", "email": "admin@example.com" }],
     "from": "horizon@example.com",
     "title": "Certificate issued: {{certificate.subject.cn.1}}",
     "body": "<p>Certificate <b>{{certificate.subject.cn.1}}</b> has been issued.</p>",
