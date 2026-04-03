@@ -1,27 +1,29 @@
-__pycache__/
-*.py[cod]
-*$py.class
-*.egg-info/
-dist/
-build/
-.eggs/
-*.egg
-.env
-.env.local
-.mcp.json
-.mcp.json.bak
-.venv/
-venv/
-.mypy_cache/
-.pytest_cache/
-.ruff_cache/
-htmlcov/
-.coverage
-*.log
-.claude/
-.DS_Store
-docs/superpowers
-.worktrees/
+# Node / TypeScript
 node_modules/
 dist/
-.18a28fbffff2be53-00000000.bun-build
+*.log
+
+# Environment
+.env
+.env.local
+
+# MCP config (local)
+.mcp.json
+.mcp.json.bak
+
+# IDE / OS
+.DS_Store
+.claude/
+
+# Docs (local superpowers specs)
+docs/superpowers
+
+# Git worktrees
+.worktrees/
+
+# Test coverage
+htmlcov/
+.coverage
+
+# Bun build artifacts
+.*.bun-build

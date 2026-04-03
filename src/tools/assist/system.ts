@@ -39,7 +39,8 @@ export function registerSystemTools(
         "Return Horizon license information.\n\n" +
         "Safety tier: read-only\n\n" +
         "Fetches license details including licensed modules, expiry date, " +
-        "certificate quotas, and feature flags.",
+        "certificate quotas, and feature flags. Useful for understanding " +
+        "what capabilities are available on this Horizon instance.",
     },
     async () => {
       const result = await client.get("/api/v1/license");
@@ -55,8 +56,10 @@ export function registerSystemTools(
       description:
         "Explain a grading policy and optionally evaluate a certificate against it.\n\n" +
         "Safety tier: read-only\n\n" +
-        "Fetches the full grading policy definition. If a certificate PEM is " +
-        "provided, also evaluates it against the policy.",
+        "Fetches the full grading policy definition (criteria, thresholds, " +
+        "grade mapping). If a certificate PEM is provided, also evaluates " +
+        "the certificate against the policy and returns the resulting grade " +
+        "with per-rule breakdown.",
       inputSchema: z.object({
         policy_name: z.string().describe("Name of the grading policy to inspect."),
         certificate_pem: z
@@ -93,8 +96,10 @@ export function registerSystemTools(
       description:
         "Explain a grading ruleset and optionally evaluate a certificate against it.\n\n" +
         "Safety tier: read-only\n\n" +
-        "Fetches the full grading ruleset definition. If a certificate PEM is " +
-        "provided, also evaluates it against the ruleset.",
+        "Fetches the full grading ruleset definition (individual rules, " +
+        "conditions, weights). If a certificate PEM is provided, also " +
+        "evaluates the certificate against the ruleset and returns the " +
+        "per-rule pass/fail breakdown.",
       inputSchema: z.object({
         ruleset_name: z.string().describe("Name of the grading ruleset to inspect."),
         certificate_pem: z

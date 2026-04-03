@@ -351,7 +351,8 @@ export function registerTriggerTools(
     {
       description:
         "STOP - This tool modifies data. You MUST ask the user for explicit " +
-        "confirmation before calling this tool.\n\n" +
+        "confirmation before calling this tool. Do not proceed without a clear " +
+        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         "Create a REST notification for custom certificate deployment or integration.\n\n" +
         "Safety tier: mutating-safe\n" +
         "Knowledge: horizon://knowledge/rest-notifications\n\n" +
@@ -568,7 +569,9 @@ export function registerTriggerTools(
     {
       description:
         "STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST " +
-        "ask the user for explicit confirmation before calling this tool.\n\n" +
+        "ask the user for explicit confirmation before calling this tool. Do not " +
+        'proceed without a clear "yes" from the user. Present what will be ' +
+        "permanently destroyed and wait.\n\n" +
         "Delete a trigger. Requires name confirmation.\n\n" +
         "A trigger should be detached from all profiles before deletion.\n\n" +
         "Safety tier: mutating-destructive\n" +
