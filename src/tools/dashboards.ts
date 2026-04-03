@@ -204,7 +204,7 @@ export function registerDashboardTools(
           .enum(DASHBOARD_TYPES)
           .describe('Dashboard scope - "certificate" or "request".'),
         charts: z
-          .array(z.record(z.unknown()))
+          .array(z.record(z.string(), z.unknown()))
           .optional()
           .describe(
             "List of chart objects (default: empty list for blank dashboard). " +
@@ -260,7 +260,7 @@ export function registerDashboardTools(
       inputSchema: z.object({
         name: z.string().describe("Dashboard name to update."),
         charts: z
-          .array(z.record(z.unknown()))
+          .array(z.record(z.string(), z.unknown()))
           .optional()
           .describe("New charts list (replaces existing)."),
         description: z
@@ -353,7 +353,7 @@ export function registerDashboardTools(
           .string()
           .describe("Name of the dashboard to modify."),
         chart: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .describe(
             "Chart configuration object. Required fields: " +
             '{"type": "donut", "title": "My Chart", ' +
@@ -434,7 +434,7 @@ export function registerDashboardTools(
           .optional()
           .describe("Max buckets returned (>= 0)."),
         having: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe(
             'Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.',

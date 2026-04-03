@@ -46,7 +46,7 @@ export function registerComputationTools(
             "The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.",
           ),
         dictionary: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .describe("Key-value pairs available as variables during evaluation."),
         mode: z
           .enum(["computation_rule", "template_string"])
@@ -81,13 +81,13 @@ export function registerComputationTools(
           .array(
             z.object({
               datasource: z.string(),
-              inputs: z.record(z.string()).default({}),
+              inputs: z.record(z.string(), z.string()).default({}),
               stopOnSuccess: z.boolean().default(false),
             }),
           )
           .describe("Ordered list of flow entries."),
         context: z
-          .record(z.unknown())
+          .record(z.string(), z.unknown())
           .optional()
           .describe("Optional initial context dictionary."),
       }),

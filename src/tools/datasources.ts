@@ -938,7 +938,7 @@ export function registerDatasourceTools(
           .describe('Datasource type: "dns", "ldap", or "rest".'),
         name: z.string().describe("Datasource name (for identification)."),
         context: z
-          .record(z.string())
+          .record(z.string(), z.string())
           .optional()
           .describe(
             "Key-value pairs to resolve TemplateString variables. " +
