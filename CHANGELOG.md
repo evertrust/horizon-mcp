@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/evertrust/horizon-mcp/compare/v1.0.0...v1.0.1) (2026-04-08)
+
+### Bug Fixes
+
+* release public version ([#2](https://github.com/evertrust/horizon-mcp/issues/2)) ([5239907](https://github.com/evertrust/horizon-mcp/commit/5239907fe4640a74f4d9906baf386fa53c60c369))
+
 ## 1.0.0 (2026-04-03)
 
 ### Features
