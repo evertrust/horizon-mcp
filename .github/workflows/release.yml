@@ -21,13 +21,43 @@ jobs:
       id-token: write
 
     steps:
+      - name: Fetch secrets via Vault
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ vars.VAULT_ADDR }}
+          method: ${{ vars.VAULT_AUTH_METHOD }}
+          path: ${{ vars.VAULT_AUTH_PATH }}
+          secrets: |
+            ci/data/repositories/evertrust/horizon-mcp/github-app id | GITHUB_APP_ID ;
+            ci/data/repositories/evertrust/horizon-mcp/github-app private_key | GITHUB_APP_PRIVATE_KEY ;
+
       - name: Configure Runs-On
         uses: runs-on/action@v2
+
+      # From https://github.com/actions/create-github-app-token#configure-git-cli-for-an-apps-bot-user
+      - name: Fetch Github App token
+        uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          app-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Get GitHub App User ID
+        id: get-user-id
+        run: echo "user-id=$(gh api "/users/${{ steps.app-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config --global user.email '${{ steps.get-user-id.outputs.user-id }}+${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
 
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -56,5 +86,5 @@ jobs:
       - name: Release
         run: bunx semantic-release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
           NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
