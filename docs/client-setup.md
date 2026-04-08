@@ -125,8 +125,8 @@ Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/co
 
 ```toml
 [mcp_servers.horizon]
-command = "npx"
-args = ["horizon-mcp-server"]
+command = "node"
+args = ["/absolute/path/to/horizon-mcp/dist/index.js"]
 
 [mcp_servers.horizon.env]
 HORIZON_URL = "https://horizon.example.com"

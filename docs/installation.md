@@ -28,6 +28,13 @@ Then run:
 horizon-mcp-server
 ```
 
+### Local install
+
+```
+npm install
+npm run build
+```
+
 ### Standalone binary
 
 Download the pre-built binary for your platform from the [releases page](https://github.com/evertrust/horizon-mcp/releases), then:
