@@ -1,3 +1,3 @@
 export default {
-  "*.ts": ["bun run lint:fix", "prettier --write"],
+  '*.ts': ['bun run lint:fix', 'prettier --write'],
 };
