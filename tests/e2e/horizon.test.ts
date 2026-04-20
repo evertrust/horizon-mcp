@@ -255,31 +255,20 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
       });
 
       it('exports events as CSV', async () => {
-        try {
-          const result = await callTool(
-            'export_events_csv',
-            { query: 'code matches ".*"' },
-            { timeout: 120_000 },
-          );
-          expect(
-            result['csv'],
-            `export_events_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
-          ).toBeDefined();
-          expect(result['truncated']).toBeDefined();
-          expect(typeof result['csv']).toBe('string');
-        } catch (exc) {
-          // QA instances with very large event logs may exceed V8 string
-          // limits or timeout. This is an infrastructure limitation, not
-          // a code bug. Skip gracefully.
-          const msg = String(exc);
-          if (msg.includes('string longer than') || msg.includes('timeout')) {
-            console.log(
-              `SKIP: export_events_csv failed due to data volume: ${msg.slice(0, 200)}`,
-            );
-            return;
-          }
-          throw exc;
-        }
+        const result = await callTool(
+          'export_events_csv',
+          { query: 'code matches ".*"' },
+          { timeout: 120_000 },
+        );
+        expect(
+          result['csv'],
+          `export_events_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
+        ).toBeDefined();
+        expect(result['truncated']).toBeDefined();
+        expect(result['returned_rows']).toBeDefined();
+        expect(result['max_rows']).toBe(1000);
+        expect(typeof result['csv']).toBe('string');
+        expect(result['returned_rows'] as number).toBeLessThanOrEqual(1000);
       }, 120_000);
     });
 
@@ -1142,7 +1131,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
 
   describe('assist', () => {
     // -----------------------------------------------------------------------
-    // Knowledge resource tests (12 URIs read via MCP protocol)
+    // Knowledge resource tests (core resources + small-model additions)
     // -----------------------------------------------------------------------
 
     const KNOWLEDGE_URIS = [
@@ -1158,6 +1147,13 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
       'horizon://knowledge/integrations',
       'horizon://knowledge/dashboards',
       'horizon://knowledge/system-admin',
+      'horizon://knowledge/tool-selection',
+      'horizon://knowledge/adcs-integration',
+      'horizon://knowledge/digicert-integration',
+      'horizon://knowledge/intune-integration',
+      'horizon://knowledge/query-languages/ownership-patterns-hcql',
+      'horizon://knowledge/datasources/rest-datasource',
+      'horizon://knowledge/rest-notifications/real-world-examples',
     ] as const;
 
     describe.each(KNOWLEDGE_URIS)('knowledge resource %s', (uri) => {
@@ -1601,11 +1597,44 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
     // -----------------------------------------------------------------------
 
     describe('grading', () => {
+      async function getLiveCertificatePem(): Promise<string | null> {
+        const search = await callTool('search_certificates', {
+          query: 'profile exists',
+          page_size: 1,
+        });
+        const certificates = (search['results'] ?? []) as Record<
+          string,
+          unknown
+        >[];
+        if (certificates.length === 0) {
+          return null;
+        }
+
+        const certId = certificates[0]!['_id'] as string | undefined;
+        if (!certId) {
+          return null;
+        }
+
+        const cert = await getHorizonClient().get<Record<string, unknown>>(
+          `/api/v1/certificates/${certId}`,
+        );
+        const certificate = (cert['certificate'] ?? cert) as Record<
+          string,
+          unknown
+        >;
+        const pem = (certificate['certificate'] ?? cert['pem']) as
+          | string
+          | undefined;
+        return pem ?? null;
+      }
+
       it('explain_grading_policy returns details for the first policy found', async () => {
         const client = getHorizonClient();
         let policies: Record<string, unknown>[];
         try {
-          const data = await client.get<unknown>('/api/v1/grading/policies');
+          const data = await client.get<unknown>(
+            '/api/v1/certificate/grading/policies',
+          );
           policies = Array.isArray(data)
             ? (data as Record<string, unknown>[])
             : [];
@@ -1649,7 +1678,9 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         const client = getHorizonClient();
         let rulesets: Record<string, unknown>[];
         try {
-          const data = await client.get<unknown>('/api/v1/grading/rulesets');
+          const data = await client.get<unknown>(
+            '/api/v1/certificate/grading/rulesets',
+          );
           rulesets = Array.isArray(data)
             ? (data as Record<string, unknown>[])
             : [];
@@ -1687,6 +1718,52 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         } catch {
           console.log(
             'SKIP: explain_grading_ruleset not available on this Horizon instance',
+          );
+        }
+      });
+
+      it('explain_grading_policy can explain a live certificate PEM', async () => {
+        const pem = await getLiveCertificatePem();
+        if (!pem) {
+          console.log(
+            'SKIP: No certificate PEM available for grading policy explain test',
+          );
+          return;
+        }
+
+        try {
+          const result = await callTool('explain_grading_policy', {
+            policy_name: 'Horizon-Grading-Policy',
+            certificate_pem: pem,
+          });
+          expect(result['policy']).toBeDefined();
+          expect(result['explanation']).toBeDefined();
+        } catch (exc) {
+          console.log(
+            `SKIP: explain_grading_policy certificate path unavailable: ${String(exc).slice(0, 200)}`,
+          );
+        }
+      });
+
+      it('explain_grading_ruleset can explain a live certificate PEM', async () => {
+        const pem = await getLiveCertificatePem();
+        if (!pem) {
+          console.log(
+            'SKIP: No certificate PEM available for grading ruleset explain test',
+          );
+          return;
+        }
+
+        try {
+          const result = await callTool('explain_grading_ruleset', {
+            ruleset_name: 'anssiContent',
+            certificate_pem: pem,
+          });
+          expect(result['ruleset']).toBeDefined();
+          expect(result['explanation']).toBeDefined();
+        } catch (exc) {
+          console.log(
+            `SKIP: explain_grading_ruleset certificate path unavailable: ${String(exc).slice(0, 200)}`,
           );
         }
       });

@@ -2,24 +2,24 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Bun 1.x+ (or Node.js 20+)
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
 ## Install methods
 
-### npx (recommended)
+### bunx (recommended)
 
 No installation needed - run directly:
 
 ```bash
-npx horizon-mcp-server
+bunx horizon-mcp-server
 ```
 
 ### Global install
 
 ```bash
-npm install -g horizon-mcp-server
+bun install -g horizon-mcp-server
 ```
 
 Then run:
@@ -42,8 +42,8 @@ chmod +x horizon-mcp
 For OIDC browser-based login, install Playwright and its Chromium browser:
 
 ```bash
-npm install playwright
-npx playwright install chromium
+bun install playwright
+bunx playwright install chromium
 ```
 
 ## Next steps

@@ -1386,7 +1386,7 @@ certificate profiles for it to fire. Triggers are attached via the profile's
 `triggerHooks` object.
 
 Triggers are attached to profiles by updating the profile's `triggerHooks`
-object via the Horizon admin UI or the profile API (`PUT /api/v1/profiles/`).
+object via the Horizon admin UI or the profile API (`PUT /api/v1/certificate/profiles`).
 Each event maps to a hook field: `on_enroll` -> `onEnroll`,
 `on_approve_enroll` -> `onApproveEnroll`, etc.
 See `horizon://knowledge/automation` for the full hook field mapping.

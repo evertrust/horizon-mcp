@@ -24,14 +24,205 @@ import {
   buildSortedBy,
   csvTruncationMetadata,
   preflightRequestAction,
+  toApiPageIndex,
   truncateRecord,
 } from './helpers.js';
+import { registerTool } from './register.js';
+
+const EVENT_CSV_DELIMITER = ';';
+const EVENT_CSV_BASE_FIELDS = [
+  '_id',
+  'code',
+  'module',
+  'node',
+  'timestamp',
+  'status',
+] as const;
+const EVENT_CSV_PAGE_SIZE = 100;
+const EVENT_CSV_MAX_ROWS = 1000;
+
+function stringifyCsvValue(value: unknown): string {
+  const text =
+    value === null || value === undefined
+      ? ''
+      : typeof value === 'string'
+        ? value
+        : String(value);
+
+  if (
+    text.includes(EVENT_CSV_DELIMITER) ||
+    text.includes('"') ||
+    text.includes('\n') ||
+    text.includes('\r')
+  ) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+
+  return text;
+}
+
+function isDetailEntry(
+  value: unknown,
+): value is { key?: unknown; value?: unknown } {
+  return typeof value === 'object' && value !== null;
+}
+
+function getEventDetailMap(
+  record: Record<string, unknown>,
+): Map<string, string> {
+  const detailMap = new Map<string, string>();
+  const details = record['details'];
+  if (!Array.isArray(details)) {
+    return detailMap;
+  }
+
+  for (const detail of details) {
+    if (!isDetailEntry(detail) || typeof detail.key !== 'string') {
+      continue;
+    }
+    detailMap.set(
+      detail.key,
+      typeof detail.value === 'string' ? detail.value : '',
+    );
+  }
+
+  return detailMap;
+}
+
+function discoverEventCsvFields(
+  records: readonly Record<string, unknown>[],
+  requestedFields?: string[],
+): string[] {
+  if (requestedFields && requestedFields.length > 0) {
+    return requestedFields;
+  }
+
+  const detailFields = new Set<string>();
+  for (const record of records) {
+    for (const key of getEventDetailMap(record).keys()) {
+      detailFields.add(`detail.${key}`);
+    }
+  }
+
+  return [...EVENT_CSV_BASE_FIELDS, ...[...detailFields].sort()];
+}
+
+function getEventCsvCell(
+  record: Record<string, unknown>,
+  field: string,
+): string {
+  if (field === 'details') {
+    return stringifyCsvValue(
+      [...getEventDetailMap(record).entries()]
+        .map(([key, value]) => `${key}:'${value}'`)
+        .join(','),
+    );
+  }
+
+  if (field.startsWith('detail.')) {
+    return stringifyCsvValue(
+      getEventDetailMap(record).get(field.slice('detail.'.length)) ?? '',
+    );
+  }
+
+  const value = record[field];
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  return stringifyCsvValue(value);
+}
+
+function buildEventSearchCsv(
+  records: readonly Record<string, unknown>[],
+  requestedFields?: string[],
+): string {
+  const fields = discoverEventCsvFields(records, requestedFields);
+  const header = fields.join(EVENT_CSV_DELIMITER);
+  const rows = records.map((record) =>
+    fields
+      .map((field) => getEventCsvCell(record, field))
+      .join(EVENT_CSV_DELIMITER),
+  );
+  return [header, ...rows].join('\n');
+}
+
+async function exportEventsCsvFromSearch(
+  client: HorizonClient,
+  query: string,
+  fields?: string[],
+  sortedBy?: string,
+): Promise<{
+  csv: string;
+  truncated: boolean;
+  returned_rows: number;
+  max_rows: number;
+  source: 'search_fallback';
+}> {
+  const records: Record<string, unknown>[] = [];
+  let totalAvailable: number | undefined;
+  let hasMore = false;
+
+  for (
+    let pageIndex = 0;
+    pageIndex < EVENT_CSV_MAX_ROWS / EVENT_CSV_PAGE_SIZE &&
+    records.length < EVENT_CSV_MAX_ROWS;
+    pageIndex += 1
+  ) {
+    const payload = buildSearchPayload(
+      query,
+      undefined,
+      pageIndex,
+      EVENT_CSV_PAGE_SIZE,
+      sortedBy,
+      pageIndex === 0,
+    );
+    const result = await client.post<Record<string, unknown>>(
+      '/api/v1/events/search',
+      payload,
+      { timeout: CSV_TIMEOUT },
+    );
+
+    const batch = (result['results'] ?? result['items'] ?? []) as Record<
+      string,
+      unknown
+    >[];
+    if (pageIndex === 0 && typeof result['count'] === 'number') {
+      totalAvailable = result['count'] as number;
+    }
+
+    if (batch.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    records.push(...batch.slice(0, EVENT_CSV_MAX_ROWS - records.length));
+    hasMore =
+      Boolean(result['hasMore']) ||
+      records.length < (totalAvailable ?? records.length);
+
+    if (!hasMore || records.length >= EVENT_CSV_MAX_ROWS) {
+      break;
+    }
+  }
+
+  return {
+    csv: buildEventSearchCsv(records, fields),
+    truncated:
+      records.length >= EVENT_CSV_MAX_ROWS &&
+      (hasMore || (totalAvailable ?? 0) > EVENT_CSV_MAX_ROWS),
+    returned_rows: records.length,
+    max_rows: EVENT_CSV_MAX_ROWS,
+    source: 'search_fallback',
+  };
+}
 
 export function registerLifecycleTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'search_certificates',
     {
       description:
@@ -152,7 +343,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_certificate',
     {
       description:
@@ -176,7 +368,8 @@ export function registerLifecycleTools(
   // Certificate CSV Export
   // ===================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'export_certificates_csv',
     {
       description:
@@ -222,7 +415,8 @@ export function registerLifecycleTools(
   // Download Certificate (PEM only)
   // ===================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'download_certificate',
     {
       description:
@@ -303,7 +497,8 @@ export function registerLifecycleTools(
   // Requests (8)
   // ===================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_request_template',
     {
       description:
@@ -359,7 +554,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'submit_request',
     {
       description:
@@ -517,7 +713,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'approve_request',
     {
       description:
@@ -571,7 +768,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'deny_request',
     {
       description:
@@ -625,7 +823,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'cancel_request',
     {
       description:
@@ -679,7 +878,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'search_requests',
     {
       description:
@@ -789,7 +989,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_request',
     {
       description:
@@ -814,7 +1015,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'export_requests_csv',
     {
       description:
@@ -857,7 +1059,8 @@ export function registerLifecycleTools(
   // Events (3)
   // ===================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'search_events',
     {
       description:
@@ -898,7 +1101,7 @@ export function registerLifecycleTools(
       const cappedPageSize = Math.min(page_size, 100);
       const payload: Record<string, unknown> = {
         query,
-        pageIndex: page_index,
+        pageIndex: toApiPageIndex(page_index),
         pageSize: cappedPageSize,
       };
       const sorted = buildSortedBy(sorted_by);
@@ -925,7 +1128,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_event',
     {
       description:
@@ -945,13 +1149,15 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'export_events_csv',
     {
       description:
         'Export audit events matching an HEQL query as CSV (bounded export helper).\n\n' +
         'Safety tier: read-only\n\n' +
-        'Returns up to 1000 rows. For full exports use Horizon UI.\n' +
+        'Returns up to 1000 rows using paged event search so it stays reliable on busy Horizon instances. For full raw exports use the Horizon UI.\n' +
+        'Default columns are _id, code, module, node, timestamp, and status. Pass fields to include specific detail.* columns.\n' +
         "HEQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
         'IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp - NOT eventType, eventDate).\n' +
         'Full reference: horizon://knowledge/query-languages',
@@ -968,16 +1174,13 @@ export function registerLifecycleTools(
       }),
     },
     async ({ query, fields, sorted_by }) => {
-      const payload = buildExportPayload(query, fields, sorted_by);
-      const csvText = await client.postText('/api/v1/events/csv', payload, {
-        timeout: CSV_TIMEOUT,
-      });
-      const metadata = csvTruncationMetadata(csvText);
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ csv: csvText, ...metadata }),
+            text: JSON.stringify(
+              await exportEventsCsvFromSearch(client, query, fields, sorted_by),
+            ),
           },
         ],
       };
@@ -988,7 +1191,8 @@ export function registerLifecycleTools(
   // Aggregation (2)
   // ===================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'aggregate_certificates',
     {
       description:
@@ -1052,7 +1256,8 @@ export function registerLifecycleTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'aggregate_requests',
     {
       description:

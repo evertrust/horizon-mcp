@@ -11,6 +11,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { registerTool } from '../register.js';
 
 // ---------------------------------------------------------------------------
 // Field metadata - pre-built from known Horizon source fields
@@ -313,7 +314,8 @@ export function registerQueryTools(
     }
   }
 
-  server.registerTool(
+  registerTool(
+    server,
     'validate_hcql',
     {
       description:
@@ -336,7 +338,8 @@ export function registerQueryTools(
     async ({ query }) => validateQuery('hcql', query),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'validate_hrql',
     {
       description:
@@ -357,7 +360,8 @@ export function registerQueryTools(
     async ({ query }) => validateQuery('hrql', query),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'validate_heql',
     {
       description:
@@ -378,7 +382,8 @@ export function registerQueryTools(
     async ({ query }) => validateQuery('heql', query),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'validate_hdql',
     {
       description:
@@ -399,7 +404,8 @@ export function registerQueryTools(
     async ({ query }) => validateQuery('hdql', query),
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'describe_query_fields',
     {
       description:

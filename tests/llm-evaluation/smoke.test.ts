@@ -1,47 +1,29 @@
-/**
- * Tier 3 - Claude Code smoke tests.
- *
- * Quick sanity checks that Claude Code can discover and use Horizon MCP tools.
- * Skipped when ANTHROPIC_API_KEY or HORIZON_E2E_* env vars are not set.
- */
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  LLM_EVAL_READY,
-  askClaude,
-  cleanupMcpConfig,
-  skipReason,
-} from './setup.js';
+import { loadScenarioMetadata, rankTools } from './setup.js';
 
-describe.skipIf(!LLM_EVAL_READY)(
-  `Smoke tests (${skipReason() || 'enabled'})`,
-  () => {
-    afterAll(() => cleanupMcpConfig());
+describe('Provider-agnostic scenario smoke tests', () => {
+  it('loads tool and resource metadata without external model dependencies', async () => {
+    const metadata = await loadScenarioMetadata();
 
-    it('lists available certificate tools', async () => {
-      const result = await askClaude(
-        'What tools are available for certificate management?',
-        { timeout: 60_000 },
-      );
+    expect(metadata.tools.length).toBe(84);
+    expect(metadata.resources.length).toBeGreaterThan(20);
+  });
 
-      expect(result.exitCode).toBe(0);
-      expect(result.text).toContain('certificate');
-    }, 90_000);
+  it('ranks documentation search above raw page fetch for configuration prompts', async () => {
+    const ranked = await rankTools(
+      'How do I configure the ADCS connector in Horizon?',
+    );
 
-    it('understands HCQL when asked about expired certs', async () => {
-      const result = await askClaude(
-        'How do I query for expired certificates using HCQL?',
-        { timeout: 60_000 },
-      );
+    const searchIndex = ranked.findIndex(
+      ({ item }) => item.name === 'search_docs',
+    );
+    const pageIndex = ranked.findIndex(
+      ({ item }) => item.name === 'get_doc_page',
+    );
 
-      expect(result.exitCode).toBe(0);
-      const mentionsHcqlConcepts = [
-        'status',
-        'expired',
-        'valid.until',
-        'hcql',
-      ].some((kw) => result.text.includes(kw));
-      expect(mentionsHcqlConcepts).toBe(true);
-    }, 90_000);
-  },
-);
+    expect(searchIndex).toBeGreaterThanOrEqual(0);
+    expect(pageIndex).toBeGreaterThanOrEqual(0);
+    expect(searchIndex).toBeLessThan(pageIndex);
+  });
+});

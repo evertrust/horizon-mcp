@@ -159,23 +159,23 @@ delivery:
 
 ### Run Task Manually
 
-| Action | Method | Path                                | Description                 |
-| ------ | ------ | ----------------------------------- | --------------------------- |
-| Run    | GET    | `/api/v1/scheduledtasks/{name}/run` | Trigger immediate execution |
+| Action | Method | Path                               | Description                 |
+| ------ | ------ | ---------------------------------- | --------------------------- |
+| Run    | GET    | `/api/v1/scheduler/tasks/{id}/run` | Trigger immediate execution |
 
 **Note**: This uses GET for a mutation operation. This is an unusual pattern
 confirmed in the Horizon source code -- it is NOT a mistake.
 
 ### Scheduled Task API Operations
 
-| Operation   | Method | Path                                     |
-| ----------- | ------ | ---------------------------------------- |
-| List tasks  | GET    | `/api/v1/scheduledtasks`                 |
-| Get task    | GET    | `/api/v1/scheduledtasks/{name}`          |
-| Create task | POST   | `/api/v1/scheduledtasks`                 |
-| Update task | PUT    | `/api/v1/scheduledtasks/` (name in body) |
-| Delete task | DELETE | `/api/v1/scheduledtasks/{name}`          |
-| Run task    | GET    | `/api/v1/scheduledtasks/{name}/run`      |
+| Operation   | Method | Path                                   |
+| ----------- | ------ | -------------------------------------- |
+| List tasks  | GET    | `/api/v1/scheduler/tasks`              |
+| Get task    | GET    | `/api/v1/scheduler/tasks/{id}`         |
+| Create task | POST   | `/api/v1/scheduler/tasks`              |
+| Update task | PUT    | `/api/v1/scheduler/tasks` (id in body) |
+| Delete task | DELETE | `/api/v1/scheduler/tasks/{id}`         |
+| Run task    | GET    | `/api/v1/scheduler/tasks/{id}/run`     |
 
 ---
 

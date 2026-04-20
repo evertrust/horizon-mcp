@@ -1,0 +1,1147 @@
+{
+  "generatedAt": "2026-04-13T15:31:23.255Z",
+  "openApiPath": "../../../Downloads/evertrust_horizon_openapi.json",
+  "operationCount": 228,
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/api/v1/adoc",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/archives",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/archives/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/cancel",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/download",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/retry",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/archives/count",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/automation/executions/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/executions/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/lifecycle/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/lifecycle/{name}/verify",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/automation/policies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/policies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/caches/crls",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/caches/crls/{ca}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cas",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cas",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/cas",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cas/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cas/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/grading/policies/{policy}/explain",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{policy}/explain/{input}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{policy}/run",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/grading/rulesets/{ruleset}/explain",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets/{ruleset}/explain/{input}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/certificate/labels/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/labels/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/certificate/profiles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/profiles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/{pem}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/aggregate",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/csv",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/find",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/certificates/run/{id}/{triggerName}/{event}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/search/dictionary",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasource/flows",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasource/flows/template",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/datasources/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/datasources/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/events/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/events/csv",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/events/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/feed",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/discovery/feed",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/discovery/feed/{campaign}/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/feed/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/events/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/verify",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/licenses",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/licenses/modules",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/pki/connectors/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/connectors/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/pki/queues/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/queues/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/proxy/httpproxies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proxy/httpproxies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/{reportName}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/reports/{uuid}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/aggregate",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/approve",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/cancel",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/csv",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/deny",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/search/dictionary",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/submit",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/template",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/detect",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/pkcs10",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/pkcs10/{pem}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/pkcs12",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/tc",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/tc/{pem}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/x509",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/x509/{pem}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/scheduler/tasks/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks/{id}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks/{id}/run",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/credentials/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/credentials/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/identity/locals/{identifier}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals/{identifier}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/locals/password",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals/password/{identifier}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/identity/providers/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers/dynamic/enabled",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/providers/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/passwordpolicies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies/{name}/generate",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principalinfos",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/principalinfos",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/principalinfos/{identifier}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principalinfos/{identifier}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principalinfos/search",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/authenticate",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/logout",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/self",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/roles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/scim/profiles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/scim/profiles/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/teams/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/security/teams/{previousTeam}/{newTeam}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/tenants/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants/{name}/licenses",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants/{name}/reset",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants/{name}/restore",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configuration",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/system/configuration",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configuration/{type}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configurations/export",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/configurations/export",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/configurations/import",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/templatestring/playground",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/triggers/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/triggers/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/trustchains",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/trustchains/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/wcce/forests/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/wcce/forests/{name}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    },
+    {
+      "method": "GET",
+      "path": "/reports/{uuid}",
+      "sourceFile": "../../../Downloads/evertrust_horizon_openapi.json"
+    }
+  ]
+}

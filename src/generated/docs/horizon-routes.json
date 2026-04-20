@@ -1,0 +1,1317 @@
+{
+  "generatedAt": "2026-04-13T15:31:23.254Z",
+  "sourceRoot": "../horizon",
+  "routeCount": 262,
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/v1/adoc",
+      "sourceFile": "../horizon/conf/api.adoc.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/certificates",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/discovery/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/analytics/events",
+      "sourceFile": "../horizon/conf/api.analytics.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/archives",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/archives/{name}",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/cancel",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/download",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/archives/{name}/retry",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/archives/count",
+      "sourceFile": "../horizon/conf/api.archive.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../horizon/conf/api.automation.execution.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../horizon/conf/api.automation.execution.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/automation/executions",
+      "sourceFile": "../horizon/conf/api.automation.execution.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/automation/executions/{name}",
+      "sourceFile": "../horizon/conf/api.automation.execution.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/executions/{name}",
+      "sourceFile": "../horizon/conf/api.automation.execution.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/lifecycle/{name}",
+      "sourceFile": "../horizon/conf/api.automation.lifecycle.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/lifecycle/{name}/verify",
+      "sourceFile": "../horizon/conf/api.automation.lifecycle.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../horizon/conf/api.automation.policy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../horizon/conf/api.automation.policy.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/automation/policies",
+      "sourceFile": "../horizon/conf/api.automation.policy.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/automation/policies/{name}",
+      "sourceFile": "../horizon/conf/api.automation.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/automation/policies/{name}",
+      "sourceFile": "../horizon/conf/api.automation.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/caches/crls",
+      "sourceFile": "../horizon/conf/api.cache.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/caches/crls/{ca}",
+      "sourceFile": "../horizon/conf/api.cache.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cas",
+      "sourceFile": "../horizon/conf/api.ca.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/cas",
+      "sourceFile": "../horizon/conf/api.ca.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/cas",
+      "sourceFile": "../horizon/conf/api.ca.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/cas/{name}",
+      "sourceFile": "../horizon/conf/api.ca.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/cas/{name}",
+      "sourceFile": "../horizon/conf/api.ca.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies",
+      "sourceFile": "../horizon/conf/api.certificate.grading.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.grading.policy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/grading/policies/{policy}/explain",
+      "sourceFile": "../horizon/conf/api.certificate.grading.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{policy}/explain/{input}",
+      "sourceFile": "../horizon/conf/api.certificate.grading.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/policies/{policy}/run",
+      "sourceFile": "../horizon/conf/api.certificate.grading.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets",
+      "sourceFile": "../horizon/conf/api.certificate.grading.ruleset.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.grading.ruleset.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/grading/rulesets/{ruleset}/explain",
+      "sourceFile": "../horizon/conf/api.certificate.grading.ruleset.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/grading/rulesets/{ruleset}/explain/{input}",
+      "sourceFile": "../horizon/conf/api.certificate.grading.ruleset.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../horizon/conf/api.certificate.label.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../horizon/conf/api.certificate.label.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/certificate/labels",
+      "sourceFile": "../horizon/conf/api.certificate.label.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/certificate/labels/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.label.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/labels/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.label.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../horizon/conf/api.certificate.profile.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../horizon/conf/api.certificate.profile.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/certificate/profiles",
+      "sourceFile": "../horizon/conf/api.certificate.profile.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/certificate/profiles/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.profile.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificate/profiles/{name}",
+      "sourceFile": "../horizon/conf/api.certificate.profile.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/{id}",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/{pem}",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/aggregate",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/csv",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/find",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/certificates/run/{id}/{triggerName}/{event}",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/certificates/search",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/certificates/search/dictionary",
+      "sourceFile": "../horizon/conf/api.certificate.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/crypto/detect",
+      "sourceFile": "../horizon/conf/api.crypto.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasource/flows",
+      "sourceFile": "../horizon/conf/api.datasource.flow.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasource/flows/template",
+      "sourceFile": "../horizon/conf/api.datasource.flow.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/datasources",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/datasources/{name}",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/datasources/{name}",
+      "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/discovery/campaigns",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/discovery/campaigns/{name}",
+      "sourceFile": "../horizon/conf/api.discovery.campaign.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/events/{id}",
+      "sourceFile": "../horizon/conf/api.discovery.event.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/events/csv",
+      "sourceFile": "../horizon/conf/api.discovery.event.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/events/search",
+      "sourceFile": "../horizon/conf/api.discovery.event.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/events/search/dictionary",
+      "sourceFile": "../horizon/conf/api.discovery.event.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/discovery/feed",
+      "sourceFile": "../horizon/conf/api.discovery.feed.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/discovery/feed",
+      "sourceFile": "../horizon/conf/api.discovery.feed.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/discovery/feed/{campaign}/{id}",
+      "sourceFile": "../horizon/conf/api.discovery.feed.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/discovery/feed/{name}",
+      "sourceFile": "../horizon/conf/api.discovery.feed.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/endpoints",
+      "sourceFile": "../horizon/conf/api.endpoint.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/{id}",
+      "sourceFile": "../horizon/conf/api.event.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/events/csv",
+      "sourceFile": "../horizon/conf/api.event.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/integrity",
+      "sourceFile": "../horizon/conf/api.event.integrity.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/integrity/run",
+      "sourceFile": "../horizon/conf/api.event.integrity.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/events/search",
+      "sourceFile": "../horizon/conf/api.event.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/events/search/dictionary",
+      "sourceFile": "../horizon/conf/api.event.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/licenses",
+      "sourceFile": "../horizon/conf/api.license.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/licenses/modules",
+      "sourceFile": "../horizon/conf/api.license.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/openssh",
+      "sourceFile": "../horizon/conf/api.openssh.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/openssh/{base64}",
+      "sourceFile": "../horizon/conf/api.openssh.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/pki/connectors",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/pki/connectors/{name}",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/connectors/{name}",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pki/connectors/connect",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pki/connectors/materials",
+      "sourceFile": "../horizon/conf/api.pki.connector.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../horizon/conf/api.pki.queue.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../horizon/conf/api.pki.queue.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/pki/queues",
+      "sourceFile": "../horizon/conf/api.pki.queue.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/pki/queues/{name}",
+      "sourceFile": "../horizon/conf/api.pki.queue.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pki/queues/{name}",
+      "sourceFile": "../horizon/conf/api.pki.queue.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../horizon/conf/api.http.httpproxy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../horizon/conf/api.http.httpproxy.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/proxy/httpproxies",
+      "sourceFile": "../horizon/conf/api.http.httpproxy.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/proxy/httpproxies/{name}",
+      "sourceFile": "../horizon/conf/api.http.httpproxy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/proxy/httpproxies/{name}",
+      "sourceFile": "../horizon/conf/api.http.httpproxy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports",
+      "sourceFile": "../horizon/conf/api.report.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/reports/{reportName}",
+      "sourceFile": "../horizon/conf/api.report.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/reports/{uuid}",
+      "sourceFile": "../horizon/conf/api.report.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/{id}",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/aggregate",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/approve",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/cancel",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/csv",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/deny",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/profiles",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/search",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/requests/search/dictionary",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/submit",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/requests/template",
+      "sourceFile": "../horizon/conf/api.request.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc3161",
+      "sourceFile": "../horizon/conf/api.rfc3161.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc3161/{base64}",
+      "sourceFile": "../horizon/conf/api.rfc3161.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/crl",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/crl/{pem}",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/pkcs10",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/pkcs10/{pem}",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/pkcs12",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/tc",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/tc/{pem}",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc5280/x509",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc5280/x509/{pem}",
+      "sourceFile": "../horizon/conf/api.rfc5280.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/rfc6960",
+      "sourceFile": "../horizon/conf/api.rfc6960.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/rfc6960/{base64}",
+      "sourceFile": "../horizon/conf/api.rfc6960.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/scheduler/tasks",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/scheduler/tasks/{name}",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks/{name}",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scheduler/tasks/{name}/run",
+      "sourceFile": "../horizon/conf/api.scheduler.task.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../horizon/conf/api.security.credentials.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../horizon/conf/api.security.credentials.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/credentials",
+      "sourceFile": "../horizon/conf/api.security.credentials.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/credentials/{name}",
+      "sourceFile": "../horizon/conf/api.security.credentials.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/credentials/{name}",
+      "sourceFile": "../horizon/conf/api.security.credentials.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/identity/locals",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/identity/locals/{identifier}",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals/{identifier}",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/locals/password",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/locals/password/{identifier}",
+      "sourceFile": "../horizon/conf/api.security.identity.local.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/identity/providers",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/identity/providers/{name}",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers/{name}",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/identity/providers/dynamic/enabled",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/identity/providers/search",
+      "sourceFile": "../horizon/conf/api.security.identity.provider.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/passwordpolicies",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/passwordpolicies/{name}",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies/{name}",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/passwordpolicies/{name}/generate",
+      "sourceFile": "../horizon/conf/api.security.passwordpolicy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principalinfos",
+      "sourceFile": "../horizon/conf/api.security.principalinfo.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/principalinfos",
+      "sourceFile": "../horizon/conf/api.security.principalinfo.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/principalinfos/{identifier}",
+      "sourceFile": "../horizon/conf/api.security.principalinfo.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principalinfos/{identifier}",
+      "sourceFile": "../horizon/conf/api.security.principalinfo.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principalinfos/search",
+      "sourceFile": "../horizon/conf/api.security.principalinfo.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/authenticate",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/dashboards",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principals/dashboards",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/principals/dashboards",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/principals/dashboards/{name}",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/dashboards/{name}",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/dictionary",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/logout",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principals/preferences",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/queries",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/principals/queries",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/principals/queries/{name}",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/queries/{name}",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/principals/self",
+      "sourceFile": "../horizon/conf/api.security.principal.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/roles",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/roles/{name}",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles/{name}",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/roles/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.role.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../horizon/conf/api.security.scim.profile.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../horizon/conf/api.security.scim.profile.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/scim/profiles",
+      "sourceFile": "../horizon/conf/api.security.scim.profile.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/scim/profiles/{name}",
+      "sourceFile": "../horizon/conf/api.security.scim.profile.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/scim/profiles/{name}",
+      "sourceFile": "../horizon/conf/api.security.scim.profile.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/teams",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/teams/{name}",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams/{name}",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/security/teams/{previousTeam}/{newTeam}",
+      "sourceFile": "../horizon/conf/api.security.team.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/tenants",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/tenants/{name}",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants/{name}",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/tenants/{name}/licenses",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants/{name}/reset",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/tenants/{name}/restore",
+      "sourceFile": "../horizon/conf/api.security.tenant.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configuration",
+      "sourceFile": "../horizon/conf/api.system.configuration.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/system/configuration",
+      "sourceFile": "../horizon/conf/api.system.configuration.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configuration/{type}",
+      "sourceFile": "../horizon/conf/api.system.configuration.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/configurations/export",
+      "sourceFile": "../horizon/conf/api.system.configurations.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/configurations/export",
+      "sourceFile": "../horizon/conf/api.system.configurations.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/configurations/import",
+      "sourceFile": "../horizon/conf/api.system.configurations.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/storages",
+      "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/storages",
+      "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/system/storages",
+      "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/system/storages/{name}",
+      "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/storages/{name}",
+      "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.lifecycle.team.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.lifecycle.team.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/teams/{name}/members",
+      "sourceFile": "../horizon/conf/api.lifecycle.team.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/templatestring/playground",
+      "sourceFile": "../horizon/conf/api.templatestring.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/thirdparty/connectors",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/thirdparty/connectors/{name}",
+      "sourceFile": "../horizon/conf/api.thirdparty.connector.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/triggers",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/triggers/{name}",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/triggers/{name}",
+      "sourceFile": "../horizon/conf/api.trigger.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/trustchains",
+      "sourceFile": "../horizon/conf/api.trustchain.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/trustchains/{anchor}",
+      "sourceFile": "../horizon/conf/api.trustchain.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/ui",
+      "sourceFile": "../horizon/conf/api.ui.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/ui/cr/format",
+      "sourceFile": "../horizon/conf/api.ui.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/wcce/enroll",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/wcce/exchanges/{profile}",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/wcce/forests",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/wcce/forests/{name}",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/wcce/forests/{name}",
+      "sourceFile": "../horizon/conf/api.wcce.routes"
+    }
+  ]
+}
