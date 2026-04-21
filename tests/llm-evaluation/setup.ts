@@ -1,147 +1,354 @@
-/**
- * LLM evaluation setup - Claude Code subprocess helper and environment gating.
- *
- * All evaluation tests run via `claude -p` with the MCP server attached.
- * Required: Claude Code CLI (`claude`) on PATH + ANTHROPIC_API_KEY env var
- *           + HORIZON_E2E_* env vars for the live Horizon instance.
- */
-import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-// ---------------------------------------------------------------------------
-// Environment gating
-// ---------------------------------------------------------------------------
+import { registerAllResources } from '../../src/resources/index.js';
+import { registerComputationTools } from '../../src/tools/assist/computation.js';
+import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
+import { registerQueryTools } from '../../src/tools/assist/query.js';
+import { registerSystemTools } from '../../src/tools/assist/system.js';
+import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerDashboardTools } from '../../src/tools/dashboards.js';
+import { registerDatasourceTools } from '../../src/tools/datasources.js';
+import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
+import { registerDiscoveryFeedTools } from '../../src/tools/discovery-feed.js';
+import { registerDiscoveryTools } from '../../src/tools/discovery.js';
+import { registerDocsTools } from '../../src/tools/docs.js';
+import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
+import { registerProfileTools } from '../../src/tools/profiles.js';
+import { registerReportTools } from '../../src/tools/reports.js';
+import { registerTriggerTools } from '../../src/tools/triggers.js';
+import {
+  E2E_CONFIGURED,
+  callTool,
+  readResource,
+  setupE2EStack,
+} from '../e2e/setup.js';
 
-const E2E_URL = process.env['HORIZON_E2E_URL'] ?? '';
-const E2E_API_ID = process.env['HORIZON_E2E_API_ID'] ?? '';
-const E2E_API_KEY = process.env['HORIZON_E2E_API_KEY'] ?? '';
-const HAS_API_KEY = Boolean(process.env['ANTHROPIC_API_KEY']);
+export {
+  E2E_CONFIGURED as SCENARIO_E2E_READY,
+  callTool,
+  readResource,
+  setupE2EStack,
+};
 
-export const LLM_EVAL_READY = Boolean(
-  HAS_API_KEY && E2E_URL && E2E_API_ID && E2E_API_KEY,
-);
-
-export function skipReason(): string {
-  if (!HAS_API_KEY) return 'ANTHROPIC_API_KEY not set';
-  if (!E2E_URL || !E2E_API_ID || !E2E_API_KEY)
-    return 'HORIZON_E2E_* env vars not set';
-  return '';
+export interface ListedTool {
+  readonly name: string;
+  readonly description?: string;
+  readonly inputSchema?: Record<string, unknown>;
 }
 
-// ---------------------------------------------------------------------------
-// MCP config file management
-// ---------------------------------------------------------------------------
-
-const PROJECT_ROOT = resolve(import.meta.dirname, '..', '..');
-
-/** Path to the built MCP server entry point. */
-function serverCommand(): string {
-  return join(PROJECT_ROOT, 'dist', 'index.js');
+export interface ListedResource {
+  readonly uri: string;
+  readonly description?: string;
 }
 
-let configPath: string | undefined;
+type ScenarioMetadata = {
+  readonly tools: ListedTool[];
+  readonly resources: ListedResource[];
+};
 
-/**
- * Create a temporary MCP config JSON pointing to the local horizon-mcp server.
- * Reuses the same file across the test session.
- */
-export function getMcpConfigPath(): string {
-  if (configPath) return configPath;
+const STOPWORDS = new Set([
+  'a',
+  'an',
+  'and',
+  'are',
+  'as',
+  'at',
+  'by',
+  'for',
+  'from',
+  'how',
+  'i',
+  'in',
+  'is',
+  'it',
+  'me',
+  'my',
+  'of',
+  'on',
+  'or',
+  'show',
+  'the',
+  'to',
+  'using',
+  'what',
+  'with',
+]);
 
-  const config = {
-    mcpServers: {
-      horizon: {
-        command: 'node',
-        args: [serverCommand()],
-        env: {
-          HORIZON_URL: E2E_URL,
-          HORIZON_API_ID: E2E_API_ID,
-          HORIZON_API_KEY: E2E_API_KEY,
-        },
-      },
-    },
+function createMockClient(): unknown {
+  return {
+    get: async () => ({}),
+    post: async () => ({}),
+    put: async () => ({}),
+    patch: async () => ({}),
+    delete: async () => null,
+    getBytes: async () => new ArrayBuffer(0),
+    getText: async () => '',
+    postText: async () => '',
+    postMultipart: async () => ({}),
+    request: async () => new Response(),
+    close: async () => {},
+    fetchCsrfToken: async () => undefined,
+    exportTimeout: 120000,
+    principalName: undefined,
+    horizonVersion: undefined,
   };
-
-  const filename = `horizon-mcp-eval-${randomUUID().slice(0, 8)}.json`;
-  configPath = join(tmpdir(), filename);
-  writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
-  return configPath;
 }
 
-/** Remove the temporary config file. */
-export function cleanupMcpConfig(): void {
-  if (configPath && existsSync(configPath)) {
-    unlinkSync(configPath);
-    configPath = undefined;
+function registerAllTools(server: McpServer, mockClient: unknown): void {
+  const client = mockClient as Parameters<typeof registerProfileTools>[1];
+  registerProfileTools(server, client);
+  registerLifecycleTools(server, client);
+  registerDashboardTools(server, client);
+  registerDiscoveryTools(server, client);
+  registerDiscoveryEventTools(server, client);
+  registerDiscoveryFeedTools(server, client);
+  registerDatasourceTools(server, client);
+  registerReportTools(server, client);
+  registerTriggerTools(server, client);
+  registerDocsTools(server, client);
+  registerSystemTools(server, client);
+  registerQueryTools(server, client);
+  registerCryptoTools(server, client);
+  registerComputationTools(server, client);
+  registerTranslateTools(server, client);
+}
+
+let metadataPromise: Promise<ScenarioMetadata> | undefined;
+
+export async function loadScenarioMetadata(): Promise<ScenarioMetadata> {
+  if (metadataPromise) return metadataPromise;
+
+  metadataPromise = (async () => {
+    const server = new McpServer({
+      name: 'scenario-eval',
+      version: '0.0.0',
+    });
+    const mockClient = createMockClient();
+    registerAllResources(server);
+    registerAllTools(server, mockClient);
+
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    const client = new Client({
+      name: 'scenario-eval-client',
+      version: '0.0.0',
+    });
+    await Promise.all([
+      client.connect(clientTransport),
+      server.connect(serverTransport),
+    ]);
+
+    const [toolResult, resourceResult] = await Promise.all([
+      client.listTools(),
+      client.listResources(),
+    ]);
+
+    return {
+      tools: toolResult.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        inputSchema: tool.inputSchema as Record<string, unknown> | undefined,
+      })),
+      resources: resourceResult.resources.map((resource) => ({
+        uri: resource.uri,
+        description: resource.description,
+      })),
+    };
+  })();
+
+  return metadataPromise;
+}
+
+function tokenize(text: string): string[] {
+  return text
+    .toLowerCase()
+    .replace(/[_:/().-]+/g, ' ')
+    .split(/\s+/)
+    .map((token) => token.trim())
+    .filter((token) => token.length > 1 && !STOPWORDS.has(token));
+}
+
+function keywordBonus(question: string, candidate: string): number {
+  let score = 0;
+  if (question.includes('csv') && candidate.includes('export_')) score += 20;
+  if (
+    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+      question,
+    ) &&
+    candidate.includes('aggregate_')
+  ) {
+    score += 34;
   }
+  if (
+    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+      question,
+    ) &&
+    candidate.includes('search_')
+  ) {
+    score -= 12;
+  }
+  if (
+    /(install|configure|configuration|integration|setup|guide|documentation|docs)/.test(
+      question,
+    ) &&
+    candidate.includes('search_docs')
+  ) {
+    score += 24;
+  }
+  if (
+    /(api|endpoint|payload|response|schema|status code|http method)/.test(
+      question,
+    ) &&
+    candidate.includes('search_api_docs')
+  ) {
+    score += 24;
+  }
+  if (
+    /(page id|page_id|read the page|fetch the page|full page)/.test(question) &&
+    candidate.includes('get_doc_page')
+  ) {
+    score += 18;
+  }
+  if (/(id|uuid)\b/.test(question) && candidate.includes('get_')) score += 10;
+  if (
+    /request [a-f0-9-]{8,}/.test(question) &&
+    candidate.includes('get_request')
+  ) {
+    score += 28;
+  }
+  if (
+    /request [a-f0-9-]{8,}/.test(question) &&
+    candidate.includes('search_requests')
+  ) {
+    score -= 10;
+  }
+  if (
+    /(expired|expiring|certificate)/.test(question) &&
+    candidate.includes('search_certificates')
+  ) {
+    score += 12;
+  }
+  if (/(request)/.test(question) && candidate.includes('get_request'))
+    score += 10;
+  if (
+    /(live|exposed|deployed|host|https:\/\/|ldaps:\/\/|port)/.test(question) &&
+    candidate.includes('fetch_exposed_certificate')
+  ) {
+    score += 22;
+  }
+  if (
+    /(natural language|translate|human language)/.test(question) &&
+    candidate.includes('translate_to_hql')
+  ) {
+    score += 18;
+  }
+  if (question.includes('validate') && candidate.includes('validate_hcql')) {
+    score += 22;
+  }
+  if (
+    /(simulate|debug|dry run|preview|datasource flow)/.test(question) &&
+    candidate.includes('simulate_')
+  ) {
+    score += 18;
+  }
+  if (
+    /(simulate|datasource flow)/.test(question) &&
+    candidate.includes('simulate_datasource_flow')
+  ) {
+    score += 80;
+  }
+  if (
+    /(datasource flow|cmdb api|oauth token)/.test(question) &&
+    candidate.includes('datasources')
+  ) {
+    score += 24;
+  }
+  if (
+    /(datasource flow|cmdb api|oauth token)/.test(question) &&
+    candidate.includes('rest-datasource')
+  ) {
+    score += 12;
+  }
+  if (
+    /(simulate|datasource flow)/.test(question) &&
+    (candidate.includes('create_') || candidate.includes('test_datasource'))
+  ) {
+    score -= 80;
+  }
+  if (question.includes('adcs') && candidate.includes('adcs')) score += 18;
+  if (question.includes('digicert') && candidate.includes('digicert'))
+    score += 18;
+  if (question.includes('intune') && candidate.includes('intune')) score += 18;
+  if (
+    /(oauth|token|rest notification|bearer)/.test(question) &&
+    candidate.includes('rest-notifications')
+  ) {
+    score += 24;
+  }
+  if (
+    /(oauth|token|rest notification|bearer)/.test(question) &&
+    candidate.includes('real-world-examples')
+  ) {
+    score += 12;
+  }
+  return score;
 }
 
-// ---------------------------------------------------------------------------
-// Claude Code subprocess helper
-// ---------------------------------------------------------------------------
-
-const DEFAULT_MODEL = process.env['HORIZON_LLM_EVAL_MODEL'] ?? 'sonnet';
-
-export interface ClaudeResponse {
-  readonly text: string;
-  readonly raw: string;
-  readonly exitCode: number;
+function overlapScore(questionTokens: string[], haystack: string): number {
+  let score = 0;
+  for (const token of questionTokens) {
+    if (!haystack.includes(token)) continue;
+    score += token.length >= 7 ? 5 : token.length >= 5 ? 4 : 2;
+  }
+  return score;
 }
 
-/**
- * Run `claude -p` with the MCP server and return parsed output.
- *
- * @param question  - The prompt to send
- * @param options   - timeout (ms, default 120_000), model (default from env or "sonnet")
- */
-export function askClaude(
+export function rankQuestion<T>(
   question: string,
-  options: { timeout?: number; model?: string } = {},
-): Promise<ClaudeResponse> {
-  const { timeout = 120_000, model = DEFAULT_MODEL } = options;
-  const mcpConfig = getMcpConfigPath();
+  items: readonly T[],
+  toHaystack: (item: T) => string,
+): Array<{ item: T; score: number }> {
+  const normalizedQuestion = question.toLowerCase();
+  const questionTokens = tokenize(question);
 
-  return new Promise((resolve, reject) => {
-    const child = execFile(
-      'claude',
-      [
-        '-p',
-        question,
-        '--output-format',
-        'json',
-        '--model',
-        model,
-        '--mcp-config',
-        mcpConfig,
-      ],
-      { timeout, maxBuffer: 10 * 1024 * 1024 },
-      (error, stdout, _stderr) => {
-        // execFile sets error for non-zero exit codes AND timeouts.
-        // For non-zero exits we still want to return the output.
-        if (error && !('code' in error)) {
-          reject(error);
-          return;
-        }
+  return [...items]
+    .map((item) => {
+      const haystack = toHaystack(item).toLowerCase();
+      const score =
+        overlapScore(questionTokens, haystack) +
+        keywordBonus(normalizedQuestion, haystack);
+      return { item, score };
+    })
+    .sort((left, right) => right.score - left.score);
+}
 
-        const rawStdout = stdout.trim();
-        let text: string;
-        try {
-          const parsed = JSON.parse(rawStdout) as Record<string, unknown>;
-          const result = parsed['result'] ?? parsed['text'] ?? rawStdout;
-          text = typeof result === 'string' ? result : String(result);
-        } catch {
-          text = rawStdout;
-        }
+export async function rankTools(question: string) {
+  const metadata = await loadScenarioMetadata();
+  return rankQuestion(
+    question,
+    metadata.tools,
+    (tool) => `${tool.name} ${tool.description ?? ''}`,
+  );
+}
 
-        resolve({
-          text: text.toLowerCase(),
-          raw: text,
-          exitCode: child.exitCode ?? (error ? 1 : 0),
-        });
-      },
-    );
-  });
+export async function rankResources(question: string) {
+  const metadata = await loadScenarioMetadata();
+  return rankQuestion(
+    question,
+    metadata.resources,
+    (resource) => `${resource.uri} ${resource.description ?? ''}`,
+  );
+}
+
+export async function getToolSchemaParamNames(
+  toolName: string,
+): Promise<Set<string>> {
+  const metadata = await loadScenarioMetadata();
+  const tool = metadata.tools.find((candidate) => candidate.name === toolName);
+  if (!tool?.inputSchema) return new Set();
+  const properties =
+    (tool.inputSchema['properties'] as Record<string, unknown>) ?? {};
+  return new Set(Object.keys(properties));
 }

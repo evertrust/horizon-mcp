@@ -342,3 +342,109 @@ Authorization levels work _in conjunction with_ the RBAC system:
 This two-layer model means you can have a profile that allows authenticated
 enrollment but still restrict _which_ authenticated users can enroll by
 narrowing the `search` authorization level or by using team-based ownership.
+
+---
+
+## Request Submission API Payload
+
+All lifecycle requests are submitted via `POST /api/v1/requests/submit`.
+The JSON body has a specific structure -- certificate fields MUST be nested
+inside a `template` object, NOT placed at the top level.
+
+### Payload Structure
+
+```json
+{
+  "workflow": "<enroll|renew|revoke|update|recover|migrate|import>",
+  "profile": "<profile-name>",
+  "module": "<webra|est|scep|acme|crmp|wcce|intune|jamf>",
+  "template": {
+    "subject": [
+      { "element": "cn.1", "type": "CN", "value": "server.example.com" }
+    ],
+    "sans": [
+      {
+        "type": "DNSNAME",
+        "value": ["server.example.com", "alias.example.com"]
+      },
+      { "type": "IPADDRESS", "value": ["192.168.1.10"] }
+    ],
+    "labels": [
+      { "label": "environment", "value": "PRODUCTION" },
+      { "label": "application_name", "value": "my-app" }
+    ],
+    "contactEmail": { "value": "admin@example.com" },
+    "owner": { "value": "jdoe" },
+    "team": { "value": "infra" },
+    "keyType": "ec-secp256r1"
+  },
+  "password": "changeit",
+  "certificateId": "<id>"
+}
+```
+
+### Top-level fields
+
+| Field           | Required                                | Description                                              |
+| --------------- | --------------------------------------- | -------------------------------------------------------- |
+| `workflow`      | Always                                  | Lifecycle action type                                    |
+| `profile`       | Always                                  | Target profile name                                      |
+| `module`        | Always                                  | Profile module type                                      |
+| `template`      | enroll, renew                           | Certificate data (subject, SANs, labels, key type, etc.) |
+| `password`      | Centralized only                        | PKCS#12 password (omit if profile uses random mode)      |
+| `certificateId` | renew, revoke, update, recover, migrate | Existing certificate ID                                  |
+
+### Template fields
+
+| Field          | Type   | Description                                                   |
+| -------------- | ------ | ------------------------------------------------------------- |
+| `subject`      | array  | DN elements: `{"element": "cn.1", "type": "CN", "value": ""}` |
+| `sans`         | array  | SAN entries: `{"type": "DNSNAME", "value": ["..."]}`          |
+| `labels`       | array  | Labels: `{"label": "<name>", "value": "<value>"}`             |
+| `contactEmail` | object | `{"value": "user@example.com"}`                               |
+| `owner`        | object | `{"value": "principal-id"}`                                   |
+| `team`         | object | `{"value": "team-name"}`                                      |
+| `keyType`      | string | Key algorithm (e.g., `rsa-2048`, `ec-secp256r1`)              |
+| `csr`          | string | PEM-encoded CSR (for decentralized enrollment)                |
+
+**Important**: Only include editable fields in the template. Fixed fields
+(like O, OU, C with `editable: false` in the profile) are set by the server.
+Call `GET /api/v1/requests/template?workflow=enroll&profile=<name>&module=<module>`
+first to discover which fields are required and editable.
+
+### Enrollment Example (centralized, WebRA)
+
+```bash
+curl -X POST "https://<HORIZON_URL>/api/v1/requests/submit" \
+  -H "Content-Type: application/json" \
+  -H "x-api-id: <API_KEY_ID>" \
+  -H "x-api-key: <API_KEY>" \
+  -d '{
+    "workflow": "enroll",
+    "profile": "TLS-Internal",
+    "module": "webra",
+    "template": {
+      "subject": [{"element": "cn.1", "type": "CN", "value": "server.local"}],
+      "sans": [{"type": "DNSNAME", "value": ["server.local"]}],
+      "labels": [{"label": "env", "value": "prod"}],
+      "keyType": "rsa-3072"
+    },
+    "password": "changeit"
+  }'
+```
+
+### Revocation Example
+
+```bash
+curl -X POST "https://<HORIZON_URL>/api/v1/requests/submit" \
+  -H "Content-Type: application/json" \
+  -H "x-api-id: <API_KEY_ID>" \
+  -H "x-api-key: <API_KEY>" \
+  -d '{
+    "workflow": "revoke",
+    "profile": "TLS-Internal",
+    "module": "webra",
+    "certificateId": "abc123",
+    "revocationReason": "keycompromise"
+  }'
+```

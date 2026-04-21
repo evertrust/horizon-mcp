@@ -25,6 +25,7 @@ import {
   buildMutateResponse,
   deleteGuard,
 } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -110,7 +111,8 @@ export function registerDashboardTools(
   // Dashboard CRUD (5 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_dashboards',
     {
       description:
@@ -158,7 +160,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_dashboard',
     {
       description:
@@ -176,7 +179,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_dashboard',
     {
       description:
@@ -247,7 +251,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'update_dashboard',
     {
       description:
@@ -303,7 +308,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_dashboard',
     {
       description:
@@ -334,7 +340,8 @@ export function registerDashboardTools(
   // Chart-level operations (3 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'add_dashboard_chart',
     {
       description:
@@ -389,7 +396,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'update_dashboard_chart',
     {
       description:
@@ -573,7 +581,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'remove_dashboard_chart',
     {
       description:
@@ -634,7 +643,8 @@ export function registerDashboardTools(
   // Saved Queries (4 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_saved_queries',
     {
       description:
@@ -681,7 +691,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_saved_query',
     {
       description:
@@ -699,7 +710,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'upsert_saved_query',
     {
       description:
@@ -753,7 +765,8 @@ export function registerDashboardTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_saved_query',
     {
       description:

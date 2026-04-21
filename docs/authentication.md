@@ -34,8 +34,8 @@ HORIZON_CLIENT_PFX_PASSWORD=optional-pfx-password   # omit if bundle is unencryp
 Set only `HORIZON_URL`. A browser window opens for interactive login at startup. Requires Playwright:
 
 ```bash
-npm install playwright
-npx playwright install chromium
+bun install playwright
+bunx playwright install chromium
 ```
 
 Then configure with just the URL:

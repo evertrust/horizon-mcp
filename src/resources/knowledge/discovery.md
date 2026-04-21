@@ -112,14 +112,21 @@ Nessus), and localimport (folder/CSV bulk import for PKI migrations).
 
 ## Campaign API Operations
 
-| Operation       | Method | Path                                      |
-| --------------- | ------ | ----------------------------------------- |
-| List campaigns  | GET    | `/api/v1/discovery/campaigns`             |
-| Get campaign    | GET    | `/api/v1/discovery/campaigns/{name}`      |
-| Create campaign | POST   | `/api/v1/discovery/campaigns`             |
-| Update campaign | PUT    | `/api/v1/discovery/campaigns/`            |
-| Delete campaign | DELETE | `/api/v1/discovery/campaigns/{name}`      |
-| Trigger scan    | POST   | `/api/v1/discovery/campaigns/{name}/scan` |
+| Operation          | Method | Path                                     |
+| ------------------ | ------ | ---------------------------------------- |
+| List campaigns     | GET    | `/api/v1/discovery/campaigns`            |
+| Get campaign       | GET    | `/api/v1/discovery/campaigns/{name}`     |
+| Create campaign    | POST   | `/api/v1/discovery/campaigns`            |
+| Update campaign    | PUT    | `/api/v1/discovery/campaigns`            |
+| Delete campaign    | DELETE | `/api/v1/discovery/campaigns/{name}`     |
+| Start feed session | GET    | `/api/v1/discovery/feed/{name}`          |
+| Feed certificate   | POST   | `/api/v1/discovery/feed`                 |
+| Register event     | PUT    | `/api/v1/discovery/feed`                 |
+| End feed session   | DELETE | `/api/v1/discovery/feed/{campaign}/{id}` |
+
+There is no `/api/v1/discovery/campaigns/{name}/scan` route in the Horizon
+source or OpenAPI. Discovery ingestion is done through the discovery-feed
+session endpoints listed above.
 
 ---
 

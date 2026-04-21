@@ -1,14 +1,14 @@
 # Evertrust CLM (Horizon) - MCP Server
 
-Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **81 tools** and **17 knowledge resources** over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling any MCP-compatible LLM to manage certificates, profiles, discovery, and external datasources through natural language.
+Production MCP server for [Evertrust Horizon](https://www.evertrust.fr/) Certificate Lifecycle Management (CLM). Exposes **84 tools** and a generated knowledge catalog with **17 core knowledge URIs**, **4 curated playbooks**, and section-level resources over the [Model Context Protocol](https://modelcontextprotocol.io/), enabling MCP-compatible LLMs to manage certificates, profiles, discovery, external datasources, and official documentation lookup through natural language.
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **17 embedded knowledge resources** covering Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, and REST notification connectors. The LLM reads these before it acts  -  so it constructs correct HCQL queries, builds valid profile payloads, configures datasource-backed auto-validation, and understands dependency order without needing a human to explain Horizon internals every session.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **17 core knowledge URIs**, **4 curated integration playbooks**, and generated section resources for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
 
 ## Architecture
 
-81 tools organized in **10 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
+84 tools organized in **11 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`):
 
 | Domain | Tools | Purpose |
 |--------|------:|---------|
@@ -22,6 +22,7 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 | Triggers | 6 | REST notification CRUD, simulation, credential discovery |
 | Reports | 3 | Report listing, download, deletion |
 | Profiles | 2 | Profile listing and inspection |
+| Docs | 3 | Official product-doc and API-doc search plus page fetch |
 
 All mutating tools include a STOP confirmation block that instructs the LLM to ask the user for explicit approval before executing. Destructive operations additionally require a name confirmation parameter. See the full [tool reference](docs/tools-reference.md).
 
@@ -31,18 +32,18 @@ All mutating tools include a STOP confirmation block that instructs the LLM to a
 
 ### Prerequisites
 
-- Node.js 20+
+- Bun 1.x+ (recommended) or Node.js 24.10+
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
 ### Install
 
-**Option A - npm (requires Node.js)**
+**Option A - bun (recommended)**
 
 No install needed - runs directly:
 
 ```bash
-npx horizon-mcp-server
+bunx horizon-mcp-server
 ```
 
 **Option B - standalone binary (no runtime needed)**
@@ -57,7 +58,7 @@ Download the pre-built binary for your platform from the [releases page](https:/
 {
   "mcpServers": {
     "horizon": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
@@ -225,8 +226,8 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 | [Installation](docs/installation.md) | Full install guide, OIDC setup |
 | [Authentication](docs/authentication.md) | 4 auth modes, environment variables reference |
 | [Client setup](docs/client-setup.md) | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md) | All 81 tools by domain with safety tiers |
-| [Knowledge resources](docs/knowledge-resources.md) | 17 embedded knowledge resources |
+| [Tool reference](docs/tools-reference.md) | All 84 tools by domain with safety tiers |
+| [Knowledge resources](docs/knowledge-resources.md) | 17 core URIs, 4 curated playbooks, generated section resources |
 | [Development](docs/development.md) | Dev setup, tests, linting |
 
 ---
@@ -246,7 +247,7 @@ The following capabilities require direct Horizon API calls or the Horizon UI:
 
 ## Acknowledgements
 
-This project was developed with the assistance of [Anthropic's Claude](https://www.anthropic.com/claude).
+This project was developed with the assistance of [Anthropic's Claude](https://www.anthropic.com/claude) and [OpenAI's Codex](https://chatgpt.com/codex).
 
 ## License
 

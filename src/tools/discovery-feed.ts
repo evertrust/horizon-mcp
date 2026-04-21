@@ -20,6 +20,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -39,7 +40,8 @@ export function registerDiscoveryFeedTools(
   // Start feed session
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'start_discovery_feed_session',
     {
       description:
@@ -84,7 +86,8 @@ export function registerDiscoveryFeedTools(
   // Feed certificate
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'feed_discovery_certificate',
     {
       description:
@@ -193,7 +196,8 @@ export function registerDiscoveryFeedTools(
   // Register event
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'register_discovery_event',
     {
       description:
@@ -239,7 +243,8 @@ export function registerDiscoveryFeedTools(
   // End feed session
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'end_discovery_feed_session',
     {
       description:

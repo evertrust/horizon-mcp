@@ -1266,6 +1266,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "page_id": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "page_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_doc_page",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "event_id": {
           "type": "string",
         },
@@ -1575,6 +1590,28 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "max_results": {
+          "default": 5,
+          "type": "number",
+        },
+        "query": {
+          "type": "string",
+        },
+        "version": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_api_docs",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "fields": {
           "items": {
             "type": "string",
@@ -1649,6 +1686,31 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "search_discovery_events",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "max_results": {
+          "default": 5,
+          "type": "number",
+        },
+        "product": {
+          "type": "string",
+        },
+        "query": {
+          "type": "string",
+        },
+        "version": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "search_docs",
   },
   {
     "inputSchema": {

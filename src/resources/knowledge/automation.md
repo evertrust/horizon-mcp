@@ -104,7 +104,7 @@ request lifecycle.
 
 Triggers are attached to profiles via the `triggerHooks` object on the profile.
 This is done through the Horizon admin UI or by updating the profile via the
-API (`PUT /api/v1/profiles/`). Each trigger event maps to a specific hook
+API (`PUT /api/v1/certificate/profiles`). Each trigger event maps to a specific hook
 field on the `triggerHooks` object (e.g., `on_enroll` maps to `onEnroll`,
 `on_approve_enroll` maps to `onApproveEnroll`). Sync hooks are plain string
 lists; async hooks (like `on_expire`, `on_pending_*`) are lists of objects
@@ -584,20 +584,20 @@ must match simultaneously for the period to apply.
 
 ### Execution Policy API Operations
 
-| Operation               | Method | Path                                             |
-| ----------------------- | ------ | ------------------------------------------------ |
-| List execution policies | GET    | `/api/v1/executionpolicies`                      |
-| Get execution policy    | GET    | `/api/v1/executionpolicies/{name}`               |
-| Create execution policy | POST   | `/api/v1/executionpolicies`                      |
-| Update execution policy | PUT    | `/api/v1/executionpolicies/` (name in JSON body) |
-| Delete execution policy | DELETE | `/api/v1/executionpolicies/{name}`               |
+| Operation               | Method | Path                                                |
+| ----------------------- | ------ | --------------------------------------------------- |
+| List execution policies | GET    | `/api/v1/automation/executions`                     |
+| Get execution policy    | GET    | `/api/v1/automation/executions/{name}`              |
+| Create execution policy | POST   | `/api/v1/automation/executions`                     |
+| Update execution policy | PUT    | `/api/v1/automation/executions` (name in JSON body) |
+| Delete execution policy | DELETE | `/api/v1/automation/executions/{name}`              |
 
 ### Automation Policy API Operations
 
 | Operation                | Method | Path                                              |
 | ------------------------ | ------ | ------------------------------------------------- |
-| List automation policies | GET    | `/api/v1/automationpolicies`                      |
-| Get automation policy    | GET    | `/api/v1/automationpolicies/{name}`               |
-| Create automation policy | POST   | `/api/v1/automationpolicies`                      |
-| Update automation policy | PUT    | `/api/v1/automationpolicies/` (name in JSON body) |
-| Delete automation policy | DELETE | `/api/v1/automationpolicies/{name}`               |
+| List automation policies | GET    | `/api/v1/automation/policies`                     |
+| Get automation policy    | GET    | `/api/v1/automation/policies/{name}`              |
+| Create automation policy | POST   | `/api/v1/automation/policies`                     |
+| Update automation policy | PUT    | `/api/v1/automation/policies` (name in JSON body) |
+| Delete automation policy | DELETE | `/api/v1/automation/policies/{name}`              |

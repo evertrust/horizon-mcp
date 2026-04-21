@@ -4,6 +4,7 @@ import * as tls from 'node:tls';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { registerTool } from '../register.js';
 
 // ---------------------------------------------------------------------------
 // Default port lookup for TLS URI parsing
@@ -122,7 +123,8 @@ export function registerCryptoTools(
 ): void {
   // -- decode_x509 ----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'decode_x509',
     {
       description:
@@ -191,7 +193,8 @@ export function registerCryptoTools(
 
   // -- decode_csr -----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'decode_csr',
     {
       description:
@@ -240,7 +243,8 @@ export function registerCryptoTools(
 
   // -- decode_crl -----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'decode_crl',
     {
       description:
@@ -286,7 +290,8 @@ export function registerCryptoTools(
 
   // -- decode_ocsp ----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'decode_ocsp',
     {
       description:
@@ -333,7 +338,8 @@ export function registerCryptoTools(
 
   // -- decode_tsa -----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'decode_tsa',
     {
       description:
@@ -374,7 +380,8 @@ export function registerCryptoTools(
 
   // -- detect_file ----------------------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'detect_file',
     {
       description:
@@ -424,7 +431,8 @@ export function registerCryptoTools(
 
   // -- fetch_exposed_certificate --------------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'fetch_exposed_certificate',
     {
       description:
@@ -532,7 +540,8 @@ export function registerCryptoTools(
 
   // -- convert_pkcs12_to_jks (stub) -----------------------------------------
 
-  server.registerTool(
+  registerTool(
+    server,
     'convert_pkcs12_to_jks',
     {
       description:

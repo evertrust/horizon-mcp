@@ -20,6 +20,7 @@ import {
   buildSearchPayload,
   csvTruncationMetadata,
 } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -33,7 +34,8 @@ export function registerDiscoveryEventTools(
   // Search discovery events
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'search_discovery_events',
     {
       description:
@@ -121,7 +123,8 @@ export function registerDiscoveryEventTools(
   // Get single discovery event
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_discovery_event',
     {
       description:
@@ -146,7 +149,8 @@ export function registerDiscoveryEventTools(
   // Export discovery events as CSV
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'export_discovery_events_csv',
     {
       description:
