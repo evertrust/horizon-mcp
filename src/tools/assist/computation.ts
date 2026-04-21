@@ -2,12 +2,46 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { registerTool } from '../register.js';
+
+function toMapEntries(
+  values: Record<string, unknown> | undefined,
+): Array<{ key: string; value: string }> | undefined {
+  if (values === undefined) return undefined;
+  return Object.entries(values)
+    .map(([key, value]) => ({ key, value: String(value) }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+}
+
+function toDatasourceFlow(
+  flow: Array<{
+    datasource: string;
+    inputs: Record<string, string>;
+    stopOnSuccess: boolean;
+  }>,
+): Array<{
+  ds: string;
+  inputs?: Array<{ key: string; value: string }>;
+  stopOnSuccess: boolean;
+}> {
+  return flow.map(({ datasource, inputs, stopOnSuccess }) => {
+    const normalizedInputs = Object.entries(inputs)
+      .map(([key, value]) => ({ key, value }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    return {
+      ds: datasource,
+      inputs: normalizedInputs.length > 0 ? normalizedInputs : undefined,
+      stopOnSuccess,
+    };
+  });
+}
 
 export function registerComputationTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'simulate_computation_rule',
     {
       description:
@@ -72,7 +106,8 @@ export function registerComputationTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'simulate_datasource_flow',
     {
       description:
@@ -80,7 +115,9 @@ export function registerComputationTools(
         'Safety tier: read-only\n\n' +
         'Executes a datasource flow chain in test mode and returns the ' +
         'enriched dictionary. Each flow entry specifies a datasource name, ' +
-        'input mappings, and an optional stop-on-success flag.',
+        'input mappings, and an optional stop-on-success flag. The MCP ' +
+        "accepts a small-model-friendly shape and translates it to Horizon's " +
+        'raw `dsFlow` request body.',
       inputSchema: z.object({
         flow: z
           .array(
@@ -98,9 +135,10 @@ export function registerComputationTools(
       }),
     },
     async ({ flow, context }) => {
-      const body: Record<string, unknown> = { flow };
-      if (context !== undefined) body['context'] = context;
-      const result = await client.post('/api/v1/datasources/flow/test', body);
+      const body: Record<string, unknown> = { dsFlow: toDatasourceFlow(flow) };
+      const normalizedContext = toMapEntries(context);
+      if (normalizedContext !== undefined) body['context'] = normalizedContext;
+      const result = await client.post('/api/v1/datasource/flows', body);
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

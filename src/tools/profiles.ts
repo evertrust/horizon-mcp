@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
 import { applyNameFilter, buildListResponse } from './helpers.js';
+import { registerTool } from './register.js';
 
 const PROFILE_BASE = '/api/v1/certificate/profiles';
 
@@ -22,7 +23,8 @@ export function registerProfileTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'list_profiles',
     {
       description:
@@ -72,7 +74,8 @@ export function registerProfileTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_profile',
     {
       description:

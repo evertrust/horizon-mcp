@@ -1,84 +1,83 @@
-/**
- * Tier 1 - Tool selection: Does Claude Code pick the right tools?
- *
- * Each scenario sends a question to Claude Code via `claude -p` with the MCP
- * server attached. We verify the response text mentions expected tool names
- * or relevant domain concepts.
- *
- * Since `claude -p` executes tools automatically, we cannot inspect raw
- * tool_use blocks. Instead we verify the result demonstrates the right tools
- * were used:
- *   - For tool-oriented questions: response should contain tool output patterns
- *   - For knowledge questions: response should contain domain concepts
- *
- * Skipped when ANTHROPIC_API_KEY or HORIZON_E2E_* env vars are not set.
- */
-import { afterAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import { type Scenario, TOOL_SELECTION_SCENARIOS } from './scenarios.js';
-import {
-  LLM_EVAL_READY,
-  askClaude,
-  cleanupMcpConfig,
-  skipReason,
-} from './setup.js';
+import { TOOL_SELECTION_SCENARIOS } from './scenarios.js';
+import { getToolSchemaParamNames, rankResources, rankTools } from './setup.js';
 
-// ---------------------------------------------------------------------------
-// Prefix injected before each question to prevent mutations
-// ---------------------------------------------------------------------------
-
-const SAFETY_PREFIX =
-  'DO NOT create, modify, or delete anything. ' +
-  'Just explain what tools and steps you would use. ';
-
-// ---------------------------------------------------------------------------
-// Build indicators for a scenario's expected tools
-// ---------------------------------------------------------------------------
-
-function toolIndicators(scenario: Scenario): readonly string[] {
-  const indicators: string[] = [];
-  for (const tool of scenario.expectedTools) {
-    const lower = tool.toLowerCase();
-    indicators.push(lower);
-    // Also check key words from the tool name
-    // e.g. "search_certificates" -> ["search", "certificates"]
-    indicators.push(...lower.replace(/_/g, ' ').split(' '));
-  }
-  return indicators;
+function topNames(
+  ranked: Array<{ item: { name?: string; uri?: string }; score: number }>,
+  count = 8,
+): string[] {
+  return ranked
+    .slice(0, count)
+    .map(({ item }) => item.name ?? item.uri ?? '<unknown>');
 }
 
-// ---------------------------------------------------------------------------
-// Test suite
-// ---------------------------------------------------------------------------
+describe('Provider-agnostic tool selection', () => {
+  it.each(
+    TOOL_SELECTION_SCENARIOS.map((scenario) => ({
+      ...scenario,
+      toString: () => scenario.id,
+    })),
+  )('ranks the right tools and resources for %s', async (scenario) => {
+    const rankedTools = await rankTools(scenario.question);
 
-describe.skipIf(!LLM_EVAL_READY)(
-  `Tool selection (${skipReason() || 'enabled'})`,
-  () => {
-    afterAll(() => cleanupMcpConfig());
+    for (const toolName of scenario.expectedPrimaryTools) {
+      const index = rankedTools.findIndex(({ item }) => item.name === toolName);
+      expect(
+        index,
+        `Expected primary tool '${toolName}' in top ${scenario.primaryMaxRank}. ` +
+          `Top candidates: ${topNames(rankedTools).join(', ')}`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(scenario.primaryMaxRank);
+    }
 
-    it.each(
-      TOOL_SELECTION_SCENARIOS.map((s) => ({ ...s, toString: () => s.id })),
-    )(
-      'selects correct tools: %s',
-      async (scenario) => {
-        const result = await askClaude(SAFETY_PREFIX + scenario.question, {
-          timeout: 300_000,
-        });
+    for (const toolName of scenario.expectedSupportTools ?? []) {
+      const index = rankedTools.findIndex(({ item }) => item.name === toolName);
+      expect(
+        index,
+        `Expected support tool '${toolName}' in top ${scenario.supportMaxRank}. ` +
+          `Top candidates: ${topNames(rankedTools, 12).join(', ')}`,
+      ).toBeGreaterThanOrEqual(0);
+      expect(index).toBeLessThan(scenario.supportMaxRank ?? 10);
+    }
 
-        expect(result.exitCode).toBe(0);
+    for (const toolName of scenario.disallowedTools ?? []) {
+      const index = rankedTools.findIndex(({ item }) => item.name === toolName);
+      if (index === -1 || scenario.expectedPrimaryTools.length === 0) continue;
 
-        const { text } = result;
+      const firstPrimary = rankedTools.findIndex(
+        ({ item }) => item.name === scenario.expectedPrimaryTools[0],
+      );
+      expect(
+        index,
+        `Disallowed tool '${toolName}' outranked the intended tool. ` +
+          `Top candidates: ${topNames(rankedTools, 12).join(', ')}`,
+      ).toBeGreaterThan(firstPrimary);
+    }
 
-        if (scenario.expectedTools.length > 0) {
-          const indicators = toolIndicators(scenario);
-          const matchesAny = indicators.some((ind) => text.includes(ind));
-          expect(matchesAny).toBe(true);
-        } else {
-          // Knowledge question - should have a substantive text response
-          expect(text.length).toBeGreaterThan(50);
-        }
-      },
-      360_000,
-    );
-  },
-);
+    for (const [toolName, args] of Object.entries(
+      scenario.requiredArgs ?? {},
+    )) {
+      const params = await getToolSchemaParamNames(toolName);
+      for (const arg of args) {
+        expect(
+          params.has(arg),
+          `Tool '${toolName}' should expose arg '${arg}'`,
+        ).toBe(true);
+      }
+    }
+
+    if ((scenario.expectedResourceUris?.length ?? 0) > 0) {
+      const rankedResources = await rankResources(scenario.question);
+      for (const uri of scenario.expectedResourceUris ?? []) {
+        const index = rankedResources.findIndex(({ item }) => item.uri === uri);
+        expect(
+          index,
+          `Expected resource '${uri}' in top ${scenario.resourceMaxRank}. ` +
+            `Top resources: ${topNames(rankedResources, 12).join(', ')}`,
+        ).toBeGreaterThanOrEqual(0);
+        expect(index).toBeLessThan(scenario.resourceMaxRank ?? 10);
+      }
+    }
+  });
+});

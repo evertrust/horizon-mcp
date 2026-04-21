@@ -14,6 +14,10 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import {
+  CORE_RESOURCE_URIS,
+  CURATED_RESOURCE_URIS,
+} from '../../src/resources/catalog.js';
 import { registerAllResources } from '../../src/resources/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
@@ -25,6 +29,7 @@ import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
 import { registerDiscoveryFeedTools } from '../../src/tools/discovery-feed.js';
 import { registerDiscoveryTools } from '../../src/tools/discovery.js';
+import { registerDocsTools } from '../../src/tools/docs.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import { registerProfileTools } from '../../src/tools/profiles.js';
 import { registerReportTools } from '../../src/tools/reports.js';
@@ -69,6 +74,7 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerDatasourceTools(server, c);
   registerReportTools(server, c);
   registerTriggerTools(server, c);
+  registerDocsTools(server, c);
   registerSystemTools(server, c);
   registerQueryTools(server, c);
   registerCryptoTools(server, c);
@@ -86,6 +92,10 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'get_license_info',
   'explain_grading_policy',
   'explain_grading_ruleset',
+  // docs.ts (3)
+  'search_docs',
+  'search_api_docs',
+  'get_doc_page',
   // assist/computation.ts (2)
   'simulate_computation_rule',
   'simulate_datasource_flow',
@@ -178,24 +188,20 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'simulate_trigger',
 ].sort();
 
-const EXPECTED_RESOURCE_URIS: string[] = [
-  'horizon://knowledge/profiles',
-  'horizon://knowledge/computation-and-data-flow',
-  'horizon://knowledge/workflows',
-  'horizon://knowledge/query-languages',
-  'horizon://knowledge/rbac',
-  'horizon://knowledge/architecture',
-  'horizon://knowledge/dictionary-matrix',
-  'horizon://knowledge/discovery',
-  'horizon://knowledge/automation',
-  'horizon://knowledge/integrations',
-  'horizon://knowledge/dashboards',
-  'horizon://knowledge/system-admin',
-  'horizon://knowledge/discovery-workflows',
-  'horizon://knowledge/datasources',
-  'horizon://knowledge/validation-rules',
-  'horizon://knowledge/dictionary-entries',
-  'horizon://knowledge/rest-notifications',
+const REQUIRED_RESOURCE_URIS: string[] = [
+  ...CORE_RESOURCE_URIS,
+  ...CURATED_RESOURCE_URIS,
+].sort();
+
+const CRITICAL_SECTION_RESOURCE_URIS: string[] = [
+  'horizon://knowledge/query-languages/ownership-patterns-hcql',
+  'horizon://knowledge/query-languages/service-discovery-patterns-hcql',
+  'horizon://knowledge/datasources/rest-datasource',
+  'horizon://knowledge/datasources/testing-datasources',
+  'horizon://knowledge/discovery-workflows/3-net-import-netimport',
+  'horizon://knowledge/integrations/mdm-integrations-intune-jamf',
+  'horizon://knowledge/validation-rules/complete-workflow-recipes',
+  'horizon://knowledge/rest-notifications/real-world-examples',
 ].sort();
 
 // Knowledge files that must exist and be non-empty (>50 lines)
@@ -216,6 +222,13 @@ const KNOWLEDGE_FILES: string[] = [
   'datasources.md',
   'validation_rules.md',
   'rest_notifications.md',
+];
+
+const CURATED_KNOWLEDGE_FILES: string[] = [
+  'tool_selection.md',
+  'adcs_integration.md',
+  'digicert_integration.md',
+  'intune_integration.md',
 ];
 
 // ===================================================================
@@ -248,9 +261,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 81 tools', async () => {
+  it('registers exactly 84 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(81);
+    expect(result.tools.length).toBe(84);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -268,20 +281,29 @@ describe('Golden tests', () => {
   // Resource count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 17 resources', async () => {
+  it('registers all core resources, curated playbooks, and generated sections', async () => {
     const result = await client.listResources();
-    expect(result.resources.length).toBe(17);
+    expect(result.resources.length).toBeGreaterThan(
+      REQUIRED_RESOURCE_URIS.length,
+    );
   });
 
-  it('resource URI enumeration matches expected set exactly', async () => {
+  it('registers all required core and curated resource URIs', async () => {
     const result = await client.listResources();
-    const actual = result.resources.map((r) => r.uri).sort();
-    const added = actual.filter((u) => !EXPECTED_RESOURCE_URIS.includes(u));
-    const removed = EXPECTED_RESOURCE_URIS.filter((u) => !actual.includes(u));
-    expect(
-      { added, removed },
-      `Resource URI drift.\n  Added: ${JSON.stringify(added)}\n  Removed: ${JSON.stringify(removed)}`,
-    ).toEqual({ added: [], removed: [] });
+    const actual = new Set(result.resources.map((r) => r.uri));
+    for (const uri of REQUIRED_RESOURCE_URIS) {
+      expect(actual.has(uri), `Missing resource URI: ${uri}`).toBe(true);
+    }
+  });
+
+  it('registers critical section resources for small-model retrieval', async () => {
+    const result = await client.listResources();
+    const actual = new Set(result.resources.map((r) => r.uri));
+    for (const uri of CRITICAL_SECTION_RESOURCE_URIS) {
+      expect(actual.has(uri), `Missing section resource URI: ${uri}`).toBe(
+        true,
+      );
+    }
   });
 
   // -----------------------------------------------------------------
@@ -296,6 +318,14 @@ describe('Golden tests', () => {
         `Tool ${tool.name} missing description`,
       ).toBeTruthy();
       expect(tool.description!.length).toBeGreaterThan(10);
+      expect(
+        tool.description!,
+        `Tool ${tool.name} missing Use when guidance`,
+      ).toContain('Use when:');
+      expect(
+        tool.description!,
+        `Tool ${tool.name} missing Do not use when guidance`,
+      ).toContain('Do not use when:');
     }
   });
 
@@ -365,6 +395,9 @@ describe('Golden tests', () => {
       // Assist
       'whoami',
       'get_license_info',
+      'search_docs',
+      'search_api_docs',
+      'get_doc_page',
       'validate_hcql',
       'describe_query_fields',
       'decode_x509',
@@ -379,11 +412,11 @@ describe('Golden tests', () => {
     }
   });
 
-  it('all expected resource URIs are present', async () => {
+  it('all required resource URIs are present', async () => {
     const result = await client.listResources();
     const uris = new Set(result.resources.map((r) => r.uri));
 
-    for (const uri of EXPECTED_RESOURCE_URIS) {
+    for (const uri of REQUIRED_RESOURCE_URIS) {
       expect(uris.has(uri), `Missing resource: ${uri}`).toBe(true);
     }
   });
@@ -421,6 +454,21 @@ describe('Knowledge resource accessibility', () => {
         lineCount,
         `${filename} has only ${lineCount} lines (expected >50)`,
       ).toBeGreaterThan(50);
+    },
+  );
+
+  it.each(CURATED_KNOWLEDGE_FILES)(
+    'curated knowledge file %s exists and is non-empty',
+    (filename) => {
+      const filePath = join(KNOWLEDGE_DIR, filename);
+      expect(
+        existsSync(filePath),
+        `Curated knowledge file not found: ${filePath}`,
+      ).toBe(true);
+      const content = readFileSync(filePath, 'utf-8').trim();
+      expect(content.length, `${filename} must not be empty`).toBeGreaterThan(
+        50,
+      );
     },
   );
 });
@@ -660,6 +708,57 @@ describe('Knowledge field alignment', () => {
     }
     expect(getParamNames('search_certificates').has('query')).toBe(true);
   });
+
+  it('tool-selection playbook documents docs lookup choreography', () => {
+    const knowledgeText = readFileSync(
+      join(KNOWLEDGE_DIR, 'tool_selection.md'),
+      'utf-8',
+    );
+    expect(knowledgeText).toContain('search_docs');
+    expect(knowledgeText).toContain('search_api_docs');
+    expect(knowledgeText).toContain('get_doc_page');
+  });
+
+  it('adcs integration recipe documents connector verification points', () => {
+    const knowledgeText = readFileSync(
+      join(KNOWLEDGE_DIR, 'adcs_integration.md'),
+      'utf-8',
+    );
+    for (const concept of ['evtadcs', 'msadcs', '4443', 'CertHash']) {
+      expect(knowledgeText, `ADCS recipe missing ${concept}`).toContain(
+        concept,
+      );
+    }
+  });
+
+  it('digicert integration recipe documents required connector fields', () => {
+    const knowledgeText = readFileSync(
+      join(KNOWLEDGE_DIR, 'digicert_integration.md'),
+      'utf-8',
+    );
+    for (const concept of [
+      'digicert',
+      'apiCredentials',
+      'organizationId',
+      'baseUrl',
+    ]) {
+      expect(knowledgeText, `DigiCert recipe missing ${concept}`).toContain(
+        concept,
+      );
+    }
+  });
+
+  it('intune integration recipe documents azureTenant drift and both modules', () => {
+    const knowledgeText = readFileSync(
+      join(KNOWLEDGE_DIR, 'intune_integration.md'),
+      'utf-8',
+    );
+    for (const concept of ['azureTenant', 'intune', 'intunepkcs']) {
+      expect(knowledgeText, `Intune recipe missing ${concept}`).toContain(
+        concept,
+      );
+    }
+  });
 });
 
 // ===================================================================
@@ -856,8 +955,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 81 tools', () => {
-    expect(toolNames.size).toBe(81);
+  it('registers exactly 84 tools', () => {
+    expect(toolNames.size).toBe(84);
   });
 
   it('excludes admin tools', () => {
@@ -925,6 +1024,9 @@ describe('Tool registration verification', () => {
     const expected = [
       // Assist
       'whoami',
+      'search_docs',
+      'search_api_docs',
+      'get_doc_page',
       'decode_x509',
       'validate_hcql',
       // Lifecycle

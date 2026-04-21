@@ -10,7 +10,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
 {
   "mcpServers": {
     "horizon": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
@@ -49,7 +49,7 @@ Create `.mcp.json` in your project root:
 {
   "mcpServers": {
     "horizon": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
@@ -88,7 +88,7 @@ Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for glob
 {
   "mcpServers": {
     "horizon": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
@@ -125,7 +125,7 @@ Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/co
 
 ```toml
 [mcp_servers.horizon]
-command = "npx"
+command = "bunx"
 args = ["horizon-mcp-server"]
 
 [mcp_servers.horizon.env]
@@ -155,7 +155,7 @@ codex mcp add horizon \
   --env HORIZON_URL=https://horizon.example.com \
   --env HORIZON_API_ID=your-api-id \
   --env HORIZON_API_KEY=your-api-key \
-  -- npx horizon-mcp-server
+  -- bunx horizon-mcp-server
 ```
 
 ## OpenCode
@@ -166,7 +166,7 @@ Add to `opencode.json`:
 {
   "mcp": {
     "horizon": {
-      "command": "npx",
+      "command": "bunx",
       "args": ["horizon-mcp-server"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
@@ -202,7 +202,7 @@ export HORIZON_URL=https://horizon.example.com
 export HORIZON_API_ID=your-api-id
 export HORIZON_API_KEY=your-api-key
 
-npx @modelcontextprotocol/inspector npx horizon-mcp-server
+bunx @modelcontextprotocol/inspector bunx horizon-mcp-server
 ```
 
 Opens a browser UI showing all 81 tools and 17 knowledge resources.

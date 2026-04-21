@@ -123,7 +123,11 @@ export class HorizonClient {
   ): Promise<T> {
     const formData = new UndiciFormData();
     for (const part of parts) {
-      const blob = new Blob([part.data], { type: part.mimeType });
+      const blobPart =
+        typeof part.data === 'string'
+          ? part.data
+          : Uint8Array.from(part.data).buffer;
+      const blob = new Blob([blobPart], { type: part.mimeType });
       formData.append(part.fieldName, blob, part.filename);
     }
 
