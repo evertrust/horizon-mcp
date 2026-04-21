@@ -190,7 +190,7 @@ describe('Lifecycle tools', () => {
       expect(payload['query']).toBe('profile = "WebRA"');
       expect(payload['fields']).toContain('dn');
       expect(payload['fields']).toContain('serial');
-      expect(payload['pageIndex']).toBe(0);
+      expect(payload['pageIndex']).toBe(1);
       expect(payload['pageSize']).toBe(25);
 
       expect((parsed['results'] as unknown[]).length).toBe(1);

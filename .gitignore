@@ -2,6 +2,7 @@
 node_modules/
 dist/
 *.log
+package-lock.json
 
 # Environment
 .env
@@ -14,9 +15,13 @@ dist/
 # IDE / OS
 .DS_Store
 .claude/
+CLAUDE.md
+.codex/
+AGENTS.md
 
 # Docs (local superpowers specs)
 docs/superpowers
+docs/CODEMAPS
 
 # Git worktrees
 .worktrees/
@@ -27,3 +32,7 @@ htmlcov/
 
 # Bun build artifacts
 .*.bun-build
+.gitnexus/
+.playwright-mcp/
+audit/
+.playwright-cli/

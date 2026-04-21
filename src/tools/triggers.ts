@@ -23,6 +23,7 @@ import {
   buildMutateResponse,
   deleteGuard,
 } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -196,7 +197,8 @@ export function registerTriggerTools(
   // Credentials (1 tool - read-only)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_credentials',
     {
       description:
@@ -267,7 +269,8 @@ export function registerTriggerTools(
   // Read-only (2 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_triggers',
     {
       description:
@@ -320,7 +323,8 @@ export function registerTriggerTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_trigger',
     {
       description:
@@ -346,7 +350,8 @@ export function registerTriggerTools(
   // Create (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_rest_notification',
     {
       description:
@@ -566,7 +571,8 @@ export function registerTriggerTools(
   // Delete (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_trigger',
     {
       description:
@@ -608,7 +614,8 @@ export function registerTriggerTools(
   // Simulate (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'simulate_trigger',
     {
       description:

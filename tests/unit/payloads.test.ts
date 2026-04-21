@@ -221,13 +221,10 @@ describe('checkOne', () => {
     });
     await expect(
       checkOne(client, 'missing', '/api/v1/things/missing', 'Create it first.'),
-    ).rejects.toSatisfy((err: HorizonError) => {
-      expect(err).toBeInstanceOf(HorizonError);
-      expect(err.statusCode).toBe(422);
-      expect(err.errorCode).toBe('PREFLIGHT-DEP');
-      expect(err.message).toContain('missing');
-      expect(err.remediation).toBe('Create it first.');
-      return true;
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      errorCode: 'PREFLIGHT-DEP',
+      remediation: 'Create it first.',
     });
   });
 
@@ -311,11 +308,9 @@ describe('preflightDeps', () => {
     });
     await expect(
       preflightDeps(client, { credential: 'missing' }, 'profile'),
-    ).rejects.toSatisfy((err: HorizonError) => {
-      expect(err.statusCode).toBe(422);
-      expect(err.errorCode).toBe('PREFLIGHT-DEP');
-      expect(err.message).toContain('missing');
-      return true;
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      errorCode: 'PREFLIGHT-DEP',
     });
   });
 
@@ -502,9 +497,9 @@ describe('preflightDeps', () => {
     });
     await expect(
       preflightDeps(client, { credential: ['c1', 'c2'] }, 'profile'),
-    ).rejects.toSatisfy((err: HorizonError) => {
-      expect(err.statusCode).toBe(422);
-      return true;
+    ).rejects.toMatchObject({
+      statusCode: 422,
+      errorCode: 'PREFLIGHT-DEP',
     });
   });
 

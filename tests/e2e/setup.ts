@@ -25,6 +25,7 @@ import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
 import { registerDiscoveryFeedTools } from '../../src/tools/discovery-feed.js';
 import { registerDiscoveryTools } from '../../src/tools/discovery.js';
+import { registerDocsTools } from '../../src/tools/docs.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import { registerProfileTools } from '../../src/tools/profiles.js';
 import { registerReportTools } from '../../src/tools/reports.js';
@@ -220,6 +221,7 @@ function registerAllTools(server: McpServer, client: HorizonClient): void {
   registerDatasourceTools(server, client);
   registerReportTools(server, client);
   registerTriggerTools(server, client);
+  registerDocsTools(server, client);
   registerSystemTools(server, client);
   registerQueryTools(server, client);
   registerCryptoTools(server, client);

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { HorizonError } from '../../src/client/errors.js';
 import {
   applyNameFilter,
+  buildExportPayload,
   buildListResponse,
   buildSearchPayload,
   buildSortedBy,
@@ -185,11 +186,17 @@ describe('buildSearchPayload', () => {
     const payload = buildSearchPayload('*', undefined, 0, 50);
 
     expect(payload.query).toBe('*');
-    expect(payload.pageIndex).toBe(0);
+    expect(payload.pageIndex).toBe(1);
     expect(payload.pageSize).toBe(50);
     expect(payload).not.toHaveProperty('fields');
     expect(payload).not.toHaveProperty('sortedBy');
     expect(payload).not.toHaveProperty('withCount');
+  });
+
+  it('translates the MCP page index from zero-based to Horizon one-based', () => {
+    const payload = buildSearchPayload('*', undefined, 2, 25);
+
+    expect(payload.pageIndex).toBe(3);
   });
 
   it('caps pageSize at 100', () => {
@@ -231,6 +238,32 @@ describe('buildSearchPayload', () => {
   it('omits withCount when false (default)', () => {
     const payload = buildSearchPayload('*', undefined, 0, 50);
     expect(payload).not.toHaveProperty('withCount');
+  });
+});
+
+describe('buildExportPayload', () => {
+  it('builds bounded export payload with row cap and count request', () => {
+    const payload = buildExportPayload('*');
+
+    expect(payload.query).toBe('*');
+    expect(payload.pageIndex).toBe(1);
+    expect(payload.pageSize).toBe(1000);
+    expect(payload.withCount).toBe(true);
+    expect(payload).not.toHaveProperty('fields');
+    expect(payload).not.toHaveProperty('sortedBy');
+  });
+
+  it('includes fields when provided', () => {
+    const fields = ['dn', 'serial'];
+    const payload = buildExportPayload('*', fields);
+
+    expect(payload.fields).toEqual(fields);
+  });
+
+  it('includes sortedBy when provided', () => {
+    const payload = buildExportPayload('*', undefined, 'timestamp:Desc');
+
+    expect(payload.sortedBy).toEqual([{ element: 'timestamp', order: 'Desc' }]);
   });
 });
 

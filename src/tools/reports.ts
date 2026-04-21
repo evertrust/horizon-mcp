@@ -15,6 +15,7 @@ import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
 import { deleteGuard } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -31,7 +32,8 @@ export function registerReportTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'list_reports',
     {
       description:
@@ -94,7 +96,8 @@ export function registerReportTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'download_report',
     {
       description:
@@ -127,7 +130,8 @@ export function registerReportTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_report',
     {
       description:

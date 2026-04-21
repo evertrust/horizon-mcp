@@ -27,6 +27,7 @@ import {
   deleteGuard,
   getStripMergePut,
 } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -130,7 +131,8 @@ export function registerDatasourceTools(
   // Read-only (2 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_datasources',
     {
       description:
@@ -180,7 +182,8 @@ export function registerDatasourceTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_datasource',
     {
       description:
@@ -204,7 +207,8 @@ export function registerDatasourceTools(
   // Create tools (3 tools - one per type)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_dns_datasource',
     {
       description:
@@ -329,7 +333,8 @@ export function registerDatasourceTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_ldap_datasource',
     {
       description:
@@ -496,7 +501,8 @@ export function registerDatasourceTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_rest_datasource',
     {
       description:
@@ -678,7 +684,8 @@ export function registerDatasourceTools(
   // Update (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'update_datasource',
     {
       description:
@@ -875,7 +882,8 @@ export function registerDatasourceTools(
   // Delete (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_datasource',
     {
       description:
@@ -918,7 +926,8 @@ export function registerDatasourceTools(
   // Test (1 tool)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'test_datasource',
     {
       description:

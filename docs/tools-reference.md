@@ -1,6 +1,6 @@
 # Tool reference
 
-81 tools in 10 domains. Safety tiers:
+84 tools in 11 domains. Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -18,8 +18,8 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 |------|--------|-------------|
 | `whoami` | read-only | Current principal identity and permissions |
 | `get_license_info` | read-only | Horizon license details, quotas, feature flags |
-| `explain_grading_policy` | read-only | Explain policy; optionally evaluate a certificate |
-| `explain_grading_ruleset` | read-only | Explain ruleset; optionally evaluate a certificate |
+| `explain_grading_policy` | read-only | Explain policy; optionally explain a certificate against it |
+| `explain_grading_ruleset` | read-only | Explain ruleset; optionally explain a certificate against it |
 | `validate_hcql` | read-only | Validate a certificate search query |
 | `validate_hrql` | read-only | Validate a request search query |
 | `validate_heql` | read-only | Validate an event search query |
@@ -34,8 +34,16 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `decode_ocsp` | read-only | Decode an OCSP response (RFC 6960) |
 | `decode_tsa` | read-only | Decode a timestamping response (RFC 3161) |
 | `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary |
-| `simulate_datasource_flow` | read-only | Test a datasource flow pipeline against sample context |
+| `simulate_datasource_flow` | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads |
 | `convert_pkcs12_to_jks` | read-only | Convert PKCS#12 to JKS keystore |
+
+## Docs (3 tools)
+
+| Tool | Safety | Description |
+|------|--------|-------------|
+| `search_docs` | read-only | Search official product documentation; use this first, then `get_doc_page` |
+| `search_api_docs` | read-only | Search official Horizon API reference pages; use this first, then `get_doc_page` |
+| `get_doc_page` | read-only | Fetch the full indexed content for a page returned by a docs-search tool |
 
 ## Lifecycle (17 tools)
 
@@ -44,7 +52,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `search_certificates` | read-only | Search via HCQL with presets and pagination |
 | `export_certificates_csv` | read-only | Export certificates to CSV (max 1000 rows) |
 | `get_certificate` | read-only | Get full certificate details by ID |
-| `download_certificate` | read-only | Download in PEM / DER / PKCS7 / PKCS12 / JKS |
+| `download_certificate` | read-only | Download PEM certificate content; use `get_request` on the enrollment request for PKCS#12 retrieval |
 | `aggregate_certificates` | read-only | Aggregate certificate counts by field |
 | `search_requests` | read-only | Search requests via HRQL |
 | `export_requests_csv` | read-only | Export requests to CSV |
@@ -52,7 +60,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `aggregate_requests` | read-only | Aggregate request counts by field |
 | `search_events` | read-only | Search audit events via HEQL |
 | `get_event` | read-only | Get audit event details by ID |
-| `export_events_csv` | read-only | Export audit events to CSV |
+| `export_events_csv` | read-only | Export audit events to a compact CSV via paged search (max 1000 rows, default core columns + optional `detail.*` fields) |
 | `get_request_template` | read-only | Get request template for a workflow |
 | `submit_request` | mutating-safe | Submit a lifecycle request (enroll, renew, revoke, ...) |
 | `approve_request` | mutating-safe | Approve a pending request |

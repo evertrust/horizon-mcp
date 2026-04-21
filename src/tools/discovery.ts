@@ -25,6 +25,7 @@ import {
   deleteGuard,
   getStripMergePut,
 } from './helpers.js';
+import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -98,7 +99,8 @@ export function registerDiscoveryTools(
   // Read-only (2 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'list_discovery_campaigns',
     {
       description:
@@ -140,7 +142,8 @@ export function registerDiscoveryTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_discovery_campaign',
     {
       description:
@@ -163,7 +166,8 @@ export function registerDiscoveryTools(
   // Mutating-safe (2 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'create_discovery_campaign',
     {
       description:
@@ -279,7 +283,8 @@ export function registerDiscoveryTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'update_discovery_campaign',
     {
       description:
@@ -395,7 +400,8 @@ export function registerDiscoveryTools(
   // Mutating-destructive (2 tools)
   // =======================================================================
 
-  server.registerTool(
+  registerTool(
+    server,
     'delete_discovery_campaign',
     {
       description:
@@ -431,7 +437,8 @@ export function registerDiscoveryTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'flush_discovery_campaign',
     {
       description:

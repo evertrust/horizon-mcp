@@ -17,6 +17,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { registerTool } from '../register.js';
 import { QUERY_METADATA } from './query.js';
 
 // ---------------------------------------------------------------------------
@@ -772,7 +773,8 @@ export function registerTranslateTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'translate_to_hql',
     {
       description:

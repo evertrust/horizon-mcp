@@ -549,8 +549,15 @@ definition with a context dictionary **without creating it first**.
 
 ### Test a Flow Pipeline
 
-Use the existing `simulate_datasource_flow` tool (POST /api/v1/datasource/flows)
-to test a complete flow chain with context.
+Use the existing `simulate_datasource_flow` tool to test a complete flow chain
+with context. The MCP accepts a friendly input shape:
+
+- `flow`: ordered entries shaped as `{datasource, inputs, stopOnSuccess}`
+- `context`: key/value object used to resolve template expressions
+
+Internally, the MCP translates that input to Horizon's raw
+`POST /api/v1/datasource/flows` payload with `dsFlow` entries and `context`
+map-entry lists.
 
 ---
 

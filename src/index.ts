@@ -17,6 +17,7 @@ import { registerDatasourceTools } from './tools/datasources.js';
 import { registerDiscoveryEventTools } from './tools/discovery-events.js';
 import { registerDiscoveryFeedTools } from './tools/discovery-feed.js';
 import { registerDiscoveryTools } from './tools/discovery.js';
+import { registerDocsTools } from './tools/docs.js';
 import { registerLifecycleTools } from './tools/lifecycle.js';
 import { registerProfileTools } from './tools/profiles.js';
 import { registerReportTools } from './tools/reports.js';
@@ -99,7 +100,18 @@ const SERVER_INSTRUCTIONS =
   'service, consult horizon://knowledge/rest-notifications for the full REST ' +
   'notification API schema, multi-step sequence chaining patterns, authentication ' +
   'types, template string dictionary, and real-world examples. Also consult ' +
-  'horizon://knowledge/automation for trigger attachment to profiles.';
+  'horizon://knowledge/automation for trigger attachment to profiles.\n' +
+  '12. OFFICIAL DOCUMENTATION LOOKUP: When the user asks how to configure, ' +
+  'install, or integrate a product, call search_docs first, then get_doc_page ' +
+  'with one of the returned page_id values. Do not guess page IDs. When the ' +
+  'user asks about HTTP endpoints, request payloads, or responses, call ' +
+  'search_api_docs first, then get_doc_page.\n' +
+  '13. VERSION-AWARE DOCS: For Horizon product docs and Horizon API docs, the ' +
+  'server resolves the connected instance version before returning results when ' +
+  'possible. If the tool reports a warning, tell the user that the configured ' +
+  'account could not reliably expose the Horizon version and that the result ' +
+  'fell back to the latest indexed docs. Use that warning instead of pretending ' +
+  'the version match is exact.';
 
 async function main(): Promise<void> {
   const settings = loadSettings();
@@ -130,6 +142,7 @@ async function main(): Promise<void> {
   registerDatasourceTools(server, client);
   registerReportTools(server, client);
   registerTriggerTools(server, client);
+  registerDocsTools(server, client);
   registerSystemTools(server, client);
   registerQueryTools(server, client);
   registerCryptoTools(server, client);

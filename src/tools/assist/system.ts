@@ -2,12 +2,14 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { registerTool } from '../register.js';
 
 export function registerSystemTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  server.registerTool(
+  registerTool(
+    server,
     'whoami',
     {
       description:
@@ -33,7 +35,8 @@ export function registerSystemTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'get_license_info',
     {
       description:
@@ -44,23 +47,24 @@ export function registerSystemTools(
         'what capabilities are available on this Horizon instance.',
     },
     async () => {
-      const result = await client.get('/api/v1/license');
+      const result = await client.get('/api/v1/licenses');
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'explain_grading_policy',
     {
       description:
-        'Explain a grading policy and optionally evaluate a certificate against it.\n\n' +
+        'Explain a grading policy and optionally explain how a certificate scores against it.\n\n' +
         'Safety tier: read-only\n\n' +
         'Fetches the full grading policy definition (criteria, thresholds, ' +
-        'grade mapping). If a certificate PEM is provided, also evaluates ' +
-        'the certificate against the policy and returns the resulting grade ' +
-        'with per-rule breakdown.',
+        'grade mapping). If a certificate PEM is provided, also calls ' +
+        "Horizon's certificate-explain endpoint and returns the resulting " +
+        'grade analysis with per-rule breakdown.',
       inputSchema: z.object({
         policy_name: z
           .string()
@@ -76,17 +80,26 @@ export function registerSystemTools(
     async ({ policy_name, certificate_pem }) => {
       const encodedName = encodeURIComponent(policy_name);
       const policy = await client.get(
-        `/api/v1/grading/policies/${encodedName}`,
+        `/api/v1/certificate/grading/policies/${encodedName}`,
       );
 
       const response: Record<string, unknown> = { policy };
 
       if (certificate_pem !== undefined) {
-        const evaluation = await client.post(
-          `/api/v1/grading/policies/${encodedName}/evaluate`,
-          { pem: certificate_pem },
+        const explanation = await client.postMultipart(
+          `/api/v1/certificate/grading/policies/${encodedName}/explain`,
+          [
+            {
+              fieldName: 'x509',
+              filename: 'certificate.pem',
+              mimeType: 'application/x-pem-file',
+              data: certificate_pem,
+            },
+          ],
         );
-        response['evaluation'] = evaluation;
+        response['explanation'] = explanation;
+        // Compatibility alias for clients that already look for "evaluation".
+        response['evaluation'] = explanation;
       }
 
       return {
@@ -95,15 +108,16 @@ export function registerSystemTools(
     },
   );
 
-  server.registerTool(
+  registerTool(
+    server,
     'explain_grading_ruleset',
     {
       description:
-        'Explain a grading ruleset and optionally evaluate a certificate against it.\n\n' +
+        'Explain a grading ruleset and optionally explain how a certificate scores against it.\n\n' +
         'Safety tier: read-only\n\n' +
         'Fetches the full grading ruleset definition (individual rules, ' +
         'conditions, weights). If a certificate PEM is provided, also ' +
-        'evaluates the certificate against the ruleset and returns the ' +
+        "calls Horizon's certificate-explain endpoint and returns the " +
         'per-rule pass/fail breakdown.',
       inputSchema: z.object({
         ruleset_name: z
@@ -120,17 +134,26 @@ export function registerSystemTools(
     async ({ ruleset_name, certificate_pem }) => {
       const encodedName = encodeURIComponent(ruleset_name);
       const ruleset = await client.get(
-        `/api/v1/grading/rulesets/${encodedName}`,
+        `/api/v1/certificate/grading/rulesets/${encodedName}`,
       );
 
       const response: Record<string, unknown> = { ruleset };
 
       if (certificate_pem !== undefined) {
-        const evaluation = await client.post(
-          `/api/v1/grading/rulesets/${encodedName}/evaluate`,
-          { pem: certificate_pem },
+        const explanation = await client.postMultipart(
+          `/api/v1/certificate/grading/rulesets/${encodedName}/explain`,
+          [
+            {
+              fieldName: 'x509',
+              filename: 'certificate.pem',
+              mimeType: 'application/x-pem-file',
+              data: certificate_pem,
+            },
+          ],
         );
-        response['evaluation'] = evaluation;
+        response['explanation'] = explanation;
+        // Compatibility alias for clients that already look for "evaluation".
+        response['evaluation'] = explanation;
       }
 
       return {
