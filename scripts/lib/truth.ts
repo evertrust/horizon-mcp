@@ -77,6 +77,12 @@ export interface TruthInputs {
   outputDir: string;
 }
 
+interface StoredOperationsDocument {
+  routes?: unknown;
+  operations?: unknown;
+  paths?: Record<string, Record<string, unknown>>;
+}
+
 function expandHome(pathValue: string): string {
   if (!pathValue.startsWith('~/')) {
     return pathValue;
@@ -107,6 +113,7 @@ export function resolveTruthInputs(projectRoot: string): TruthInputs {
     [
       process.env['HORIZON_SOURCE_ROOT'] ?? '',
       '../horizon',
+      'src/generated/docs/horizon-routes.json',
       '/Users/sbo/Documents/EVERTRUST/horizon',
     ].filter(Boolean),
   );
@@ -115,6 +122,7 @@ export function resolveTruthInputs(projectRoot: string): TruthInputs {
     [
       process.env['HORIZON_OPENAPI_PATH'] ?? '',
       '../evertrust_horizon_openapi.json',
+      'src/generated/docs/openapi-operations.json',
       '/Users/sbo/Downloads/evertrust_horizon_openapi.json',
     ].filter(Boolean),
   );
@@ -148,6 +156,55 @@ function collectFiles(root: string, extension: string): string[] {
 
 function readText(path: string): string {
   return readFileSync(path, 'utf8');
+}
+
+function isNormalizedOperation(value: unknown): value is NormalizedOperation {
+  return (
+    Boolean(value) &&
+    typeof value === 'object' &&
+    typeof (value as NormalizedOperation).method === 'string' &&
+    typeof (value as NormalizedOperation).path === 'string' &&
+    typeof (value as NormalizedOperation).sourceFile === 'string'
+  );
+}
+
+function sortOperations(
+  operations: readonly NormalizedOperation[],
+): NormalizedOperation[] {
+  return [...operations].sort((left, right) => {
+    const pathOrder = left.path.localeCompare(right.path);
+    if (pathOrder !== 0) {
+      return pathOrder;
+    }
+    const methodOrder = left.method.localeCompare(right.method);
+    if (methodOrder !== 0) {
+      return methodOrder;
+    }
+    return left.sourceFile.localeCompare(right.sourceFile);
+  });
+}
+
+function readStoredOperations(
+  inputPath: string,
+  field: 'routes' | 'operations',
+): NormalizedOperation[] | undefined {
+  if (!inputPath.endsWith('.json')) {
+    return undefined;
+  }
+
+  const document = JSON.parse(readText(inputPath)) as StoredOperationsDocument;
+  const operations = document[field];
+  if (!Array.isArray(operations)) {
+    return undefined;
+  }
+
+  return sortOperations(
+    operations.filter(isNormalizedOperation).map((operation) => ({
+      method: operation.method,
+      path: normalizeRoutePath(operation.path),
+      sourceFile: operation.sourceFile,
+    })),
+  );
 }
 
 function lineNumberAt(
@@ -293,6 +350,11 @@ export function collectHorizonOperations(
   horizonRoot: string,
   projectRoot = process.cwd(),
 ): NormalizedOperation[] {
+  const storedOperations = readStoredOperations(horizonRoot, 'routes');
+  if (storedOperations) {
+    return storedOperations;
+  }
+
   const operations: NormalizedOperation[] = [];
 
   for (const route of parseRootRoutes(horizonRoot)) {
@@ -317,26 +379,21 @@ export function collectHorizonOperations(
     }
   }
 
-  return operations.sort((left, right) => {
-    const pathOrder = left.path.localeCompare(right.path);
-    if (pathOrder !== 0) {
-      return pathOrder;
-    }
-    const methodOrder = left.method.localeCompare(right.method);
-    if (methodOrder !== 0) {
-      return methodOrder;
-    }
-    return left.sourceFile.localeCompare(right.sourceFile);
-  });
+  return sortOperations(operations);
 }
 
 export function collectOpenApiOperations(
   openApiPath: string,
   projectRoot = process.cwd(),
 ): NormalizedOperation[] {
-  const document = JSON.parse(readText(openApiPath)) as {
-    paths?: Record<string, Record<string, unknown>>;
-  };
+  const storedOperations = readStoredOperations(openApiPath, 'operations');
+  if (storedOperations) {
+    return storedOperations;
+  }
+
+  const document = JSON.parse(
+    readText(openApiPath),
+  ) as StoredOperationsDocument;
 
   const operations: NormalizedOperation[] = [];
   const paths = document.paths ?? {};
@@ -358,13 +415,7 @@ export function collectOpenApiOperations(
     }
   }
 
-  return operations.sort((left, right) => {
-    const pathOrder = left.path.localeCompare(right.path);
-    if (pathOrder !== 0) {
-      return pathOrder;
-    }
-    return left.method.localeCompare(right.method);
-  });
+  return sortOperations(operations);
 }
 
 export function collectMcpPathReferences(
