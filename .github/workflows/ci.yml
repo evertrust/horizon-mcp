@@ -45,6 +45,10 @@ jobs:
   validate:
     name: Validate
     runs-on: runs-on=${{ github.run_id }}/runner=evertrust
+    env:
+      HORIZON_E2E_URL: ${{ secrets.HORIZON_E2E_URL }}
+      HORIZON_E2E_API_ID: ${{ secrets.HORIZON_E2E_API_ID }}
+      HORIZON_E2E_API_KEY: ${{ secrets.HORIZON_E2E_API_KEY }}
     steps:
       - name: Configure Runs-On
         uses: runs-on/action@v2
@@ -84,9 +88,5 @@ jobs:
         run: bun run test:scenarios
 
       - name: QA E2E smoke
-        if: ${{ secrets.HORIZON_E2E_URL != '' && secrets.HORIZON_E2E_API_ID != '' && secrets.HORIZON_E2E_API_KEY != '' }}
-        env:
-          HORIZON_E2E_URL: ${{ secrets.HORIZON_E2E_URL }}
-          HORIZON_E2E_API_ID: ${{ secrets.HORIZON_E2E_API_ID }}
-          HORIZON_E2E_API_KEY: ${{ secrets.HORIZON_E2E_API_KEY }}
+        if: ${{ env.HORIZON_E2E_URL != '' && env.HORIZON_E2E_API_ID != '' && env.HORIZON_E2E_API_KEY != '' }}
         run: bun run test:e2e:smoke

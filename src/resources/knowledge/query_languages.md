@@ -450,6 +450,73 @@ NOT HCQL query field names (`valid.until`, `valid.from`).
 
 ---
 
+## Pagination (search_certificates, search_requests, search_events, search_discovery_events)
+
+All paginated search tools share the same contract. Read this once and apply it
+everywhere.
+
+### Inputs
+
+| Parameter    | Type    | Default | Meaning                                          |
+| ------------ | ------- | ------- | ------------------------------------------------ |
+| `page_index` | int ≥ 0 | `0`     | **0-based** page. First page is 0.               |
+| `page_size`  | int     | `25`    | Page size, capped server-side at 100.            |
+| `sorted_by`  | string  | (none)  | e.g. `notAfter:Desc`. Required for stable pages. |
+| `with_count` | bool    | `true`  | Include total count; leave on for planning.      |
+
+### Response envelope
+
+Every paginated search tool returns the same shape:
+
+```json
+{
+  "results": [ ... ],
+  "page_index": 0,
+  "page_size": 100,
+  "total": 187,
+  "has_more": true,
+  "next_page_index": 1
+}
+```
+
+- `page_index` echoes back the 0-based index you requested.
+- `total` is the full match count (`null` if `with_count=false`).
+- `has_more` is deterministic: `true` when another page exists.
+- `next_page_index` is `page_index + 1` when `has_more`, else `null`.
+
+### How to iterate (canonical protocol)
+
+1. Call the search with `page_index=0` (and optionally `sorted_by`).
+2. Read `next_page_index` from the response.
+3. If `next_page_index` is `null` or `has_more` is `false`, stop.
+4. Otherwise, call again with `page_index = next_page_index`. Do **not**
+   increment `page_index` yourself from a remembered value: always use
+   `next_page_index` from the latest response. This avoids off-by-one bugs
+   even if the server skipped a page or the requested size was capped.
+
+### Stable ordering
+
+Without `sorted_by`, the server is free to reorder rows between requests and
+the same record may appear on multiple pages (or be skipped). Always pass a
+`sorted_by` on a unique or near-unique column when paginating through more
+than one page -- `notAfter:Desc`, `registrationDate:Desc`, `timestamp:Desc`,
+or `_id:Asc` are safe defaults.
+
+### Common pitfalls
+
+- **Response field names are snake_case** (`page_index`, `has_more`,
+  `next_page_index`) to match tool inputs. Do not echo the camelCase API
+  names (`pageIndex`, `hasMore`) -- those go to Horizon, not back to you.
+- **Do not reuse a previous `page_index` input if the call failed** -- always
+  re-read `next_page_index` from the last successful response.
+- **`page_size > 100` is capped to 100 server-side**; use the `page_size`
+  field in the response to know the actual size.
+- **Invalid `page_index` (negative, non-integer) raises a
+  `PAGINATION-BAD-INDEX` error** -- this is intentional; do not silently
+  retry with 0.
+
+---
+
 ## HCQL vs API Field Names (CRITICAL)
 
 HCQL query fields and API response/request fields use **different naming conventions**.
