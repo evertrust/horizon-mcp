@@ -123,14 +123,14 @@ describe.skipIf(!E2E_CONFIGURED)('Documentation tools E2E', () => {
       max_results: 3,
     });
 
-    expect(search['resolved_product_version']).toBe('0.4.0');
+    expect(search['resolved_product_version']).toBe('0.5.0');
     const results = search['results'] as Array<Record<string, unknown>>;
     expect(results[0]?.['page_id']).toBe(
-      'terraform-provider-horizon:0.4.0:certificate',
+      'terraform-provider-horizon:0.5.0:certificate',
     );
 
     const page = await callTool('get_doc_page', {
-      page_id: 'terraform-provider-horizon:0.4.0:certificate',
+      page_id: 'terraform-provider-horizon:0.5.0:certificate',
     });
 
     expect(page['title']).toBe('horizon_certificate Resource');

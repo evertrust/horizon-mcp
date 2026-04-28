@@ -21,11 +21,9 @@ import {
   REQUEST_PRESETS,
   buildExportPayload,
   buildSearchPayload,
-  buildSortedBy,
+  buildSearchResponse,
   csvTruncationMetadata,
   preflightRequestAction,
-  toApiPageIndex,
-  truncateRecord,
 } from './helpers.js';
 import { registerTool } from './register.js';
 
@@ -265,7 +263,18 @@ export function registerLifecycleTools(
         'Full reference: horizon://knowledge/query-languages (Ownership Patterns section).\n\n' +
         'See also: whoami (get identity + teams for ownership queries),\n' +
         '    get_certificate (full details by ID), aggregate_certificates (group-by analytics),\n' +
-        '    export_certificates_csv (bulk CSV export).',
+        '    export_certificates_csv (bulk CSV export).\n\n' +
+        'Pagination protocol (READ CAREFULLY):\n' +
+        '  - page_index is 0-based. First page is page_index=0.\n' +
+        '  - Response always includes has_more (boolean) and next_page_index\n' +
+        '    (0-based integer or null if no more pages).\n' +
+        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
+        '  - Stop when has_more=false or next_page_index=null.\n' +
+        '  - For deterministic ordering across pages, ALWAYS pass sorted_by;\n' +
+        '    without it the server may reorder rows between requests and you\n' +
+        '    will see duplicates or miss records.\n' +
+        '  - with_count=true (default) surfaces total in the response so you\n' +
+        '    know up-front how many pages to expect.',
       inputSchema: z.object({
         query: z.string().describe('HCQL query expression.'),
         preset: z
@@ -281,7 +290,9 @@ export function registerLifecycleTools(
           .int()
           .min(0)
           .default(0)
-          .describe('Page index (0-based).'),
+          .describe(
+            'Page index (0-based). Use next_page_index from the previous response to paginate.',
+          ),
         page_size: z
           .number()
           .int()
@@ -292,11 +303,15 @@ export function registerLifecycleTools(
         sorted_by: z
           .string()
           .optional()
-          .describe("Sort field, e.g. 'notAfter' or 'notAfter:Desc'."),
+          .describe(
+            "Sort field, e.g. 'notAfter' or 'notAfter:Desc'. Strongly recommended when paginating.",
+          ),
         with_count: z
           .boolean()
-          .default(false)
-          .describe('Include total count in response.'),
+          .default(true)
+          .describe(
+            'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
+          ),
       }),
     },
     async ({
@@ -323,19 +338,7 @@ export function registerLifecycleTools(
         payload,
       );
 
-      let records = (result['results'] ?? result['items'] ?? []) as Record<
-        string,
-        unknown
-      >[];
-      if (Array.isArray(records)) {
-        records = records.map(truncateRecord);
-      }
-
-      const response: Record<string, unknown> = { results: records };
-      if ('count' in result) response['count'] = result['count'];
-      if ('hasMore' in result) response['hasMore'] = result['hasMore'];
-      response['pageIndex'] = page_index;
-      response['pageSize'] = Math.min(page_size, 100);
+      const response = buildSearchResponse(result, page_index, page_size);
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],
@@ -911,7 +914,15 @@ export function registerLifecycleTools(
         '  owner, profile, registrationDate, releaseAt, requester,\n' +
         '  requesterComment, status, team, workflow\n\n' +
         'See also: get_request (full details by ID), aggregate_requests (group-by analytics),\n' +
-        '    export_requests_csv (bulk CSV export).',
+        '    export_requests_csv (bulk CSV export).\n\n' +
+        'Pagination protocol (READ CAREFULLY):\n' +
+        '  - page_index is 0-based. First page is page_index=0.\n' +
+        '  - Response always includes has_more and next_page_index.\n' +
+        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
+        '  - Stop when has_more=false or next_page_index=null.\n' +
+        '  - Pass sorted_by for deterministic ordering across pages.\n' +
+        '  - with_count=true (default) makes total available so the model\n' +
+        '    knows up-front how many pages to expect.',
       inputSchema: z.object({
         query: z.string().describe('HRQL query expression.'),
         preset: z
@@ -927,7 +938,9 @@ export function registerLifecycleTools(
           .int()
           .min(0)
           .default(0)
-          .describe('Page index (0-based).'),
+          .describe(
+            'Page index (0-based). Use next_page_index from the previous response to paginate.',
+          ),
         page_size: z
           .number()
           .int()
@@ -938,11 +951,15 @@ export function registerLifecycleTools(
         sorted_by: z
           .string()
           .optional()
-          .describe("Sort field, e.g. 'registrationDate:Desc'."),
+          .describe(
+            "Sort field, e.g. 'registrationDate:Desc'. Strongly recommended when paginating.",
+          ),
         with_count: z
           .boolean()
-          .default(false)
-          .describe('Include total count in response.'),
+          .default(true)
+          .describe(
+            'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
+          ),
       }),
     },
     async ({
@@ -969,19 +986,7 @@ export function registerLifecycleTools(
         payload,
       );
 
-      let records = (result['results'] ?? result['items'] ?? []) as Record<
-        string,
-        unknown
-      >[];
-      if (Array.isArray(records)) {
-        records = records.map(truncateRecord);
-      }
-
-      const response: Record<string, unknown> = { results: records };
-      if ('count' in result) response['count'] = result['count'];
-      if ('hasMore' in result) response['hasMore'] = result['hasMore'];
-      response['pageIndex'] = page_index;
-      response['pageSize'] = Math.min(page_size, 100);
+      const response = buildSearchResponse(result, page_index, page_size);
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],
@@ -1075,7 +1080,14 @@ export function registerLifecycleTools(
         "sorted_by format: 'element' or 'element:Desc'.\n" +
         'Sortable elements: _id, code, module, node, timestamp, removeAt, status\n\n' +
         'Results are paginated. Events capture all certificate lifecycle actions\n' +
-        'including enrollments, revocations, approvals, and configuration changes.',
+        'including enrollments, revocations, approvals, and configuration changes.\n\n' +
+        'Pagination protocol (READ CAREFULLY):\n' +
+        '  - page_index is 0-based. First page is page_index=0.\n' +
+        '  - Response always includes has_more and next_page_index.\n' +
+        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
+        '  - Stop when has_more=false or next_page_index=null.\n' +
+        '  - Pass sorted_by (e.g. timestamp:Desc) for deterministic ordering across pages.\n' +
+        '  - with_count=true (default) surfaces total so you know the full span.',
       inputSchema: z.object({
         query: z.string().describe('HEQL query expression.'),
         page_index: z
@@ -1083,7 +1095,9 @@ export function registerLifecycleTools(
           .int()
           .min(0)
           .default(0)
-          .describe('Page index (0-based).'),
+          .describe(
+            'Page index (0-based). Use next_page_index from the previous response to paginate.',
+          ),
         page_size: z
           .number()
           .int()
@@ -1094,33 +1108,39 @@ export function registerLifecycleTools(
         sorted_by: z
           .string()
           .optional()
-          .describe("Sort field, e.g. 'timestamp:Desc'."),
+          .describe(
+            "Sort field, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
+          ),
+        with_count: z
+          .boolean()
+          .default(true)
+          .describe(
+            'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
+          ),
       }),
     },
-    async ({ query, page_index, page_size, sorted_by }) => {
-      const cappedPageSize = Math.min(page_size, 100);
-      const payload: Record<string, unknown> = {
+    async ({ query, page_index, page_size, sorted_by, with_count }) => {
+      const payload = buildSearchPayload(
         query,
-        pageIndex: toApiPageIndex(page_index),
-        pageSize: cappedPageSize,
-      };
-      const sorted = buildSortedBy(sorted_by);
-      if (sorted) payload['sortedBy'] = sorted;
+        undefined,
+        page_index,
+        page_size,
+        sorted_by,
+        with_count,
+      );
 
       const result = await client.post<Record<string, unknown>>(
         '/api/v1/events/search',
         payload,
       );
 
-      const records = (result['results'] ?? result['items'] ?? []) as Record<
-        string,
-        unknown
-      >[];
-      const response: Record<string, unknown> = { results: records };
-      if ('count' in result) response['count'] = result['count'];
-      if ('hasMore' in result) response['hasMore'] = result['hasMore'];
-      response['pageIndex'] = page_index;
-      response['pageSize'] = cappedPageSize;
+      // truncate: false -- event records (details.*, client.*) must stay
+      // intact, and the shared truncateRecord message names get_certificate
+      // as the recovery tool, which is wrong here. Recovery path is
+      // get_event.
+      const response = buildSearchResponse(result, page_index, page_size, {
+        truncate: false,
+      });
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],

@@ -194,7 +194,11 @@ describe('Lifecycle tools', () => {
       expect(payload['pageSize']).toBe(25);
 
       expect((parsed['results'] as unknown[]).length).toBe(1);
-      expect(parsed['pageIndex']).toBe(0);
+      expect(parsed['page_index']).toBe(0);
+      expect(parsed['page_size']).toBe(25);
+      // has_more/next_page_index are always present (deterministic contract)
+      expect(parsed).toHaveProperty('has_more');
+      expect(parsed).toHaveProperty('next_page_index');
     });
 
     it('custom fields override preset', async () => {
@@ -227,7 +231,134 @@ describe('Lifecycle tools', () => {
         unknown
       >;
       expect(payload['pageSize']).toBe(100);
-      expect(parsed['pageSize']).toBe(100);
+      expect(parsed['page_size']).toBe(100);
+    });
+
+    // --------------------------------------------------------------------
+    // Pagination regression suite
+    //
+    // These tests guard against the "pagination returned the same page"
+    // class of bugs. Every paginated search tool must:
+    //   1. Send a strictly different pageIndex to the API for each
+    //      page_index value the model passes in.
+    //   2. Return a deterministic envelope including has_more and
+    //      next_page_index so the model never has to derive pagination
+    //      state itself.
+    //   3. Default with_count=true so total is always populated when
+    //      available from the API.
+    // If any of these invariants break, a real Horizon API (or a broken
+    // MCP shim) can silently return the same data twice -- the exact
+    // failure mode reported by users.
+    // --------------------------------------------------------------------
+    describe('pagination contract', () => {
+      it('page_index increments reach the API as distinct 1-based pageIndex values', async () => {
+        // Model simulates walking three pages. Each call must hit the
+        // Horizon API with a distinct pageIndex (1, 2, 3) so we can never
+        // regress to serving the same page twice.
+        mockClient.post
+          .mockResolvedValueOnce({ results: [{ _id: 'a' }], count: 250 })
+          .mockResolvedValueOnce({ results: [{ _id: 'b' }], count: 250 })
+          .mockResolvedValueOnce({ results: [{ _id: 'c' }], count: 250 });
+
+        for (const idx of [0, 1, 2]) {
+          await client.callTool({
+            name: 'search_certificates',
+            arguments: {
+              query: '*',
+              page_index: idx,
+              page_size: 100,
+              sorted_by: 'notAfter:Desc',
+            },
+          });
+        }
+
+        const sentIndices = mockClient.post.mock.calls.map(
+          (c) => (c[1] as Record<string, unknown>)['pageIndex'],
+        );
+        expect(sentIndices).toEqual([1, 2, 3]);
+      });
+
+      it('echoes page_index as the 0-based value the caller provided', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: [{ _id: 'x' }],
+          count: 300,
+        });
+
+        const result = await client.callTool({
+          name: 'search_certificates',
+          arguments: { query: '*', page_index: 2, page_size: 50 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['page_index']).toBe(2);
+      });
+
+      it('has_more=true and next_page_index set mid-pagination (with total)', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: Array.from({ length: 100 }, (_, i) => ({ _id: `r${i}` })),
+          count: 187,
+        });
+
+        const result = await client.callTool({
+          name: 'search_certificates',
+          arguments: { query: '*', page_index: 0, page_size: 100 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['total']).toBe(187);
+        expect(parsed['has_more']).toBe(true);
+        expect(parsed['next_page_index']).toBe(1);
+      });
+
+      it('has_more=false and next_page_index=null on the last page', async () => {
+        // page_index=1 with page_size=100 on a total of 187 means this
+        // page returns the trailing 87, and there are no more pages.
+        mockClient.post.mockResolvedValueOnce({
+          results: Array.from({ length: 87 }, (_, i) => ({ _id: `r${i}` })),
+          count: 187,
+        });
+
+        const result = await client.callTool({
+          name: 'search_certificates',
+          arguments: { query: '*', page_index: 1, page_size: 100 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['total']).toBe(187);
+        expect(parsed['has_more']).toBe(false);
+        expect(parsed['next_page_index']).toBeNull();
+      });
+
+      it('falls back to records.length heuristic when count is absent', async () => {
+        // No count -> cannot compare against total. has_more must still
+        // be deterministic by falling back to page fullness.
+        mockClient.post.mockResolvedValueOnce({
+          results: Array.from({ length: 25 }, (_, i) => ({ _id: `r${i}` })),
+        });
+
+        const result = await client.callTool({
+          name: 'search_certificates',
+          arguments: { query: '*', page_index: 0, page_size: 25 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['total']).toBeNull();
+        // Page was full (25/25) -> another page may exist
+        expect(parsed['has_more']).toBe(true);
+      });
+
+      it('defaults with_count to true', async () => {
+        mockClient.post.mockResolvedValueOnce({ results: [] });
+        await client.callTool({
+          name: 'search_certificates',
+          arguments: { query: '*' },
+        });
+        const payload = mockClient.post.mock.calls[0]![1] as Record<
+          string,
+          unknown
+        >;
+        expect(payload['withCount']).toBe(true);
+      });
     });
   });
 
@@ -563,6 +694,154 @@ describe('Lifecycle tools', () => {
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
       expect(mockClient.post).not.toHaveBeenCalled();
+    });
+  });
+
+  // ==========================================================================
+  // Cross-tool pagination contract
+  //
+  // The CTO reported "pagination returned the same page" on a real-world
+  // Horizon instance. Every paginated search tool must behave identically so
+  // a fix (or regression) in one tool is provably reflected in all of them.
+  // This parametrised block asserts the contract per-tool without relying
+  // on domain-specific field shapes.
+  // ==========================================================================
+  describe.each([
+    {
+      name: 'search_certificates',
+      endpoint: '/api/v1/certificates/search',
+      args: { query: 'status is valid' },
+    },
+    {
+      name: 'search_requests',
+      endpoint: '/api/v1/requests/search',
+      args: { query: 'status equals "pending"' },
+    },
+    {
+      name: 'search_events',
+      endpoint: '/api/v1/events/search',
+      args: { query: 'timestamp after -7d' },
+    },
+  ])('$name pagination contract', ({ name, endpoint, args }) => {
+    it('sends distinct 1-based pageIndex for each page_index walked', async () => {
+      mockClient.post
+        .mockResolvedValueOnce({ results: [{ _id: 'a' }], count: 500 })
+        .mockResolvedValueOnce({ results: [{ _id: 'b' }], count: 500 })
+        .mockResolvedValueOnce({ results: [{ _id: 'c' }], count: 500 });
+
+      for (const idx of [0, 1, 2]) {
+        await client.callTool({
+          name,
+          arguments: { ...args, page_index: idx, page_size: 100 },
+        });
+      }
+
+      const calls = mockClient.post.mock.calls.filter((c) => c[0] === endpoint);
+      expect(calls.length).toBeGreaterThanOrEqual(3);
+      const sent = calls
+        .slice(-3)
+        .map((c) => (c[1] as Record<string, unknown>)['pageIndex']);
+      expect(sent).toEqual([1, 2, 3]);
+    });
+
+    it('returns a standardized pagination envelope', async () => {
+      mockClient.post.mockResolvedValueOnce({
+        results: Array.from({ length: 50 }, (_, i) => ({ _id: `r${i}` })),
+        count: 250,
+      });
+
+      const result = await client.callTool({
+        name,
+        arguments: { ...args, page_index: 0, page_size: 50 },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed).toHaveProperty('results');
+      expect(parsed['page_index']).toBe(0);
+      expect(parsed['page_size']).toBe(50);
+      expect(parsed['total']).toBe(250);
+      expect(parsed['has_more']).toBe(true);
+      expect(parsed['next_page_index']).toBe(1);
+      // Legacy camelCase fields should NOT be present -- they confused
+      // models when echoed alongside snake_case inputs.
+      expect(parsed).not.toHaveProperty('pageIndex');
+      expect(parsed).not.toHaveProperty('pageSize');
+      expect(parsed).not.toHaveProperty('hasMore');
+    });
+
+    it('next_page_index is null when has_more is false', async () => {
+      mockClient.post.mockResolvedValueOnce({
+        results: [{ _id: 'tail' }],
+        count: 1,
+      });
+
+      const result = await client.callTool({
+        name,
+        arguments: { ...args, page_index: 0, page_size: 100 },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['has_more']).toBe(false);
+      expect(parsed['next_page_index']).toBeNull();
+    });
+
+    it('defaults with_count=true so total is requested', async () => {
+      mockClient.post.mockResolvedValueOnce({ results: [], count: 0 });
+      await client.callTool({ name, arguments: args });
+      const last = mockClient.post.mock.calls.at(-1)!;
+      const payload = last[1] as Record<string, unknown>;
+      expect(payload['withCount']).toBe(true);
+    });
+  });
+
+  // ==========================================================================
+  // Domain-specific truncation guard rails
+  //
+  // Cert/request searches truncate large fields and point the model at
+  // get_certificate for the full value. Event searches must NOT do this
+  // because (a) event payloads are the primary output, and (b) the hint
+  // would send the model to the wrong recovery tool (should be get_event,
+  // not get_certificate).
+  // ==========================================================================
+  describe('field truncation per tool family', () => {
+    const LARGE_STRING = 'a'.repeat(2000); // > MAX_STRING_LEN
+
+    it('search_events passes large detail fields through untouched', async () => {
+      mockClient.post.mockResolvedValueOnce({
+        results: [{ code: 'X', details: { blob: LARGE_STRING } }],
+        count: 1,
+      });
+
+      const result = await client.callTool({
+        name: 'search_events',
+        arguments: { query: 'timestamp after -1h' },
+      });
+      const parsed = parseToolResult(result);
+      const row = (parsed['results'] as Record<string, unknown>[])[0]!;
+      const details = row['details'] as Record<string, unknown>;
+
+      expect(details['blob']).toBe(LARGE_STRING);
+      // Explicit guard: the cert-specific hint must never appear in an
+      // event response. If someone re-enables truncation here the wrong
+      // recovery tool would be suggested.
+      expect(JSON.stringify(parsed)).not.toContain('get_certificate');
+    });
+
+    it('search_certificates still truncates large fields', async () => {
+      mockClient.post.mockResolvedValueOnce({
+        results: [{ dn: 'CN=test', rawPem: LARGE_STRING }],
+        count: 1,
+      });
+
+      const result = await client.callTool({
+        name: 'search_certificates',
+        arguments: { query: '*' },
+      });
+      const parsed = parseToolResult(result);
+      const row = (parsed['results'] as Record<string, unknown>[])[0]!;
+
+      expect(row['rawPem']).not.toBe(LARGE_STRING);
+      expect(String(row['rawPem']).length).toBeLessThan(LARGE_STRING.length);
     });
   });
 });

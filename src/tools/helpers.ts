@@ -271,7 +271,14 @@ export function buildSortedBy(
 }
 
 export function toApiPageIndex(pageIndex: number): number {
-  return Math.max(1, pageIndex + 1);
+  if (!Number.isInteger(pageIndex) || pageIndex < 0) {
+    throw new HorizonError(400, {
+      errorCode: 'PAGINATION-BAD-INDEX',
+      message: `page_index must be a non-negative integer, got ${pageIndex}.`,
+      remediation: 'Pass page_index >= 0 (0 for the first page).',
+    });
+  }
+  return pageIndex + 1;
 }
 
 export function buildSearchPayload(
@@ -293,6 +300,65 @@ export function buildSearchPayload(
   if (sorted) payload['sortedBy'] = sorted;
   if (withCount) payload['withCount'] = true;
   return payload;
+}
+
+/**
+ * Build a standardized pagination response envelope for paginated search tools.
+ *
+ * Returns a consistent shape so models (including smaller/less capable ones)
+ * never need to translate between camelCase API fields and snake_case MCP
+ * inputs, and always get an explicit next_page_index / has_more signal.
+ *
+ * Fields:
+ * - results: array of records from the current page
+ * - page_index: 0-based index of the page just returned (matches MCP input)
+ * - page_size: number of results requested for this page (capped at MAX_PAGE_SIZE)
+ * - total: total matching records when known (with_count=true), else null
+ * - has_more: true if another page is available
+ * - next_page_index: page_index + 1 if has_more, else null
+ *
+ * Options:
+ * - truncate: apply field-level truncation to each record. Default true for
+ *   certificate and request searches (where large fields like raw PEM,
+ *   extensions, and metadata blobs blow context windows). Event-oriented
+ *   tools should pass `truncate: false` because the truncation messages
+ *   name `get_certificate` as the recovery path, which is wrong for events.
+ */
+export function buildSearchResponse(
+  result: Record<string, unknown>,
+  pageIndex: number,
+  pageSize: number,
+  options: { truncate?: boolean } = {},
+): Record<string, unknown> {
+  const { truncate = true } = options;
+  const cappedPageSize = Math.min(pageSize, MAX_PAGE_SIZE);
+  const rawRecords = (result['results'] ?? result['items'] ?? []) as unknown;
+  const records = Array.isArray(rawRecords)
+    ? truncate
+      ? (rawRecords as Record<string, unknown>[]).map(truncateRecord)
+      : (rawRecords as Record<string, unknown>[])
+    : [];
+
+  const total =
+    typeof result['count'] === 'number' ? (result['count'] as number) : null;
+
+  let hasMore: boolean;
+  if (typeof result['hasMore'] === 'boolean') {
+    hasMore = result['hasMore'] as boolean;
+  } else if (total !== null) {
+    hasMore = (pageIndex + 1) * cappedPageSize < total;
+  } else {
+    hasMore = records.length >= cappedPageSize;
+  }
+
+  return {
+    results: records,
+    page_index: pageIndex,
+    page_size: cappedPageSize,
+    total,
+    has_more: hasMore,
+    next_page_index: hasMore ? pageIndex + 1 : null,
+  };
 }
 
 export function buildExportPayload(

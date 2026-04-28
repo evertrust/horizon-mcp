@@ -6,9 +6,11 @@ import {
   buildExportPayload,
   buildListResponse,
   buildSearchPayload,
+  buildSearchResponse,
   buildSortedBy,
   csvTruncationMetadata,
   deleteGuard,
+  toApiPageIndex,
   truncateRecord,
 } from '../../src/tools/helpers.js';
 
@@ -238,6 +240,181 @@ describe('buildSearchPayload', () => {
   it('omits withCount when false (default)', () => {
     const payload = buildSearchPayload('*', undefined, 0, 50);
     expect(payload).not.toHaveProperty('withCount');
+  });
+});
+
+describe('toApiPageIndex', () => {
+  it('converts 0-based MCP index to 1-based API index', () => {
+    expect(toApiPageIndex(0)).toBe(1);
+    expect(toApiPageIndex(1)).toBe(2);
+    expect(toApiPageIndex(42)).toBe(43);
+  });
+
+  // Previously this function used Math.max(1, pageIndex+1) which silently
+  // clamped bad input. Silent clamping masked real caller bugs and
+  // contributed to hard-to-debug "same page" reports. Validate explicitly.
+  it('rejects negative indices with PAGINATION-BAD-INDEX', () => {
+    try {
+      toApiPageIndex(-1);
+      expect.fail('should have thrown');
+    } catch (err) {
+      expect(err).toBeInstanceOf(HorizonError);
+      expect((err as HorizonError).errorCode).toBe('PAGINATION-BAD-INDEX');
+    }
+  });
+
+  it('rejects non-integer indices', () => {
+    expect(() => toApiPageIndex(1.5)).toThrow(HorizonError);
+    expect(() => toApiPageIndex(Number.NaN)).toThrow(HorizonError);
+  });
+});
+
+describe('buildSearchResponse', () => {
+  it('returns the canonical envelope shape', () => {
+    const envelope = buildSearchResponse(
+      { results: [{ _id: 'a' }], count: 100 },
+      0,
+      25,
+    );
+
+    expect(envelope).toHaveProperty('results');
+    expect(envelope).toHaveProperty('page_index', 0);
+    expect(envelope).toHaveProperty('page_size', 25);
+    expect(envelope).toHaveProperty('total', 100);
+    expect(envelope).toHaveProperty('has_more');
+    expect(envelope).toHaveProperty('next_page_index');
+    // Legacy camelCase names must not leak through -- mixing them with the
+    // snake_case tool inputs is what confused models in the bug report.
+    expect(envelope).not.toHaveProperty('pageIndex');
+    expect(envelope).not.toHaveProperty('pageSize');
+    expect(envelope).not.toHaveProperty('hasMore');
+    expect(envelope).not.toHaveProperty('count');
+  });
+
+  it('computes has_more from total when count is present', () => {
+    // 2 pages of 100 in a 187-total set -> page 0 has more, page 1 does not.
+    const first = buildSearchResponse(
+      { results: new Array(100).fill({ _id: 'x' }), count: 187 },
+      0,
+      100,
+    );
+    const second = buildSearchResponse(
+      { results: new Array(87).fill({ _id: 'x' }), count: 187 },
+      1,
+      100,
+    );
+
+    expect(first['has_more']).toBe(true);
+    expect(first['next_page_index']).toBe(1);
+    expect(second['has_more']).toBe(false);
+    expect(second['next_page_index']).toBeNull();
+  });
+
+  it('honours the API hasMore signal when provided', () => {
+    const env = buildSearchResponse(
+      { results: [{ _id: 'x' }], hasMore: true },
+      0,
+      25,
+    );
+    expect(env['has_more']).toBe(true);
+    expect(env['next_page_index']).toBe(1);
+  });
+
+  it('falls back to page fullness heuristic when no count / hasMore', () => {
+    // A full page -> probably more rows; a partial page -> definitely last.
+    const full = buildSearchResponse(
+      { results: new Array(25).fill({ _id: 'x' }) },
+      0,
+      25,
+    );
+    const partial = buildSearchResponse(
+      { results: new Array(7).fill({ _id: 'x' }) },
+      0,
+      25,
+    );
+
+    expect(full['has_more']).toBe(true);
+    expect(partial['has_more']).toBe(false);
+    expect(partial['next_page_index']).toBeNull();
+  });
+
+  it('sets total to null when the API omitted count', () => {
+    const env = buildSearchResponse({ results: [] }, 0, 25);
+    expect(env['total']).toBeNull();
+  });
+
+  it('caps page_size reported in envelope at MAX_PAGE_SIZE', () => {
+    const env = buildSearchResponse({ results: [] }, 0, 500);
+    expect(env['page_size']).toBe(100);
+  });
+
+  it('accepts both results and items as the record array', () => {
+    const viaItems = buildSearchResponse(
+      { items: [{ _id: 'a' }], count: 1 },
+      0,
+      25,
+    );
+    expect((viaItems['results'] as unknown[]).length).toBe(1);
+  });
+
+  // Regression guard for the event-search truncation bug surfaced in code
+  // review: buildSearchResponse used to unconditionally apply the
+  // cert-specific truncateRecord hints ("use get_certificate") to every
+  // caller. Event tools must be able to opt out so their large detail
+  // blobs are preserved and no misleading recovery tool is suggested.
+  it('truncate:false preserves large string fields untouched', () => {
+    const bigString = 'x'.repeat(2000); // well above MAX_STRING_LEN
+    const env = buildSearchResponse(
+      { results: [{ detail: bigString }], count: 1 },
+      0,
+      25,
+      { truncate: false },
+    );
+    const first = (env['results'] as Record<string, unknown>[])[0]!;
+    expect(first['detail']).toBe(bigString);
+    expect(String(first['detail'])).not.toContain('get_certificate');
+  });
+
+  it('truncate:true (default) still applies record-level truncation', () => {
+    const bigString = 'x'.repeat(2000);
+    const env = buildSearchResponse(
+      { results: [{ detail: bigString }], count: 1 },
+      0,
+      25,
+    );
+    const first = (env['results'] as Record<string, unknown>[])[0]!;
+    expect(first['detail']).not.toBe(bigString);
+    expect(String(first['detail']).length).toBeLessThan(bigString.length);
+  });
+
+  // Regression guard: two consecutive page_index values MUST produce
+  // envelopes that advertise different next_page_index values. This is the
+  // direct assertion against the reported "pagination returned the same
+  // page" failure mode.
+  it('advances next_page_index monotonically across sequential pages', () => {
+    const p0 = buildSearchResponse(
+      { results: new Array(10).fill({}), count: 50 },
+      0,
+      10,
+    );
+    const p1 = buildSearchResponse(
+      { results: new Array(10).fill({}), count: 50 },
+      1,
+      10,
+    );
+    const p2 = buildSearchResponse(
+      { results: new Array(10).fill({}), count: 50 },
+      2,
+      10,
+    );
+
+    expect(p0['next_page_index']).toBe(1);
+    expect(p1['next_page_index']).toBe(2);
+    expect(p2['next_page_index']).toBe(3);
+    // The three pages must be distinguishable by their page_index echoes.
+    expect(
+      new Set([p0['page_index'], p1['page_index'], p2['page_index']]).size,
+    ).toBe(3);
   });
 });
 

@@ -65,11 +65,16 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
             `Got: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
         expect(Array.isArray(result['results'])).toBe(true);
-        expect(result['pageIndex']).toBeDefined();
-        expect(result['pageSize']).toBeDefined();
+        // Standardized pagination envelope: snake_case keys matching the
+        // tool inputs, plus explicit has_more / next_page_index hints so
+        // models don't have to derive pagination state themselves.
+        expect(result['page_index']).toBeDefined();
+        expect(result['page_size']).toBeDefined();
+        expect(result).toHaveProperty('has_more');
+        expect(result).toHaveProperty('next_page_index');
       });
 
-      it('returns count when with_count is requested', async () => {
+      it('returns total when with_count is requested', async () => {
         const result = await callTool('search_certificates', {
           query: 'profile exists',
           page_size: 5,
@@ -78,8 +83,8 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         expect(result['results']).toBeDefined();
         expect(Array.isArray(result['results'])).toBe(true);
         expect(
-          result['count'],
-          "with_count=true should populate 'count'",
+          result['total'],
+          "with_count=true should populate 'total'",
         ).toBeDefined();
       });
 
@@ -286,7 +291,9 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           `search_requests response lacks 'results'. Got: ${Object.keys(result).join(', ')}`,
         ).toBeDefined();
         expect(Array.isArray(result['results'])).toBe(true);
-        expect(result['pageIndex']).toBeDefined();
+        expect(result['page_index']).toBeDefined();
+        expect(result).toHaveProperty('has_more');
+        expect(result).toHaveProperty('next_page_index');
       });
 
       it('gets a request by ID', async () => {
@@ -2084,8 +2091,10 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         });
         expect(data['results']).toBeDefined();
         expect(Array.isArray(data['results'])).toBe(true);
-        expect(data['pageIndex']).toBeDefined();
-        expect(data['pageSize']).toBeDefined();
+        expect(data['page_index']).toBeDefined();
+        expect(data['page_size']).toBeDefined();
+        expect(data).toHaveProperty('has_more');
+        expect(data).toHaveProperty('next_page_index');
       });
 
       it('get_discovery_event returns details for an available event', async () => {

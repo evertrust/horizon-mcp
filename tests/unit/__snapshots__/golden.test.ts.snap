@@ -1642,7 +1642,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "with_count": {
-          "default": false,
+          "default": true,
           "type": "boolean",
         },
       },
@@ -1676,7 +1676,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "with_count": {
-          "default": false,
+          "default": true,
           "type": "boolean",
         },
       },
@@ -1730,6 +1730,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         "sorted_by": {
           "type": "string",
         },
+        "with_count": {
+          "default": true,
+          "type": "boolean",
+        },
       },
       "required": [
         "query",
@@ -1772,7 +1776,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "with_count": {
-          "default": false,
+          "default": true,
           "type": "boolean",
         },
       },
