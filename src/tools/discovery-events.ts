@@ -18,6 +18,7 @@ import {
   CSV_TIMEOUT,
   buildExportPayload,
   buildSearchPayload,
+  buildSearchResponse,
   csvTruncationMetadata,
 } from './helpers.js';
 import { registerTool } from './register.js';
@@ -52,7 +53,14 @@ export function registerDiscoveryEventTools(
         '  sessionid equals "scan-session-id"\n' +
         'Full reference: horizon://knowledge/query-languages\n\n' +
         'HDQL fields: timestamp, certificateid, sessionid, error.code, client.*\n' +
-        "sorted_by format: 'element' or 'element:Desc'.",
+        "sorted_by format: 'element' or 'element:Desc'.\n\n" +
+        'Pagination protocol (READ CAREFULLY):\n' +
+        '  - page_index is 0-based. First page is page_index=0.\n' +
+        '  - Response always includes has_more and next_page_index.\n' +
+        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
+        '  - Stop when has_more=false or next_page_index=null.\n' +
+        '  - Pass sorted_by (e.g. timestamp:Desc) for deterministic ordering.\n' +
+        '  - with_count=true (default) surfaces total for up-front sizing.',
       inputSchema: z.object({
         query: z.string().describe('HDQL query string.'),
         page_index: z
@@ -60,7 +68,9 @@ export function registerDiscoveryEventTools(
           .int()
           .min(0)
           .default(0)
-          .describe('Zero-based page index (default 0).'),
+          .describe(
+            'Page index (0-based). Use next_page_index from the previous response to paginate.',
+          ),
         page_size: z
           .number()
           .int()
@@ -71,11 +81,15 @@ export function registerDiscoveryEventTools(
         sorted_by: z
           .string()
           .optional()
-          .describe("Sort specification, e.g. 'timestamp:Desc'."),
+          .describe(
+            "Sort specification, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
+          ),
         with_count: z
           .boolean()
-          .default(false)
-          .describe('Include total count in response (slower).'),
+          .default(true)
+          .describe(
+            'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
+          ),
         enable_analytics: z
           .boolean()
           .default(true)
@@ -103,15 +117,12 @@ export function registerDiscoveryEventTools(
         `?enableAnalytics=${String(enable_analytics).toLowerCase()}`;
       const result = await client.post<Record<string, unknown>>(path, payload);
 
-      const records = (result['results'] ?? result['items'] ?? []) as Record<
-        string,
-        unknown
-      >[];
-      const response: Record<string, unknown> = { results: records };
-      if ('count' in result) response['count'] = result['count'];
-      if ('hasMore' in result) response['hasMore'] = result['hasMore'];
-      response['pageIndex'] = page_index;
-      response['pageSize'] = Math.min(page_size, 100);
+      // truncate: false -- same reasoning as search_events. The shared
+      // truncation hint names get_certificate; the correct recovery tool
+      // for discovery events is get_discovery_event.
+      const response = buildSearchResponse(result, page_index, page_size, {
+        truncate: false,
+      });
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],

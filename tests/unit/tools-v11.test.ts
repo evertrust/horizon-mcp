@@ -401,6 +401,87 @@ describe('Discovery event tools', () => {
         { element: 'timestamp', order: 'Desc' },
       ]);
     });
+
+    // ------------------------------------------------------------------
+    // Pagination regression suite. Mirrors the contract verified in
+    // tools.test.ts for the other three search tools. If this block
+    // diverges from that one, the 4 tools stopped behaving identically.
+    // ------------------------------------------------------------------
+    describe('pagination contract', () => {
+      it('sends distinct 1-based pageIndex for each page_index walked', async () => {
+        mockClient.post
+          .mockResolvedValueOnce({ results: [{ _id: 'a' }], count: 400 })
+          .mockResolvedValueOnce({ results: [{ _id: 'b' }], count: 400 })
+          .mockResolvedValueOnce({ results: [{ _id: 'c' }], count: 400 });
+
+        for (const idx of [0, 1, 2]) {
+          await client.callTool({
+            name: 'search_discovery_events',
+            arguments: {
+              query: '*',
+              page_index: idx,
+              page_size: 100,
+              sorted_by: 'timestamp:Desc',
+            },
+          });
+        }
+
+        const sent = mockClient.post.mock.calls
+          .slice(-3)
+          .map((c) => (c[1] as Record<string, unknown>)['pageIndex']);
+        expect(sent).toEqual([1, 2, 3]);
+      });
+
+      it('returns the standardized envelope', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: Array.from({ length: 50 }, (_, i) => ({ _id: `r${i}` })),
+          count: 187,
+        });
+
+        const result = await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*', page_index: 0, page_size: 50 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['page_index']).toBe(0);
+        expect(parsed['page_size']).toBe(50);
+        expect(parsed['total']).toBe(187);
+        expect(parsed['has_more']).toBe(true);
+        expect(parsed['next_page_index']).toBe(1);
+        expect(parsed).not.toHaveProperty('pageIndex');
+        expect(parsed).not.toHaveProperty('hasMore');
+      });
+
+      it('next_page_index is null on last page', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: [{ _id: 'tail' }],
+          count: 1,
+        });
+
+        const result = await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*', page_index: 0, page_size: 100 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['has_more']).toBe(false);
+        expect(parsed['next_page_index']).toBeNull();
+      });
+
+      it('defaults with_count=true', async () => {
+        mockClient.post.mockResolvedValueOnce({ results: [], count: 0 });
+        await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*' },
+        });
+        const payload = mockClient.post.mock.calls[0]![1] as Record<
+          string,
+          unknown
+        >;
+        expect(payload['withCount']).toBe(true);
+      });
+    });
   });
 
   describe('get_discovery_event', () => {
