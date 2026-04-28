@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Bun 1.x+ (or Node.js 20+)
+- Bun 1.x+ (recommended) or Node.js >=24.10
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
@@ -26,6 +26,13 @@ Then run:
 
 ```bash
 horizon-mcp-server
+```
+
+### Local install
+
+```bash
+npm install
+npm run build
 ```
 
 ### Standalone binary

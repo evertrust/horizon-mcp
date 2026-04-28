@@ -1,6 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import vm from 'node:vm';
+import { format } from 'prettier';
 
 import type {
   DocPage,
@@ -311,9 +312,10 @@ function buildDocVersionCatalog(
   };
 }
 
-function writeJson(path: string, data: unknown): void {
+async function writeJson(path: string, data: unknown): Promise<void> {
   mkdirSync(resolve(path, '..'), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(data, null, 2)}\n`, 'utf8');
+  const json = await format(JSON.stringify(data), { parser: 'json' });
+  writeFileSync(path, json, 'utf8');
 }
 
 function parseSitemapLocs(xml: string): string[] {
@@ -683,16 +685,19 @@ export async function buildDocsArtifacts(): Promise<{
 
 export async function writeDocsArtifacts(): Promise<void> {
   const artifacts = await buildDocsArtifacts();
-  writeJson(
+  await writeJson(
     join(OUTPUT_DIR, 'product-doc-pages.json'),
     artifacts.productCatalog,
   );
-  writeJson(join(OUTPUT_DIR, 'api-doc-pages.json'), artifacts.apiCatalog);
-  writeJson(
+  await writeJson(join(OUTPUT_DIR, 'api-doc-pages.json'), artifacts.apiCatalog);
+  await writeJson(
     join(OUTPUT_DIR, 'companion-doc-pages.json'),
     artifacts.companionCatalog,
   );
-  writeJson(join(OUTPUT_DIR, 'doc-versions.json'), artifacts.versionCatalog);
+  await writeJson(
+    join(OUTPUT_DIR, 'doc-versions.json'),
+    artifacts.versionCatalog,
+  );
 }
 
 function normalizeArtifact(value: unknown): unknown {

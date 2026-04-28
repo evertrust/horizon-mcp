@@ -146,6 +146,19 @@ HORIZON_API_ID = "your-api-id"
 HORIZON_API_KEY = "your-api-key"
 ```
 
+Or with a local source checkout:
+
+```toml
+[mcp_servers.horizon]
+command = "node"
+args = ["/absolute/path/to/horizon-mcp/dist/index.js"]
+
+[mcp_servers.horizon.env]
+HORIZON_URL = "https://horizon.example.com"
+HORIZON_API_ID = "your-api-id"
+HORIZON_API_KEY = "your-api-key"
+```
+
 In the **Codex Desktop app**, you can also add the server through **Settings > MCP** and follow the GUI prompts.
 
 Alternatively, add via the CLI:
