@@ -32,7 +32,7 @@ All mutating tools include a STOP confirmation block that instructs the LLM to a
 
 ### Prerequisites
 
-- Bun 1.x+ (recommended) or Node.js 24.10+
+- Bun 1.x+ (recommended) or Node.js >=24.10
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate with appropriate permissions
 
