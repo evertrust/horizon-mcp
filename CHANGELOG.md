@@ -1,3 +1,10 @@
+## [1.1.0](https://github.com/evertrust/horizon-mcp/compare/v1.0.1...v1.1.0) (2026-04-29)
+
+### Features
+
+* add docs search tools and small-model guidance ([#4](https://github.com/evertrust/horizon-mcp/issues/4)) ([77c86e4](https://github.com/evertrust/horizon-mcp/commit/77c86e42f342c5626963ab471c52f7d75e852b74))
+* add new tools for doc search & improve MCP usability for small models ([#5](https://github.com/evertrust/horizon-mcp/issues/5)) ([b60c551](https://github.com/evertrust/horizon-mcp/commit/b60c551f4977eb9243a33bdaa97d6b842f086db3))
+
 ## [1.0.1](https://github.com/evertrust/horizon-mcp/compare/v1.0.0...v1.0.1) (2026-04-08)
 
 ### Bug Fixes
