@@ -1,0 +1,171 @@
+schema_version: "1"
+prerequisites:
+  - key: INTUNE_VARIANT
+    description: "Choose the Intune integration variant. intune uses Intune SCEP (recommended). intunepkcs uses Intune PKCS."
+    required: true
+    sensitive: false
+    enum: ["intune", "intunepkcs"]
+    default: "intune"
+
+  - key: TARGET_PLATFORM
+    description: "Device platform that will receive the SCEP or PKCS profile. Pick the primary one for the initial rollout. Other platforms can be added later by repeating Phase 3 step 6."
+    required: true
+    sensitive: false
+    enum: ["Windows", "iOS", "Android", "macOS"]
+    default: "Windows"
+
+  - key: TENANT_DIRECTORY_ID
+    description: "Azure tenant Directory (tenant) ID, in UUID form. Read from Microsoft Entra ID > Overview."
+    required: true
+    sensitive: false
+    validator: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+  - key: APP_REGISTRATION_NAME
+    description: "Display name for the new Microsoft Entra App Registration that Horizon will use to talk to Intune."
+    required: true
+    sensitive: false
+    example: "horizon-intune"
+
+  - key: APP_CLIENT_ID
+    description: "Application (client) ID of the new App Registration, in UUID form. Read from the App Registration overview page after creation."
+    required: true
+    sensitive: true
+    validator: "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+  - key: APP_CLIENT_SECRET
+    description: "Client secret value generated under Certificates & secrets. Visible only once at creation; capture it immediately."
+    required: true
+    sensitive: true
+    validator: ".+"
+
+  - key: APP_CLIENT_SECRET_EXPIRY_DATE
+    description: "Expiry date of the client secret in ISO 8601 form (YYYY-MM-DD). Used by Horizon to fire an expiry notification before the secret expires."
+    required: true
+    sensitive: false
+    validator: "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    example: "2027-04-30"
+
+  - key: INTUNE_GROUP
+    description: "Microsoft Entra group (display name or object ID) that the SCEP / PKCS profile will be assigned to."
+    required: true
+    sensitive: false
+    example: "Corp-Devices-PKI"
+
+  - key: ROOT_CA_DER
+    description: "DER-encoded root CA file path (and optionally the intermediates path). Both must be importable into Intune as Trusted Certificate profiles. Provide either an absolute file path or a base64 paste; multiple entries comma-separated."
+    required: true
+    sensitive: false
+
+  - key: SCEP_RA_PROFILE_NAME
+    description: "Existing Horizon WebRA profile that issues the SCEP RA TLS-clientAuth certificate. Use __NEW__ to indicate that the skill should walk through creating one before continuing."
+    required: true
+    sensitive: false
+    default: "__NEW__"
+
+  - key: UNDERLYING_PKI_CONNECTOR
+    description: "Name of the underlying Horizon PKI connector that issues the SCEP RA certificate (typically a Stream-based connector)."
+    required: true
+    sensitive: false
+    example: "stream-internal-tls"
+
+  - key: EXPECTED_EKU
+    description: "Extended Key Usage that the issued device certificates must carry."
+    required: false
+    sensitive: false
+    default: "clientAuth"
+    enum: ["clientAuth", "serverAuth", "clientAuth+serverAuth"]
+
+  - key: HORIZON_URL
+    description: "Externally-reachable Horizon base URL (no trailing slash). Used to compose the SCEP server URL for Intune."
+    required: true
+    sensitive: false
+    validator: "^https://[A-Za-z0-9.-]+(:[0-9]+)?$"
+    example: "https://clm.example.com"
+
+  - key: INTUNE_CONNECTOR_NAME
+    description: "Immutable name for the Intune third-party connector in Horizon."
+    required: true
+    sensitive: false
+    example: "intune-default"
+
+  - key: INTUNE_CONNECTOR_DISPLAY_NAME
+    description: "Human-friendly display name for the Intune connector."
+    required: true
+    sensitive: false
+    example: "Microsoft Intune"
+
+  - key: INTUNE_PROFILE_NAME
+    description: "Immutable name for the Intune (or Intune PKCS) Horizon profile. Used in the SCEP server URL path."
+    required: true
+    sensitive: false
+    example: "intune-windows-clientauth"
+
+  - key: INTUNE_PROFILE_DISPLAY_NAME
+    description: "Human-friendly display name for the Intune profile."
+    required: true
+    sensitive: false
+    example: "Intune Windows ClientAuth"
+
+  - key: TEMPLATE_BACKDATE_MINUTES
+    description: "Backdate (in minutes) on the underlying clientAuth template. The Intune knowledge resource warns that without a backdate of at least 10 minutes, devices re-enroll a fresh certificate at every Intune sync."
+    required: false
+    sensitive: false
+    default: 10
+    validator: "^[0-9]+$"
+
+  - key: THROTTLE_DURATION
+    description: "Connector throttle window in ISO 8601 duration form (for example PT1S, PT5S)."
+    required: false
+    sensitive: false
+    default: "PT1S"
+
+  - key: THROTTLE_PARALLELISM
+    description: "Maximum parallel calls the connector makes to the Intune side per throttle window."
+    required: false
+    sensitive: false
+    default: 5
+    validator: "^[0-9]+$"
+
+  - key: LEGACY_REVOCATION_MODE
+    description: "Use the legacy revocation API on Intune. Only used by the intune (SCEP) variant. Default false."
+    required: false
+    sensitive: false
+    default: "false"
+    enum: ["true", "false"]
+    applies_to: ["intune"]
+
+  - key: PUB_KEY
+    description: "Public key (PEM body) used to wrap the certificate per the Intune PKCS specification. Required only by intunepkcs."
+    required: true
+    sensitive: false
+    applies_to: ["intunepkcs"]
+
+  - key: KEY_NAME
+    description: "Name of the wrapping key (Azure Key Vault key name) used to wrap PKCS material. Required only by intunepkcs."
+    required: true
+    sensitive: false
+    applies_to: ["intunepkcs"]
+
+  - key: MDM_CREDENTIAL_NAME
+    description: "Immutable name for the Horizon credential that stores the Azure App Registration login (client id / client secret) targeting MDM."
+    required: true
+    sensitive: false
+    example: "intune-app-creds"
+
+  - key: MDM_CREDENTIAL_DISPLAY_NAME
+    description: "Human-friendly display name for the MDM credential."
+    required: true
+    sensitive: false
+    example: "Intune App Registration"
+
+  - key: SCEP_RA_CREDENTIAL_NAME
+    description: "Immutable name for the Horizon credential that stores the SCEP RA PKCS#12 enrolled in step 2."
+    required: true
+    sensitive: false
+    example: "intune-scep-ra"
+
+  - key: SCEP_RA_CREDENTIAL_DISPLAY_NAME
+    description: "Human-friendly display name for the SCEP RA credential."
+    required: true
+    sensitive: false
+    example: "Intune SCEP RA"
