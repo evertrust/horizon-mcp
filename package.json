@@ -7,7 +7,8 @@
     "horizon-mcp": "./dist/index.js"
   },
   "files": [
-    "dist/"
+    "dist/",
+    "skills/"
   ],
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -26,10 +27,12 @@
     "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon.test.ts -t \"exports events as CSV\" --reporter=verbose",
     "test:scenarios": "vitest run --config vitest.config.llm.ts --reporter=verbose",
     "test:llm": "bun run test:scenarios",
-    "validate:ci": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run verify:truth && bun run docs:diff && bun run test && bun run test:scenarios",
+    "validate:ci": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run verify:truth && bun run verify:skills && bun run lint:skills && bun run docs:diff && bun run test && bun run test:scenarios",
     "docs:refresh": "bun scripts/refresh-docs.ts",
     "docs:diff": "bun scripts/diff-docs.ts",
     "verify:truth": "bun scripts/verify-truth.ts",
+    "verify:skills": "bun scripts/verify-skills.ts",
+    "lint:skills": "markdownlint-cli2 \"skills/**/*.md\"",
     "lint": "eslint src/ tests/",
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write src/ tests/",
@@ -60,12 +63,14 @@
     "globals": "17.4.0",
     "husky": "9.1.7",
     "lint-staged": "16.4.0",
+    "markdownlint-cli2": "0.18.1",
     "prettier": "3.8.1",
     "semantic-release": "^25.0.3",
     "tsup": "8.5.1",
     "tsx": "4.21.0",
     "typescript": "6.0.2",
     "typescript-eslint": "8.58.0",
-    "vitest": "4.1.2"
+    "vitest": "4.1.2",
+    "yaml": "2.7.0"
   }
 }
