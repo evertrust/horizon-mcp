@@ -96,6 +96,10 @@ const ALLOWLIST_DENYLIST = new Set([
   'user_references',
   'resource_group_references',
   'partition_access',
+  'digicert_id',
+  'digicert_order_id',
+  'lifecycle_enroll',
+  'lifecycle-enroll',
   // YAML / placeholder tokens
   'true',
   'false',

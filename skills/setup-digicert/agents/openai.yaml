@@ -1,0 +1,15 @@
+schema: openai-skill-agent/v1
+agent_name: setup-digicert
+model: gpt-5
+tools:
+  - horizon
+prompts:
+  system: ./SKILL.md
+  references:
+    - ./references/recipe.md
+    - ./references/prerequisites.yaml
+    - ./references/troubleshooting.md
+guardrails:
+  require_user_confirmation_before_mutating: true
+  require_full_prerequisites_before_walkthrough: true
+  redact_sensitive_prerequisites: true

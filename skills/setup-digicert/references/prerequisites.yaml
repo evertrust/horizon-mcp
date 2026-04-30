@@ -1,0 +1,120 @@
+schema_version: "1"
+prerequisites:
+  - key: CERTCENTRAL_REGION
+    description: "DigiCert CertCentral region. US uses https://www.digicert.com. EU uses https://certcentral.digicert.eu. Most accounts are US; the CertCentral console shows CertCentral Europe in the top-left corner if EU."
+    required: true
+    sensitive: false
+    enum: ["US", "EU"]
+    default: "US"
+
+  - key: CERTCENTRAL_BASE_URL
+    description: "Base URL of the DigiCert CertCentral API. Derived from CERTCENTRAL_REGION but asked explicitly so the value is recorded for the connector configuration."
+    required: true
+    sensitive: false
+    enum:
+      - "https://www.digicert.com"
+      - "https://certcentral.digicert.eu"
+
+  - key: DIGICERT_ORG_ID
+    description: "Numeric DigiCert organization identifier used during enrollment. Read from CertCentral under Validation > Organizations."
+    required: true
+    sensitive: false
+    validator: "^[0-9]+$"
+    example: "123456"
+
+  - key: VALIDATED_DOMAINS
+    description: "Comma-separated list of FQDNs that the connector will be allowed to request certificates for. Every entry MUST already be validated in CertCentral. Domains that are not validated will fail at issuance even if the connector is correct."
+    required: true
+    sensitive: false
+    validator: "^[A-Za-z0-9.,*-]+$"
+    example: "example.com,api.example.com,*.staging.example.com"
+
+  - key: DIGICERT_PRODUCT_ID
+    description: "DigiCert product Name ID for the certificate type the connector will issue. Look up at https://dev.digicert.com/certcentral-apis/services-api/glossary.html#product-identifiers"
+    required: true
+    sensitive: false
+    example: "ssl_basic"
+
+  - key: DIGICERT_API_KEY
+    description: "DigiCert CertCentral API key dedicated to Horizon. Must be associated with a user holding administrative permissions and restricted to Orders. Visible only once at creation; capture it immediately."
+    required: true
+    sensitive: true
+    validator: ".+"
+
+  - key: API_TOKEN_CREDENTIAL_NAME
+    description: "Immutable name for the Horizon credential that stores the DigiCert API token."
+    required: true
+    sensitive: false
+    example: "digicert-api-token"
+
+  - key: API_TOKEN_CREDENTIAL_DISPLAY_NAME
+    description: "Human-friendly display name for the API token credential."
+    required: true
+    sensitive: false
+    example: "DigiCert API Token"
+
+  - key: DIGICERT_CONNECTOR_NAME
+    description: "Immutable name for the new DigiCert PKI connector. Must NOT contain spaces."
+    required: true
+    sensitive: false
+    validator: "^[A-Za-z0-9._-]+$"
+    example: "digicert-public-tls"
+
+  - key: DIGICERT_CONNECTOR_DISPLAY_NAME
+    description: "Human-friendly display name for the DigiCert PKI connector."
+    required: true
+    sensitive: false
+    example: "DigiCert Public TLS"
+
+  - key: PROFILE_NAME
+    description: "Existing Horizon profile to bind to the new connector via pkiConnector. Use __NEW__ to skip binding."
+    required: true
+    sensitive: false
+    default: "__NEW__"
+
+  - key: PROXY_URL
+    description: "Outbound HTTPS proxy URL if Horizon must use one to reach DigiCert. Empty if direct outbound is available."
+    required: false
+    sensitive: false
+    default: ""
+    example: "http://proxy.corp.example.com:3128"
+
+  - key: RETRY_INTERVAL_SECONDS
+    description: "Connector retry interval in seconds for queued DigiCert orders."
+    required: false
+    sensitive: false
+    default: 300
+    validator: "^[0-9]+$"
+
+  - key: TIMEOUT_SECONDS
+    description: "Connector HTTP timeout in seconds when calling the DigiCert API."
+    required: false
+    sensitive: false
+    default: 30
+    validator: "^[0-9]+$"
+
+  - key: SKIP_APPROVAL
+    description: "When true, the connector tells DigiCert to skip CertCentral approvals. Only enable if the CertCentral account is configured for unattended issuance."
+    required: false
+    sensitive: false
+    default: "false"
+    enum: ["true", "false"]
+
+  - key: CA_CERT_ID
+    description: "Optional DigiCert intermediate CA identifier when the product permits selecting one."
+    required: false
+    sensitive: false
+    default: ""
+
+  - key: QUEUE_ENABLED
+    description: "Enable Horizon queueing for DigiCert orders. Recommended true for production."
+    required: false
+    sensitive: false
+    default: "true"
+    enum: ["true", "false"]
+
+  - key: CUSTOM_CONNECTOR_DATA_MAPPING
+    description: "Optional JSON string mapping Horizon enrollment fields to DigiCert custom fields. Empty if not used."
+    required: false
+    sensitive: false
+    default: ""
