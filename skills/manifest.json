@@ -1,0 +1,89 @@
+{
+  "schema_version": "1",
+  "skills": [
+    {
+      "id": "setup-adcs",
+      "name": "Microsoft ADCS setup",
+      "description": "Walks the user through end-to-end setup of a Microsoft ADCS integration on a live Horizon CLM instance, asking for every prerequisite up front and verifying state at every step using the horizon MCP tools. Triggers: setup:adcs, /setup-adcs.",
+      "entrypoint": "skills/setup-adcs/SKILL.md",
+      "agent_files": ["skills/setup-adcs/agents/openai.yaml"],
+      "references": [
+        "skills/setup-adcs/references/recipe.md",
+        "skills/setup-adcs/references/prerequisites.yaml",
+        "skills/setup-adcs/references/troubleshooting.md"
+      ],
+      "tags": [
+        "setup:adcs",
+        "/setup-adcs",
+        "set up ADCS",
+        "configure ADCS connector",
+        "Microsoft ADCS integration"
+      ],
+      "requires_mcp": ["horizon"],
+      "version": "0.1.0"
+    },
+    {
+      "id": "setup-intune",
+      "name": "Microsoft Intune setup",
+      "description": "Walks the user through end-to-end setup of a Microsoft Intune integration on a live Horizon CLM instance covering both intune (SCEP) and intunepkcs variants, asking for every prerequisite up front and verifying state at every step. Triggers: setup:intune, /setup-intune.",
+      "entrypoint": "skills/setup-intune/SKILL.md",
+      "agent_files": ["skills/setup-intune/agents/openai.yaml"],
+      "references": [
+        "skills/setup-intune/references/recipe.md",
+        "skills/setup-intune/references/prerequisites.yaml",
+        "skills/setup-intune/references/troubleshooting.md"
+      ],
+      "tags": [
+        "setup:intune",
+        "/setup-intune",
+        "set up Intune",
+        "configure Intune SCEP",
+        "configure Intune PKCS",
+        "MDM Intune"
+      ],
+      "requires_mcp": ["horizon"],
+      "version": "0.1.0"
+    },
+    {
+      "id": "setup-digicert",
+      "name": "DigiCert CertCentral setup",
+      "description": "Walks the user through end-to-end setup of a DigiCert CertCentral integration on a live Horizon CLM instance, asking for every prerequisite up front and verifying state at every step. Triggers: setup:digicert, /setup-digicert.",
+      "entrypoint": "skills/setup-digicert/SKILL.md",
+      "agent_files": ["skills/setup-digicert/agents/openai.yaml"],
+      "references": [
+        "skills/setup-digicert/references/recipe.md",
+        "skills/setup-digicert/references/prerequisites.yaml",
+        "skills/setup-digicert/references/troubleshooting.md"
+      ],
+      "tags": [
+        "setup:digicert",
+        "/setup-digicert",
+        "set up DigiCert",
+        "configure DigiCert CertCentral"
+      ],
+      "requires_mcp": ["horizon"],
+      "version": "0.1.0"
+    },
+    {
+      "id": "setup-f5",
+      "name": "F5 BIG-IP setup",
+      "description": "Walks the user through end-to-end setup of an F5 BIG-IP integration on a live Horizon CLM instance covering iControl REST role provisioning, lifecycle automation triggers, scheduled tasks, and discovery, asking for every prerequisite up front. Triggers: setup:f5, /setup-f5.",
+      "entrypoint": "skills/setup-f5/SKILL.md",
+      "agent_files": ["skills/setup-f5/agents/openai.yaml"],
+      "references": [
+        "skills/setup-f5/references/recipe.md",
+        "skills/setup-f5/references/prerequisites.yaml",
+        "skills/setup-f5/references/troubleshooting.md"
+      ],
+      "tags": [
+        "setup:f5",
+        "/setup-f5",
+        "set up F5",
+        "configure F5 BIG-IP",
+        "F5 lifecycle automation"
+      ],
+      "requires_mcp": ["horizon"],
+      "version": "0.1.0"
+    }
+  ]
+}
