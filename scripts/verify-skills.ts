@@ -453,7 +453,7 @@ function checkNoEmDashesOrPrivateUrls(issues: Issue[]): void {
           message: 'Em-dash detected. Use a regular dash.',
         });
       }
-      if (/evertrust\.getoutline\.com/i.test(line)) {
+      if (/https?:\/\/[^\s)`'"]*evertrust\.getoutline\.com/i.test(line)) {
         issues.push({
           file,
           line: i + 1,

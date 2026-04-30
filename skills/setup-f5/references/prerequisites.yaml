@@ -1,0 +1,117 @@
+schema_version: "1"
+prerequisites:
+  - key: F5_TRIGGER_TYPE
+    description: "Automation mode for the F5 lifecycle integration. f5client uses iControl REST operational calls (recommended). f5as3 uses AS3 declarative."
+    required: true
+    sensitive: false
+    enum: ["f5client", "f5as3"]
+    default: "f5client"
+
+  - key: BIGIP_DNS
+    description: "DNS name (or IP) of the BIG-IP management endpoint. The skill will hit https://<BIGIP_DNS>/mgmt/* for the iControl REST setup steps."
+    required: true
+    sensitive: false
+    validator: "^[A-Za-z0-9.-]+$"
+    example: "bigip01.corp.example.com"
+
+  - key: BIGIP_ADMIN_USER
+    description: "BIG-IP administrator username used to bootstrap the technical account, the role, and the resource group via iControl REST. Used only during Phase 3."
+    required: true
+    sensitive: true
+
+  - key: BIGIP_ADMIN_PASSWORD
+    description: "Password for the BIG-IP administrator account. Used only during Phase 3 bootstrap."
+    required: true
+    sensitive: true
+    validator: ".+"
+
+  - key: TECHNICAL_USER_NAME
+    description: "Username Horizon will use against BIG-IP for lifecycle operations. Created during Phase 3."
+    required: false
+    sensitive: false
+    default: "horizonCLM"
+    validator: "^[A-Za-z][A-Za-z0-9_-]*$"
+
+  - key: TECHNICAL_USER_PASSWORD
+    description: "Password assigned to the BIG-IP technical user during Phase 3."
+    required: true
+    sensitive: true
+    validator: ".{12,}"
+
+  - key: RESOURCE_GROUP_NAME
+    description: "Name of the iControl REST resource group that grants Horizon the minimum necessary BIG-IP API surface."
+    required: false
+    sensitive: false
+    default: "horizonResourceGroup"
+
+  - key: ROLE_NAME
+    description: "Name of the iControl REST role that links the technical user to the resource group."
+    required: false
+    sensitive: false
+    default: "horizonCLMrole"
+
+  - key: F5_CREDENTIAL_NAME
+    description: "Immutable name for the Horizon credential that stores the BIG-IP technical user (login + password). Targeted at third-party connectors."
+    required: true
+    sensitive: false
+    example: "f5-bigip-tech-user"
+
+  - key: F5_CREDENTIAL_DISPLAY_NAME
+    description: "Human-friendly display name for the F5 credential."
+    required: true
+    sensitive: false
+    example: "F5 BIG-IP Technical User"
+
+  - key: F5_CONNECTOR_NAME
+    description: "Immutable name for the Horizon F5 third-party connector."
+    required: true
+    sensitive: false
+    example: "f5-bigip-prod"
+
+  - key: F5_CONNECTOR_DISPLAY_NAME
+    description: "Human-friendly display name for the F5 third-party connector."
+    required: true
+    sensitive: false
+    example: "F5 BIG-IP Production"
+
+  - key: F5_TRIGGER_NAME
+    description: "Immutable name for the F5 lifecycle trigger that pushes/renews/revokes certificates on the BIG-IP."
+    required: true
+    sensitive: false
+    example: "f5-bigip-prod-trigger"
+
+  - key: F5_TRIGGER_DISPLAY_NAME
+    description: "Human-friendly display name for the F5 trigger."
+    required: true
+    sensitive: false
+    example: "F5 BIG-IP Production Trigger"
+
+  - key: PROFILE_NAME
+    description: "Existing Horizon profile to bind the F5 trigger to via triggerHooks."
+    required: true
+    sensitive: false
+    example: "webra-tls-internal"
+
+  - key: SCHEDULED_TASK_NAME
+    description: "Immutable name for the WebRA scheduled task that drives recurring F5 lifecycle work (typically renewals)."
+    required: true
+    sensitive: false
+    example: "f5-renewals-daily"
+
+  - key: SCHEDULED_TASK_CRON
+    description: "Cron expression (Quartz format, six fields) for the WebRA scheduled task. Default fires daily at 02:00."
+    required: false
+    sensitive: false
+    default: "0 0 2 * * ?"
+
+  - key: DISCOVERY_CAMPAIGN_NAME
+    description: "Immutable name for the discovery campaign that ingests the BIG-IP certificate inventory back into Horizon."
+    required: true
+    sensitive: false
+    example: "f5-bigip-inventory"
+
+  - key: DISCOVERY_SCOPE
+    description: "Scope for the discovery side. Comma-separated list of CIDR ranges or DNS names that Horizon will scan to correlate certificates served by the BIG-IP."
+    required: true
+    sensitive: false
+    example: "10.10.20.0/24,clm-vips.corp.example.com"
