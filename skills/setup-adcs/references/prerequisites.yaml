@@ -1,0 +1,121 @@
+schema_version: "1"
+prerequisites:
+  - key: ADCS_VARIANT
+    description: "Connector variant to deploy. evtadcs uses the EverTrust ADCS Connector (recommended). msadcs uses the legacy Microsoft ADCS Web connector."
+    required: true
+    sensitive: false
+    enum: ["evtadcs", "msadcs"]
+    default: "evtadcs"
+
+  - key: AD_NETBIOS_NAME
+    description: "NetBIOS name of the Active Directory forest the ADCS belongs to. Uppercase, 1 to 15 characters, no dots."
+    required: true
+    sensitive: false
+    validator: "^[A-Z0-9-]{1,15}$"
+    example: "CORP"
+
+  - key: ADCS_CONNECTOR_URL
+    description: "Base URL of the EverTrust ADCS Connector with explicit scheme and port. Default port is 4443."
+    required: true
+    sensitive: false
+    validator: "^https://[A-Za-z0-9.-]+:[0-9]+$"
+    example: "https://adcs01.corp.example.com:4443"
+
+  - key: ISSUING_CA_PEM
+    description: "Full PEM body of the TLS certificate (and optionally its chain) that fronts the EverTrust ADCS Connector. Horizon trusts this CA to validate the connector HTTPS certificate."
+    required: true
+    sensitive: false
+    validator: "^-----BEGIN CERTIFICATE-----"
+
+  - key: CRLDP_URL
+    description: "CRL Distribution Point URL of the issuing CA used by Horizon to validate the ADCS Connector TLS certificate."
+    required: true
+    sensitive: false
+    validator: "^https?://.+"
+    example: "http://crldp.corp.example.com/issuing-ca.crl"
+
+  - key: ADCS_CERTIFICATE_TEMPLATE
+    description: "Microsoft ADCS certificate template name. Must match the template name on the CA byte-for-byte (case-sensitive)."
+    required: true
+    sensitive: false
+    example: "WebServer"
+
+  - key: ADCS_CA_CONFIG
+    description: "ADCS CA configuration string in the form CA_HOST\\CA_NAME (single backslash)."
+    required: true
+    sensitive: false
+    validator: "^[^\\\\]+\\\\[^\\\\]+$"
+    example: "CA01\\Corp Issuing CA"
+
+  - key: ADCS_ENROLLMENT_AGENT_P12
+    description: "Enrollment Agent PKCS#12 bundle. Provide an absolute path to a .p12 / .pfx file or a base64-encoded blob. Used by Horizon to enroll on behalf of end entities."
+    required: true
+    sensitive: true
+
+  - key: ADCS_ENROLLMENT_AGENT_PASSPHRASE
+    description: "Passphrase that protects the Enrollment Agent PKCS#12. Must be at least 8 characters."
+    required: true
+    sensitive: true
+    validator: ".{8,}"
+
+  - key: ADCS_ENROLLMENT_AGENT_P12_NAME
+    description: "Immutable name for the Horizon credential that stores the Enrollment Agent PKCS#12. Cannot change after creation."
+    required: true
+    sensitive: false
+    example: "adcs-enrollment-agent"
+
+  - key: ADCS_ENROLLMENT_AGENT_P12_DISPLAY_NAME
+    description: "Human-friendly display name shown in the Horizon UI for the Enrollment Agent credential."
+    required: true
+    sensitive: false
+    example: "ADCS Enrollment Agent"
+
+  - key: ADCS_TECHNICAL_ACCOUNT_LOGIN
+    description: "Active Directory technical account login in DOMAIN\\username form. Must have Read and Enroll on the certificate template, and Issue and Manage Certificates on the CA. Must not be a GMSA."
+    required: true
+    sensitive: true
+    validator: "^[A-Z0-9-]+\\\\[^\\\\]+$"
+    example: "CORP\\svc-horizon"
+
+  - key: ADCS_TECHNICAL_ACCOUNT_PASSWORD
+    description: "Password for the Active Directory technical account."
+    required: true
+    sensitive: true
+    validator: ".+"
+
+  - key: ADCS_TECHNICAL_ACCOUNT_LOGIN_NAME
+    description: "Immutable name for the Horizon credential that stores the AD technical account login."
+    required: true
+    sensitive: false
+    example: "adcs-technical-account"
+
+  - key: ADCS_TECHNICAL_ACCOUNT_LOGIN_DISPLAY_NAME
+    description: "Human-friendly display name shown in the Horizon UI for the technical account credential."
+    required: true
+    sensitive: false
+    example: "ADCS Technical Account"
+
+  - key: HORIZON_CRL_FALLBACK_POLICY
+    description: "Behavior when the CRL Distribution Point is unreachable from Horizon. Last available status keeps trusting the cert based on the previous CRL."
+    required: false
+    sensitive: false
+    enum: ["Last available status", "Strict"]
+    default: "Last available status"
+
+  - key: PKI_CONNECTOR_NAME
+    description: "Immutable name for the new PKI connector. Cannot change after creation."
+    required: true
+    sensitive: false
+    example: "adcs-webserver"
+
+  - key: PKI_CONNECTOR_DISPLAY_NAME
+    description: "Human-friendly display name shown in the Horizon UI for the PKI connector."
+    required: true
+    sensitive: false
+    example: "ADCS WebServer Template"
+
+  - key: PROFILE_NAME
+    description: "Existing Horizon profile to bind to this PKI connector via pkiConnector. Use __NEW__ to skip binding (a profile must be created manually before issuance)."
+    required: true
+    sensitive: false
+    default: "__NEW__"
