@@ -194,9 +194,12 @@ describe('Documentation tools', () => {
 
   it('get_doc_page returns cleaned Terraform content', async () => {
     const client = await createDocsToolClient(createMockClient());
+    const terraformVersion = getLatestIndexedVersion(
+      'terraform-provider-horizon',
+    );
 
     const result = await callJsonTool(client, 'get_doc_page', {
-      page_id: 'terraform-provider-horizon:0.5.0:certificate',
+      page_id: `terraform-provider-horizon:${terraformVersion}:certificate`,
     });
 
     expect(result['title']).toBe('horizon_certificate Resource');
