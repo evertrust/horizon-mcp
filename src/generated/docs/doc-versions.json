@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-28T14:22:07.017Z",
+  "generatedAt": "2026-05-19T12:30:22.612Z",
   "products": {
     "horizon": {
       "product": "horizon",
@@ -58,8 +58,8 @@
     },
     "terraform-provider-horizon": {
       "product": "terraform-provider-horizon",
-      "latest": "0.5.0",
-      "versions": ["0.5.0"],
+      "latest": "0.6.0",
+      "versions": ["0.6.0"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Terraform Registry provider metadata"
     },
