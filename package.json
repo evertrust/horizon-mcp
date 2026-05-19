@@ -4,10 +4,10 @@
   "description": "MCP server for Evertrust Horizon certificate lifecycle management",
   "type": "module",
   "repository": {
-    "url": "https://github.com/evertrust/horizon-mcp"
+    "url": "git+https://github.com/evertrust/horizon-mcp.git"
   },
   "bin": {
-    "horizon-mcp": "./dist/index.js"
+    "horizon-mcp": "dist/index.js"
   },
   "files": [
     "dist/"
