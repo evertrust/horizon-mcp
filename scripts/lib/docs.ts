@@ -599,7 +599,7 @@ async function collectTerraformPages(): Promise<DocPage[]> {
     const markdown = await fetchText(rawUrl);
     const pageTitle =
       extractFrontMatterValue(markdown, 'page_title')?.replace(
-        /\s+-\s+terraform-provider-horizon$/i,
+        /\s+-\s+(?:terraform-provider-)?horizon$/i,
         '',
       ) ?? doc.title;
     const title =
