@@ -1,3 +1,9 @@
+## [1.1.2](https://github.com/evertrust/horizon-mcp/compare/v1.1.1...v1.1.2) (2026-05-19)
+
+### Bug Fixes
+
+* run npm pkg fix command ([#10](https://github.com/evertrust/horizon-mcp/issues/10)) ([0bc7d01](https://github.com/evertrust/horizon-mcp/commit/0bc7d0121afa9b5efcd321368d676788368fe3bb))
+
 ## [1.1.1](https://github.com/evertrust/horizon-mcp/compare/v1.1.0...v1.1.1) (2026-05-19)
 
 ### Bug Fixes
