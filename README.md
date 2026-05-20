@@ -305,10 +305,29 @@ More granular scripts:
 | `bun run build`          | Production build via `tsup`.                            |
 | `bun run test`           | Unit tests with Vitest (80%+ coverage threshold).       |
 | `bun run test:e2e`       | E2E tests against a live Horizon instance.              |
-| `bun run test:llm`       | LLM evaluation scenarios.                               |
+| `bun run test:llm`       | Deterministic tool-selection scenarios (no LLM call).   |
+| `bun run test:llm:live`  | Real Claude-in-the-loop MCP usability tests.            |
 | `bun run lint`           | ESLint over `src/` and `tests/`.                        |
 | `bun run typecheck`      | `tsc --noEmit` only.                                    |
 | `bun run docs:refresh`   | Regenerate embedded docs from upstream sources.         |
+
+### Live LLM evaluation (`test:llm:live`)
+
+`bun run test:llm:live` drives the real Claude Agent SDK against the local Horizon MCP server, asking Claude a curated set of natural-language questions and asserting that it picks the right MCP tools. Use it before merging changes that alter tool names, descriptions, or input schemas - the deterministic ranker in `test:llm` is a fast proxy, but only a real model exposes whether your wording works for an actual user.
+
+Prerequisites:
+
+- `claude` CLI on `PATH` with an active subscription session (run `claude login` once)
+- `HORIZON_E2E_*` credentials in the environment (`source .env.local` first)
+- `ANTHROPIC_API_KEY` **unset** - the suite refuses to run against API billing to avoid surprise per-token charges. Subscription-only by design.
+
+Cost / billing:
+
+- Each scenario consumes one or two Claude Haiku 4.5 turns drawn from your Claude plan's credits (or the dedicated Agent SDK monthly credit after Anthropic's 2026-06-15 billing change).
+- A hard `maxBudgetUsd` cap (default `$0.05`) and `maxTurns` cap (default `2`) are enforced per scenario to bound any runaway loop.
+- Override the model with `HORIZON_LLM_LIVE_MODEL=claude-sonnet-4-6 bun run test:llm:live` when you want a stricter fidelity check.
+
+The suite is intentionally excluded from `validate:ci` so PR builds never burn subscription credits.
 
 See [docs/development.md](docs/development.md) for environment setup, fixture management, and contribution tips.
 

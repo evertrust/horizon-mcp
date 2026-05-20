@@ -1,13 +1,13 @@
-import { defineConfig } from "vitest/config";
-import { readFileSync } from "node:fs";
+import { readFileSync } from 'node:fs';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   plugins: [
     {
-      name: "md-raw",
+      name: 'md-raw',
       transform(_code: string, id: string) {
-        if (id.endsWith(".md")) {
-          const content = readFileSync(id, "utf-8");
+        if (id.endsWith('.md')) {
+          const content = readFileSync(id, 'utf-8');
           return { code: `export default ${JSON.stringify(content)};` };
         }
       },
@@ -15,13 +15,13 @@ export default defineConfig({
   ],
   test: {
     globals: true,
-    environment: "node",
-    include: ["tests/**/*.test.ts"],
-    exclude: ["tests/e2e/**", "tests/llm-evaluation/**"],
+    environment: 'node',
+    include: ['tests/**/*.test.ts'],
+    exclude: ['tests/e2e/**', 'tests/llm-evaluation/**', 'tests/llm-live/**'],
     coverage: {
-      provider: "v8",
-      include: ["src/**/*.ts"],
-      exclude: ["src/resources/knowledge/**"],
+      provider: 'v8',
+      include: ['src/**/*.ts'],
+      exclude: ['src/resources/knowledge/**'],
       thresholds: {
         statements: 80,
         branches: 80,
