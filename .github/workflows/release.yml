@@ -13,12 +13,13 @@ concurrency:
 jobs:
   release:
     name: Release
-    runs-on: runs-on=${{ github.run_id }}/runner=evertrust
+    runs-on: ubuntu-latest
     if: github.event.workflow_run.conclusion == 'success'
     permissions:
       contents: write
       packages: write
       id-token: write
+      issues: write
 
     steps:
       - name: Fetch secrets via Vault
@@ -31,15 +32,12 @@ jobs:
             ci/data/repositories/evertrust/horizon-mcp/github-app id | GITHUB_APP_ID ;
             ci/data/repositories/evertrust/horizon-mcp/github-app private_key | GITHUB_APP_PRIVATE_KEY ;
 
-      - name: Configure Runs-On
-        uses: runs-on/action@v2
-
       # From https://github.com/actions/create-github-app-token#configure-git-cli-for-an-apps-bot-user
       - name: Fetch Github App token
         uses: actions/create-github-app-token@v3
         id: app-token
         with:
-          app-id: ${{ env.GITHUB_APP_ID }}
+          client-id: ${{ env.GITHUB_APP_ID }}
           private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
 
       - name: Get GitHub App User ID
@@ -87,4 +85,4 @@ jobs:
         run: bunx semantic-release
         env:
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'

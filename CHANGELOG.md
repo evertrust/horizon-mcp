@@ -1,3 +1,24 @@
+## [1.1.2](https://github.com/evertrust/horizon-mcp/compare/v1.1.1...v1.1.2) (2026-05-19)
+
+### Bug Fixes
+
+* run npm pkg fix command ([#10](https://github.com/evertrust/horizon-mcp/issues/10)) ([0bc7d01](https://github.com/evertrust/horizon-mcp/commit/0bc7d0121afa9b5efcd321368d676788368fe3bb))
+
+## [1.1.1](https://github.com/evertrust/horizon-mcp/compare/v1.1.0...v1.1.1) (2026-05-19)
+
+### Bug Fixes
+
+* ci configuration for public access ([#8](https://github.com/evertrust/horizon-mcp/issues/8)) ([89b99b8](https://github.com/evertrust/horizon-mcp/commit/89b99b81d485f2b3227fe84541a4a66c33107b99))
+* public package access ([#7](https://github.com/evertrust/horizon-mcp/issues/7)) ([94d2495](https://github.com/evertrust/horizon-mcp/commit/94d249514cc7726b281b863c56e7969be54bb6f8))
+* trailing slash in package.json ([#9](https://github.com/evertrust/horizon-mcp/issues/9)) ([a8dff02](https://github.com/evertrust/horizon-mcp/commit/a8dff02bad7a0952ce8de7a2dbba06fb3dfa4633))
+
+## [1.1.0](https://github.com/evertrust/horizon-mcp/compare/v1.0.1...v1.1.0) (2026-04-29)
+
+### Features
+
+* add docs search tools and small-model guidance ([#4](https://github.com/evertrust/horizon-mcp/issues/4)) ([77c86e4](https://github.com/evertrust/horizon-mcp/commit/77c86e42f342c5626963ab471c52f7d75e852b74))
+* add new tools for doc search & improve MCP usability for small models ([#5](https://github.com/evertrust/horizon-mcp/issues/5)) ([b60c551](https://github.com/evertrust/horizon-mcp/commit/b60c551f4977eb9243a33bdaa97d6b842f086db3))
+
 ## [1.0.1](https://github.com/evertrust/horizon-mcp/compare/v1.0.0...v1.0.1) (2026-04-08)
 
 ### Bug Fixes
