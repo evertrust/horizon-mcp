@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { AuthProvider } from '../../src/auth/base.js';
-import { HorizonError } from '../../src/client/errors.js';
+import {
+  HorizonError,
+  HorizonResponseValidationError,
+} from '../../src/client/errors.js';
 
 // ---------------------------------------------------------------------------
 // Mock undici - must be before HorizonClient import
@@ -265,6 +269,43 @@ describe('ClientReauth', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
     // CSRF path should NOT trigger markAuthFailed
     expect(auth.markAuthFailedCount).toBe(0);
+    await client.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Optional Zod response validation
+// ---------------------------------------------------------------------------
+
+describe('ClientSchemaValidation', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('throws HorizonResponseValidationError on mismatched schema', async () => {
+    const auth = new ApiKeyAuthProvider('id', 'key');
+    const client = makeClient(auth);
+
+    // Server returns { name: <number> }, but schema expects string.
+    mockFetch.mockResolvedValueOnce(fakeResponse(200, { name: 42 }));
+
+    const schema = z.object({ name: z.string() });
+
+    await expect(
+      client.get('/api/v1/cas/test', undefined, { schema }),
+    ).rejects.toBeInstanceOf(HorizonResponseValidationError);
+    await client.close();
+  });
+
+  it('returns parsed body when schema matches', async () => {
+    const auth = new ApiKeyAuthProvider('id', 'key');
+    const client = makeClient(auth);
+
+    mockFetch.mockResolvedValueOnce(fakeResponse(200, { name: 'ca1' }));
+
+    const schema = z.object({ name: z.string() });
+    const result = await client.get('/api/v1/cas/test', undefined, { schema });
+    expect(result).toEqual({ name: 'ca1' });
     await client.close();
   });
 });

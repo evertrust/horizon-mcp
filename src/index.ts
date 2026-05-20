@@ -127,6 +127,8 @@ async function main(): Promise<void> {
     timeout: settings.timeout,
     exportTimeout: settings.exportTimeout,
     verifySsl: settings.verifySsl,
+    testedVersions: settings.testedVersions,
+    warnVersions: settings.warnVersions,
   });
 
   // Register all resources
@@ -156,10 +158,17 @@ async function main(): Promise<void> {
   // Shutdown lifecycle
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, async () => {
-      await client.close();
-      await auth.cleanup();
-      logger.info('Horizon MCP server shut down.');
-      process.exit(0);
+      let exitCode = 0;
+      try {
+        await client.close();
+        await auth.cleanup();
+      } catch (err) {
+        logger.error(`Error during shutdown: ${err}`);
+        exitCode = 1;
+      } finally {
+        logger.info('Horizon MCP server shut down.');
+        process.exit(exitCode);
+      }
     });
   }
 
@@ -169,6 +178,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  logger.error(`Fatal error: ${err}`);
   process.exit(1);
 });
