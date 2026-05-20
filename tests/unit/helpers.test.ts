@@ -10,6 +10,7 @@ import {
   buildSortedBy,
   csvTruncationMetadata,
   deleteGuard,
+  encodePathSegment,
   toApiPageIndex,
   truncateRecord,
 } from '../../src/tools/helpers.js';
@@ -559,5 +560,35 @@ describe('csvTruncationMetadata', () => {
 
     expect(meta.returned_rows).toBe(0);
     expect(meta.truncated).toBe(false);
+  });
+});
+
+describe('encodePathSegment', () => {
+  it('encodes forward slashes so they cannot break out of the segment', () => {
+    expect(encodePathSegment('foo/bar')).toBe('foo%2Fbar');
+  });
+
+  it('encodes question marks so they cannot start a query string', () => {
+    expect(encodePathSegment('what?')).toBe('what%3F');
+  });
+
+  it('encodes path traversal dots verbatim (the SDK will reject ..)', () => {
+    // encodeURIComponent does not encode the dot character itself, but it
+    // does encode the slash, so '../etc/passwd' becomes '..%2Fetc%2Fpasswd'
+    // which the server will treat as a single opaque segment.
+    expect(encodePathSegment('../etc/passwd')).toBe('..%2Fetc%2Fpasswd');
+  });
+
+  it('encodes spaces', () => {
+    expect(encodePathSegment('hello world')).toBe('hello%20world');
+  });
+
+  it('encodes unicode characters', () => {
+    expect(encodePathSegment('café')).toBe('caf%C3%A9');
+    expect(encodePathSegment('日本')).toBe('%E6%97%A5%E6%9C%AC');
+  });
+
+  it('passes safe identifier characters through unchanged', () => {
+    expect(encodePathSegment('abc-123_XYZ.ext')).toBe('abc-123_XYZ.ext');
   });
 });

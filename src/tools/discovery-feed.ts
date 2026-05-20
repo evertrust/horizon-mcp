@@ -20,6 +20,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
+import { encodePathSegment } from './helpers.js';
 import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
@@ -62,7 +63,7 @@ export function registerDiscoveryFeedTools(
     },
     async ({ campaign_name }) => {
       const result = await client.get<Record<string, unknown>>(
-        `${FEED_BASE}/${campaign_name}`,
+        `${FEED_BASE}/${encodePathSegment(campaign_name)}`,
       );
       const sessionId = (result['id'] as string | undefined) ?? '';
       return {
@@ -262,7 +263,9 @@ export function registerDiscoveryFeedTools(
       }),
     },
     async ({ campaign_name, session_id }) => {
-      await client.delete(`${FEED_BASE}/${campaign_name}/${session_id}`);
+      await client.delete(
+        `${FEED_BASE}/${encodePathSegment(campaign_name)}/${encodePathSegment(session_id)}`,
+      );
       return {
         content: [
           {

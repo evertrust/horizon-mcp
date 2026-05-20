@@ -1,10 +1,15 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { X509Certificate } from 'node:crypto';
+import * as dns from 'node:dns';
+import * as net from 'node:net';
 import * as tls from 'node:tls';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { getLogger } from '../../logging.js';
 import { registerTool } from '../register.js';
+
+const cryptoLogger = getLogger('horizon_mcp.tools.crypto');
 
 // ---------------------------------------------------------------------------
 // Default port lookup for TLS URI parsing
@@ -50,18 +55,95 @@ function parseTlsUri(uri: string): { host: string; port: number } {
 }
 
 // ---------------------------------------------------------------------------
+// SSRF guard: block private/link-local IPs unless explicitly allowed
+// ---------------------------------------------------------------------------
+
+function parseIpv4(addr: string): readonly number[] | undefined {
+  if (net.isIPv4(addr) !== true) return undefined;
+  const parts = addr.split('.').map((p) => Number(p));
+  return parts.length === 4 && parts.every((p) => Number.isInteger(p))
+    ? parts
+    : undefined;
+}
+
+function isPrivateIpv4(addr: string): boolean {
+  const o = parseIpv4(addr);
+  if (!o) return false;
+  if (o[0] === 10) return true; // 10.0.0.0/8
+  if (o[0] === 127) return true; // 127.0.0.0/8 (loopback)
+  if (o[0] === 0) return true; // 0.0.0.0/8
+  if (o[0]! >= 224) return true; // 224.0.0.0/4 multicast and above (incl. 240/4)
+  if (o[0] === 169 && o[1] === 254) return true; // 169.254.0.0/16 link-local
+  if (o[0] === 172 && o[1]! >= 16 && o[1]! <= 31) return true; // 172.16.0.0/12
+  if (o[0] === 192 && o[1] === 168) return true; // 192.168.0.0/16
+  if (o[0] === 100 && o[1]! >= 64 && o[1]! <= 127) return true; // 100.64.0.0/10 CGNAT
+  return false;
+}
+
+function isPrivateIpv6(addr: string): boolean {
+  if (net.isIPv6(addr) !== true) return false;
+  const lower = addr.toLowerCase();
+  if (lower === '::1') return true; // loopback
+  if (lower === '::') return true; // unspecified
+  // IPv4-mapped IPv6 (::ffff:0:0/96) - re-check embedded IPv4
+  const mapped = lower.match(/^::ffff:([0-9a-f.:]+)$/);
+  if (mapped) {
+    const embedded = mapped[1]!;
+    if (net.isIPv4(embedded)) {
+      return isPrivateIpv4(embedded);
+    }
+  }
+  // fe80::/10 link-local
+  if (/^fe[89ab][0-9a-f]?:/.test(lower)) return true;
+  // fc00::/7 unique local
+  if (/^f[cd][0-9a-f]{2}:/.test(lower)) return true;
+  return false;
+}
+
+function isPrivateAddress(addr: string): boolean {
+  return isPrivateIpv4(addr) || isPrivateIpv6(addr);
+}
+
+export async function resolveAndCheckHost(
+  host: string,
+): Promise<{ ip: string }> {
+  // If the user already passed an IP literal, bypass DNS entirely.
+  const direct = net.isIP(host);
+  const ip = direct
+    ? host
+    : (await dns.promises.lookup(host, { all: false })).address;
+
+  if (
+    process.env['HORIZON_ALLOW_PRIVATE_TLS_PROBE'] !== '1' &&
+    isPrivateAddress(ip)
+  ) {
+    throw new Error(
+      `Private/link-local IP ${ip} (resolved from ${host}) blocked. ` +
+        'Set HORIZON_ALLOW_PRIVATE_TLS_PROBE=1 to override.',
+    );
+  }
+
+  return { ip };
+}
+
+// ---------------------------------------------------------------------------
 // TLS certificate fetch (node:tls + node:crypto)
 // ---------------------------------------------------------------------------
 
 function fetchPeerCertificate(
-  host: string,
+  ip: string,
+  servername: string,
   port: number,
   timeoutMs: number,
 ): Promise<X509Certificate> {
   return new Promise((resolve, reject) => {
+    // Connect to the resolved IP literal and pass the original hostname as
+    // servername for SNI. This avoids a second DNS lookup that could return
+    // a different (public) IP than the one we already validated (TOCTOU).
     const socket = tls.connect(
       {
-        host,
+        host: ip,
+        servername,
         port,
         rejectUnauthorized: false,
         checkServerIdentity: () => undefined,
@@ -82,7 +164,7 @@ function fetchPeerCertificate(
       socket.destroy();
       reject(
         new Error(
-          `Connection to ${host}:${port} timed out after ${timeoutMs / 1000}s`,
+          `Connection to ${servername}:${port} timed out after ${timeoutMs / 1000}s`,
         ),
       );
     });
@@ -475,9 +557,34 @@ export function registerCryptoTools(
       const { host, port } = parseTlsUri(uri);
       const timeoutMs = timeout * 1000;
 
+      let resolvedIp: string;
+      try {
+        const resolved = await resolveAndCheckHost(host);
+        resolvedIp = resolved.ip;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: true,
+                content: `Cannot probe ${host}:${port}: ${message}`,
+              }),
+            },
+          ],
+        };
+      }
+
+      cryptoLogger.info('fetch_exposed_certificate probe', {
+        host,
+        resolved_ip: resolvedIp,
+        port,
+      });
+
       let cert: X509Certificate;
       try {
-        cert = await fetchPeerCertificate(host, port, timeoutMs);
+        cert = await fetchPeerCertificate(resolvedIp, host, port, timeoutMs);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
 

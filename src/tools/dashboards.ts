@@ -24,6 +24,7 @@ import {
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
+  encodePathSegment,
 } from './helpers.js';
 import { registerTool } from './register.js';
 
@@ -329,7 +330,7 @@ export function registerDashboardTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${DASHBOARD_BASE}/${name}`);
+      await client.delete(`${DASHBOARD_BASE}/${encodePathSegment(name)}`);
       return textResult(
         JSON.stringify({ deleted: true, name, kind: 'dashboard' }),
       );
@@ -705,7 +706,9 @@ export function registerDashboardTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${QUERY_BASE}/${name}`);
+      const result = await client.get(
+        `${QUERY_BASE}/${encodePathSegment(name)}`,
+      );
       return textResult(JSON.stringify(result));
     },
   );
@@ -786,7 +789,7 @@ export function registerDashboardTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${QUERY_BASE}/${name}`);
+      await client.delete(`${QUERY_BASE}/${encodePathSegment(name)}`);
       return textResult(
         JSON.stringify({ deleted: true, name, kind: 'saved_query' }),
       );

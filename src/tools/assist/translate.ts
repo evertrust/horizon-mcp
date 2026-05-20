@@ -20,6 +20,12 @@ import type { HorizonClient } from '../../client/http.js';
 import { registerTool } from '../register.js';
 import { QUERY_METADATA } from './query.js';
 
+// Cap user-provided text before any regex evaluation. The extractor runs
+// many RegExp matches per request against patterns with alternation and
+// quantifiers, so unbounded input is a ReDoS risk. 4096 bytes is far above
+// realistic natural-language query lengths.
+export const MAX_TRANSLATE_INPUT_BYTES = 4096;
+
 // ---------------------------------------------------------------------------
 // Data structures
 // ---------------------------------------------------------------------------
@@ -650,8 +656,12 @@ export function extractHeql(text: string): Condition[] {
 
   // --- HEQL detail.* fields ---
   // Certificate references -> detail.certificateDn
+  // Use a single bounded character class instead of `[\w][\w.*-]*(?:\.[\w.*-]+)*`
+  // to avoid the nested-quantifier shape that allows catastrophic backtracking
+  // when adjacent dots overlap the outer and inner groups. Combined with the
+  // MAX_TRANSLATE_INPUT_BYTES cap this bounds worst-case regex work.
   const certPattern =
-    /(?:certificate|cert)\s+(?:named?\s+|called\s+|for\s+)?["']?([\w][\w.*-]*(?:\.[\w.*-]+)*)["']?/;
+    /(?:certificate|cert)\s+(?:named?\s+|called\s+|for\s+)?["']?([\w][\w.*-]{0,127})["']?/;
   let m = certPattern.exec(lower);
   if (m) {
     // Preserve original case from the input text
@@ -815,6 +825,23 @@ export function registerTranslateTools(
       }),
     },
     async ({ natural_language, target_type, validate }) => {
+      // --- Phase 0: cap input length to bound regex work (ReDoS guard) ---
+      const inputBytes = Buffer.byteLength(natural_language, 'utf8');
+      if (inputBytes > MAX_TRANSLATE_INPUT_BYTES) {
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error:
+                  `Input exceeds ${MAX_TRANSLATE_INPUT_BYTES}-byte limit ` +
+                  `(got ${inputBytes} bytes). Please shorten your query.`,
+              }),
+            },
+          ],
+        };
+      }
+
       // --- Phase 1: detect query type ---
       let qt: QueryType;
       let intentConfidence: number;

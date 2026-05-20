@@ -25,6 +25,7 @@ import {
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
+  encodePathSegment,
   getStripMergePut,
 } from './helpers.js';
 import { registerTool } from './register.js';
@@ -196,7 +197,7 @@ export function registerDatasourceTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${DS_BASE}/${name}`);
+      const result = await client.get(`${DS_BASE}/${encodePathSegment(name)}`);
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -856,7 +857,7 @@ export function registerDatasourceTools(
 
       const result = await getStripMergePut(
         client,
-        `${DS_BASE}/${name}`,
+        `${DS_BASE}/${encodePathSegment(name)}`,
         DS_BASE,
         'datasource',
         overrides,
@@ -906,7 +907,7 @@ export function registerDatasourceTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${DS_BASE}/${name}`);
+      await client.delete(`${DS_BASE}/${encodePathSegment(name)}`);
       return {
         content: [
           {

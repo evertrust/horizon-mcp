@@ -23,6 +23,7 @@ import {
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
+  encodePathSegment,
   getStripMergePut,
 } from './helpers.js';
 import { registerTool } from './register.js';
@@ -33,16 +34,12 @@ import { registerTool } from './register.js';
 
 const CAMPAIGN_BASE = '/api/v1/discovery/campaigns';
 
-const VALID_ACCESS_LEVELS = new Set([
-  'everyone',
-  'authenticated',
-  'authorized',
-]);
-
 // ---------------------------------------------------------------------------
 // Validation helpers
 // ---------------------------------------------------------------------------
 
+// Zod schema covers the access level enum and required sections at the MCP
+// boundary, so no extra runtime validator is needed beyond name shape.
 const authorizationLevelSectionSchema = z
   .object({
     accessLevel: z.enum(['everyone', 'authenticated', 'authorized']),
@@ -64,27 +61,6 @@ function validateName(name: string): void {
       remediation:
         'Campaign names cannot contain dots (DotlessNameIdentifier).',
     });
-  }
-}
-
-function validateAuthorizationLevels(levels: Record<string, unknown>): void {
-  for (const field of ['search', 'feed'] as const) {
-    const section = levels[field];
-    if (typeof section !== 'object' || section === null) {
-      throw new HorizonError(422, {
-        message: `authorization_levels.${field} is required and must be an object.`,
-        remediation:
-          "Each section needs at minimum an 'accessLevel' key with one of: " +
-          `${JSON.stringify([...VALID_ACCESS_LEVELS].sort())}.`,
-      });
-    }
-    const access = (section as Record<string, unknown>)['accessLevel'];
-    if (typeof access !== 'string' || !VALID_ACCESS_LEVELS.has(access)) {
-      throw new HorizonError(422, {
-        message: `Invalid accessLevel '${String(access)}' in authorization_levels.${field}.`,
-        remediation: `Valid values: ${JSON.stringify([...VALID_ACCESS_LEVELS].sort())}.`,
-      });
-    }
   }
 }
 
@@ -156,7 +132,9 @@ export function registerDiscoveryTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${CAMPAIGN_BASE}/${name}`);
+      const result = await client.get(
+        `${CAMPAIGN_BASE}/${encodePathSegment(name)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -246,9 +224,6 @@ export function registerDiscoveryTools(
       grading_policies,
     }) => {
       validateName(name);
-      validateAuthorizationLevels(
-        authorization_levels as unknown as Record<string, unknown>,
-      );
 
       const payload: Record<string, unknown> = {
         name,
@@ -351,12 +326,6 @@ export function registerDiscoveryTools(
       grading_policies,
       clear_fields,
     }) => {
-      if (authorization_levels !== undefined) {
-        validateAuthorizationLevels(
-          authorization_levels as unknown as Record<string, unknown>,
-        );
-      }
-
       const overrides: Record<string, unknown> = {};
       if (authorization_levels !== undefined)
         overrides['authorizationLevels'] = authorization_levels;
@@ -375,7 +344,7 @@ export function registerDiscoveryTools(
 
       const result = await getStripMergePut(
         client,
-        `${CAMPAIGN_BASE}/${name}`,
+        `${CAMPAIGN_BASE}/${encodePathSegment(name)}`,
         CAMPAIGN_BASE,
         'discovery_campaign',
         overrides,
@@ -422,7 +391,7 @@ export function registerDiscoveryTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${CAMPAIGN_BASE}/${name}`);
+      await client.delete(`${CAMPAIGN_BASE}/${encodePathSegment(name)}`);
       return {
         content: [
           {
@@ -461,7 +430,7 @@ export function registerDiscoveryTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.patch(`${CAMPAIGN_BASE}/${name}`, {});
+      await client.patch(`${CAMPAIGN_BASE}/${encodePathSegment(name)}`, {});
       return {
         content: [
           {

@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { encodePathSegment } from '../helpers.js';
 import { registerTool } from '../register.js';
 
 export function registerSystemTools(
@@ -78,7 +79,7 @@ export function registerSystemTools(
       }),
     },
     async ({ policy_name, certificate_pem }) => {
-      const encodedName = encodeURIComponent(policy_name);
+      const encodedName = encodePathSegment(policy_name);
       const policy = await client.get(
         `/api/v1/certificate/grading/policies/${encodedName}`,
       );
@@ -132,7 +133,7 @@ export function registerSystemTools(
       }),
     },
     async ({ ruleset_name, certificate_pem }) => {
-      const encodedName = encodeURIComponent(ruleset_name);
+      const encodedName = encodePathSegment(ruleset_name);
       const ruleset = await client.get(
         `/api/v1/certificate/grading/rulesets/${encodedName}`,
       );

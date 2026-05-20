@@ -2,7 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
-import { applyNameFilter, buildListResponse } from './helpers.js';
+import {
+  applyNameFilter,
+  buildListResponse,
+  encodePathSegment,
+} from './helpers.js';
 import { registerTool } from './register.js';
 
 const PROFILE_BASE = '/api/v1/certificate/profiles';
@@ -87,7 +91,9 @@ export function registerProfileTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${PROFILE_BASE}/${name}`);
+      const result = await client.get(
+        `${PROFILE_BASE}/${encodePathSegment(name)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

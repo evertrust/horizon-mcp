@@ -7,6 +7,19 @@ import type { HorizonClient } from '../client/http.js';
 import { toUpdatePayload } from '../models/payloads.js';
 
 // ---------------------------------------------------------------------------
+// URL path encoding
+// ---------------------------------------------------------------------------
+
+/**
+ * Encode a single URL path segment value. Use for every interpolated
+ * identifier in URL paths to prevent path traversal and request smuggling.
+ * Encode only the segment value - never wrap fixed `/` separators or static
+ * path fragments.
+ */
+export const encodePathSegment = (value: string): string =>
+  encodeURIComponent(value);
+
+// ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
@@ -214,7 +227,7 @@ export async function preflightRequestAction(
   let request: Record<string, unknown>;
   try {
     request = await client.get<Record<string, unknown>>(
-      `/api/v1/requests/${requestId}`,
+      `/api/v1/requests/${encodePathSegment(requestId)}`,
     );
   } catch (err) {
     if (err instanceof HorizonError) {

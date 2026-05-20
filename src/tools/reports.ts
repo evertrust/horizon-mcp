@@ -14,7 +14,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
-import { deleteGuard } from './helpers.js';
+import { deleteGuard, encodePathSegment } from './helpers.js';
 import { registerTool } from './register.js';
 
 // ---------------------------------------------------------------------------
@@ -65,7 +65,7 @@ export function registerReportTools(
         expired: String(expired),
       });
       const path = report_name
-        ? `${REPORT_API_BASE}/${report_name}`
+        ? `${REPORT_API_BASE}/${encodePathSegment(report_name)}`
         : REPORT_API_BASE;
 
       const data = await client.get<unknown>(path, params);
@@ -110,7 +110,9 @@ export function registerReportTools(
       }),
     },
     async ({ report_uuid }) => {
-      const csvText = await client.getText(`${REPORT_CSV_BASE}/${report_uuid}`);
+      const csvText = await client.getText(
+        `${REPORT_CSV_BASE}/${encodePathSegment(report_uuid)}`,
+      );
 
       const lines = csvText.trim().split('\n');
       const rowCount = lines.length > 0 ? Math.max(0, lines.length - 1) : 0;
@@ -150,7 +152,9 @@ export function registerReportTools(
     },
     async ({ report_uuid, expected_uuid }) => {
       deleteGuard(report_uuid, expected_uuid, 'uuid');
-      await client.delete(`${REPORT_API_BASE}/${report_uuid}`);
+      await client.delete(
+        `${REPORT_API_BASE}/${encodePathSegment(report_uuid)}`,
+      );
       return {
         content: [
           {

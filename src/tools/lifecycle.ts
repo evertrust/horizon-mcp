@@ -23,6 +23,7 @@ import {
   buildSearchPayload,
   buildSearchResponse,
   csvTruncationMetadata,
+  encodePathSegment,
   preflightRequestAction,
 } from './helpers.js';
 import { registerTool } from './register.js';
@@ -145,6 +146,46 @@ function buildEventSearchCsv(
   return [header, ...rows].join('\n');
 }
 
+interface EventSearchPage {
+  readonly batch: readonly Record<string, unknown>[];
+  readonly totalAvailable: number | undefined;
+  readonly hasMore: boolean;
+}
+
+async function fetchEventPage(
+  client: HorizonClient,
+  query: string,
+  sortedBy: string | undefined,
+  pageIndex: number,
+): Promise<EventSearchPage> {
+  const payload = buildSearchPayload(
+    query,
+    undefined,
+    pageIndex,
+    EVENT_CSV_PAGE_SIZE,
+    sortedBy,
+    pageIndex === 0,
+  );
+  const result = await client.post<Record<string, unknown>>(
+    '/api/v1/events/search',
+    payload,
+    { timeout: CSV_TIMEOUT },
+  );
+  const batch = (result['results'] ?? result['items'] ?? []) as Record<
+    string,
+    unknown
+  >[];
+  const totalAvailable =
+    typeof result['count'] === 'number'
+      ? (result['count'] as number)
+      : undefined;
+  return {
+    batch,
+    totalAvailable,
+    hasMore: Boolean(result['hasMore']),
+  };
+}
+
 async function exportEventsCsvFromSearch(
   client: HorizonClient,
   query: string,
@@ -157,51 +198,25 @@ async function exportEventsCsvFromSearch(
   max_rows: number;
   source: 'search_fallback';
 }> {
-  const records: Record<string, unknown>[] = [];
+  let records: readonly Record<string, unknown>[] = [];
   let totalAvailable: number | undefined;
   let hasMore = false;
+  const maxPages = Math.ceil(EVENT_CSV_MAX_ROWS / EVENT_CSV_PAGE_SIZE);
 
-  for (
-    let pageIndex = 0;
-    pageIndex < EVENT_CSV_MAX_ROWS / EVENT_CSV_PAGE_SIZE &&
-    records.length < EVENT_CSV_MAX_ROWS;
-    pageIndex += 1
-  ) {
-    const payload = buildSearchPayload(
-      query,
-      undefined,
-      pageIndex,
-      EVENT_CSV_PAGE_SIZE,
-      sortedBy,
-      pageIndex === 0,
-    );
-    const result = await client.post<Record<string, unknown>>(
-      '/api/v1/events/search',
-      payload,
-      { timeout: CSV_TIMEOUT },
-    );
-
-    const batch = (result['results'] ?? result['items'] ?? []) as Record<
-      string,
-      unknown
-    >[];
-    if (pageIndex === 0 && typeof result['count'] === 'number') {
-      totalAvailable = result['count'] as number;
+  for (let pageIndex = 0; pageIndex < maxPages; pageIndex += 1) {
+    const page = await fetchEventPage(client, query, sortedBy, pageIndex);
+    if (pageIndex === 0 && page.totalAvailable !== undefined) {
+      totalAvailable = page.totalAvailable;
     }
-
-    if (batch.length === 0) {
+    if (page.batch.length === 0) {
       hasMore = false;
       break;
     }
-
-    records.push(...batch.slice(0, EVENT_CSV_MAX_ROWS - records.length));
+    const remaining = EVENT_CSV_MAX_ROWS - records.length;
+    records = [...records, ...page.batch.slice(0, remaining)];
     hasMore =
-      Boolean(result['hasMore']) ||
-      records.length < (totalAvailable ?? records.length);
-
-    if (!hasMore || records.length >= EVENT_CSV_MAX_ROWS) {
-      break;
-    }
+      page.hasMore || records.length < (totalAvailable ?? records.length);
+    if (!hasMore || records.length >= EVENT_CSV_MAX_ROWS) break;
   }
 
   return {
@@ -360,7 +375,9 @@ export function registerLifecycleTools(
       }),
     },
     async ({ certificate_id }) => {
-      const result = await client.get(`/api/v1/certificates/${certificate_id}`);
+      const result = await client.get(
+        `/api/v1/certificates/${encodePathSegment(certificate_id)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -461,7 +478,7 @@ export function registerLifecycleTools(
       }
 
       const cert = await client.get<Record<string, unknown>>(
-        `/api/v1/certificates/${certificate_id}`,
+        `/api/v1/certificates/${encodePathSegment(certificate_id)}`,
       );
 
       const pem = cert['certificate'] ?? cert['pem'] ?? cert['certificatePEM'];
@@ -692,19 +709,20 @@ export function registerLifecycleTools(
       certificate_id,
       data,
     }) => {
+      // Explicit params override anything from data (template/password/
+      // certificateId come from typed inputs and trump same-named keys
+      // inside the loose `data` bag).
       const payload: Record<string, unknown> = {
         workflow,
         profile,
         module,
+        ...(data ?? {}),
+        ...(template !== undefined ? { template } : {}),
+        ...(password !== undefined ? { password } : {}),
+        ...(certificate_id !== undefined
+          ? { certificateId: certificate_id }
+          : {}),
       };
-      if (data) {
-        Object.assign(payload, data);
-      }
-      // Explicit params override anything from data
-      if (template !== undefined) payload['template'] = template;
-      if (password !== undefined) payload['password'] = password;
-      if (certificate_id !== undefined)
-        payload['certificateId'] = certificate_id;
 
       const result = await client.post<Record<string, unknown>>(
         '/api/v1/requests/submit',
@@ -1013,7 +1031,9 @@ export function registerLifecycleTools(
       }),
     },
     async ({ request_id }) => {
-      const result = await client.get(`/api/v1/requests/${request_id}`);
+      const result = await client.get(
+        `/api/v1/requests/${encodePathSegment(request_id)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -1162,7 +1182,9 @@ export function registerLifecycleTools(
       }),
     },
     async ({ event_id }) => {
-      const result = await client.get(`/api/v1/events/${event_id}`);
+      const result = await client.get(
+        `/api/v1/events/${encodePathSegment(event_id)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

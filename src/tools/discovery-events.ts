@@ -20,6 +20,7 @@ import {
   buildSearchPayload,
   buildSearchResponse,
   csvTruncationMetadata,
+  encodePathSegment,
 } from './helpers.js';
 import { registerTool } from './register.js';
 
@@ -149,7 +150,9 @@ export function registerDiscoveryEventTools(
       }),
     },
     async ({ event_id }) => {
-      const result = await client.get(`/api/v1/discovery/events/${event_id}`);
+      const result = await client.get(
+        `/api/v1/discovery/events/${encodePathSegment(event_id)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

@@ -22,6 +22,7 @@ import {
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
+  encodePathSegment,
 } from './helpers.js';
 import { registerTool } from './register.js';
 
@@ -339,7 +340,9 @@ export function registerTriggerTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${TRIGGER_BASE}/${name}`);
+      const result = await client.get(
+        `${TRIGGER_BASE}/${encodePathSegment(name)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -594,7 +597,7 @@ export function registerTriggerTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${TRIGGER_BASE}/${name}`);
+      await client.delete(`${TRIGGER_BASE}/${encodePathSegment(name)}`);
       return {
         content: [
           {
