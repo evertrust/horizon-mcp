@@ -11,7 +11,11 @@ import ts from 'typescript';
 
 const HTTP_METHOD_RE = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\b/;
 const ROOT_ROUTE_RE = /^\s*->\s+(\/api\/v1\/\S*)\s+([A-Za-z0-9._]+)\.Routes\b/m;
-const PATH_FRAGMENT_RE = /\/api\/v1\/[A-Za-z0-9_./${}<>\-:*]+/g;
+// Allows `(`, `)`, `,` so template literals like
+// `/api/v1/.../${encodePathSegment(id)}` are captured as a single fragment.
+// Whitespace stays excluded so the match still terminates at the end of the
+// string concatenation.
+const PATH_FRAGMENT_RE = /\/api\/v1\/[A-Za-z0-9_./${}<>(),\-:*]+/g;
 const CLIENT_METHOD_NAMES = new Set([
   'get',
   'getText',
