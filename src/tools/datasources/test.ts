@@ -18,9 +18,7 @@ export function registerTestDatasourceTool(
     'test_datasource',
     {
       description:
-        'Test a datasource configuration against a context dictionary.\n\n' +
-        'Safety tier: read-only (performs a live query but does not persist anything)\n' +
-        'Knowledge: horizon://knowledge/datasources\n\n' +
+        'Test a datasource configuration against a context dictionary.\n\n Ref: horizon://knowledge/datasources.' +
         'Sends the datasource definition and an optional context dictionary to ' +
         'Horizon for a one-off test execution. Useful for validating datasource\n' +
         'configuration before creating or after modifying it.\n\n' +
@@ -44,7 +42,6 @@ export function registerTestDatasourceTool(
         '    secure=True,\n' +
         '    context={"user": "jdoe"}\n' +
         '    -> Expect: status="success", dictionary contains user attributes\n\n' +
-        'See also: create_dns_datasource / create_ldap_datasource /\n' +
         '    create_rest_datasource (create after testing),\n' +
         '    simulate_datasource_flow (test full flow pipeline with chaining).',
       inputSchema: z.object({

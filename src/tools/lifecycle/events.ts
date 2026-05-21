@@ -11,6 +11,8 @@ import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
 import {
+  CSV_EXPORT_OUTPUT_SCHEMA,
+  SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildSearchPayload,
   buildSearchResponse,
   encodePathSegment,
@@ -27,25 +29,12 @@ export function registerEventTools(
     'search_events',
     {
       description:
-        'Search audit events using HEQL query language.\n\n' +
-        'Safety tier: read-only\n\n' +
-        "HEQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp, detail.* - NOT eventType, eventDate).\n' +
-        'Examples:\n' +
-        '  code equals "LIFECYCLE-ENROLL" and status equals "failure" and timestamp after -24h\n' +
-        '  module equals "ACME" and detail.actorId equals "admin@example.com"\n' +
-        'Full reference: horizon://knowledge/query-languages\n\n' +
-        "sorted_by format: 'element' or 'element:Desc'.\n" +
-        'Sortable elements: _id, code, module, node, timestamp, removeAt, status\n\n' +
-        'Results are paginated. Events capture all certificate lifecycle actions\n' +
-        'including enrollments, revocations, approvals, and configuration changes.\n\n' +
-        'Pagination protocol (READ CAREFULLY):\n' +
-        '  - page_index is 0-based. First page is page_index=0.\n' +
-        '  - Response always includes has_more and next_page_index.\n' +
-        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
-        '  - Stop when has_more=false or next_page_index=null.\n' +
-        '  - Pass sorted_by (e.g. timestamp:Desc) for deterministic ordering across pages.\n' +
-        '  - with_count=true (default) surfaces total so you know the full span.',
+        'Search audit events with HEQL. Lowercase fields only (code, timestamp, ' +
+        'detail.*). Operators: equals, before, after, and/or/not. ' +
+        'Full reference: horizon://knowledge/query-languages. ' +
+        'Sortable: _id, code, module, node, timestamp, removeAt, status. ' +
+        'Pagination: page_index is 0-based; use next_page_index from the previous ' +
+        'response; stop when has_more is false. Pass sorted_by for stable order.',
       inputSchema: z.object({
         query: z.string().describe('HEQL query expression.'),
         page_index: z
@@ -76,6 +65,7 @@ export function registerEventTools(
             'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
           ),
       }),
+      outputSchema: SEARCH_RESPONSE_OUTPUT_SCHEMA,
     },
     async ({ query, page_index, page_size, sorted_by, with_count }) => {
       const payload = buildSearchPayload(
@@ -102,6 +92,7 @@ export function registerEventTools(
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],
+        structuredContent: response,
       };
     },
   );
@@ -112,7 +103,6 @@ export function registerEventTools(
     {
       description:
         'Get full details of an audit event by ID.\n\n' +
-        'Safety tier: read-only\n\n' +
         'Returns the complete event record including actor, action, target\n' +
         'object, timestamp, and any associated metadata.',
       inputSchema: z.object({
@@ -134,13 +124,11 @@ export function registerEventTools(
     'export_events_csv',
     {
       description:
-        'Export audit events matching an HEQL query as CSV (bounded export helper).\n\n' +
-        'Safety tier: read-only\n\n' +
-        'Returns up to 1000 rows using paged event search so it stays reliable on busy Horizon instances. For full raw exports use the Horizon UI.\n' +
-        'Default columns are _id, code, module, node, timestamp, and status. Pass fields to include specific detail.* columns.\n' +
-        "HEQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HEQL field names are ALL LOWERCASE (code, timestamp - NOT eventType, eventDate).\n' +
-        'Full reference: horizon://knowledge/query-languages',
+        'Export audit events matching an HEQL query as CSV (max 1000 rows via ' +
+        'paged search; use Horizon UI for full raw exports). Default columns: ' +
+        '_id, code, module, node, timestamp, status; pass fields for detail.* ' +
+        'columns. Lowercase fields only. ' +
+        'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HEQL query expression.'),
         fields: z
@@ -152,17 +140,23 @@ export function registerEventTools(
           .optional()
           .describe("Sort field, e.g. 'timestamp:Desc'."),
       }),
+      outputSchema: CSV_EXPORT_OUTPUT_SCHEMA,
     },
     async ({ query, fields, sorted_by }) => {
+      const payloadOut = await exportEventsCsvFromSearch(
+        client,
+        query,
+        fields,
+        sorted_by,
+      );
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify(
-              await exportEventsCsvFromSearch(client, query, fields, sorted_by),
-            ),
+            text: JSON.stringify(payloadOut),
           },
         ],
+        structuredContent: payloadOut as unknown as Record<string, unknown>,
       };
     },
   );

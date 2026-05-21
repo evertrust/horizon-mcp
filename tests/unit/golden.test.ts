@@ -108,7 +108,8 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'detect_file',
   'fetch_exposed_certificate',
   'convert_pkcs12_to_jks',
-  // assist/query.ts (5)
+  // assist/query.ts (6) - validate_hql + 4 backward-compat aliases
+  'validate_hql',
   'validate_hcql',
   'validate_hrql',
   'validate_heql',
@@ -261,9 +262,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 84 tools', async () => {
+  it('registers exactly 85 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(84);
+    expect(result.tools.length).toBe(85);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -310,7 +311,7 @@ describe('Golden tests', () => {
   // Basic integrity checks
   // -----------------------------------------------------------------
 
-  it('all tools have non-empty descriptions', async () => {
+  it('all tools have non-empty descriptions, title, and annotations', async () => {
     const result = await client.listTools();
     for (const tool of result.tools) {
       expect(
@@ -318,14 +319,27 @@ describe('Golden tests', () => {
         `Tool ${tool.name} missing description`,
       ).toBeTruthy();
       expect(tool.description!.length).toBeGreaterThan(10);
+      expect(tool.title, `Tool ${tool.name} missing title`).toBeTruthy();
       expect(
-        tool.description!,
-        `Tool ${tool.name} missing Use when guidance`,
-      ).toContain('Use when:');
+        tool.annotations,
+        `Tool ${tool.name} missing annotations`,
+      ).toBeTruthy();
       expect(
-        tool.description!,
-        `Tool ${tool.name} missing Do not use when guidance`,
-      ).toContain('Do not use when:');
+        typeof tool.annotations!.readOnlyHint,
+        `Tool ${tool.name} missing readOnlyHint`,
+      ).toBe('boolean');
+    }
+  });
+
+  it('tools with explicit guidance use the compact [when: ...] format', async () => {
+    const result = await client.listTools();
+    for (const tool of result.tools) {
+      if (tool.description?.includes('[when:')) {
+        expect(
+          tool.description,
+          `Tool ${tool.name} guidance must be compact form`,
+        ).toMatch(/\[when: [^|]+ \| not: [^|\]]+/);
+      }
     }
   });
 
@@ -955,8 +969,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 84 tools', () => {
-    expect(toolNames.size).toBe(84);
+  it('registers exactly 85 tools', () => {
+    expect(toolNames.size).toBe(85);
   });
 
   it('excludes admin tools', () => {

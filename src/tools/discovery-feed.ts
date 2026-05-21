@@ -46,12 +46,7 @@ export function registerDiscoveryFeedTools(
     'start_discovery_feed_session',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Start a discovery feed session for a campaign.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         "Store the returned 'id' field - you will need it to end the session. " +
         'If you lose this value, use list_discovery_campaigns to check campaign ' +
         'status, or use Horizon UI to clean up.',
@@ -92,12 +87,7 @@ export function registerDiscoveryFeedTools(
     'feed_discovery_certificate',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Feed a discovered certificate into an active feed session.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'The hostDiscoveryData describes where the certificate was found. ' +
         'See horizon://knowledge/discovery for field details.',
       inputSchema: z.object({
@@ -202,12 +192,7 @@ export function registerDiscoveryFeedTools(
     'register_discovery_event',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Register an arbitrary discovery event in an active feed session.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
+        'Register an arbitrary discovery event in an active feed session.\n\n',
       inputSchema: z.object({
         session_id: z
           .string()
@@ -248,13 +233,7 @@ export function registerDiscoveryFeedTools(
     server,
     'end_discovery_feed_session',
     {
-      description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'End a discovery feed session.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
+      description: 'End a discovery feed session.\n\n',
       inputSchema: z.object({
         campaign_name: z.string().describe('Name of the discovery campaign.'),
         session_id: z

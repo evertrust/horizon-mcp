@@ -15,7 +15,9 @@ import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
 import {
+  CSV_EXPORT_OUTPUT_SCHEMA,
   CSV_TIMEOUT,
+  SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
   buildSearchPayload,
   buildSearchResponse,
@@ -41,27 +43,12 @@ export function registerDiscoveryEventTools(
     'search_discovery_events',
     {
       description:
-        'Search discovery events using HDQL query language.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
-        "HDQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HDQL field names are ALL LOWERCASE\n' +
-        '(certificateid, sessionid, timestamp - NOT certificateId, sessionId).\n' +
-        'Examples:\n' +
-        '  timestamp after -24h\n' +
-        '  certificateid equals "abc123"\n' +
-        '  error.code equals "TIMEOUT" and client.ip contains "10.0"\n' +
-        '  sessionid equals "scan-session-id"\n' +
-        'Full reference: horizon://knowledge/query-languages\n\n' +
-        'HDQL fields: timestamp, certificateid, sessionid, error.code, client.*\n' +
-        "sorted_by format: 'element' or 'element:Desc'.\n\n" +
-        'Pagination protocol (READ CAREFULLY):\n' +
-        '  - page_index is 0-based. First page is page_index=0.\n' +
-        '  - Response always includes has_more and next_page_index.\n' +
-        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
-        '  - Stop when has_more=false or next_page_index=null.\n' +
-        '  - Pass sorted_by (e.g. timestamp:Desc) for deterministic ordering.\n' +
-        '  - with_count=true (default) surfaces total for up-front sizing.',
+        'Search discovery events with HDQL. Lowercase fields (certificateid, ' +
+        'sessionid, timestamp, error.code, client.*). Operators: equals, before, ' +
+        'after, contains, and/or/not. ' +
+        'Full reference: horizon://knowledge/query-languages. ' +
+        'Pagination: page_index is 0-based; use next_page_index from the previous ' +
+        'response; stop when has_more is false. Pass sorted_by for stable order.',
       inputSchema: z.object({
         query: z.string().describe('HDQL query string.'),
         page_index: z
@@ -96,6 +83,7 @@ export function registerDiscoveryEventTools(
           .default(true)
           .describe('Enable analytics on the search (default true).'),
       }),
+      outputSchema: SEARCH_RESPONSE_OUTPUT_SCHEMA,
     },
     async ({
       query,
@@ -127,6 +115,7 @@ export function registerDiscoveryEventTools(
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],
+        structuredContent: response,
       };
     },
   );
@@ -141,8 +130,6 @@ export function registerDiscoveryEventTools(
     {
       description:
         'Get full details of a discovery event by ID.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'Returns the complete discovery event record including certificate ' +
         'data, session info, client details, and any error information.',
       inputSchema: z.object({
@@ -168,14 +155,9 @@ export function registerDiscoveryEventTools(
     'export_discovery_events_csv',
     {
       description:
-        'Export discovery events matching an HDQL query as CSV.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
-        'Returns up to 1000 rows. For full exports use Horizon UI.\n\n' +
-        "HDQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HDQL field names are ALL LOWERCASE (certificateid, sessionid - NOT certificateId, sessionId).\n' +
-        'Example: timestamp after -7d and error.code equals "TIMEOUT"\n' +
-        'Full reference: horizon://knowledge/query-languages',
+        'Export discovery events matching an HDQL query as CSV (max 1000 rows; ' +
+        'use Horizon UI for full exports). Lowercase fields only. ' +
+        'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HDQL query string.'),
         fields: z
@@ -191,6 +173,7 @@ export function registerDiscoveryEventTools(
           .default(true)
           .describe('Enable analytics on the export (default true).'),
       }),
+      outputSchema: CSV_EXPORT_OUTPUT_SCHEMA,
     },
     async ({ query, fields, sorted_by, enable_analytics }) => {
       const payload = buildExportPayload(query, fields, sorted_by);
@@ -202,13 +185,15 @@ export function registerDiscoveryEventTools(
       });
 
       const metadata = csvTruncationMetadata(csvText);
+      const payloadOut = { csv: csvText, ...metadata };
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ csv: csvText, ...metadata }),
+            text: JSON.stringify(payloadOut),
           },
         ],
+        structuredContent: payloadOut,
       };
     },
   );

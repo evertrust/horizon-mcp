@@ -25,10 +25,8 @@ export function registerReadDatasourceTools(
     'list_datasources',
     {
       description:
-        'List external datasources with optional filtering.\n\n' +
+        'List external datasources with optional filtering.\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/datasources\n\n' +
-        'See also: get_datasource, create_dns_datasource, create_ldap_datasource, ' +
         'create_rest_datasource, test_datasource.',
       inputSchema: z.object({
         max_items: z
@@ -76,10 +74,8 @@ export function registerReadDatasourceTools(
     'get_datasource',
     {
       description:
-        'Get a single datasource by name.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/datasources\n\n' +
-        'See also: list_datasources, update_datasource, test_datasource, delete_datasource.',
+        'Get a single datasource by name.\n\n Ref: horizon://knowledge/datasources.' +
+        'Safety tier: read-only\n',
       inputSchema: z.object({
         name: z.string().describe('Exact datasource name.'),
       }),

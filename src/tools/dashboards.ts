@@ -118,8 +118,6 @@ export function registerDashboardTools(
     {
       description:
         'List personal dashboards with optional filtering.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Returns JSON with items, count, total_available, and truncated flag.',
       inputSchema: z.object({
         max_items: z
@@ -167,8 +165,6 @@ export function registerDashboardTools(
     {
       description:
         'Get a single dashboard by name.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Returns JSON representation of the dashboard including its charts.',
       inputSchema: z.object({
         name: z.string().describe('Exact dashboard name.'),
@@ -185,12 +181,7 @@ export function registerDashboardTools(
     'create_dashboard',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Create a new personal dashboard.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'IMPORTANT - The dashboard name is IMMUTABLE: it CANNOT be changed ' +
         'after creation. You MUST ask the user for the name (and optionally ' +
         'a description) before calling this tool. Never invent a name on the ' +
@@ -200,7 +191,6 @@ export function registerDashboardTools(
         '2) Create a blank dashboard with charts=[]\n' +
         '3) Use add_dashboard_chart to add charts one at a time, ' +
         "prompting the user for each chart's configuration.\n\n" +
-        'See also: add_dashboard_chart (add charts one by one after creation), ' +
         'upsert_saved_query (save queries for reuse in charts).',
       inputSchema: z.object({
         name: z
@@ -257,12 +247,7 @@ export function registerDashboardTools(
     'update_dashboard',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Update an existing dashboard (GET -> merge -> PUT).\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Fetches the current dashboard, merges provided overrides, and ' +
         'PUTs the full object back. No field stripping needed - dashboards ' +
         'are principal-scoped with no server-injected metadata.',
@@ -313,14 +298,7 @@ export function registerDashboardTools(
     server,
     'delete_dashboard',
     {
-      description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a dashboard. Requires name confirmation.\n\n' +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/dashboards',
+      description: 'Delete a dashboard. Requires name confirmation.\n\n',
       inputSchema: z.object({
         name: z.string().describe('Dashboard name to delete.'),
         expected_name: z
@@ -346,12 +324,7 @@ export function registerDashboardTools(
     'add_dashboard_chart',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Add a chart to an existing dashboard.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Prerequisites: Dashboard must exist (use create_dashboard first).\n\n' +
         'Fetches the dashboard, appends the chart to its charts list, ' +
         'and PUTs the updated dashboard back. Auto-generates a unique ' +
@@ -402,12 +375,7 @@ export function registerDashboardTools(
     'update_dashboard_chart',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Update a single chart within a dashboard.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Fetches the dashboard, locates the chart by its identifier, ' +
         'merges only the provided fields, and PUTs the dashboard back.',
       inputSchema: z.object({
@@ -587,12 +555,7 @@ export function registerDashboardTools(
     'remove_dashboard_chart',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Remove a chart from a dashboard.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Fetches the dashboard, removes the chart matching the given ' +
         'identifier, and PUTs the updated dashboard back.',
       inputSchema: z.object({
@@ -650,8 +613,6 @@ export function registerDashboardTools(
     {
       description:
         'List saved HQL queries with optional filtering.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Returns JSON with items, count, total_available, and truncated flag.',
       inputSchema: z.object({
         max_items: z
@@ -698,8 +659,6 @@ export function registerDashboardTools(
     {
       description:
         'Get a single saved query by name.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Returns JSON representation of the saved query.',
       inputSchema: z.object({
         name: z.string().describe('Exact saved query name.'),
@@ -718,12 +677,7 @@ export function registerDashboardTools(
     'upsert_saved_query',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Create or update a saved HQL query.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/dashboards\n\n' +
         'Uses upsert semantics - if a query with the given name exists it ' +
         'is updated, otherwise a new one is created. The server validates ' +
         'the HQL syntax for the specified query type.',
@@ -772,14 +726,7 @@ export function registerDashboardTools(
     server,
     'delete_saved_query',
     {
-      description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a saved query. Requires name confirmation.\n\n' +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/dashboards',
+      description: 'Delete a saved query. Requires name confirmation.\n\n',
       inputSchema: z.object({
         name: z.string().describe('Saved query name to delete.'),
         expected_name: z

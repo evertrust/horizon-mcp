@@ -38,7 +38,6 @@ export function registerReportTools(
     {
       description:
         'List available reports, optionally filtered by name.\n\n' +
-        'Safety tier: read-only\n\n' +
         'When report_name is provided the server returns all report entries ' +
         'matching that name (there can be more than one). Without a name the ' +
         'full report catalogue is returned.',
@@ -102,7 +101,6 @@ export function registerReportTools(
     {
       description:
         'Download a report as CSV by its UUID.\n\n' +
-        'Safety tier: read-only\n\n' +
         'CRITICAL: The CSV endpoint lives at /reports/{uuid} - there is ' +
         'NO /api/v1 prefix for this path.',
       inputSchema: z.object({
@@ -137,12 +135,8 @@ export function registerReportTools(
     'delete_report',
     {
       description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a report by UUID. Requires UUID confirmation.\n\n' +
-        'Safety tier: mutating-destructive',
+        'Delete a report by UUID. Irreversible; confirm with user first. ' +
+        'Requires expected_uuid to match report_uuid as a safeguard.',
       inputSchema: z.object({
         report_uuid: z.string().describe('UUID of the report to delete.'),
         expected_uuid: z

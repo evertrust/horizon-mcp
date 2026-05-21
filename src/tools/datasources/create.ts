@@ -29,12 +29,8 @@ export function registerCreateDatasourceTools(
     'create_dns_datasource',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Create a DNS datasource for hostname lookups during enrollment.\n\n' +
+        'Create a DNS datasource for hostname lookups during enrollment.\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
         'DNS datasources query DNS servers and return record data (A, AAAA, ' +
         'CNAME, PTR, TXT) used in computation/validation rules via ' +
         'ds.<flowIndex>.<resultIndex>.<recordType> entries.\n\n' +
@@ -61,7 +57,6 @@ export function registerCreateDatasourceTools(
         '    -> After creation, add to profile dsFlow with input mapping:\n' +
         '       {"hostname": "{{csr.san.dnsname.1}}"}\n' +
         '    -> Reference in validation rule: {{ds.1.1.cname}} matches ".*\\.paas\\.internal$"\n\n' +
-        'See also: test_datasource (validate before creating),\n' +
         '    simulate_datasource_flow (test entire flow pipeline),\n' +
         '    list_datasources (verify creation).',
       inputSchema: z.object({
@@ -155,12 +150,8 @@ export function registerCreateDatasourceTools(
     'create_ldap_datasource',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Create an LDAP datasource for directory lookups during enrollment.\n\n' +
+        'Create an LDAP datasource for directory lookups during enrollment.\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
         'LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return ' +
         'user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
         'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
@@ -199,7 +190,6 @@ export function registerCreateDatasourceTools(
         '        {"key": "mail", "multi": false, "selected": true},\n' +
         '        {"key": "memberOf", "multi": true, "selected": true}\n' +
         '    ]\n\n' +
-        'See also: test_datasource (validate LDAP connectivity before creating),\n' +
         '    simulate_datasource_flow (test full flow pipeline),\n' +
         '    list_datasources (verify creation).',
       inputSchema: z.object({
@@ -323,12 +313,8 @@ export function registerCreateDatasourceTools(
     'create_rest_datasource',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Create a REST datasource for HTTP API lookups during enrollment.\n\n' +
+        'Create a REST datasource for HTTP API lookups during enrollment.\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/datasources, horizon://knowledge/validation-rules\n\n' +
         'REST datasources call HTTP APIs and return parsed response data via ' +
         'ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
         'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
@@ -357,7 +343,6 @@ export function registerCreateDatasourceTools(
         '    timeout="10s"\n' +
         '    expected_http_codes=[200]\n' +
         '    attributes=[{"key": "owner", "multi": false, "selected": true}]\n\n' +
-        'See also: test_datasource (validate API call before creating),\n' +
         '    simulate_datasource_flow (test full flow pipeline),\n' +
         '    list_datasources (verify creation).',
       inputSchema: z.object({

@@ -82,8 +82,6 @@ export function registerDiscoveryTools(
     {
       description:
         'List discovery campaigns with optional name filtering.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'Client-side filtering is applied after fetching all campaigns. ' +
         'Use name_contains for substring search.',
       inputSchema: z.object({
@@ -123,10 +121,7 @@ export function registerDiscoveryTools(
     server,
     'get_discovery_campaign',
     {
-      description:
-        'Get a single discovery campaign by name.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
+      description: 'Get a single discovery campaign by name.\n\n',
       inputSchema: z.object({
         name: z.string().describe('Exact campaign name.'),
       }),
@@ -150,12 +145,7 @@ export function registerDiscoveryTools(
     'create_discovery_campaign',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Create a new discovery campaign.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'After creating the campaign, the actual scan is performed by the ' +
         'horizon-cli agent installed on a host with network access to the ' +
         'targets. See horizon://knowledge/discovery-workflows for all CLI ' +
@@ -164,7 +154,6 @@ export function registerDiscoveryTools(
         'and localimport (folder/CSV bulk import for PKI migrations).\n\n' +
         'Prerequisites: Grading policies must exist if referenced (use list_grading_policies). ' +
         'Identity providers in authorization_levels must exist (use list_identity_providers).\n' +
-        'See also: start_discovery_feed_session -> feed_discovery_certificate -> end_discovery_feed_session ' +
         '(manual feed workflow), search_discovery_events (view results).\n\n' +
         'Campaign names cannot contain dots (DotlessNameIdentifier).\n\n' +
         "authorization_levels must contain 'search' and 'feed' sections, each with:\n" +
@@ -264,12 +253,7 @@ export function registerDiscoveryTools(
     'update_discovery_campaign',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Update an existing discovery campaign (GET -> strip -> merge -> PUT).\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'Uses the GET-strip-merge-PUT pattern: fetches the current state, ' +
         'strips server-populated fields, merges your overrides, and PUTs ' +
         'the result back.',
@@ -375,13 +359,7 @@ export function registerDiscoveryTools(
     'delete_discovery_campaign',
     {
       description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a discovery campaign. Requires name confirmation.\n\n' +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows',
+        'Delete a discovery campaign. Requires name confirmation.\n\n',
       inputSchema: z.object({
         name: z.string().describe('Campaign name to delete.'),
         expected_name: z
@@ -412,13 +390,7 @@ export function registerDiscoveryTools(
     'flush_discovery_campaign',
     {
       description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
         'Flush (purge all events from) a discovery campaign. Requires name confirmation.\n\n' +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/discovery, horizon://knowledge/discovery-workflows\n\n' +
         'Sends a PATCH to purge all discovery events associated with the ' +
         'campaign. This is irreversible.',
       inputSchema: z.object({

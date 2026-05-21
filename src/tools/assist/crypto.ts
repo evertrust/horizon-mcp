@@ -211,7 +211,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded X.509 certificate via Horizon.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the certificate to Horizon's RFC 5280 decode endpoint " +
         '(POST /api/v1/rfc5280/x509, multipart/form-data) and returns ' +
         'every parsed field.\n\n' +
@@ -245,7 +244,6 @@ export function registerCryptoTools(
         '- policies (list, optional): certificate policies.\n' +
         '- authorityKeyIdentifier (str, optional): AKI.\n' +
         '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
-        'See also:\n' +
         '- fetch_exposed_certificate - grab a live server cert then feed its PEM into this tool.\n' +
         '- decode_csr - decode a CSR instead.\n' +
         '- detect_file - auto-detect the file type first.',
@@ -281,7 +279,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded PKCS#10 Certificate Signing Request.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the CSR to Horizon's RFC 5280 PKCS#10 decode endpoint " +
         '(POST /api/v1/rfc5280/pkcs10, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -296,7 +293,6 @@ export function registerCryptoTools(
         '- sans (list[{sanType, value}], optional): requested SANs.\n' +
         '- extensions (list, optional): requested extensions.\n' +
         '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode a certificate instead.\n' +
         '- detect_file - auto-detect whether input is a cert or CSR.',
       inputSchema: z.object({
@@ -331,7 +327,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded Certificate Revocation List (CRL).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the CRL to Horizon's RFC 5280 CRL decode endpoint " +
         '(POST /api/v1/rfc5280/crl, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -343,7 +338,6 @@ export function registerCryptoTools(
         '- nextUpdate (int): next scheduled update as epoch milliseconds.\n' +
         '- number (int, optional): CRL sequence number.\n' +
         '- version (int, optional): CRL version.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the issuing CA certificate.\n' +
         '- detect_file - auto-detect whether input is a CRL.',
       inputSchema: z.object({
@@ -378,7 +372,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode an OCSP response (RFC 6960).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the OCSP response to Horizon's RFC 6960 decode endpoint " +
         '(POST /api/v1/rfc6960, multipart/form-data) and returns the ' +
         'parsed status and per-certificate responses.\n\n' +
@@ -395,7 +388,6 @@ export function registerCryptoTools(
         '    - status (str): certificate status.\n' +
         '    - thisUpdate (int): epoch milliseconds.\n' +
         '    - nextUpdate (int): epoch milliseconds.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the certificate referenced in the OCSP response.',
       inputSchema: z.object({
         data: z
@@ -426,7 +418,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a TSA (Time-Stamp Authority) response (RFC 3161).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the timestamping response to Horizon's RFC 3161 decode " +
         'endpoint (POST /api/v1/rfc3161, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -437,7 +428,6 @@ export function registerCryptoTools(
         '- policy (str): OID of the TSA policy.\n' +
         '- status (str|int): response status.\n' +
         '- failInfo (str, optional): failure reason when status is not granted.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the TSA signing certificate.',
       inputSchema: z.object({
         data: z
@@ -468,7 +458,6 @@ export function registerCryptoTools(
     {
       description:
         'Auto-detect and decode any cryptographic file.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the raw data to Horizon's crypto detection endpoint " +
         '(POST /api/v1/crypto/detect, multipart/form-data). Horizon ' +
         'identifies the file type and returns both the type label and the ' +
@@ -483,7 +472,6 @@ export function registerCryptoTools(
         '- value (object): decoded content whose schema matches the\n' +
         '  corresponding decode tool (e.g., same fields as decode_x509\n' +
         '  when type is "certificate").\n\n' +
-        'See also:\n' +
         '- decode_x509, decode_csr, decode_crl,\n' +
         '  decode_ocsp, decode_tsa - specialised decode tools\n' +
         '  for when the file type is already known.',
@@ -519,7 +507,6 @@ export function registerCryptoTools(
     {
       description:
         'Fetch the TLS certificate exposed by a remote server.\n\n' +
-        'Safety tier: read-only (outbound TLS connection only, no data sent)\n\n' +
         'Connects to the specified host and port, performs a TLS handshake, ' +
         "and retrieves the server's leaf certificate. Useful for:\n" +
         '- Verifying a certificate deployed through the CLM is actually live\n' +
@@ -533,8 +520,7 @@ export function registerCryptoTools(
         '- imaps -> 993\n' +
         '- smtps -> 465\n' +
         '- ftps  -> 990\n' +
-        'If no protocol and no port, defaults to 443.\n\n' +
-        'See also: decode_x509 - decode the fetched PEM for detailed parsing.',
+        'If no protocol and no port, defaults to 443.',
       inputSchema: z.object({
         uri: z
           .string()

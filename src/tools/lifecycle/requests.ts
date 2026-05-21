@@ -18,8 +18,10 @@ import { z } from 'zod';
 import { HorizonError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import {
+  CSV_EXPORT_OUTPUT_SCHEMA,
   CSV_TIMEOUT,
   REQUEST_PRESETS,
+  SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
   buildSearchPayload,
   buildSearchResponse,
@@ -38,9 +40,7 @@ export function registerRequestTools(
     'get_request_template',
     {
       description:
-        'Get the request template showing which fields are required/editable.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/workflows\n\n' +
+        'Get the request template showing which fields are required/editable.\n\n Ref: horizon://knowledge/workflows.' +
         'MUST be called before submit_request. The template response tells you:\n' +
         '- Which subject fields exist and whether they are editable or computed\n' +
         '- Which SAN types are allowed\n' +
@@ -95,67 +95,19 @@ export function registerRequestTools(
     'submit_request',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit\n' +
-        'confirmation before calling this tool. Do not proceed without a clear\n' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Submit a certificate lifecycle request (enroll, renew, revoke, etc.).\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/workflows\n\n' +
-        'MANDATORY WORKFLOW - follow these steps in order:\n' +
-        '1. Call get_request_template(workflow, module, profile) to discover which\n' +
-        '   fields are required, optional, and editable for this profile+workflow.\n' +
-        '2. Examine the template response - it shows the full field structure.\n' +
-        "3. ASK THE USER for all required information you don't already have.\n" +
-        '4. Only call submit_request once all required fields are filled.\n\n' +
-        "PERMISSION-BASED BEHAVIOR - the outcome depends on the caller's\n" +
-        'permissions on the profile (see horizon://knowledge/workflows):\n\n' +
-        '- If the caller has the DIRECT action permission (e.g., enrollApi\n' +
-        '  for enroll, revokeApi for revoke, renewApi for renew), the\n' +
-        '  operation completes immediately. The certificate is issued/revoked/\n' +
-        '  renewed directly and the response contains the result.\n' +
-        '- If the caller only has the REQUEST permission (e.g., enrollRequest,\n' +
-        '  revokeRequest, renewRequest), the request is created in\n' +
-        '  PENDING state and requires approval by an authorized operator via\n' +
-        '  approve_request. The response contains the request ID.\n\n' +
-        'Tell the user which outcome occurred based on the response status.\n' +
-        'If the status is "pending", inform them that approval is required.\n\n' +
-        'Supported modules: webra, est, scep, acme, crmp, wcce, intune, jamf.\n' +
-        'For EST and SCEP, this endpoint generates the enrollment challenge/password.\n' +
-        'The challenge is returned in the response and can be used by the EST/SCEP\n' +
-        'client to complete enrollment through the protocol endpoint.\n\n' +
-        'Workflows and what to ask the user:\n' +
-        '- enroll: Subject (CN, O, OU, etc.), SANs, labels, contact email,\n' +
-        '  owner, team, key type. Check get_request_template for which fields\n' +
-        '  are editable vs computed vs fixed by the profile.\n' +
-        '- renew: certificate_id required. Template is pre-populated from\n' +
-        '  the existing cert. Ask if any fields should change.\n' +
-        '- revoke: certificate_id required. Ask for revocationReason:\n' +
-        '  keycompromise, cacompromise, affiliationchange, superseded,\n' +
-        '  cessationofoperation, certificatehold, removefromcrl,\n' +
-        '  privilegewithdrawn, aacompromise, unspecified.\n' +
-        '- update: certificate_id required. Ask which metadata to change\n' +
-        '  (labels, contact email, owner, team).\n' +
-        '- recover: certificate_id required. For re-issuing a lost cert.\n' +
-        '- migrate: certificate_id required. For moving between profiles.\n\n' +
-        'Enrollment example (centralized, WebRA):\n' +
-        '    workflow="enroll", profile="TLS-Internal", module="webra",\n' +
-        '    template={"subject": [{"element": "cn.1", "type": "CN", "value": "server.local"}],\n' +
-        '              "sans": [{"type": "DNSNAME", "value": ["server.local"]}],\n' +
-        '              "labels": [{"label": "env", "value": "prod"}],\n' +
-        '              "contactEmail": {"value": "admin@corp.com"},\n' +
-        '              "owner": {"value": "jdoe"},\n' +
-        '              "team": {"value": "infra"},\n' +
-        '              "keyType": "rsa-3072"},\n' +
-        '    password="changeit"\n\n' +
-        'EST challenge example:\n' +
-        '    workflow="enroll", profile="EST-Devices", module="est",\n' +
-        '    template={"subject": [{"element": "cn.1", "type": "CN", "value": "device01"}],\n' +
-        '              "contactEmail": {"value": "ops@corp.com"}},\n' +
-        '    password="challenge-password"\n\n' +
-        'Revoke example:\n' +
-        '    workflow="revoke", profile="TLS-Internal", module="webra",\n' +
-        '    certificate_id="abc123",\n' +
-        '    data={"revocationReason": "keycompromise"}',
+        'Submit a certificate lifecycle request (enroll, renew, revoke, update, ' +
+        'recover, migrate). MUST call get_request_template first to learn which ' +
+        'fields are required/editable for this profile+workflow, then ask the user ' +
+        'for any missing values. Outcome depends on caller permissions: with the ' +
+        'direct action permission (enrollApi, revokeApi, renewApi) the operation ' +
+        'completes immediately; with only the request permission the request is ' +
+        'created in PENDING state and needs approve_request. Surface that status ' +
+        'to the user. For revoke, revocationReason is mandatory (keycompromise, ' +
+        'cacompromise, affiliationchange, superseded, cessationofoperation, ' +
+        'certificatehold, removefromcrl, privilegewithdrawn, aacompromise, ' +
+        'unspecified). Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
+        'EST/SCEP enroll returns the challenge password in the response. ' +
+        'Full workflow + examples: horizon://knowledge/workflows.',
       inputSchema: z.object({
         workflow: z
           .string()
@@ -255,11 +207,7 @@ export function registerRequestTools(
     'approve_request',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit\n' +
-        'confirmation before calling this tool. Do not proceed without a clear\n' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Approve a pending certificate lifecycle request.\n\n' +
-        'Safety tier: mutating-safe\n\n' +
         'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
         'Only pending requests can be approved. Permissions are checked automatically.\n\n' +
         'Checks permissions before attempting the approval. The workflow\n' +
@@ -310,11 +258,7 @@ export function registerRequestTools(
     'deny_request',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit\n' +
-        'confirmation before calling this tool. Do not proceed without a clear\n' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Deny a pending certificate lifecycle request.\n\n' +
-        'Safety tier: mutating-safe\n\n' +
         'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
         'Only pending requests can be denied. Permissions are checked automatically.\n\n' +
         'Checks permissions before attempting the denial. The workflow\n' +
@@ -365,11 +309,7 @@ export function registerRequestTools(
     'cancel_request',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit\n' +
-        'confirmation before calling this tool. Do not proceed without a clear\n' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Cancel a pending certificate lifecycle request.\n\n' +
-        'Safety tier: mutating-safe\n\n' +
         'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
         'Only pending requests can be cancelled. Permissions are checked automatically.\n\n' +
         'Checks permissions before attempting the cancellation. The workflow\n' +
@@ -420,43 +360,14 @@ export function registerRequestTools(
     'search_requests',
     {
       description:
-        'Search certificate lifecycle requests using HRQL query language.\n\n' +
-        'Safety tier: read-only\n\n' +
-        "HRQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HRQL field names are ALL LOWERCASE with dots for dates\n' +
-        '(registration.date, modification.date - NOT registrationDate, lastModificationDate).\n' +
-        'Examples:\n' +
-        '  workflow equals "enroll" and status equals "pending"\n' +
-        '  status equals "denied" and modification.date after 30d\n' +
-        '  profile equals "TLS-Internal" and requester contains "admin"\n' +
-        'Full reference: horizon://knowledge/query-languages\n\n' +
-        'Results are paginated and field-truncated - use get_request for\n' +
-        'full untruncated data on a specific request.\n\n' +
-        "sorted_by format: 'element' or 'element:Desc'.\n" +
-        'Sortable elements: _id, module, workflow, status, profile, requester,\n' +
-        '  approver, team, owner, contact, requesterComment, approverComment,\n' +
-        '  certificateId, certificate, dn, registrationDate, lastModificationDate,\n' +
-        '  expirationDate, holderId, labels, metadata, releaseAt\n\n' +
-        'Presets:\n' +
-        '  - compact (default): workflow, status, profile, module, requester,\n' +
-        '    approver, registrationDate, lastModificationDate\n' +
-        '  - diagnostic: adds certificate, dn, requesterComment, approverComment\n' +
-        '  - compliance: adds dn, certificateId\n\n' +
-        'Usable return fields: _id, approver, approverComment, certificate,\n' +
-        '  certificateId, contact, dn, expirationDate, holderId, label.<key>,\n' +
-        '  labels, lastModificationDate, metadata, metadata.<key>, module,\n' +
-        '  owner, profile, registrationDate, releaseAt, requester,\n' +
-        '  requesterComment, status, team, workflow\n\n' +
-        'See also: get_request (full details by ID), aggregate_requests (group-by analytics),\n' +
-        '    export_requests_csv (bulk CSV export).\n\n' +
-        'Pagination protocol (READ CAREFULLY):\n' +
-        '  - page_index is 0-based. First page is page_index=0.\n' +
-        '  - Response always includes has_more and next_page_index.\n' +
-        '  - To fetch the next page: call again with page_index = next_page_index.\n' +
-        '  - Stop when has_more=false or next_page_index=null.\n' +
-        '  - Pass sorted_by for deterministic ordering across pages.\n' +
-        '  - with_count=true (default) makes total available so the model\n' +
-        '    knows up-front how many pages to expect.',
+        'Search certificate lifecycle requests with HRQL. Lowercase fields ' +
+        '(registration.date, modification.date, not registrationDate). Operators: ' +
+        'equals, before, after, contains, in, and/or/not. ' +
+        'Full reference: horizon://knowledge/query-languages. ' +
+        'Presets: compact (default), diagnostic, compliance. ' +
+        'Results are field-truncated; use get_request for the full record. ' +
+        'Pagination: page_index is 0-based; use next_page_index from the previous ' +
+        'response; stop when has_more is false. Pass sorted_by for stable order.',
       inputSchema: z.object({
         query: z.string().describe('HRQL query expression.'),
         preset: z
@@ -495,6 +406,7 @@ export function registerRequestTools(
             'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
           ),
       }),
+      outputSchema: SEARCH_RESPONSE_OUTPUT_SCHEMA,
     },
     async ({
       query,
@@ -524,6 +436,7 @@ export function registerRequestTools(
 
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(response) }],
+        structuredContent: response,
       };
     },
   );
@@ -534,7 +447,6 @@ export function registerRequestTools(
     {
       description:
         'Get full details of a certificate lifecycle request by ID.\n\n' +
-        'Safety tier: read-only\n\n' +
         'Returns complete untruncated data including all workflow fields,\n' +
         'certificate details, requester/approver info, and audit trail.\n\n' +
         'PKCS#12 / PFX: For centralized enrollment requests (server-side key\n' +
@@ -561,12 +473,9 @@ export function registerRequestTools(
     'export_requests_csv',
     {
       description:
-        'Export requests matching an HRQL query as CSV (bounded export helper).\n\n' +
-        'Safety tier: read-only\n\n' +
-        'Returns up to 1000 rows. For full exports use Horizon UI.\n' +
-        "HRQL syntax - use 'equals', 'before', 'after', NOT =, <, >.\n" +
-        'IMPORTANT: HRQL field names are ALL LOWERCASE (registration.date, NOT registrationDate).\n' +
-        'Full reference: horizon://knowledge/query-languages',
+        'Export requests matching an HRQL query as CSV (max 1000 rows; use Horizon ' +
+        'UI for full exports). Lowercase fields only (registration.date, not ' +
+        'registrationDate). Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HRQL query expression.'),
         fields: z
@@ -578,6 +487,7 @@ export function registerRequestTools(
           .optional()
           .describe("Sort field, e.g. 'registrationDate:Desc'."),
       }),
+      outputSchema: CSV_EXPORT_OUTPUT_SCHEMA,
     },
     async ({ query, fields, sorted_by }) => {
       const payload = buildExportPayload(query, fields, sorted_by);
@@ -585,13 +495,15 @@ export function registerRequestTools(
         timeout: CSV_TIMEOUT,
       });
       const metadata = csvTruncationMetadata(csvText);
+      const payloadOut = { csv: csvText, ...metadata };
       return {
         content: [
           {
             type: 'text' as const,
-            text: JSON.stringify({ csv: csvText, ...metadata }),
+            text: JSON.stringify(payloadOut),
           },
         ],
+        structuredContent: payloadOut,
       };
     },
   );
@@ -601,24 +513,11 @@ export function registerRequestTools(
     'aggregate_requests',
     {
       description:
-        'Aggregate requests by groupBy dimensions using HRQL query.\n\n' +
-        'Safety tier: read-only\n\n' +
-        'Returns counts grouped by the specified fields - ideal for\n' +
-        "workflow analytics (e.g. 'pending requests by profile?',\n" +
-        "'approval rate by approver?').\n\n" +
-        "HRQL syntax - use 'equals', 'matches', 'before', 'after', NOT =/</>.\\n" +
-        'IMPORTANT - TWO different naming contexts:\n' +
-        '  - query field names are ALL LOWERCASE: registration.date, modification.date\n' +
-        '  - groupBy field names are camelCase: registrationDate, lastModificationDate\n' +
-        'Full reference: horizon://knowledge/query-languages\n\n' +
-        'Example (note lowercase query vs camelCase groupBy):\n' +
-        '  query="status equals \\"pending\\" and registration.date after 30d",\n' +
-        '  group_by=["workflow", "registrationDate.month"]\n\n' +
-        'Valid groupBy fields (camelCase): approver, contact, module, profile, requester,\n' +
-        'status, workflow, team, owner, dn,\n' +
-        'expirationDate.day/month/year,\n' +
-        'lastModificationDate.day/month/year,\n' +
-        'registrationDate.day/month/year, label.*, metadata.*',
+        'Aggregate requests by groupBy dimensions using HRQL. Query field names ' +
+        'are lowercase (registration.date, modification.date); groupBy field ' +
+        'names are camelCase (workflow, status, profile, requester, approver, ' +
+        'team, owner, registrationDate.day/month/year, label.*, metadata.*). ' +
+        'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z
           .string()

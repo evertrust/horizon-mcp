@@ -43,8 +43,6 @@ export function registerTranslateTools(
     {
       description:
         'Translate natural language into a Horizon Query Language expression.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
         'Takes a plain-English description and produces a syntactically valid ' +
         'HQL query. Auto-detects the appropriate query type (HCQL for ' +
         'certificates, HRQL for requests, HEQL for events, HDQL for discovery) ' +

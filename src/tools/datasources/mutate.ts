@@ -33,16 +33,11 @@ export function registerMutateDatasourceTools(
     'update_datasource',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
-        'Update an existing datasource (GET -> strip -> merge -> PUT).\n\n' +
+        'Update an existing datasource (GET -> strip -> merge -> PUT).\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/datasources\n\n' +
         'Parameters are type-specific - only set fields relevant to the datasource ' +
         'type (dns, ldap, or rest). Irrelevant fields are ignored.\n\n' +
-        'IMPORTANT: The datasource name and type cannot be changed after creation.\n\n' +
-        'See also: get_datasource, test_datasource.',
+        'IMPORTANT: The datasource name and type cannot be changed after creation.\n\n',
       inputSchema: z.object({
         name: z
           .string()
@@ -227,16 +222,10 @@ export function registerMutateDatasourceTools(
     'delete_datasource',
     {
       description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a datasource. Requires name confirmation.\n\n' +
+        'Delete a datasource. Requires name confirmation.\n\n Ref: horizon://knowledge/datasources.' +
         'A datasource cannot be deleted if it is still referenced by any ' +
         "profile's dsFlow.\n\n" +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/datasources\n\n' +
-        'See also: get_datasource, list_datasources.',
+        'Safety tier: mutating-destructive\n',
       inputSchema: z.object({
         name: z.string().describe('Datasource name to delete.'),
         expected_name: z

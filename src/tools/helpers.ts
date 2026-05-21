@@ -2,9 +2,42 @@
  * Shared helpers extracted from proven tool patterns.
  * Direct ports of Python's _helpers.py + inline helpers from lifecycle.py.
  */
+import { z } from 'zod';
+
 import { HorizonError } from '../client/errors.js';
 import type { HorizonClient } from '../client/http.js';
 import { toUpdatePayload } from '../models/payloads.js';
+
+// ---------------------------------------------------------------------------
+// Shared MCP outputSchema shapes for the common envelopes
+// ---------------------------------------------------------------------------
+
+/** Output shape returned by `buildSearchResponse`. */
+export const SEARCH_RESPONSE_OUTPUT_SCHEMA = {
+  results: z.array(z.record(z.string(), z.unknown())),
+  page_index: z.number().int(),
+  page_size: z.number().int(),
+  total: z.number().nullable(),
+  has_more: z.boolean(),
+  next_page_index: z.number().int().nullable(),
+} as const;
+
+/** Output shape returned by `buildMutateResponse`. */
+export const MUTATE_RESPONSE_OUTPUT_SCHEMA = {
+  status: z.string(),
+  kind: z.string(),
+  name: z.string(),
+  data: z.record(z.string(), z.unknown()).optional(),
+  warnings: z.array(z.string()).optional(),
+} as const;
+
+/** Output shape returned by CSV exporters. */
+export const CSV_EXPORT_OUTPUT_SCHEMA = {
+  csv: z.string(),
+  truncated: z.boolean(),
+  returned_rows: z.number().int(),
+  max_rows: z.number().int(),
+} as const;
 
 // ---------------------------------------------------------------------------
 // URL path encoding
