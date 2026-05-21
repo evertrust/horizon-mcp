@@ -1,10 +1,15 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { X509Certificate } from 'node:crypto';
+import * as dns from 'node:dns';
+import * as net from 'node:net';
 import * as tls from 'node:tls';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { getLogger } from '../../logging.js';
 import { registerTool } from '../register.js';
+
+const cryptoLogger = getLogger('horizon_mcp.tools.crypto');
 
 // ---------------------------------------------------------------------------
 // Default port lookup for TLS URI parsing
@@ -50,18 +55,95 @@ function parseTlsUri(uri: string): { host: string; port: number } {
 }
 
 // ---------------------------------------------------------------------------
+// SSRF guard: block private/link-local IPs unless explicitly allowed
+// ---------------------------------------------------------------------------
+
+function parseIpv4(addr: string): readonly number[] | undefined {
+  if (net.isIPv4(addr) !== true) return undefined;
+  const parts = addr.split('.').map((p) => Number(p));
+  return parts.length === 4 && parts.every((p) => Number.isInteger(p))
+    ? parts
+    : undefined;
+}
+
+function isPrivateIpv4(addr: string): boolean {
+  const o = parseIpv4(addr);
+  if (!o) return false;
+  if (o[0] === 10) return true; // 10.0.0.0/8
+  if (o[0] === 127) return true; // 127.0.0.0/8 (loopback)
+  if (o[0] === 0) return true; // 0.0.0.0/8
+  if (o[0]! >= 224) return true; // 224.0.0.0/4 multicast and above (incl. 240/4)
+  if (o[0] === 169 && o[1] === 254) return true; // 169.254.0.0/16 link-local
+  if (o[0] === 172 && o[1]! >= 16 && o[1]! <= 31) return true; // 172.16.0.0/12
+  if (o[0] === 192 && o[1] === 168) return true; // 192.168.0.0/16
+  if (o[0] === 100 && o[1]! >= 64 && o[1]! <= 127) return true; // 100.64.0.0/10 CGNAT
+  return false;
+}
+
+function isPrivateIpv6(addr: string): boolean {
+  if (net.isIPv6(addr) !== true) return false;
+  const lower = addr.toLowerCase();
+  if (lower === '::1') return true; // loopback
+  if (lower === '::') return true; // unspecified
+  // IPv4-mapped IPv6 (::ffff:0:0/96) - re-check embedded IPv4
+  const mapped = lower.match(/^::ffff:([0-9a-f.:]+)$/);
+  if (mapped) {
+    const embedded = mapped[1]!;
+    if (net.isIPv4(embedded)) {
+      return isPrivateIpv4(embedded);
+    }
+  }
+  // fe80::/10 link-local
+  if (/^fe[89ab][0-9a-f]?:/.test(lower)) return true;
+  // fc00::/7 unique local
+  if (/^f[cd][0-9a-f]{2}:/.test(lower)) return true;
+  return false;
+}
+
+function isPrivateAddress(addr: string): boolean {
+  return isPrivateIpv4(addr) || isPrivateIpv6(addr);
+}
+
+export async function resolveAndCheckHost(
+  host: string,
+): Promise<{ ip: string }> {
+  // If the user already passed an IP literal, bypass DNS entirely.
+  const direct = net.isIP(host);
+  const ip = direct
+    ? host
+    : (await dns.promises.lookup(host, { all: false })).address;
+
+  if (
+    process.env['HORIZON_ALLOW_PRIVATE_TLS_PROBE'] !== '1' &&
+    isPrivateAddress(ip)
+  ) {
+    throw new Error(
+      `Private/link-local IP ${ip} (resolved from ${host}) blocked. ` +
+        'Set HORIZON_ALLOW_PRIVATE_TLS_PROBE=1 to override.',
+    );
+  }
+
+  return { ip };
+}
+
+// ---------------------------------------------------------------------------
 // TLS certificate fetch (node:tls + node:crypto)
 // ---------------------------------------------------------------------------
 
 function fetchPeerCertificate(
-  host: string,
+  ip: string,
+  servername: string,
   port: number,
   timeoutMs: number,
 ): Promise<X509Certificate> {
   return new Promise((resolve, reject) => {
+    // Connect to the resolved IP literal and pass the original hostname as
+    // servername for SNI. This avoids a second DNS lookup that could return
+    // a different (public) IP than the one we already validated (TOCTOU).
     const socket = tls.connect(
       {
-        host,
+        host: ip,
+        servername,
         port,
         rejectUnauthorized: false,
         checkServerIdentity: () => undefined,
@@ -82,7 +164,7 @@ function fetchPeerCertificate(
       socket.destroy();
       reject(
         new Error(
-          `Connection to ${host}:${port} timed out after ${timeoutMs / 1000}s`,
+          `Connection to ${servername}:${port} timed out after ${timeoutMs / 1000}s`,
         ),
       );
     });
@@ -129,7 +211,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded X.509 certificate via Horizon.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the certificate to Horizon's RFC 5280 decode endpoint " +
         '(POST /api/v1/rfc5280/x509, multipart/form-data) and returns ' +
         'every parsed field.\n\n' +
@@ -163,7 +244,6 @@ export function registerCryptoTools(
         '- policies (list, optional): certificate policies.\n' +
         '- authorityKeyIdentifier (str, optional): AKI.\n' +
         '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
-        'See also:\n' +
         '- fetch_exposed_certificate - grab a live server cert then feed its PEM into this tool.\n' +
         '- decode_csr - decode a CSR instead.\n' +
         '- detect_file - auto-detect the file type first.',
@@ -199,7 +279,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded PKCS#10 Certificate Signing Request.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the CSR to Horizon's RFC 5280 PKCS#10 decode endpoint " +
         '(POST /api/v1/rfc5280/pkcs10, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -214,7 +293,6 @@ export function registerCryptoTools(
         '- sans (list[{sanType, value}], optional): requested SANs.\n' +
         '- extensions (list, optional): requested extensions.\n' +
         '- unsupportedExtensions (list, optional): unrecognised extensions.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode a certificate instead.\n' +
         '- detect_file - auto-detect whether input is a cert or CSR.',
       inputSchema: z.object({
@@ -249,7 +327,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a PEM- or DER-encoded Certificate Revocation List (CRL).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the CRL to Horizon's RFC 5280 CRL decode endpoint " +
         '(POST /api/v1/rfc5280/crl, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -261,7 +338,6 @@ export function registerCryptoTools(
         '- nextUpdate (int): next scheduled update as epoch milliseconds.\n' +
         '- number (int, optional): CRL sequence number.\n' +
         '- version (int, optional): CRL version.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the issuing CA certificate.\n' +
         '- detect_file - auto-detect whether input is a CRL.',
       inputSchema: z.object({
@@ -296,7 +372,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode an OCSP response (RFC 6960).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the OCSP response to Horizon's RFC 6960 decode endpoint " +
         '(POST /api/v1/rfc6960, multipart/form-data) and returns the ' +
         'parsed status and per-certificate responses.\n\n' +
@@ -313,7 +388,6 @@ export function registerCryptoTools(
         '    - status (str): certificate status.\n' +
         '    - thisUpdate (int): epoch milliseconds.\n' +
         '    - nextUpdate (int): epoch milliseconds.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the certificate referenced in the OCSP response.',
       inputSchema: z.object({
         data: z
@@ -344,7 +418,6 @@ export function registerCryptoTools(
     {
       description:
         'Decode a TSA (Time-Stamp Authority) response (RFC 3161).\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the timestamping response to Horizon's RFC 3161 decode " +
         'endpoint (POST /api/v1/rfc3161, multipart/form-data) and returns ' +
         'the parsed fields.\n\n' +
@@ -355,7 +428,6 @@ export function registerCryptoTools(
         '- policy (str): OID of the TSA policy.\n' +
         '- status (str|int): response status.\n' +
         '- failInfo (str, optional): failure reason when status is not granted.\n\n' +
-        'See also:\n' +
         '- decode_x509 - decode the TSA signing certificate.',
       inputSchema: z.object({
         data: z
@@ -386,7 +458,6 @@ export function registerCryptoTools(
     {
       description:
         'Auto-detect and decode any cryptographic file.\n\n' +
-        'Safety tier: read-only\n\n' +
         "Sends the raw data to Horizon's crypto detection endpoint " +
         '(POST /api/v1/crypto/detect, multipart/form-data). Horizon ' +
         'identifies the file type and returns both the type label and the ' +
@@ -401,7 +472,6 @@ export function registerCryptoTools(
         '- value (object): decoded content whose schema matches the\n' +
         '  corresponding decode tool (e.g., same fields as decode_x509\n' +
         '  when type is "certificate").\n\n' +
-        'See also:\n' +
         '- decode_x509, decode_csr, decode_crl,\n' +
         '  decode_ocsp, decode_tsa - specialised decode tools\n' +
         '  for when the file type is already known.',
@@ -437,7 +507,6 @@ export function registerCryptoTools(
     {
       description:
         'Fetch the TLS certificate exposed by a remote server.\n\n' +
-        'Safety tier: read-only (outbound TLS connection only, no data sent)\n\n' +
         'Connects to the specified host and port, performs a TLS handshake, ' +
         "and retrieves the server's leaf certificate. Useful for:\n" +
         '- Verifying a certificate deployed through the CLM is actually live\n' +
@@ -451,8 +520,7 @@ export function registerCryptoTools(
         '- imaps -> 993\n' +
         '- smtps -> 465\n' +
         '- ftps  -> 990\n' +
-        'If no protocol and no port, defaults to 443.\n\n' +
-        'See also: decode_x509 - decode the fetched PEM for detailed parsing.',
+        'If no protocol and no port, defaults to 443.',
       inputSchema: z.object({
         uri: z
           .string()
@@ -475,9 +543,34 @@ export function registerCryptoTools(
       const { host, port } = parseTlsUri(uri);
       const timeoutMs = timeout * 1000;
 
+      let resolvedIp: string;
+      try {
+        const resolved = await resolveAndCheckHost(host);
+        resolvedIp = resolved.ip;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error: true,
+                content: `Cannot probe ${host}:${port}: ${message}`,
+              }),
+            },
+          ],
+        };
+      }
+
+      cryptoLogger.info('fetch_exposed_certificate probe', {
+        host,
+        resolved_ip: resolvedIp,
+        port,
+      });
+
       let cert: X509Certificate;
       try {
-        cert = await fetchPeerCertificate(host, port, timeoutMs);
+        cert = await fetchPeerCertificate(resolvedIp, host, port, timeoutMs);
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
 

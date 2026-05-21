@@ -14,10 +14,13 @@ import profilesContent from './knowledge/profiles.md';
 import queryLanguagesContent from './knowledge/query_languages.md';
 import rbacContent from './knowledge/rbac.md';
 import restNotificationsContent from './knowledge/rest_notifications.md';
+import serverRulesContent from './knowledge/server_rules.md';
 import systemAdminContent from './knowledge/system_admin.md';
 import toolSelectionContent from './knowledge/tool_selection.md';
 import validationRulesContent from './knowledge/validation_rules.md';
 import workflowsContent from './knowledge/workflows.md';
+
+export type ResourceAudience = 'user' | 'assistant';
 
 export interface ResourceEntry {
   readonly name: string;
@@ -25,6 +28,12 @@ export interface ResourceEntry {
   readonly description: string;
   readonly content: string;
   readonly splitSections?: boolean;
+  /** Priority 0..1 - clients use this to rank context inclusion. */
+  readonly priority?: number;
+  /** Intended audience(s); defaults to ["assistant"]. */
+  readonly audience?: readonly ResourceAudience[];
+  /** When true, omit from the default `resources/list` to keep the list short. */
+  readonly listed?: boolean;
 }
 
 const CORE_RESOURCES: readonly ResourceEntry[] = [
@@ -52,6 +61,7 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     description: 'HCQL/HRQL/HEQL/HDQL query syntax',
     content: queryLanguagesContent,
     splitSections: true,
+    priority: 0.95,
   },
   {
     name: 'rbac',
@@ -124,18 +134,18 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     splitSections: true,
   },
   {
-    name: 'dictionary-entries',
-    uri: 'horizon://knowledge/dictionary-entries',
-    description:
-      'Certificate field dictionary entries (alias for dictionary-matrix)',
-    content: dictionaryMatrixContent,
-  },
-  {
     name: 'rest-notifications',
     uri: 'horizon://knowledge/rest-notifications',
     description: 'REST notification trigger configuration',
     content: restNotificationsContent,
     splitSections: true,
+  },
+  {
+    name: 'server-rules',
+    uri: 'horizon://knowledge/server-rules',
+    description: 'Operating rules and conventions for the MCP server',
+    content: serverRulesContent,
+    priority: 0.9,
   },
 ] as const;
 
@@ -145,35 +155,36 @@ const CURATED_RESOURCES: readonly ResourceEntry[] = [
     uri: 'horizon://knowledge/tool-selection',
     description: 'Deterministic tool selection playbook for smaller models',
     content: toolSelectionContent,
+    priority: 1.0,
   },
+  // Integration recipes - readable on demand but kept out of the default
+  // resources/list to keep the listing short. The model can still request
+  // them by URI directly.
   {
     name: 'adcs-integration',
     uri: 'horizon://knowledge/adcs-integration',
     description: 'ADCS integration recipe and verification checklist',
     content: adcsIntegrationContent,
+    listed: false,
+    priority: 0.5,
   },
   {
     name: 'digicert-integration',
     uri: 'horizon://knowledge/digicert-integration',
     description: 'DigiCert connector recipe and field checklist',
     content: digicertIntegrationContent,
+    listed: false,
+    priority: 0.5,
   },
   {
     name: 'intune-integration',
     uri: 'horizon://knowledge/intune-integration',
     description: 'Intune and Intune PKCS integration recipe',
     content: intuneIntegrationContent,
+    listed: false,
+    priority: 0.5,
   },
 ] as const;
-
-function escapeResourceText(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
 
 function slugifyHeading(title: string): string {
   return title
@@ -230,17 +241,13 @@ function createSectionContent(
   resource: ResourceEntry,
   section: SectionCandidate,
 ): string {
-  const safeTitle = escapeResourceText(section.title);
-  const safeDescription = escapeResourceText(resource.description);
-  const safeBody = escapeResourceText(section.body);
-
   return [
-    `# ${safeTitle}`,
+    `# ${section.title}`,
     '',
     `Parent resource: ${resource.uri}`,
-    `Parent topic: ${safeDescription}`,
+    `Parent topic: ${resource.description}`,
     '',
-    safeBody,
+    section.body,
   ].join('\n');
 }
 
@@ -254,12 +261,15 @@ function splitSections(resource: ResourceEntry): ResourceEntry[] {
       const slug = slugifyHeading(section.title);
       if (!section.title || !slug) return undefined;
 
-      return {
+      const entry: ResourceEntry = {
         name: `${resource.name}-${slug}`,
         uri: `${resource.uri}/${slug}`,
         description: `${resource.description} - ${section.title}`,
         content: createSectionContent(resource, section),
-      } satisfies ResourceEntry;
+        listed: false,
+        priority: 0.3,
+      };
+      return entry;
     })
     .filter((entry): entry is ResourceEntry => entry !== undefined);
 }
@@ -273,6 +283,20 @@ export const CURATED_RESOURCE_URIS = CURATED_RESOURCES.map(
   (resource) => resource.uri,
 );
 
+/** Every known resource, including section URIs that are unlisted. */
 export function getAllResources(): ResourceEntry[] {
   return [...CORE_RESOURCES, ...CURATED_RESOURCES, ...SECTION_RESOURCES];
 }
+
+/** Resources to advertise in `resources/list`. Skips unlisted entries. */
+export function getListedResources(): ResourceEntry[] {
+  return getAllResources().filter((r) => r.listed !== false);
+}
+
+/** Resolve a single resource by URI (used for both listed and unlisted). */
+export function getResourceByUri(uri: string): ResourceEntry | undefined {
+  return getAllResources().find((r) => r.uri === uri);
+}
+
+/** URI template that covers split-section resources. */
+export const SECTION_URI_TEMPLATE = 'horizon://knowledge/{topic}/{section}';

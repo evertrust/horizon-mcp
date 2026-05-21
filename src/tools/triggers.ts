@@ -22,6 +22,7 @@ import {
   buildListResponse,
   buildMutateResponse,
   deleteGuard,
+  encodePathSegment,
 } from './helpers.js';
 import { registerTool } from './register.js';
 
@@ -204,11 +205,9 @@ export function registerTriggerTools(
       description:
         'List stored credentials (names and types only - secrets are never exposed).\n\n' +
         'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/rest-notifications\n\n' +
         'Credentials are referenced by name in REST notification steps and ' +
         'datasource configurations. Secret values (passwords, API tokens, private ' +
-        'keys) are NEVER returned.\n\n' +
-        'See also: create_rest_notification, create_rest_datasource.',
+        'keys) are NEVER returned.\n\n',
       inputSchema: z.object({
         max_items: z
           .number()
@@ -274,11 +273,9 @@ export function registerTriggerTools(
     'list_triggers',
     {
       description:
-        'List triggers (notifications and third-party connectors) with optional filtering.\n\n' +
+        'List triggers (notifications and third-party connectors) with optional filtering.\n\n Ref: horizon://knowledge/rest-notifications.' +
         'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/rest-notifications, horizon://knowledge/automation\n\n' +
-        'Use trigger_type="rest" to list only REST notifications.\n\n' +
-        'See also: get_trigger, create_rest_notification, simulate_trigger, delete_trigger.',
+        'Use trigger_type="rest" to list only REST notifications.\n\n',
       inputSchema: z.object({
         max_items: z
           .number()
@@ -328,18 +325,18 @@ export function registerTriggerTools(
     'get_trigger',
     {
       description:
-        'Get a single trigger by name.\n\n' +
+        'Get a single trigger by name.\n\n Ref: horizon://knowledge/rest-notifications.' +
         'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/rest-notifications, horizon://knowledge/automation\n\n' +
         'Returns the full trigger configuration including sequence steps, ' +
-        'authentication, headers, and payload templates for REST notifications.\n\n' +
-        'See also: list_triggers, create_rest_notification, simulate_trigger, delete_trigger.',
+        'authentication, headers, and payload templates for REST notifications.\n\n',
       inputSchema: z.object({
         name: z.string().describe('Exact trigger name.'),
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${TRIGGER_BASE}/${name}`);
+      const result = await client.get(
+        `${TRIGGER_BASE}/${encodePathSegment(name)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
@@ -355,12 +352,8 @@ export function registerTriggerTools(
     'create_rest_notification',
     {
       description:
-        'STOP - This tool modifies data. You MUST ask the user for explicit ' +
-        'confirmation before calling this tool. Do not proceed without a clear ' +
-        '"yes" from the user. Present what you intend to do and wait.\n\n' +
         'Create a REST notification for custom certificate deployment or integration.\n\n' +
         'Safety tier: mutating-safe\n' +
-        'Knowledge: horizon://knowledge/rest-notifications\n\n' +
         'REST notifications execute a sequence of HTTP requests when a certificate ' +
         'lifecycle event occurs. Each step can reference template variables from the ' +
         "certificate/request dictionary and from previous steps' responses.\n\n" +
@@ -394,7 +387,6 @@ export function registerTriggerTools(
         '    - Create + activate: Step 1 creates resource, step 2 activates it\n\n' +
         'After creating, attach the trigger to a profile using the Horizon UI or API\n' +
         'to start receiving events. See horizon://knowledge/automation for attachment.\n\n' +
-        'See also: simulate_trigger (test before attaching to profile),\n' +
         '    list_triggers (verify creation), get_trigger (inspect config),\n' +
         '    delete_trigger (remove).',
       inputSchema: z.object({
@@ -576,15 +568,9 @@ export function registerTriggerTools(
     'delete_trigger',
     {
       description:
-        'STOP - This tool performs an IRREVERSIBLE destructive operation. You MUST ' +
-        'ask the user for explicit confirmation before calling this tool. Do not ' +
-        'proceed without a clear "yes" from the user. Present what will be ' +
-        'permanently destroyed and wait.\n\n' +
-        'Delete a trigger. Requires name confirmation.\n\n' +
+        'Delete a trigger. Requires name confirmation.\n\n Ref: horizon://knowledge/rest-notifications.' +
         'A trigger should be detached from all profiles before deletion.\n\n' +
-        'Safety tier: mutating-destructive\n' +
-        'Knowledge: horizon://knowledge/rest-notifications, horizon://knowledge/automation\n\n' +
-        'See also: get_trigger, list_triggers.',
+        'Safety tier: mutating-destructive\n',
       inputSchema: z.object({
         name: z.string().describe('Trigger name to delete.'),
         expected_name: z
@@ -594,7 +580,7 @@ export function registerTriggerTools(
     },
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
-      await client.delete(`${TRIGGER_BASE}/${name}`);
+      await client.delete(`${TRIGGER_BASE}/${encodePathSegment(name)}`);
       return {
         content: [
           {
@@ -619,9 +605,8 @@ export function registerTriggerTools(
     'simulate_trigger',
     {
       description:
-        'Test-fire an existing trigger without real certificate context.\n\n' +
+        'Test-fire an existing trigger without real certificate context.\n\n Ref: horizon://knowledge/rest-notifications.' +
         'Safety tier: read-only (executes the trigger but uses test context only)\n' +
-        'Knowledge: horizon://knowledge/rest-notifications\n\n' +
         'Sends a PATCH request to simulate the trigger. The trigger must already ' +
         'exist. Horizon executes it with a synthetic test context and returns the ' +
         'execution result.\n\n' +
@@ -635,7 +620,6 @@ export function registerTriggerTools(
         '    2. Call simulate_trigger to verify the HTTP calls succeed\n' +
         '    3. If simulation passes, attach the trigger to a profile\n' +
         '    4. If simulation fails, inspect errors, fix config, and retry\n\n' +
-        'See also: create_rest_notification (create before simulating),\n' +
         '    get_trigger (inspect current config).',
       inputSchema: z.object({
         name: z.string().describe('Name of the existing trigger to simulate.'),

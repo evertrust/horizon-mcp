@@ -51,7 +51,6 @@ export function registerComputationTools(
         'It contains the COMPLETE list of available functions, the exact syntax, ' +
         'and real-world PKI examples. DO NOT invent functions or syntax - only ' +
         'use what is documented in that resource.\n\n' +
-        'Safety tier: read-only\n\n' +
         'Available functions (exhaustive list - no others exist):\n' +
         '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
         '  List: Filter, Slice, Sort, Split, Unique\n' +
@@ -112,7 +111,6 @@ export function registerComputationTools(
     {
       description:
         'Test a datasource flow pipeline against an optional context.\n\n' +
-        'Safety tier: read-only\n\n' +
         'Executes a datasource flow chain in test mode and returns the ' +
         'enriched dictionary. Each flow entry specifies a datasource name, ' +
         'input mappings, and an optional stop-on-success flag. The MCP ' +

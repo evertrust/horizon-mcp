@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 import type { Agent } from 'undici';
 
 import { getLogger } from '../logging.js';
@@ -80,19 +81,19 @@ export class MtlsAuthProvider extends AuthProvider {
     pfxPassword?: string;
   }): Agent.Options['connect'] {
     if (opts.certPath && opts.keyPath) {
-      logger.info(`mTLS: loaded PEM cert=${opts.certPath} key=${opts.keyPath}`);
+      logger.info(
+        `mTLS: loaded PEM cert=${basename(opts.certPath)} key=${basename(opts.keyPath)}`,
+      );
       const connect: Agent.Options['connect'] = {
         cert: readFileSync(opts.certPath, 'utf-8'),
-        key: opts.keyPassword
-          ? readFileSync(opts.keyPath, 'utf-8')
-          : readFileSync(opts.keyPath, 'utf-8'),
+        key: readFileSync(opts.keyPath, 'utf-8'),
         passphrase: opts.keyPassword || undefined,
       };
       return connect;
     }
 
     // PFX path
-    logger.info(`mTLS: loaded PFX bundle=${opts.pfxPath}`);
+    logger.info(`mTLS: loaded PFX bundle=${basename(opts.pfxPath!)}`);
     return {
       pfx: readFileSync(opts.pfxPath!),
       passphrase: opts.pfxPassword || undefined,

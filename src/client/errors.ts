@@ -97,6 +97,30 @@ function redactSensitive(data: unknown): unknown {
   return data;
 }
 
+// Anything matching these patterns inside an error message is a leak risk.
+const PEM_PRIVATE_KEY_RE =
+  /-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z0-9 ]*PRIVATE KEY-----/g;
+const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
+const LONG_BASE64_RE = /[A-Za-z0-9+/=_-]{40,}/g;
+
+const MAX_ERROR_FIELD_LENGTH = 200;
+
+/**
+ * Scrub PEM private keys, JWT tokens, and long base64-ish blobs from a
+ * free-form string, then truncate to MAX_ERROR_FIELD_LENGTH chars.
+ */
+export function redactValue(s: string): string {
+  if (!s) return s;
+  let scrubbed = s
+    .replace(PEM_PRIVATE_KEY_RE, '<redacted-private-key>')
+    .replace(JWT_RE, '<redacted-jwt>')
+    .replace(LONG_BASE64_RE, '<redacted-blob>');
+  if (scrubbed.length > MAX_ERROR_FIELD_LENGTH) {
+    scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + '... [truncated]';
+  }
+  return scrubbed;
+}
+
 function resolveRemediation(errorCode: string | undefined): string | undefined {
   if (!errorCode) return undefined;
   if (errorCode in SPECIFIC_REMEDIATION) return SPECIFIC_REMEDIATION[errorCode];
@@ -113,7 +137,7 @@ export function parseErrorResponse(
     raw = body ? (JSON.parse(body) as Record<string, unknown>) : {};
   } catch {
     return new HorizonError(statusCode, {
-      message: body ? body.slice(0, 500) : `HTTP ${statusCode}`,
+      message: body ? redactValue(body) : `HTTP ${statusCode}`,
     });
   }
 
@@ -155,8 +179,52 @@ export function parseErrorResponse(
 
   return new HorizonError(statusCode, {
     errorCode,
-    message,
-    detail,
+    message: message ? redactValue(message) : message,
+    detail: detail ? redactValue(detail) : detail,
     remediation,
   });
+}
+
+/**
+ * Raised when CSRF token acquisition fails so the caller cannot silently
+ * proceed by sending `Csrf-Token: nocheck`.
+ */
+export class HorizonCsrfError extends HorizonError {
+  constructor(message: string, opts: { detail?: string } = {}) {
+    super(0, {
+      errorCode: 'CSRF_REFRESH_FAILED',
+      message,
+      detail: opts.detail,
+      remediation:
+        'Re-authenticate (refresh the API key, browser session, or mTLS ' +
+        'credentials) and retry. If the problem persists, the CSRF endpoint ' +
+        'may be unreachable or blocked.',
+    });
+    this.name = 'HorizonCsrfError';
+  }
+}
+
+/**
+ * Raised when an HTTP response body does not match a caller-provided Zod
+ * schema. The diff is truncated to keep error messages bounded.
+ */
+export class HorizonResponseValidationError extends HorizonError {
+  readonly issues: string;
+
+  constructor(opts: { path: string; statusCode: number; issues: string }) {
+    const truncatedIssues =
+      opts.issues.length > 500
+        ? opts.issues.slice(0, 500) + '... [truncated]'
+        : opts.issues;
+    super(opts.statusCode, {
+      errorCode: 'RESPONSE_VALIDATION_FAILED',
+      message: `Response from ${opts.path} did not match expected schema`,
+      detail: truncatedIssues,
+      remediation:
+        'Check the Horizon version compatibility or update the response ' +
+        'schema used by this tool.',
+    });
+    this.name = 'HorizonResponseValidationError';
+    this.issues = truncatedIssues;
+  }
 }

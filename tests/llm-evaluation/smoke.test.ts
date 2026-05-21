@@ -6,7 +6,7 @@ describe('Provider-agnostic scenario smoke tests', () => {
   it('loads tool and resource metadata without external model dependencies', async () => {
     const metadata = await loadScenarioMetadata();
 
-    expect(metadata.tools.length).toBe(84);
+    expect(metadata.tools.length).toBe(85);
     expect(metadata.resources.length).toBeGreaterThan(20);
   });
 

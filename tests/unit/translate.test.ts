@@ -575,3 +575,70 @@ describe('Query validity', () => {
     },
   );
 });
+
+// ---------------------------------------------------------------------------
+// 8. ReDoS guard - oversized input is rejected fast
+// ---------------------------------------------------------------------------
+
+describe('Oversized input guard', () => {
+  let mcpClient: Client;
+
+  beforeAll(async () => {
+    const server = new McpServer({
+      name: 'translate-redos-test',
+      version: '0.0.0',
+    });
+
+    const horizonClient: any = {
+      get: vi.fn(),
+      post: vi.fn(),
+      put: vi.fn(),
+      patch: vi.fn(),
+      delete: vi.fn(),
+      getBytes: vi.fn(),
+      getText: vi.fn(),
+      postText: vi.fn(),
+      postMultipart: vi.fn(),
+      request: vi.fn(),
+      close: vi.fn(),
+      fetchCsrfToken: vi.fn(),
+      exportTimeout: 120000,
+      principalName: undefined,
+      horizonVersion: undefined,
+    };
+
+    registerTranslateTools(server, horizonClient);
+
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    mcpClient = new Client({ name: 'redos-test-client', version: '0.0.0' });
+    await Promise.all([
+      mcpClient.connect(clientTransport),
+      server.connect(serverTransport),
+    ]);
+  });
+
+  it('rejects oversized input fast (under 50 ms)', async () => {
+    // 5000 bytes of "cert " repeated - well above the 4096-byte cap and
+    // crafted to look like input the cert pattern would scan.
+    const oversized = 'cert '.repeat(1000);
+    expect(oversized.length).toBeGreaterThan(4096);
+
+    const start = performance.now();
+    const result = await mcpClient.callTool({
+      name: 'translate_to_hql',
+      arguments: { natural_language: oversized, validate: false },
+    });
+    const elapsedMs = performance.now() - start;
+
+    const text = (result.content as { type: string; text: string }[])[0]!.text;
+    const data = JSON.parse(text);
+
+    expect(data).toHaveProperty('error');
+    expect(String(data.error)).toMatch(/exceeds 4096-byte limit/);
+    expect(
+      elapsedMs,
+      `oversized input took ${elapsedMs}ms, expected <50ms`,
+    ).toBeLessThan(50);
+  });
+});

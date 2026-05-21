@@ -1,7 +1,10 @@
 import { HorizonError } from '../client/errors.js';
 import type { HorizonClient } from '../client/http.js';
+import { getLogger } from '../logging.js';
 import { DOC_VERSION_CATALOG, getLatestIndexedVersion } from './catalog.js';
 import type { DocProduct, ResolvedDocVersion } from './types.js';
+
+const logger = getLogger('horizon_mcp.docs.versioning');
 
 const HORIZON_PRODUCTS = new Set<DocProduct>(['horizon', 'horizon-api']);
 
@@ -98,8 +101,12 @@ async function resolveInstanceVersionFromLicense(
       error instanceof HorizonError &&
       (error.statusCode === 401 || error.statusCode === 403)
     ) {
+      logger.debug(
+        `License lookup denied (${error.statusCode}) while resolving doc version: ${error}`,
+      );
       return undefined;
     }
+    logger.debug(`License lookup failed while resolving doc version: ${error}`);
     return undefined;
   }
 }
@@ -113,7 +120,8 @@ async function resolveInstanceVersionFromWhoami(
     );
     const version = principal['_horizonVersion'];
     return typeof version === 'string' ? version : undefined;
-  } catch {
+  } catch (error) {
+    logger.debug(`Whoami lookup failed while resolving doc version: ${error}`);
     return undefined;
   }
 }

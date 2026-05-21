@@ -5,16 +5,97 @@ import {
   fetch as undiciFetch,
 } from 'undici';
 import type { RequestInit as UndiciRequestInit } from 'undici';
+import type { ZodType } from 'zod';
 
 import type { AuthProvider } from '../auth/base.js';
 import { getLogger } from '../logging.js';
-import { HorizonError, parseErrorResponse } from './errors.js';
+import {
+  HorizonCsrfError,
+  HorizonError,
+  HorizonResponseValidationError,
+  parseErrorResponse,
+} from './errors.js';
 import { withRetry } from './retry.js';
 
 const logger = getLogger('horizon_mcp.client');
 
 // PUT/DELETE endpoints verified as idempotent - initially empty
 const RETRYABLE_ENDPOINTS = new Set<string>();
+
+// Defense-in-depth cap on response bodies the client will parse.
+const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
+
+// Rate-limit boundaries for the auto re-auth path on 401/403.
+const REAUTH_MIN_INTERVAL_MS = 5 * 60 * 1000;
+const REAUTH_MAX_INTERVAL_MS = 30 * 60 * 1000;
+
+// Connection-error cause codes we know how to classify.
+const CONNECTION_CAUSE_CODES = new Set([
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'ETIMEDOUT',
+  'ECONNRESET',
+  'EHOSTUNREACH',
+  'UND_ERR_CONNECT_TIMEOUT',
+]);
+
+/**
+ * Read the `cause.code` chain commonly produced by undici/Node fetch
+ * connection errors (the actual TCP/DNS failure is nested as `err.cause`).
+ */
+function getCauseCode(err: unknown): string | undefined {
+  if (err && typeof err === 'object' && 'cause' in err) {
+    const cause = (err as { cause?: unknown }).cause;
+    if (cause && typeof cause === 'object' && 'code' in cause) {
+      return (cause as { code?: string }).code;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * Bound JSON.parse to MAX_RESPONSE_BYTES. Throws HorizonError(0) if the
+ * Content-Length header (or the buffered text) exceeds the limit.
+ */
+async function readJsonBounded<T>(
+  resp: Response,
+  path: string,
+): Promise<T | Record<string, never>> {
+  const contentLength = resp.headers.get('content-length');
+  if (contentLength) {
+    const declared = Number.parseInt(contentLength, 10);
+    if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
+      throw new HorizonError(0, {
+        message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (Content-Length: ${declared})`,
+        remediation:
+          'Use a paginated endpoint or narrow the query to reduce payload size.',
+      });
+    }
+  }
+
+  const text = await resp.text();
+  if (text.length > MAX_RESPONSE_BYTES) {
+    throw new HorizonError(0, {
+      message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (received: ${text.length})`,
+      remediation:
+        'Use a paginated endpoint or narrow the query to reduce payload size.',
+    });
+  }
+  if (!text) return {} as Record<string, never>;
+  return JSON.parse(text) as T;
+}
+
+/**
+ * Common per-request options accepted by the public verb helpers.
+ * `schema` enables opt-in Zod validation of the parsed body.
+ * `allowCsrfNoCheck` is a per-request escape hatch for endpoints that
+ * historically tolerate the literal `Csrf-Token: nocheck`.
+ */
+export interface RequestOptions<T = unknown> {
+  timeout?: number;
+  schema?: ZodType<T>;
+  allowCsrfNoCheck?: boolean;
+}
 
 export interface MultipartPart {
   fieldName: string;
@@ -29,9 +110,15 @@ export class HorizonClient {
   private readonly _timeout: number;
   readonly exportTimeout: number;
   private readonly _agent: Agent;
+  private readonly _testedVersions: readonly string[];
+  private readonly _warnVersions: readonly string[];
   private _csrfToken: string | undefined;
   private _initialized = false;
   private _initPromise: Promise<void> | null = null;
+
+  // Rate-limit state for the 401 -> re-auth path.
+  private _lastReauthAt: number | null = null;
+  private _reauthBackoffMs: number = REAUTH_MIN_INTERVAL_MS;
 
   // Captured during lazy init
   principalName: string | undefined;
@@ -40,12 +127,20 @@ export class HorizonClient {
   constructor(
     baseUrl: string,
     auth: AuthProvider,
-    options: { timeout: number; exportTimeout: number; verifySsl: boolean },
+    options: {
+      timeout: number;
+      exportTimeout: number;
+      verifySsl: boolean;
+      testedVersions?: readonly string[];
+      warnVersions?: readonly string[];
+    },
   ) {
     this._baseUrl = baseUrl.replace(/\/+$/, '');
     this._auth = auth;
     this._timeout = options.timeout * 1000;
     this.exportTimeout = options.exportTimeout * 1000;
+    this._testedVersions = options.testedVersions ?? [];
+    this._warnVersions = options.warnVersions ?? [];
 
     // Build undici Agent with TLS connect options
     const authConnect = auth.getDispatcherOptions();
@@ -61,38 +156,77 @@ export class HorizonClient {
 
   // -- Public API -----------------------------------------------------------
 
-  async get<T = unknown>(path: string, params?: URLSearchParams): Promise<T> {
+  async get<T = unknown>(
+    path: string,
+    params?: URLSearchParams,
+    opts?: RequestOptions<T>,
+  ): Promise<T> {
     const url = params ? `${path}?${params.toString()}` : path;
-    return this._requestJson<T>('GET', url);
+    return this._requestJson<T>('GET', url, undefined, opts);
   }
 
   async post<T = unknown>(
     path: string,
     body?: unknown,
-    opts?: { timeout?: number },
+    opts?: RequestOptions<T>,
   ): Promise<T> {
-    return this._requestJson<T>('POST', path, {
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-      timeoutMs: opts?.timeout ? opts.timeout * 1000 : undefined,
-    });
+    return this._requestJson<T>(
+      'POST',
+      path,
+      {
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        timeoutMs: opts?.timeout ? opts.timeout * 1000 : undefined,
+        allowCsrfNoCheck: opts?.allowCsrfNoCheck,
+      },
+      opts,
+    );
   }
 
-  async put<T = unknown>(path: string, body: unknown): Promise<T> {
-    return this._requestJson<T>('PUT', path, {
-      body: JSON.stringify(body),
-    });
+  async put<T = unknown>(
+    path: string,
+    body: unknown,
+    opts?: RequestOptions<T>,
+  ): Promise<T> {
+    return this._requestJson<T>(
+      'PUT',
+      path,
+      {
+        body: JSON.stringify(body),
+        allowCsrfNoCheck: opts?.allowCsrfNoCheck,
+      },
+      opts,
+    );
   }
 
-  async patch<T = unknown>(path: string, body: unknown): Promise<T> {
-    return this._requestJson<T>('PATCH', path, {
-      body: JSON.stringify(body),
-    });
+  async patch<T = unknown>(
+    path: string,
+    body: unknown,
+    opts?: RequestOptions<T>,
+  ): Promise<T> {
+    return this._requestJson<T>(
+      'PATCH',
+      path,
+      {
+        body: JSON.stringify(body),
+        allowCsrfNoCheck: opts?.allowCsrfNoCheck,
+      },
+      opts,
+    );
   }
 
-  async delete(path: string): Promise<unknown | null> {
-    const resp = await this._request('DELETE', path);
+  async delete(
+    path: string,
+    opts?: RequestOptions<unknown>,
+  ): Promise<unknown | null> {
+    const resp = await this._request('DELETE', path, {
+      allowCsrfNoCheck: opts?.allowCsrfNoCheck,
+    });
     if (resp.status === 204) return null;
-    return resp.json();
+    const parsed = await readJsonBounded<unknown>(resp, path);
+    if (opts?.schema) {
+      return this._validateOrThrow(opts.schema, parsed, path, resp.status);
+    }
+    return parsed;
   }
 
   async getBytes(path: string): Promise<ArrayBuffer> {
@@ -108,11 +242,12 @@ export class HorizonClient {
   async postText(
     path: string,
     body?: unknown,
-    opts?: { timeout?: number },
+    opts?: RequestOptions<string>,
   ): Promise<string> {
     const resp = await this._request('POST', path, {
       body: body !== undefined ? JSON.stringify(body) : undefined,
       timeoutMs: opts?.timeout ? opts.timeout * 1000 : undefined,
+      allowCsrfNoCheck: opts?.allowCsrfNoCheck,
     });
     return resp.text();
   }
@@ -217,8 +352,8 @@ export class HorizonClient {
           return this._csrfToken;
         }
       }
-    } catch {
-      logger.debug('CSRF JSON endpoint unavailable - checking cookies');
+    } catch (err) {
+      logger.debug(`CSRF JSON endpoint unavailable - checking cookies: ${err}`);
     }
 
     // Step 5: Fallback to csrf-token cookie from response headers
@@ -305,13 +440,9 @@ export class HorizonClient {
     if (!match) return;
     const majorMinor = match[1]!;
 
-    // These are read from settings in the Python version but hardcoded for now
-    const testedVersions = ['2.8'];
-    const warnVersions = ['2.7', '2.9'];
-
-    if (testedVersions.includes(majorMinor)) {
+    if (this._testedVersions.includes(majorMinor)) {
       logger.info(`Horizon version ${version} (tested - full compatibility)`);
-    } else if (warnVersions.includes(majorMinor)) {
+    } else if (this._warnVersions.includes(majorMinor)) {
       logger.warning(
         `Horizon version ${version} - partially tested, some features may not work as expected`,
       );
@@ -331,6 +462,7 @@ export class HorizonClient {
       body?: string;
       timeoutMs?: number;
       reauthAttempted?: boolean;
+      allowCsrfNoCheck?: boolean;
     },
   ): Promise<Response> {
     const requestId = randomUUID().slice(0, 12);
@@ -338,7 +470,7 @@ export class HorizonClient {
     const timeoutMs = opts?.timeoutMs ?? this._timeout;
 
     await this._ensureInitialized();
-    const headers = await this._buildHeaders(method);
+    const headers = await this._buildHeaders(method, opts?.allowCsrfNoCheck);
     headers['X-Request-Id'] = requestId;
 
     const fetchOpts: UndiciRequestInit & { dispatcher: Agent } = {
@@ -358,9 +490,18 @@ export class HorizonClient {
     try {
       resp = await this._doRequest(method, fullUrl, fetchOpts, path);
     } catch (err) {
-      if (err instanceof TypeError && String(err).includes('fetch')) {
+      const causeCode = getCauseCode(err);
+      const isConnectionError =
+        (causeCode !== undefined && CONNECTION_CAUSE_CODES.has(causeCode)) ||
+        // Fallback when cause.code is unavailable (older runtimes / test mocks).
+        (causeCode === undefined &&
+          err instanceof TypeError &&
+          String(err).includes('fetch'));
+      if (isConnectionError) {
         throw new HorizonError(0, {
-          message: `Connection to ${this._baseUrl} failed: ${err}`,
+          message: `Connection to ${this._baseUrl} failed${
+            causeCode ? ` (${causeCode})` : ''
+          }: ${err}`,
           remediation: 'Check HORIZON_URL and network connectivity.',
         });
       }
@@ -376,13 +517,28 @@ export class HorizonClient {
       duration_ms: durationMs,
     });
 
-    // CSRF 403 -> single retry after token refresh
+    // CSRF 403 -> single retry after token refresh.
+    // Fail closed: if we cannot acquire a new token, throw HorizonCsrfError
+    // rather than silently sending Csrf-Token: nocheck.
     if (resp.status === 403 && (await this._isCsrfRejection(resp.clone()))) {
       logger.info('CSRF rejected - refreshing token and retrying', {
         request_id: requestId,
       });
       await this.fetchCsrfToken();
-      headers['Csrf-Token'] = this._csrfToken ?? 'nocheck';
+      if (!this._csrfToken) {
+        if (opts?.allowCsrfNoCheck) {
+          headers['Csrf-Token'] = 'nocheck';
+        } else {
+          throw new HorizonCsrfError(
+            'Failed to acquire CSRF token after refresh',
+            {
+              detail: `${method} ${path}`,
+            },
+          );
+        }
+      } else {
+        headers['Csrf-Token'] = this._csrfToken;
+      }
       fetchOpts.headers = headers;
       fetchOpts.signal = AbortSignal.timeout(timeoutMs);
       resp = await undiciFetch(fullUrl, fetchOpts);
@@ -392,15 +548,46 @@ export class HorizonClient {
       return resp;
     }
 
-    // Auth failure retry: 401 or 403 -> re-authenticate once
+    // Auth failure retry: 401 or 403 -> re-authenticate once, but rate-limit
+    // the attempt so a wedged auth provider cannot hammer the IdP.
     if (
       (resp.status === 401 || resp.status === 403) &&
       !opts?.reauthAttempted
     ) {
+      const now = Date.now();
+      const elapsed =
+        this._lastReauthAt === null ? Infinity : now - this._lastReauthAt;
+
+      if (elapsed < this._reauthBackoffMs) {
+        logger.warning(
+          `Auth rejected (${resp.status}) - skipping re-auth (last attempt ${Math.round(
+            elapsed / 1000,
+          )}s ago, floor ${Math.round(this._reauthBackoffMs / 1000)}s)`,
+          { request_id: requestId },
+        );
+        // Return the 401/403 to the caller for normal error handling.
+        if (resp.status >= 400) {
+          throw parseErrorResponse(resp.status, await resp.text());
+        }
+        return resp;
+      }
+
       logger.info(
         `Auth rejected (${resp.status}) - attempting re-authentication`,
         { request_id: requestId },
       );
+      // Exponential backoff: if we re-authed recently (within the previous
+      // window), the next floor doubles - capped at REAUTH_MAX_INTERVAL_MS.
+      if (this._lastReauthAt !== null && elapsed < REAUTH_MAX_INTERVAL_MS * 2) {
+        this._reauthBackoffMs = Math.min(
+          this._reauthBackoffMs * 2,
+          REAUTH_MAX_INTERVAL_MS,
+        );
+      } else {
+        this._reauthBackoffMs = REAUTH_MIN_INTERVAL_MS;
+      }
+      this._lastReauthAt = now;
+
       await this._auth.markAuthFailed();
       await this._auth.refreshIfNeeded();
       return this._request(method, path, {
@@ -451,13 +638,23 @@ export class HorizonClient {
     return undiciFetch(url, fetchOpts);
   }
 
-  private async _buildHeaders(method: string): Promise<Record<string, string>> {
+  private async _buildHeaders(
+    method: string,
+    allowCsrfNoCheck?: boolean,
+  ): Promise<Record<string, string>> {
     await this._auth.refreshIfNeeded();
     const headers = await this._auth.getHeaders();
 
-    // CSRF handling for mutating methods
+    // CSRF handling for mutating methods.
+    // If no token is available we only fall back to the legacy
+    // `nocheck` literal when the caller explicitly opted in.
     if (method.toUpperCase() !== 'GET' && method.toUpperCase() !== 'HEAD') {
-      headers['Csrf-Token'] = this._csrfToken ?? 'nocheck';
+      if (this._csrfToken) {
+        headers['Csrf-Token'] = this._csrfToken;
+      } else if (allowCsrfNoCheck) {
+        headers['Csrf-Token'] = 'nocheck';
+      }
+      // Otherwise: omit the header and let the server decide.
     }
 
     return headers;
@@ -466,12 +663,44 @@ export class HorizonClient {
   private async _requestJson<T>(
     method: string,
     path: string,
-    opts?: { body?: string; timeoutMs?: number },
+    opts?: {
+      body?: string;
+      timeoutMs?: number;
+      allowCsrfNoCheck?: boolean;
+    },
+    reqOpts?: RequestOptions<T>,
   ): Promise<T> {
     const resp = await this._request(method, path, opts);
-    const text = await resp.text();
-    if (!text) return {} as T;
-    return JSON.parse(text) as T;
+    const parsed = await readJsonBounded<T>(resp, path);
+    if (reqOpts?.schema) {
+      return this._validateOrThrow(
+        reqOpts.schema,
+        parsed,
+        path,
+        resp.status,
+      ) as T;
+    }
+    return parsed as T;
+  }
+
+  private _validateOrThrow<T>(
+    schema: ZodType<T>,
+    value: unknown,
+    path: string,
+    statusCode: number,
+  ): T {
+    const result = schema.safeParse(value);
+    if (!result.success) {
+      const issues = result.error.issues
+        .map((issue) => `${issue.path.join('.') || '<root>'}: ${issue.message}`)
+        .join('; ');
+      throw new HorizonResponseValidationError({
+        path,
+        statusCode,
+        issues,
+      });
+    }
+    return result.data;
   }
 
   private async _isCsrfRejection(resp: Response): Promise<boolean> {
@@ -487,7 +716,8 @@ export class HorizonClient {
         errorStr.toLowerCase().includes('csrf') ||
         messageStr.toLowerCase().includes('csrf')
       );
-    } catch {
+    } catch (err) {
+      logger.debug(`CSRF rejection check failed to parse body: ${err}`);
       return false;
     }
   }
