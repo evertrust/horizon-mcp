@@ -1,3 +1,9 @@
+## [1.1.3](https://github.com/evertrust/horizon-mcp/compare/v1.1.2...v1.1.3) (2026-05-21)
+
+### Bug Fixes
+
+* batch of various fixes and small improvements ([9c5795f](https://github.com/evertrust/horizon-mcp/commit/9c5795f235cf8eee4e1eade257334f726c402958))
+
 ## [1.1.2](https://github.com/evertrust/horizon-mcp/compare/v1.1.1...v1.1.2) (2026-05-19)
 
 ### Bug Fixes
