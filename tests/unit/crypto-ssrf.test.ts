@@ -36,7 +36,9 @@ describe('resolveAndCheckHost', () => {
       family: 4,
     } as unknown as Awaited<ReturnType<typeof dns.promises.lookup>>);
 
-    await expect(resolveAndCheckHost('localhost')).rejects.toThrow(/127\.0\.0\.1/);
+    await expect(resolveAndCheckHost('localhost')).rejects.toThrow(
+      /127\.0\.0\.1/,
+    );
   });
 
   it('rejects link-local IPv4 (169.254.0.0/16)', async () => {
@@ -45,9 +47,9 @@ describe('resolveAndCheckHost', () => {
       family: 4,
     } as unknown as Awaited<ReturnType<typeof dns.promises.lookup>>);
 
-    await expect(
-      resolveAndCheckHost('metadata.example.com'),
-    ).rejects.toThrow(/169\.254\.169\.254/);
+    await expect(resolveAndCheckHost('metadata.example.com')).rejects.toThrow(
+      /169\.254\.169\.254/,
+    );
   });
 
   it('rejects CGNAT range (100.64.0.0/10)', async () => {
