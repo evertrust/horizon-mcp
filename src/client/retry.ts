@@ -46,7 +46,18 @@ export async function withRetry(
         if (retryAfter) {
           const retryAfterSeconds = parseInt(retryAfter, 10);
           if (!isNaN(retryAfterSeconds)) {
-            delayMs = retryAfterSeconds * 1000;
+            // Clamp to [0, maxDelayMs/1000] to defend against
+            // pathological server responses (negative or astronomical).
+            const maxRetryAfterSeconds = Math.floor(maxDelayMs / 1000);
+            const clamped = Math.min(
+              Math.max(retryAfterSeconds, 0),
+              maxRetryAfterSeconds,
+            );
+            delayMs = clamped * 1000;
+          } else {
+            logger.warning(
+              `Invalid Retry-After header '${retryAfter}' - falling back to exponential delay`,
+            );
           }
         }
       }

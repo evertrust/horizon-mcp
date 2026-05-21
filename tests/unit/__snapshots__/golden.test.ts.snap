@@ -2541,6 +2541,31 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "dialect": {
+          "enum": [
+            "hcql",
+            "hrql",
+            "heql",
+            "hdql",
+          ],
+          "type": "string",
+        },
+        "query": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "dialect",
+        "query",
+      ],
+      "type": "object",
+    },
+    "name": "validate_hql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "query": {
           "type": "string",
         },

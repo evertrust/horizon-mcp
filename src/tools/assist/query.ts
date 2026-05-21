@@ -316,93 +316,49 @@ export function registerQueryTools(
 
   registerTool(
     server,
-    'validate_hcql',
+    'validate_hql',
     {
       description:
-        'Validate an HCQL (certificate search) query expression.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
-        'Validates the query by executing a minimal search (pageSize=1). ' +
-        'If the query syntax is invalid, Horizon returns a parse error. ' +
-        'On success, confirms the query is valid and reports match info.',
+        'Validate a Horizon query (HCQL/HRQL/HEQL/HDQL) by running a minimal ' +
+        'search (pageSize=1). Returns {valid, query_type, count?, has_more?, ' +
+        'error?}. Field names must be lowercase. ' +
+        'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
-        query: z
-          .string()
+        dialect: z
+          .enum(['hcql', 'hrql', 'heql', 'hdql'])
           .describe(
-            'HCQL query string to validate. Field names MUST be lowercase ' +
-              '(contactemail, keytype - NOT contactEmail, keyType). ' +
-              'Example: dn matches ".*example.com" and status is valid',
+            'Query dialect: hcql (certificates), hrql (requests), heql ' +
+              '(events), hdql (discovery events).',
           ),
+        query: z.string().describe('Query expression to validate.'),
       }),
     },
-    async ({ query }) => validateQuery('hcql', query),
+    async ({ dialect, query }) => validateQuery(dialect, query),
   );
 
-  registerTool(
-    server,
-    'validate_hrql',
-    {
-      description:
-        'Validate an HRQL (request search) query expression.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
-        'Validates the query by executing a minimal search (pageSize=1).',
-      inputSchema: z.object({
-        query: z
-          .string()
-          .describe(
-            'HRQL query string to validate. Field names MUST be lowercase ' +
-              '(registration.date, modification.date - NOT registrationDate). ' +
-              'Example: workflow equals "enroll" and registration.date before 7d',
-          ),
-      }),
-    },
-    async ({ query }) => validateQuery('hrql', query),
-  );
-
-  registerTool(
-    server,
-    'validate_heql',
-    {
-      description:
-        'Validate an HEQL (event search) query expression.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
-        'Validates the query by executing a minimal search (pageSize=1).',
-      inputSchema: z.object({
-        query: z
-          .string()
-          .describe(
-            'HEQL query string to validate. Field names MUST be lowercase ' +
-              '(code, timestamp - NOT eventType, eventDate). ' +
-              'Example: code equals "LIFECYCLE-ENROLL" and timestamp after 24h',
-          ),
-      }),
-    },
-    async ({ query }) => validateQuery('heql', query),
-  );
-
-  registerTool(
-    server,
-    'validate_hdql',
-    {
-      description:
-        'Validate an HDQL (discovery event search) query expression.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
-        'Validates the query by executing a minimal search (pageSize=1).',
-      inputSchema: z.object({
-        query: z
-          .string()
-          .describe(
-            'HDQL query string to validate. Field names MUST be lowercase ' +
-              '(certificateid, sessionid - NOT certificateId, sessionId). ' +
-              'Example: certificateid equals "abc123" and timestamp after -24h',
-          ),
-      }),
-    },
-    async ({ query }) => validateQuery('hdql', query),
-  );
+  // Thin aliases - kept for backward compatibility. Same handler, shorter
+  // wire footprint. New code should use validate_hql with a dialect.
+  const ALIASES: Array<readonly [string, 'hcql' | 'hrql' | 'heql' | 'hdql']> = [
+    ['validate_hcql', 'hcql'],
+    ['validate_hrql', 'hrql'],
+    ['validate_heql', 'heql'],
+    ['validate_hdql', 'hdql'],
+  ];
+  for (const [name, dialect] of ALIASES) {
+    registerTool(
+      server,
+      name,
+      {
+        description: `Alias of validate_hql with dialect="${dialect}". Prefer validate_hql.`,
+        inputSchema: z.object({
+          query: z
+            .string()
+            .describe(`${dialect.toUpperCase()} query to validate.`),
+        }),
+      },
+      async ({ query }) => validateQuery(dialect, query),
+    );
+  }
 
   registerTool(
     server,
@@ -410,8 +366,6 @@ export function registerQueryTools(
     {
       description:
         'Discover available fields and syntax for Horizon query languages.\n\n' +
-        'Safety tier: read-only (local - no API call)\n' +
-        'Knowledge: horizon://knowledge/query-languages\n\n' +
         'Returns field metadata, supported operators, date formats, and ' +
         'example queries for the specified query language type. This is a ' +
         'local tool that does not make any API calls.',

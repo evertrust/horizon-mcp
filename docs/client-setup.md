@@ -11,11 +11,11 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) o
   "mcpServers": {
     "horizon": {
       "command": "bunx",
-      "args": ["horizon-mcp-server"],
+      "args": ["@evertrust/horizon-mcp"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
+        "HORIZON_API_ID": "<your-api-id>",
+        "HORIZON_API_KEY": "<your-api-key>"
       }
     }
   }
@@ -31,8 +31,8 @@ Or with the standalone binary:
       "command": "/path/to/horizon-mcp",
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
+        "HORIZON_API_ID": "<your-api-id>",
+        "HORIZON_API_KEY": "<your-api-key>"
       }
     }
   }
@@ -50,7 +50,7 @@ Create `.mcp.json` in your project root:
   "mcpServers": {
     "horizon": {
       "command": "bunx",
-      "args": ["horizon-mcp-server"],
+      "args": ["@evertrust/horizon-mcp"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -78,7 +78,7 @@ Or with the standalone binary:
 }
 ```
 
-Start Claude Code from that directory. The 81 tools are available immediately.
+Start Claude Code from that directory. The 84 tools are available immediately.
 
 ## Cursor
 
@@ -89,7 +89,7 @@ Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for glob
   "mcpServers": {
     "horizon": {
       "command": "bunx",
-      "args": ["horizon-mcp-server"],
+      "args": ["@evertrust/horizon-mcp"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -126,7 +126,7 @@ Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/co
 ```toml
 [mcp_servers.horizon]
 command = "bunx"
-args = ["horizon-mcp-server"]
+args = ["@evertrust/horizon-mcp"]
 
 [mcp_servers.horizon.env]
 HORIZON_URL = "https://horizon.example.com"
@@ -168,7 +168,7 @@ codex mcp add horizon \
   --env HORIZON_URL=https://horizon.example.com \
   --env HORIZON_API_ID=your-api-id \
   --env HORIZON_API_KEY=your-api-key \
-  -- bunx horizon-mcp-server
+  -- bunx @evertrust/horizon-mcp
 ```
 
 ## OpenCode
@@ -180,7 +180,7 @@ Add to `opencode.json`:
   "mcp": {
     "horizon": {
       "command": "bunx",
-      "args": ["horizon-mcp-server"],
+      "args": ["@evertrust/horizon-mcp"],
       "env": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
@@ -215,7 +215,7 @@ export HORIZON_URL=https://horizon.example.com
 export HORIZON_API_ID=your-api-id
 export HORIZON_API_KEY=your-api-key
 
-bunx @modelcontextprotocol/inspector bunx horizon-mcp-server
+bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 ```
 
-Opens a browser UI showing all 81 tools and 17 knowledge resources.
+Opens a browser UI showing all 84 tools and the full knowledge resource catalog (17 core URIs + 4 curated playbooks + generated section URIs).
