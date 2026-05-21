@@ -306,12 +306,25 @@ describe('parseErrorResponse', () => {
       expect(err.message).toContain('Bad Gateway from nginx');
     });
 
-    it('truncates raw body at 500 characters', () => {
+    it('redacts long base64-shaped blobs in raw body fallback', () => {
+      // A long run of base64-safe characters is flagged as a potential
+      // secret and replaced with a redaction placeholder.
       const longBody = 'x'.repeat(600);
       const err = parseErrorResponse(500, longBody);
 
-      expect(err.message).toContain('x'.repeat(500));
-      expect(err.message).not.toContain('x'.repeat(501));
+      expect(err.message).toContain('<redacted-blob>');
+      expect(err.message).not.toContain('x'.repeat(40));
+    });
+
+    it('truncates non-secret raw bodies to 200 chars', () => {
+      // Use a body that does NOT trip the base64/JWT/PEM detectors:
+      // include spaces so the long-base64 regex does not match.
+      const longBody = 'word '.repeat(100); // 500 chars, all non-base64
+      const err = parseErrorResponse(500, longBody);
+
+      expect(err.message).toContain('... [truncated]');
+      // Header + message; the 'word ' segment is short enough to survive.
+      expect(err.message).not.toContain('word '.repeat(60));
     });
 
     it('falls through to empty parsed JSON for empty body', () => {

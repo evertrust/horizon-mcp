@@ -2,7 +2,11 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
-import { applyNameFilter, buildListResponse } from './helpers.js';
+import {
+  applyNameFilter,
+  buildListResponse,
+  encodePathSegment,
+} from './helpers.js';
 import { registerTool } from './register.js';
 
 const PROFILE_BASE = '/api/v1/certificate/profiles';
@@ -28,9 +32,7 @@ export function registerProfileTools(
     'list_profiles',
     {
       description:
-        'List certificate profiles with optional filtering.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/profiles\n\n' +
+        'List certificate profiles with optional filtering.\n\n Ref: horizon://knowledge/profiles.' +
         'Client-side filtering is applied after fetching all profiles. ' +
         'Use name_contains for substring search and module for exact module type matching.',
       inputSchema: z.object({
@@ -79,15 +81,15 @@ export function registerProfileTools(
     'get_profile',
     {
       description:
-        'Get full details of a single certificate profile by name.\n\n' +
-        'Safety tier: read-only\n' +
-        'Knowledge: horizon://knowledge/profiles',
+        'Get full details of a single certificate profile by name.\n\n Ref: horizon://knowledge/profiles.',
       inputSchema: z.object({
         name: z.string().describe('Exact profile name.'),
       }),
     },
     async ({ name }) => {
-      const result = await client.get(`${PROFILE_BASE}/${name}`);
+      const result = await client.get(
+        `${PROFILE_BASE}/${encodePathSegment(name)}`,
+      );
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

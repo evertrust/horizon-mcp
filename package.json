@@ -29,6 +29,7 @@
     "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon.test.ts -t \"exports events as CSV\" --reporter=verbose",
     "test:scenarios": "vitest run --config vitest.config.llm.ts --reporter=verbose",
     "test:llm": "bun run test:scenarios",
+    "test:llm:live": "vitest run --config vitest.config.llm-live.ts --reporter=verbose",
     "validate:ci": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run verify:truth && bun run docs:diff && bun run test && bun run test:scenarios",
     "docs:refresh": "bun scripts/refresh-docs.ts",
     "docs:diff": "bun scripts/diff-docs.ts",
@@ -49,6 +50,7 @@
     "playwright": "1.59.1"
   },
   "devDependencies": {
+    "@anthropic-ai/claude-agent-sdk": "0.3.145",
     "@commitlint/cli": "20.5.0",
     "@commitlint/config-conventional": "20.5.0",
     "@eslint/js": "10.0.1",
