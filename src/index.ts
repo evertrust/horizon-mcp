@@ -73,24 +73,6 @@ async function main(): Promise<void> {
     warnVersions: settings.warnVersions,
   });
 
-  // Forward server logs through `notifications/message` once the transport is
-  // connected and the client opts in. Best-effort -- failures stay local.
-  setMcpLoggingSink((level, payload) => {
-    void server.server.sendLoggingMessage({
-      level: level as
-        | 'debug'
-        | 'info'
-        | 'notice'
-        | 'warning'
-        | 'error'
-        | 'critical'
-        | 'alert'
-        | 'emergency',
-      logger: payload.logger,
-      data: { msg: payload.msg, ...(payload.extra ?? {}) },
-    });
-  });
-
   // Register all resources
   registerAllResources(server);
 
@@ -135,6 +117,31 @@ async function main(): Promise<void> {
   // Start stdio transport
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Forward server logs through `notifications/message` now that the transport
+  // is connected. Best-effort: any failure (client opted out, transport
+  // closing) stays local and must never crash the server.
+  setMcpLoggingSink((level, payload) => {
+    void Promise.resolve()
+      .then(() =>
+        server.server.sendLoggingMessage({
+          level: level as
+            | 'debug'
+            | 'info'
+            | 'notice'
+            | 'warning'
+            | 'error'
+            | 'critical'
+            | 'alert'
+            | 'emergency',
+          logger: payload.logger,
+          data: { msg: payload.msg, ...(payload.extra ?? {}) },
+        }),
+      )
+      .catch(() => {
+        // transport not ready or closing -- keep the log local only
+      });
+  });
 }
 
 main().catch((err) => {
