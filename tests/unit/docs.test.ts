@@ -172,7 +172,7 @@ describe('Documentation tools', () => {
 
     const results = result['results'] as Array<Record<string, unknown>>;
     expect(results[0]?.['page_id']).toBe(
-      'winhorizon:2.0:admin-guide:ad_config',
+      'winhorizon:2.1:admin-guide:ad_config',
     );
   });
 

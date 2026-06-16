@@ -97,10 +97,10 @@ describe.skipIf(!E2E_CONFIGURED)('Documentation tools E2E', () => {
       max_results: 3,
     });
 
-    expect(result['resolved_product_version']).toBe('2.0');
+    expect(result['resolved_product_version']).toBe('2.1');
     const results = result['results'] as Array<Record<string, unknown>>;
     expect(results[0]?.['page_id']).toBe(
-      'winhorizon:2.0:admin-guide:ad_config',
+      'winhorizon:2.1:admin-guide:ad_config',
     );
   });
 
