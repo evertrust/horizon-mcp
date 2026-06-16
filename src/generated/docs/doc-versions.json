@@ -1,17 +1,27 @@
 {
-  "generatedAt": "2026-05-19T12:39:14.571Z",
+  "generatedAt": "2026-06-16T16:54:21.281Z",
   "products": {
     "horizon": {
       "product": "horizon",
-      "latest": "2.9",
-      "versions": ["2.2", "2.3", "2.4", "2.5", "2.6", "2.7", "2.8", "2.9"],
+      "latest": "2.10",
+      "versions": [
+        "2.2",
+        "2.3",
+        "2.4",
+        "2.5",
+        "2.6",
+        "2.7",
+        "2.8",
+        "2.9",
+        "2.10"
+      ],
       "defaultPolicy": "connected-instance",
       "provenance": "Official Evertrust documentation sitemap"
     },
     "horizon-api": {
       "product": "horizon-api",
-      "latest": "2.9",
-      "versions": ["2.5", "2.6", "2.7", "2.8", "2.9"],
+      "latest": "2.10",
+      "versions": ["2.5", "2.6", "2.7", "2.8", "2.9", "2.10"],
       "defaultPolicy": "connected-instance",
       "provenance": "Official Evertrust documentation sitemap"
     },
@@ -58,15 +68,15 @@
     },
     "terraform-provider-horizon": {
       "product": "terraform-provider-horizon",
-      "latest": "0.6.0",
-      "versions": ["0.6.0"],
+      "latest": "0.7.0",
+      "versions": ["0.7.0"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Terraform Registry provider metadata"
     },
     "winhorizon": {
       "product": "winhorizon",
-      "latest": "2.0",
-      "versions": ["1.1", "2.0"],
+      "latest": "2.1",
+      "versions": ["1.1", "2.0", "2.1"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Official Evertrust documentation sitemap"
     }
