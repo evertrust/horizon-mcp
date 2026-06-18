@@ -1,11 +1,14 @@
 /**
  * Detect whether the local environment can authenticate the Claude Agent SDK
- * against an active Claude subscription (Pro / Max / Team / Enterprise).
+ * (it spawns the bundled `claude` binary headlessly and inherits its auth).
  *
- * The SDK spawns the bundled `claude` binary and inherits its auth context.
- * When no OAuth session is available it falls back to ANTHROPIC_API_KEY, which
- * is per-token API billing - the live LLM tests intentionally skip in that
- * case so the suite never runs against a credit card by accident.
+ * BILLING WARNING: headless `claude -p` / Agent SDK runs are metered as
+ * Anthropic API usage now, even when authenticated with a Pro/Max/Team
+ * subscription session. Running this live suite COSTS money - it is not free
+ * subscription credit. The gate below still refuses to run when an explicit
+ * ANTHROPIC_API_KEY is set, but that is a guard against the most surprising
+ * case, NOT a guarantee of zero billing. Treat the whole live suite as
+ * opt-in and paid: run it deliberately, never in CI or by default.
  */
 import { spawnSync } from 'node:child_process';
 
@@ -38,9 +41,9 @@ export function probeSdkAuth(): SdkAuthInfo {
     return {
       status: 'no-subscription',
       reason:
-        'ANTHROPIC_API_KEY is set; the live suite intentionally refuses to ' +
-        'run against API billing. Unset it or use the API-key suite (not ' +
-        'yet implemented).',
+        'ANTHROPIC_API_KEY is set; the live suite refuses to run with an ' +
+        'explicit API key. Note: even subscription-auth headless runs are ' +
+        'billed as Anthropic API usage now - this suite always costs money.',
     };
   }
 

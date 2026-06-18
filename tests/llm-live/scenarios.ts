@@ -25,12 +25,18 @@ export interface LiveScenario {
    * these keys in its `input` object.
    */
   readonly requiredArgs?: readonly string[];
+  /**
+   * Optional per-scenario USD budget override. Use for scenarios that read
+   * large payloads (e.g. full API-reference doc pages) and legitimately need
+   * more headroom than the default.
+   */
+  readonly maxBudgetUsd?: number;
 }
 
 export const LIVE_SCENARIOS: readonly LiveScenario[] = [
   {
     id: 'expired-certificates-search',
-    question: 'Find all expired certificates in Horizon.',
+    question: 'Search Horizon for every certificate that has already expired.',
     acceptablePrimaryTools: ['search_certificates'],
     requiredArgs: ['query'],
   },
@@ -50,7 +56,8 @@ export const LIVE_SCENARIOS: readonly LiveScenario[] = [
   },
   {
     id: 'events-csv-export',
-    question: 'Export the event audit log as CSV.',
+    question:
+      'Export all events from the Horizon audit log to a CSV file (no filtering).',
     acceptablePrimaryTools: ['export_events_csv'],
     forbiddenTools: ['search_events'],
     requiredArgs: ['query'],
@@ -67,6 +74,8 @@ export const LIVE_SCENARIOS: readonly LiveScenario[] = [
       'Which API endpoint retrieves a request by ID and what does the response look like?',
     acceptablePrimaryTools: ['search_api_docs'],
     requiredArgs: ['query'],
+    // Reading full API-reference doc pages is token-heavy; give it headroom.
+    maxBudgetUsd: 1.0,
   },
   {
     id: 'live-certificate-exposure',
@@ -77,14 +86,16 @@ export const LIVE_SCENARIOS: readonly LiveScenario[] = [
   {
     id: 'datasource-flow-simulation',
     question:
-      'Simulate a datasource flow that first gets an OAuth token and then calls a CMDB API.',
-    acceptablePrimaryTools: ['simulate_datasource_flow'],
-    requiredArgs: ['flow'],
+      'I want to build a Horizon datasource flow that first gets an OAuth token and then calls a CMDB API. Start by listing the datasources already configured in Horizon.',
+    // Multi-step + non-deterministic: Claude may go straight to the simulator
+    // or first list existing datasources to ground the flow. Both are correct
+    // datasource-domain choices; do not over-constrain the arg shape.
+    acceptablePrimaryTools: ['simulate_datasource_flow', 'list_datasources'],
   },
   {
     id: 'query-translation',
     question:
-      'Translate "certificates expiring in seven days" to HCQL and validate it.',
+      'Use Horizon\'s natural-language query translator to turn "certificates expiring in seven days" into a validated HCQL query - do not hand-write the syntax yourself.',
     acceptablePrimaryTools: ['translate_to_hql'],
     requiredArgs: ['natural_language'],
   },
@@ -92,5 +103,32 @@ export const LIVE_SCENARIOS: readonly LiveScenario[] = [
     id: 'whoami-ownership',
     question: 'Who am I in Horizon and what teams do I belong to?',
     acceptablePrimaryTools: ['whoami'],
+  },
+
+  // Configuration CRUD tools. Kept NON-DESTRUCTIVE (list / describe) on purpose:
+  // the runner executes the first tool the model picks, so mutating selections
+  // (create/update/delete) would write to the shared QA instance. Selection of
+  // the mutating config tools is covered $0 in tests/llm-evaluation/scenarios.ts.
+  {
+    id: 'config-list-http-proxies',
+    question: 'List all the HTTP proxy configurations in Horizon.',
+    acceptablePrimaryTools: ['list_http_proxies'],
+  },
+  {
+    id: 'config-list-cas',
+    question: 'List the certificate authorities configured in Horizon.',
+    acceptablePrimaryTools: ['list_cas'],
+  },
+  {
+    id: 'config-describe-pki-connector',
+    question:
+      'What fields do I need to create a PKI connector? Show me its schema.',
+    acceptablePrimaryTools: ['describe_pki_connector_schema'],
+  },
+  {
+    id: 'config-describe-certificate-profile',
+    question:
+      'Show me the schema and required fields for creating a certificate profile.',
+    acceptablePrimaryTools: ['describe_certificate_profile_schema'],
   },
 ] as const;

@@ -57,6 +57,7 @@ HORIZON_URL=https://horizon.example.com
 | `HORIZON_CLIENT_PFX` | Mode 3 | | Path to PKCS12 / PFX bundle |
 | `HORIZON_CLIENT_PFX_PASSWORD` | No | | PFX decryption password |
 | `HORIZON_VERIFY_SSL` | No | `true` | Verify server TLS certificates |
+| `HORIZON_ALLOW_PRIVATE_TLS_PROBE` | No | (blocked) | `fetch_exposed_certificate` blocks private/link-local IPs (SSRF guard); set to `1` to allow probing internal hosts |
 | `HORIZON_TIMEOUT` | No | `30` | HTTP request timeout (seconds) |
 | `HORIZON_LOG_LEVEL` | No | `INFO` | Log verbosity: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 

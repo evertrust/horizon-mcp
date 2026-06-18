@@ -21,7 +21,9 @@ vi.mock('undici', () => ({
       return Promise.resolve();
     }
   },
-  FormData: class MockFormData {},
+  FormData: class MockFormData {
+    append() {}
+  },
 }));
 
 // Import after mock is set up
@@ -306,6 +308,80 @@ describe('ClientSchemaValidation', () => {
     const schema = z.object({ name: z.string() });
     const result = await client.get('/api/v1/cas/test', undefined, { schema });
     expect(result).toEqual({ name: 'ca1' });
+    await client.close();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Insecure TLS warning
+// ---------------------------------------------------------------------------
+
+describe('ClientTlsWarning', () => {
+  it('warns once when verifySsl is false', () => {
+    const writeSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    try {
+      new HorizonClient(
+        'https://horizon.test',
+        new ApiKeyAuthProvider('id', 'key'),
+        {
+          timeout: 5,
+          exportTimeout: 120,
+          verifySsl: false,
+        },
+      );
+      const warnings = writeSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('TLS certificate verification is OFF'),
+      );
+      expect(warnings).toHaveLength(1);
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+
+  it('does not warn when verifySsl is true', () => {
+    const writeSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    try {
+      new HorizonClient(
+        'https://horizon.test',
+        new ApiKeyAuthProvider('id', 'key'),
+        {
+          timeout: 5,
+          exportTimeout: 120,
+          verifySsl: true,
+        },
+      );
+      const warnings = writeSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('TLS certificate verification is OFF'),
+      );
+      expect(warnings).toHaveLength(0);
+    } finally {
+      writeSpy.mockRestore();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Multipart success-path body parsing
+// ---------------------------------------------------------------------------
+
+describe('ClientMultipart', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it('returns {} for an empty 2xx body instead of throwing', async () => {
+    const auth = new ApiKeyAuthProvider('id', 'key');
+    const client = makeClient(auth);
+
+    // Empty (non-JSON) 2xx body - resp.json() would throw SyntaxError.
+    mockFetch.mockResolvedValueOnce(fakeResponse(200, ''));
+
+    const result = await client.postMultipart('/api/v1/upload', []);
+    expect(result).toEqual({});
     await client.close();
   });
 });

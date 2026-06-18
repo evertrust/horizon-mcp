@@ -2,6 +2,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
+import pkg from '../package.json';
 import { createAuthProvider } from './auth/index.js';
 import { HorizonClient } from './client/http.js';
 import { configureLogging, getLogger, setMcpLoggingSink } from './logging.js';
@@ -12,6 +13,7 @@ import { registerCryptoTools } from './tools/assist/crypto.js';
 import { registerQueryTools } from './tools/assist/query.js';
 import { registerSystemTools } from './tools/assist/system.js';
 import { registerTranslateTools } from './tools/assist/translate.js';
+import { registerConfigTools } from './tools/config/index.js';
 import { registerDashboardTools } from './tools/dashboards.js';
 import { registerDatasourceTools } from './tools/datasources.js';
 import { registerDiscoveryEventTools } from './tools/discovery-events.js';
@@ -53,7 +55,7 @@ async function main(): Promise<void> {
   configureLogging(settings.logLevel);
 
   const server = new McpServer(
-    { name: 'Horizon MCP Server', version: '2.0.0' },
+    { name: 'Horizon MCP Server', version: pkg.version },
     {
       instructions: SERVER_INSTRUCTIONS,
       capabilities: {
@@ -71,24 +73,6 @@ async function main(): Promise<void> {
     verifySsl: settings.verifySsl,
     testedVersions: settings.testedVersions,
     warnVersions: settings.warnVersions,
-  });
-
-  // Forward server logs through `notifications/message` once the transport is
-  // connected and the client opts in. Best-effort -- failures stay local.
-  setMcpLoggingSink((level, payload) => {
-    void server.server.sendLoggingMessage({
-      level: level as
-        | 'debug'
-        | 'info'
-        | 'notice'
-        | 'warning'
-        | 'error'
-        | 'critical'
-        | 'alert'
-        | 'emergency',
-      logger: payload.logger,
-      data: { msg: payload.msg, ...(payload.extra ?? {}) },
-    });
   });
 
   // Register all resources
@@ -110,6 +94,7 @@ async function main(): Promise<void> {
   registerCryptoTools(server, client);
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
+  registerConfigTools(server, client);
 
   logger.info(
     'Horizon MCP server ready - auth will trigger on first tool call.',
@@ -135,6 +120,31 @@ async function main(): Promise<void> {
   // Start stdio transport
   const transport = new StdioServerTransport();
   await server.connect(transport);
+
+  // Forward server logs through `notifications/message` now that the transport
+  // is connected. Best-effort: any failure (client opted out, transport
+  // closing) stays local and must never crash the server.
+  setMcpLoggingSink((level, payload) => {
+    void Promise.resolve()
+      .then(() =>
+        server.server.sendLoggingMessage({
+          level: level as
+            | 'debug'
+            | 'info'
+            | 'notice'
+            | 'warning'
+            | 'error'
+            | 'critical'
+            | 'alert'
+            | 'emergency',
+          logger: payload.logger,
+          data: { msg: payload.msg, ...(payload.extra ?? {}) },
+        }),
+      )
+      .catch(() => {
+        // transport not ready or closing -- keep the log local only
+      });
+  });
 }
 
 main().catch((err) => {

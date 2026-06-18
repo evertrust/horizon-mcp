@@ -208,6 +208,7 @@ export function registerCertificateTools(
       const fmt = format.toLowerCase();
       if (fmt !== 'pem') {
         return {
+          isError: true as const,
           content: [
             {
               type: 'text' as const,
@@ -225,9 +226,19 @@ export function registerCertificateTools(
         `/api/v1/certificates/${encodePathSegment(certificate_id)}`,
       );
 
-      const pem = cert['certificate'] ?? cert['pem'] ?? cert['certificatePEM'];
+      // Horizon 2.10 wraps the GET response as { certificate: {...}, permissions:
+      // [...] } with the PEM string at certificate.certificate. Older shapes
+      // returned the certificate fields (and PEM) at the top level. Unwrap to the
+      // object that actually carries the PEM before extracting it.
+      const inner =
+        cert['certificate'] !== null && typeof cert['certificate'] === 'object'
+          ? (cert['certificate'] as Record<string, unknown>)
+          : cert;
+      const pem =
+        inner['certificate'] ?? inner['pem'] ?? inner['certificatePEM'];
       if (!pem) {
         return {
+          isError: true as const,
           content: [
             {
               type: 'text' as const,
@@ -235,7 +246,7 @@ export function registerCertificateTools(
                 error:
                   'Certificate PEM not found in response. ' +
                   'The certificate may not have PEM data available.',
-                available_fields: Object.keys(cert),
+                available_fields: Object.keys(inner),
               }),
             },
           ],

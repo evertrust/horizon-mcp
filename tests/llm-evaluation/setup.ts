@@ -8,6 +8,7 @@ import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerConfigTools } from '../../src/tools/config/index.js';
 import { registerDashboardTools } from '../../src/tools/dashboards.js';
 import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
@@ -113,6 +114,7 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, client);
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
+  registerConfigTools(server, client);
 }
 
 let metadataPromise: Promise<ScenarioMetadata> | undefined;
@@ -292,6 +294,21 @@ function keywordBonus(question: string, candidate: string): number {
     candidate.includes('real-world-examples')
   ) {
     score += 12;
+  }
+  // describe_<object>_schema is the documented "inspect required fields before
+  // create" support tool for polymorphic config objects. Boost it when the
+  // prompt is about creating/configuring an object whose noun it covers, so it
+  // ranks as support alongside the matching create_ tool (otherwise the grown
+  // config toolset crowds it out on shared terms like "certificate").
+  const schemaName = candidate.match(/^describe_([a-z_]+?)_schema\b/);
+  if (
+    schemaName &&
+    /\b(create|configure|set up|setup|add|new|provision)\b/.test(question) &&
+    schemaName[1]
+      .split('_')
+      .some((noun) => noun.length > 2 && question.includes(noun))
+  ) {
+    score += 18;
   }
   return score;
 }

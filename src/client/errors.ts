@@ -9,6 +9,16 @@ const SENSITIVE_FIELDS = new Set([
   'csrfToken',
   'passphrase',
   'credential',
+  // Secret material that config-object create/update responses might echo.
+  // These hold KEY MATERIAL, not reference names (those stay visible).
+  'caKey',
+  'accountKey',
+  'eab',
+  'secretKey',
+  'accessKey',
+  'hmacKey',
+  'pkcs12',
+  'keystore',
 ]);
 
 // Specific error codes -> remediation hints
@@ -84,7 +94,7 @@ export class HorizonError extends Error {
   }
 }
 
-function redactSensitive(data: unknown): unknown {
+export function redactSensitive(data: unknown): unknown {
   if (data === null || data === undefined) return data;
   if (Array.isArray(data)) return data.map(redactSensitive);
   if (typeof data === 'object') {

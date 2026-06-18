@@ -28,7 +28,7 @@ bun run test:e2e
 ## Linting and type checking
 
 ```bash
-bun run lint        # eslint + tsc --noEmit
+bun run lint        # eslint only
 bun run typecheck   # tsc --noEmit only
 ```
 

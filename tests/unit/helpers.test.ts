@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { HorizonError } from '../../src/client/errors.js';
 import {
@@ -14,6 +17,7 @@ import {
   toApiPageIndex,
   truncateRecord,
 } from '../../src/tools/helpers.js';
+import { registerCertificateTools } from '../../src/tools/lifecycle/certificates.js';
 
 describe('deleteGuard', () => {
   it('passes silently when names match exactly', () => {
@@ -590,5 +594,56 @@ describe('encodePathSegment', () => {
 
   it('passes safe identifier characters through unchanged', () => {
     expect(encodePathSegment('abc-123_XYZ.ext')).toBe('abc-123_XYZ.ext');
+  });
+});
+
+describe('download_certificate failure branches surface isError', () => {
+  let client: Client;
+  const mockGet = vi.fn();
+
+  beforeAll(async () => {
+    const server = new McpServer({ name: 'test', version: '0.0.0' });
+    const mockClient = { get: mockGet } as unknown as Parameters<
+      typeof registerCertificateTools
+    >[1];
+    registerCertificateTools(server, mockClient);
+
+    const [clientTransport, serverTransport] =
+      InMemoryTransport.createLinkedPair();
+    client = new Client({ name: 'test-client', version: '0.0.0' });
+    await Promise.all([
+      client.connect(clientTransport),
+      server.connect(serverTransport),
+    ]);
+  });
+
+  it('flags an unsupported format as an error result', async () => {
+    const result = (await client.callTool({
+      name: 'download_certificate',
+      arguments: { certificate_id: 'abc-123', format: 'der' },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0]!.text) as Record<
+      string,
+      unknown
+    >;
+    expect(String(parsed['error'])).toContain('Only PEM');
+  });
+
+  it('flags a missing PEM as an error result', async () => {
+    mockGet.mockResolvedValueOnce({ certificate: { dn: 'CN=test' } });
+
+    const result = (await client.callTool({
+      name: 'download_certificate',
+      arguments: { certificate_id: 'abc-123', format: 'pem' },
+    })) as { isError?: boolean; content: Array<{ text: string }> };
+
+    expect(result.isError).toBe(true);
+    const parsed = JSON.parse(result.content[0]!.text) as Record<
+      string,
+      unknown
+    >;
+    expect(String(parsed['error'])).toContain('PEM not found');
   });
 });
