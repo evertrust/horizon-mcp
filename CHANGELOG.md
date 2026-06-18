@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/evertrust/horizon-mcp/compare/v1.1.3...v1.2.0) (2026-06-18)
+
+### Features
+
+* add Horizon 2.10 configuration CRUD tools (v2.0.0) ([#13](https://github.com/evertrust/horizon-mcp/issues/13)) ([8f5303a](https://github.com/evertrust/horizon-mcp/commit/8f5303a4d4f33aedc0341c16cc169a59aba6c669))
+
 ## [1.1.3](https://github.com/evertrust/horizon-mcp/compare/v1.1.2...v1.1.3) (2026-05-21)
 
 ### Bug Fixes
