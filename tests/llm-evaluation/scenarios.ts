@@ -139,4 +139,79 @@ export const TOOL_SELECTION_SCENARIOS: readonly SelectionScenario[] = [
       validate_hcql: ['query'],
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // Configuration CRUD tools
+  // ---------------------------------------------------------------------------
+  {
+    id: 'config-create-http-proxy',
+    question:
+      'Create an HTTP proxy named corp-proxy pointing at proxy.corp.local on port 3128.',
+    expectedPrimaryTools: ['create_http_proxy'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      create_http_proxy: ['name', 'host', 'port'],
+    },
+  },
+  {
+    id: 'config-delete-http-proxy',
+    question: 'Delete the HTTP proxy called legacy-proxy.',
+    expectedPrimaryTools: ['delete_http_proxy'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      delete_http_proxy: ['name', 'expected_name'],
+    },
+  },
+  {
+    id: 'config-create-role',
+    question: 'Create a security role named auditors.',
+    expectedPrimaryTools: ['create_role'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      create_role: ['name', 'permissions'],
+    },
+  },
+  {
+    id: 'config-add-team-member',
+    question: 'Add the members alice and bob to the operators team.',
+    expectedPrimaryTools: ['add_team_members'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      add_team_members: ['name', 'identifiers'],
+    },
+  },
+  {
+    id: 'config-update-storage',
+    question:
+      'Update the S3 storage backend named archive-store to use the bucket new-archive.',
+    expectedPrimaryTools: ['update_storage'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      update_storage: ['name', 'bucket'],
+    },
+  },
+  {
+    id: 'config-pki-connector-polymorphic',
+    question:
+      'Create a new PKI connector backed by DigiCert for issuing certificates.',
+    expectedPrimaryTools: ['create_pki_connector'],
+    primaryMaxRank: 5,
+    expectedSupportTools: ['describe_pki_connector_schema'],
+    supportMaxRank: 8,
+    requiredArgs: {
+      create_pki_connector: ['name', 'type', 'config'],
+      describe_pki_connector_schema: ['subtype'],
+    },
+  },
+  {
+    id: 'config-certificate-profile-polymorphic',
+    question: 'Create a managed certificate profile called web-servers.',
+    expectedPrimaryTools: ['create_certificate_profile'],
+    primaryMaxRank: 6,
+    expectedSupportTools: ['describe_certificate_profile_schema'],
+    supportMaxRank: 10,
+    requiredArgs: {
+      create_certificate_profile: ['module', 'name'],
+    },
+  },
 ] as const;

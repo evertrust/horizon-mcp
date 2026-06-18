@@ -152,6 +152,12 @@ export class HorizonClient {
       rejectUnauthorized: options.verifySsl,
     };
     this._agent = new Agent({ connect: connectOptions });
+
+    if (!options.verifySsl) {
+      logger.warning(
+        'HORIZON_VERIFY_SSL is disabled - TLS certificate verification is OFF (insecure; use only against trusted test hosts)',
+      );
+    }
   }
 
   // -- Public API -----------------------------------------------------------
@@ -229,6 +235,28 @@ export class HorizonClient {
     return parsed;
   }
 
+  /**
+   * DELETE with a JSON request body. Some Horizon endpoints (e.g. role/team
+   * member removal) take a JSON array in the DELETE body. Mirrors `delete`
+   * otherwise (204 -> null, else parsed JSON).
+   */
+  async deleteWithBody(
+    path: string,
+    body: unknown,
+    opts?: RequestOptions<unknown>,
+  ): Promise<unknown | null> {
+    const resp = await this._request('DELETE', path, {
+      body: JSON.stringify(body),
+      allowCsrfNoCheck: opts?.allowCsrfNoCheck,
+    });
+    if (resp.status === 204) return null;
+    const parsed = await readJsonBounded<unknown>(resp, path);
+    if (opts?.schema) {
+      return this._validateOrThrow(opts.schema, parsed, path, resp.status);
+    }
+    return parsed;
+  }
+
   async getBytes(path: string): Promise<ArrayBuffer> {
     const resp = await this._request('GET', path);
     return resp.arrayBuffer();
@@ -296,7 +324,7 @@ export class HorizonClient {
       throw parseErrorResponse(resp.status, await resp.text());
     }
 
-    return (await resp.json()) as T;
+    return (await readJsonBounded<T>(resp, path)) as T;
   }
 
   async request(
@@ -621,7 +649,9 @@ export class HorizonClient {
       );
     }
 
-    // PUT/DELETE: retry only if on the verified allowlist
+    // PUT/DELETE: retry only if on the verified allowlist.
+    // RETRYABLE_ENDPOINTS is intentionally empty - idempotent-write retry is
+    // disabled, so this branch is currently inert by design (see line 22).
     if (
       (upper === 'PUT' || upper === 'DELETE') &&
       RETRYABLE_ENDPOINTS.has(`${upper}:${path}`)

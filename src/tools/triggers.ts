@@ -17,6 +17,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
+import { normalizeItems } from './datasources/shared.js';
 import {
   applyNameFilter,
   buildListResponse,
@@ -156,12 +157,6 @@ function validateSequenceStep(
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function normalizeItems(data: unknown): Record<string, unknown>[] {
-  if (Array.isArray(data)) return data as Record<string, unknown>[];
-  const obj = data as Record<string, unknown>;
-  return (obj['items'] as Record<string, unknown>[] | undefined) ?? [obj];
-}
 
 function applyTypeFilter(
   items: Record<string, unknown>[],
@@ -552,6 +547,13 @@ export function registerTriggerTools(
               kind: 'trigger',
               name,
               data: result,
+              nextSteps:
+                'A notification fires only when bound to a certificate profile ' +
+                'for specific events. Ask the user which certificate profile(s) ' +
+                'and which events (enroll, revoke, renew), then add this ' +
+                'notification name to each profile via update_certificate_profile ' +
+                '(config.triggers.onEnroll / onRevoke / onRenew). Do not infer - ' +
+                'ask the user.',
             }),
           },
         ],

@@ -32,6 +32,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
   private _sessionCookie: string | undefined;
   private _csrfTokenValue: string | undefined;
   private _expired = true;
+  private _userDataDir: string | undefined;
 
   constructor(
     horizonUrl: string,
@@ -70,6 +71,21 @@ export class PlaySessionAuthProvider extends AuthProvider {
     this._expired = true;
   }
 
+  async cleanup(): Promise<void> {
+    // Remove any temp Chromium profile dir still tracked (e.g. when the
+    // process is interrupted mid-login and the in-flight cleanup never ran).
+    if (!this._userDataDir) {
+      return;
+    }
+    const { rmSync } = await import('node:fs');
+    try {
+      rmSync(this._userDataDir, { recursive: true, force: true });
+    } catch {
+      // Best-effort - the dir lives under os.tmpdir() and the OS will reap it.
+    }
+    this._userDataDir = undefined;
+  }
+
   get csrfToken(): string | undefined {
     return this._csrfTokenValue;
   }
@@ -88,6 +104,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const userDataDir = mkdtempSync(join(tmpdir(), 'horizon-mcp-'));
+    this._userDataDir = userDataDir;
 
     let context;
     try {
@@ -97,6 +114,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
       });
     } catch (err) {
       rmSync(userDataDir, { recursive: true, force: true });
+      this._userDataDir = undefined;
       const msg = String(err).toLowerCase();
       if (
         msg.includes("executable doesn't exist") ||
@@ -114,6 +132,7 @@ export class PlaySessionAuthProvider extends AuthProvider {
     } finally {
       await context.close();
       rmSync(userDataDir, { recursive: true, force: true });
+      this._userDataDir = undefined;
     }
 
     this._expired = false;

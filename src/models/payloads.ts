@@ -115,7 +115,7 @@ type DepTuple = [name: string, path: string];
 
 export function extractPkiConnector(value: unknown): DepTuple[] {
   if (typeof value === 'string' && value) {
-    return [[value, `/api/v1/pki/connectors/${value}`]];
+    return [[value, `/api/v1/pki/connectors/${encodeURIComponent(value)}`]];
   }
   return [];
 }
@@ -129,7 +129,10 @@ export function extractCredential(value: unknown): DepTuple[] {
       if (typeof n === 'string' && n) names.push(n);
     }
   }
-  return names.map((n) => [n, `/api/v1/security/credentials/${n}`]);
+  return names.map((n) => [
+    n,
+    `/api/v1/security/credentials/${encodeURIComponent(n)}`,
+  ]);
 }
 
 export function extractTriggersFromHooks(value: unknown): DepTuple[] {
@@ -149,7 +152,9 @@ export function extractTriggersFromHooks(value: unknown): DepTuple[] {
       }
     }
   }
-  return [...names].sort().map((n) => [n, `/api/v1/triggers/${n}`]);
+  return [...names]
+    .sort()
+    .map((n) => [n, `/api/v1/triggers/${encodeURIComponent(n)}`]);
 }
 
 export function extractGradingPolicies(value: unknown): DepTuple[] {
@@ -161,7 +166,10 @@ export function extractGradingPolicies(value: unknown): DepTuple[] {
       if (typeof n === 'string' && n) names.push(n);
     }
   }
-  return names.map((n) => [n, `/api/v1/certificate/grading/policies/${n}`]);
+  return names.map((n) => [
+    n,
+    `/api/v1/certificate/grading/policies/${encodeURIComponent(n)}`,
+  ]);
 }
 
 export function extractDatasourceFlow(value: unknown): DepTuple[] {
@@ -176,7 +184,7 @@ export function extractDatasourceFlow(value: unknown): DepTuple[] {
       if (ds) names.push(ds);
     }
   }
-  return names.map((n) => [n, `/api/v1/datasources/${n}`]);
+  return names.map((n) => [n, `/api/v1/datasources/${encodeURIComponent(n)}`]);
 }
 
 export function extractIdentityProvider(value: unknown): DepTuple[] {
@@ -188,7 +196,10 @@ export function extractIdentityProvider(value: unknown): DepTuple[] {
       if (typeof n === 'string' && n) names.push(n);
     }
   }
-  return names.map((n) => [n, `/api/v1/security/identity/providers/${n}`]);
+  return names.map((n) => [
+    n,
+    `/api/v1/security/identity/providers/${encodeURIComponent(n)}`,
+  ]);
 }
 
 export const DEP_CHECKS: Array<{

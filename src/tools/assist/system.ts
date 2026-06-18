@@ -45,9 +45,21 @@ export function registerSystemTools(
       description:
         'Return Horizon license info: modules, expiry, quotas, feature flags.',
       outputSchema: {
+        isValid: z.boolean().optional(),
         version: z.string().optional(),
+        expiration: z.number().optional(),
+        buildTime: z.number().optional(),
+        count: z.number().optional(),
+        dcvCount: z.number().optional(),
+        // Horizon 2.10 returns module entitlements as objects ({ module, items });
+        // older instances returned bare module-name strings. Accept either.
+        modules: z
+          .array(z.union([z.string(), z.record(z.string(), z.unknown())]))
+          .optional(),
+        libraries: z.array(z.record(z.string(), z.unknown())).optional(),
+        releaseChannel: z.string().optional(),
+        // Legacy / forward-compatible fields kept permissive.
         expiry: z.string().optional(),
-        modules: z.array(z.string()).optional(),
         features: z.record(z.string(), z.unknown()).optional(),
       },
     },

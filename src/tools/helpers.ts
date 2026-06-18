@@ -4,7 +4,7 @@
  */
 import { z } from 'zod';
 
-import { HorizonError } from '../client/errors.js';
+import { HorizonError, redactSensitive } from '../client/errors.js';
 import type { HorizonClient } from '../client/http.js';
 import { toUpdatePayload } from '../models/payloads.js';
 
@@ -20,15 +20,6 @@ export const SEARCH_RESPONSE_OUTPUT_SCHEMA = {
   total: z.number().nullable(),
   has_more: z.boolean(),
   next_page_index: z.number().int().nullable(),
-} as const;
-
-/** Output shape returned by `buildMutateResponse`. */
-export const MUTATE_RESPONSE_OUTPUT_SCHEMA = {
-  status: z.string(),
-  kind: z.string(),
-  name: z.string(),
-  data: z.record(z.string(), z.unknown()).optional(),
-  warnings: z.array(z.string()).optional(),
 } as const;
 
 /** Output shape returned by CSV exporters. */
@@ -213,16 +204,25 @@ export function buildMutateResponse(opts: {
   name: string;
   data?: Record<string, unknown>;
   warnings?: string[];
+  /**
+   * Post-action guidance the model should act on (e.g. "ask the user which
+   * profile(s) to bind this to"). Surfaced as `next_steps` so the follow-up
+   * is prompted right when the object has just been created.
+   */
+  nextSteps?: string;
 }): string {
   const response: Record<string, unknown> = {
     status: opts.action,
     kind: opts.kind,
     name: opts.name,
   };
-  if (opts.data !== undefined) response['data'] = opts.data;
+  // Redact any secret material a create/update response might echo back before
+  // it reaches the model/transcript (the error path is already redacted).
+  if (opts.data !== undefined) response['data'] = redactSensitive(opts.data);
   if (opts.warnings && opts.warnings.length > 0) {
     response['warnings'] = opts.warnings;
   }
+  if (opts.nextSteps !== undefined) response['next_steps'] = opts.nextSteps;
   return JSON.stringify(response);
 }
 

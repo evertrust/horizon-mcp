@@ -1,5 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { createHash } from 'node:crypto';
 
 import {
   SECTION_URI_TEMPLATE,
@@ -31,9 +32,23 @@ function listSectionsFor(topic: string): string[] {
   return [...sections].sort();
 }
 
-// Resources are embedded markdown bundled at build time, so a single
-// build/start timestamp is a faithful "lastModified" for every entry.
-const BUILD_TIMESTAMP_ISO = new Date().toISOString();
+// Resources are embedded markdown, so `lastModified` should reflect the
+// content itself, not process start time. We derive a deterministic ISO
+// timestamp from a content hash: it stays stable across restarts and only
+// changes when the embedded markdown actually changes.
+const CONTENT_DIGEST = createHash('sha256')
+  .update(
+    getAllResources()
+      .map((r) => `${r.uri} ${r.content}`)
+      .join(''),
+  )
+  .digest();
+// Map the first 5 digest bytes to a millisecond offset from the Unix epoch.
+// Deterministic, content-derived, and bounded to a valid four-digit-year ISO
+// datetime (the MCP `lastModified` annotation requires ISO-8601).
+const CONTENT_TIMESTAMP_ISO = new Date(
+  CONTENT_DIGEST.readUIntBE(0, 5),
+).toISOString();
 
 export function registerAllResources(server: McpServer): void {
   // Listed resources -- advertised in `resources/list`.
@@ -47,7 +62,7 @@ export function registerAllResources(server: McpServer): void {
         annotations: {
           audience: [...(resource.audience ?? ['assistant'])],
           priority: resource.priority ?? 0.5,
-          lastModified: BUILD_TIMESTAMP_ISO,
+          lastModified: CONTENT_TIMESTAMP_ISO,
         },
       },
       async (uri) => ({
@@ -75,7 +90,7 @@ export function registerAllResources(server: McpServer): void {
         annotations: {
           audience: [...(resource.audience ?? ['assistant'])],
           priority: resource.priority ?? 0.3,
-          lastModified: BUILD_TIMESTAMP_ISO,
+          lastModified: CONTENT_TIMESTAMP_ISO,
         },
       },
       async (uri: URL) => ({

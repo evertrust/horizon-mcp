@@ -20,6 +20,7 @@ import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerConfigTools } from '../../src/tools/config/index.js';
 import { registerDashboardTools } from '../../src/tools/dashboards.js';
 import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
@@ -227,6 +228,7 @@ function registerAllTools(server: McpServer, client: HorizonClient): void {
   registerCryptoTools(server, client);
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
+  registerConfigTools(server, client);
 }
 
 /**

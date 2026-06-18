@@ -18,6 +18,7 @@ import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import { registerProfileTools } from '../../src/tools/profiles.js';
+import { registerTriggerTools } from '../../src/tools/triggers.js';
 
 // ---------------------------------------------------------------------------
 // Mock client factory
@@ -145,6 +146,100 @@ describe('Profile tools', () => {
       expect(parsed['count']).toBe(2);
       const items = parsed['items'] as Array<Record<string, unknown>>;
       expect(items.every((i) => i['module'] === 'webra')).toBe(true);
+    });
+
+    it('unwraps an {items: [...]} envelope response', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        items: [
+          { name: 'WebRA-Prod', module: 'webra' },
+          { name: 'ACME-Staging', module: 'acme' },
+        ],
+      });
+
+      const result = await client.callTool({
+        name: 'list_profiles',
+        arguments: {},
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['count']).toBe(2);
+      expect(parsed['kind']).toBe('profile');
+    });
+
+    it('wraps a single bare object response in a one-item list', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        name: 'WebRA-Prod',
+        module: 'webra',
+      });
+
+      const result = await client.callTool({
+        name: 'list_profiles',
+        arguments: {},
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['count']).toBe(1);
+      const items = parsed['items'] as Array<Record<string, unknown>>;
+      expect(items[0]!['name']).toBe('WebRA-Prod');
+    });
+  });
+});
+
+// ===========================================================================
+// 1b. TRIGGER TOOLS (normalizeItems wiring)
+// ===========================================================================
+
+describe('Trigger tools', () => {
+  let client: Client;
+  let mockClient: MockClient;
+
+  beforeAll(async () => {
+    const ctx = await setupServerAndClient((server, mc) => {
+      registerTriggerTools(server, mc as any);
+    });
+    client = ctx.client;
+    mockClient = ctx.mockClient;
+  });
+
+  beforeEach(() => {
+    resetMocks(mockClient);
+  });
+
+  describe('list_triggers', () => {
+    it('returns triggers from a bare array response', async () => {
+      mockClient.get.mockResolvedValueOnce([
+        { name: 'deploy-rest', type: 'rest' },
+        { name: 'notify-email', type: 'email' },
+      ]);
+
+      const result = await client.callTool({
+        name: 'list_triggers',
+        arguments: {},
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.get).toHaveBeenCalledWith('/api/v1/triggers');
+      expect(parsed['count']).toBe(2);
+      expect(parsed['kind']).toBe('trigger');
+    });
+
+    it('unwraps an {items: [...]} envelope response', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        items: [
+          { name: 'deploy-rest', type: 'rest' },
+          { name: 'notify-email', type: 'email' },
+        ],
+      });
+
+      const result = await client.callTool({
+        name: 'list_triggers',
+        arguments: { trigger_type: 'rest' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['count']).toBe(1);
+      const items = parsed['items'] as Array<Record<string, unknown>>;
+      expect(items[0]!['name']).toBe('deploy-rest');
     });
   });
 });

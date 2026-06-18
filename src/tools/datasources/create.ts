@@ -20,6 +20,19 @@ import {
   validateRecordTypes,
 } from './shared.js';
 
+/**
+ * Post-creation guidance: a datasource is inert until a certificate profile
+ * references it in its datasource flow (`profile.dsFlow`), whose looked-up
+ * values become available as `ds.<flowIndex>.<key>` during enrollment.
+ */
+const DATASOURCE_BIND_NEXT_STEPS =
+  'A datasource is not used until a certificate profile references it in its ' +
+  'datasource flow. Ask the user which certificate profile(s) should use this ' +
+  'datasource and for which request fields, then add a dsFlow entry to each ' +
+  'profile via update_certificate_profile (config.dsFlow[] = { ds: "<name>", ' +
+  'inputs, mandatory, stopOnSuccess }); looked-up values are then available as ' +
+  'ds.<flowIndex>.<key>. Do not infer the profiles - ask the user.';
+
 export function registerCreateDatasourceTools(
   server: McpServer,
   client: HorizonClient,
@@ -138,6 +151,7 @@ export function registerCreateDatasourceTools(
               kind: 'datasource',
               name,
               data: result,
+              nextSteps: DATASOURCE_BIND_NEXT_STEPS,
             }),
           },
         ],
@@ -150,7 +164,7 @@ export function registerCreateDatasourceTools(
     'create_ldap_datasource',
     {
       description:
-        'Create an LDAP datasource for directory lookups during enrollment.\n\n Ref: horizon://knowledge/datasources.' +
+        'Create an LDAP datasource that READS/looks up directory attributes during enrollment (for field mapping). Read-only lookup - NOT publishing certificates to LDAP/MSAD (use a third-party connector, type ldappub or msad).\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
         'LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return ' +
         'user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
@@ -301,6 +315,7 @@ export function registerCreateDatasourceTools(
               kind: 'datasource',
               name,
               data: result,
+              nextSteps: DATASOURCE_BIND_NEXT_STEPS,
             }),
           },
         ],
@@ -475,6 +490,7 @@ export function registerCreateDatasourceTools(
               kind: 'datasource',
               name,
               data: result,
+              nextSteps: DATASOURCE_BIND_NEXT_STEPS,
             }),
           },
         ],

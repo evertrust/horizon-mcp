@@ -1,4 +1,4 @@
-import { mkdtempSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -474,6 +474,38 @@ describe('PlaySessionAuthProvider', () => {
       } finally {
         PlaySessionAuthProvider['_checkPlaywrightAvailable'] = origCheck;
       }
+    });
+  });
+
+  describe('cleanup', () => {
+    it('removes a tracked temp profile dir and clears the field', async () => {
+      const provider = new PlaySessionAuthProvider('https://horizon.test');
+      const dir = makeTmpDir();
+      writeFileSync(join(dir, 'marker'), 'x');
+      const p = provider as unknown as { _userDataDir: string | undefined };
+      p._userDataDir = dir;
+
+      await provider.cleanup();
+
+      expect(existsSync(dir)).toBe(false);
+      expect(p._userDataDir).toBeUndefined();
+    });
+
+    it('is a no-op when no temp dir is tracked', async () => {
+      const provider = new PlaySessionAuthProvider('https://horizon.test');
+      await expect(provider.cleanup()).resolves.toBeUndefined();
+    });
+
+    it('is idempotent and does not throw if the dir is already gone', async () => {
+      const provider = new PlaySessionAuthProvider('https://horizon.test');
+      const dir = makeTmpDir();
+      const p = provider as unknown as { _userDataDir: string | undefined };
+      p._userDataDir = dir;
+
+      await provider.cleanup();
+      p._userDataDir = dir;
+      await expect(provider.cleanup()).resolves.toBeUndefined();
+      expect(existsSync(dir)).toBe(false);
     });
   });
 
