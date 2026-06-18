@@ -24,7 +24,8 @@ Tool counts per domain:
 
 | Domain            | Tools | Highlights                                                            |
 | ----------------- | ----: | --------------------------------------------------------------------- |
-| Assist            |    20 | `whoami`, grading, HQL validators, crypto decoders, simulators        |
+| Configuration     |   126 | CRUD for connectors, profiles, CAs, triggers, roles/teams, policies, DCV automation, labels, storages |
+| Assist            |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators        |
 | Lifecycle         |    17 | search/aggregate certs, requests, events, enroll, approve, revoke     |
 | Dashboards        |    12 | dashboard CRUD, charts, saved HQL queries                             |
 | Datasources       |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run       |
@@ -185,7 +186,7 @@ See [docs/authentication.md](docs/authentication.md) for the full step-by-step g
 
 ## Tool catalog overview
 
-The 84 tools are grouped into 11 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
+The 211 tools are grouped into 12 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
 
 Knowledge resources are exposed at `horizon://knowledge/*` URIs. See [docs/knowledge-resources.md](docs/knowledge-resources.md) for the full catalog.
 
@@ -390,7 +391,7 @@ PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs f
 | [Installation](docs/installation.md)              | Install methods, OIDC setup, troubleshooting                                   |
 | [Authentication](docs/authentication.md)          | All four auth modes with environment variable reference                        |
 | [Client setup](docs/client-setup.md)              | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector            |
-| [Tool reference](docs/tools-reference.md)         | All 84 tools by domain with safety tiers                                       |
+| [Tool reference](docs/tools-reference.md)         | All 211 tools by domain with safety tiers                                      |
 | [Knowledge resources](docs/knowledge-resources.md)| 17 core URIs, 4 curated playbooks, generated section resources                 |
 | [Development](docs/development.md)                | Dev setup, tests, linting                                                      |
 
