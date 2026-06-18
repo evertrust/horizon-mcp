@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
+import { normalizeItems } from './datasources/shared.js';
 import {
   applyNameFilter,
   buildListResponse,
@@ -57,12 +58,7 @@ export function registerProfileTools(
     },
     async ({ max_items, name_contains, module }) => {
       const data = await client.get<unknown>(PROFILE_BASE);
-      let items: Record<string, unknown>[] = Array.isArray(data)
-        ? data
-        : (((data as Record<string, unknown>)['items'] as Record<
-            string,
-            unknown
-          >[]) ?? [data as Record<string, unknown>]);
+      let items = normalizeItems(data);
       items = applyNameFilter(items, name_contains);
       items = applyModuleFilter(items, module);
       return {

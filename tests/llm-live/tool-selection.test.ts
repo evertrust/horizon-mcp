@@ -1,10 +1,16 @@
 /**
  * Live LLM tool-selection tests. Drives the real Claude Agent SDK against the
- * local Horizon MCP server using the user's Claude subscription credit.
+ * local Horizon MCP server.
+ *
+ * COSTS MONEY: headless `claude -p` / Agent SDK runs are billed as Anthropic
+ * API usage now, even with a Pro/Max subscription session. This suite is
+ * opt-in and paid - run it deliberately, never in CI or by default. Config
+ * scenarios here are read-only (list/describe); mutating-tool selection is
+ * covered for free in tests/llm-evaluation/.
  *
  * Skipped automatically when:
  *   - `claude` binary is not on PATH
- *   - ANTHROPIC_API_KEY is set (we refuse to run against API billing here)
+ *   - ANTHROPIC_API_KEY is set (refuses an explicit API key)
  *   - HORIZON_E2E_* env vars are missing
  *
  * Run manually with: `source .env.local && bun run test:llm:live`
@@ -45,6 +51,7 @@ describe.skipIf(SKIP)(
       async (scenario) => {
         const result = await runScenarioWithClaude(scenario.question, {
           model: process.env['HORIZON_LLM_LIVE_MODEL'] ?? 'claude-haiku-4-5',
+          maxBudgetUsd: scenario.maxBudgetUsd,
         });
 
         expect(
@@ -54,35 +61,56 @@ describe.skipIf(SKIP)(
 
         expect(
           result.toolCalls.length,
-          `Claude did not call any tool. Assistant said: ${result.assistantText.slice(0, 300)}`,
+          `Claude called no Horizon MCP tool (full sequence: ` +
+            `${result.allToolCalls.join(' -> ') || 'none'}). ` +
+            `Assistant said: ${result.assistantText.slice(0, 300)}`,
         ).toBeGreaterThan(0);
 
-        const firstTool = result.toolCalls[0]!;
-        expect(
-          scenario.acceptablePrimaryTools,
-          `First tool '${firstTool}' is not in ${JSON.stringify(scenario.acceptablePrimaryTools)}. ` +
-            `Full call sequence: ${result.toolCalls.join(' -> ')}`,
-        ).toContain(firstTool);
+        // The expected primary tool must be REACHED. Only benign read-only
+        // discovery tools (list/get/search/describe/validate/whoami/aggregate)
+        // may precede it - Claude must not flail into an unrelated mutating or
+        // off-topic action first. (Claude Code built-ins are already excluded.)
+        const isDiscovery = (n: string): boolean =>
+          /^(list_|get_|search_|describe_|validate_)/.test(n) ||
+          n === 'whoami' ||
+          n === 'aggregate_certificates' ||
+          n === 'aggregate_requests';
 
+        const primaryIndex = result.toolCalls.findIndex((name) =>
+          scenario.acceptablePrimaryTools.includes(name),
+        );
+        expect(
+          primaryIndex,
+          `None of ${JSON.stringify(scenario.acceptablePrimaryTools)} was called. ` +
+            `Full call sequence (incl. built-ins): ${result.allToolCalls.join(' -> ')}`,
+        ).toBeGreaterThanOrEqual(0);
+
+        const precedingNonDiscovery = result.toolCalls
+          .slice(0, primaryIndex)
+          .filter((n) => !isDiscovery(n));
+        expect(
+          precedingNonDiscovery,
+          `Non-discovery tool(s) called before the primary. ` +
+            `Sequence: ${result.allToolCalls.join(' -> ')}`,
+        ).toEqual([]);
+
+        const primaryTool = result.toolCalls[primaryIndex]!;
         for (const forbidden of scenario.forbiddenTools ?? []) {
           const forbiddenIndex = result.toolCalls.indexOf(forbidden);
-          const firstPrimaryIndex = result.toolCalls.findIndex((name) =>
-            scenario.acceptablePrimaryTools.includes(name),
-          );
-          if (forbiddenIndex !== -1 && forbiddenIndex < firstPrimaryIndex) {
+          if (forbiddenIndex !== -1 && forbiddenIndex < primaryIndex) {
             expect.fail(
-              `Forbidden tool '${forbidden}' called before any acceptable primary. ` +
-                `Sequence: ${result.toolCalls.join(' -> ')}`,
+              `Forbidden tool '${forbidden}' called before the primary. ` +
+                `Sequence: ${result.allToolCalls.join(' -> ')}`,
             );
           }
         }
 
         if (scenario.requiredArgs && scenario.requiredArgs.length > 0) {
-          const args = result.toolInputs.get(firstTool) ?? {};
+          const args = result.toolInputs.get(primaryTool) ?? {};
           for (const arg of scenario.requiredArgs) {
             expect(
               Object.prototype.hasOwnProperty.call(args, arg),
-              `First tool '${firstTool}' was missing required arg '${arg}'. ` +
+              `Primary tool '${primaryTool}' was missing required arg '${arg}'. ` +
                 `Args provided: ${JSON.stringify(args)}`,
             ).toBe(true);
           }
@@ -90,10 +118,13 @@ describe.skipIf(SKIP)(
 
         console.log(
           `[${scenario.id}] cost=$${result.totalCostUsd.toFixed(4)} ` +
-            `turns=${result.turns} tools=[${result.toolCalls.join(', ')}]`,
+            `turns=${result.turns} mcp=[${result.toolCalls.join(', ')}] ` +
+            `all=[${result.allToolCalls.join(' -> ')}]`,
         );
       },
-      120_000,
+      // Wall-clock cap. Doc-heavy scenarios (api-docs-flow) read large pages and
+      // can run past two minutes once given a higher per-scenario budget.
+      240_000,
     );
   },
 );

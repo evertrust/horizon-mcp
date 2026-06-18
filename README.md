@@ -12,7 +12,7 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 
 ## Features
 
-- **84 tools across 11 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **211 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 17 core topic URIs, 4 curated playbooks, plus auto-generated section URIs derived from H2 headings of the longest guides.
 - **Four authentication modes**: API key, mTLS (PEM), mTLS (PKCS12/PFX), and OIDC browser session (Playwright-driven).
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
@@ -102,6 +102,7 @@ The server auto-detects the authentication mode based on which variables are set
 | `HORIZON_CLIENT_PFX`           | mTLS (PFX) mode   |                      | Filesystem path to a PKCS12 / PFX bundle.                                                    |
 | `HORIZON_CLIENT_PFX_PASSWORD`  | No                |                      | Decryption password for the PKCS12 bundle.                                                   |
 | `HORIZON_VERIFY_SSL`           | No                | `true`               | Set to `false` or `0` to skip TLS verification on the Horizon endpoint (development only).   |
+| `HORIZON_ALLOW_PRIVATE_TLS_PROBE` | No             | (blocked)            | By default `fetch_exposed_certificate` refuses to connect to private/link-local IPs (SSRF guard). Set to `1` to permit probing internal hosts (e.g. `10.x`, `192.168.x`, `127.0.0.1`). |
 | `HORIZON_TIMEOUT`              | No                | `30`                 | HTTP request timeout in seconds for standard API calls.                                      |
 | `HORIZON_LOGIN_TIMEOUT`        | No                | `300`                | Timeout in seconds for the OIDC browser login window.                                        |
 | `HORIZON_EXPORT_TIMEOUT`       | No                | `120`                | Timeout in seconds for CSV exports and other long-running endpoints.                         |

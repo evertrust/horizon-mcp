@@ -5,11 +5,16 @@ import * as net from 'node:net';
 import * as tls from 'node:tls';
 import { z } from 'zod';
 
+import { HorizonError, redactValue } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import { getLogger } from '../../logging.js';
 import { registerTool } from '../register.js';
 
 const cryptoLogger = getLogger('horizon_mcp.tools.crypto');
+
+// Upper bound on crypto decode input size. ~2 MB comfortably covers any real
+// PEM/DER/PKCS#7 bundle while bounding the payload forwarded to Horizon.
+const MAX_CRYPTO_INPUT_BYTES = 2_000_000;
 
 // ---------------------------------------------------------------------------
 // Default port lookup for TLS URI parsing
@@ -250,6 +255,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         pem: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe(
             'PEM-encoded X.509 certificate string (including BEGIN/END markers) ' +
               'or base64-encoded DER bytes.',
@@ -298,6 +304,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         pem: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe(
             'PEM-encoded CSR string (including BEGIN/END markers) ' +
               'or base64-encoded DER bytes.',
@@ -343,6 +350,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         data: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe(
             'PEM-encoded CRL string (including BEGIN/END markers) ' +
               'or base64-encoded DER bytes.',
@@ -392,6 +400,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         data: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe('Base64-encoded DER bytes of the OCSP response.'),
       }),
     },
@@ -432,6 +441,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         data: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe('Base64-encoded DER bytes of the timestamping response.'),
       }),
     },
@@ -478,6 +488,7 @@ export function registerCryptoTools(
       inputSchema: z.object({
         data: z
           .string()
+          .max(MAX_CRYPTO_INPUT_BYTES, 'Input exceeds 2 MB limit')
           .describe(
             'The cryptographic data to detect and parse. Can be ' +
               'PEM-encoded, base64-encoded DER, or PKCS#7 content.',
@@ -520,7 +531,10 @@ export function registerCryptoTools(
         '- imaps -> 993\n' +
         '- smtps -> 465\n' +
         '- ftps  -> 990\n' +
-        'If no protocol and no port, defaults to 443.',
+        'If no protocol and no port, defaults to 443.\n\n' +
+        'The certificate is fetched as-is without chain or hostname ' +
+        'verification - do not treat the result as a trusted/validated ' +
+        'certificate.',
       inputSchema: z.object({
         uri: z
           .string()
@@ -555,7 +569,7 @@ export function registerCryptoTools(
               type: 'text' as const,
               text: JSON.stringify({
                 error: true,
-                content: `Cannot probe ${host}:${port}: ${message}`,
+                content: `Cannot probe ${host}:${port}: ${redactValue(message)}`,
               }),
             },
           ],
@@ -596,7 +610,7 @@ export function registerCryptoTools(
               type: 'text' as const,
               text: JSON.stringify({
                 error: true,
-                content: `Cannot connect to ${host}:${port}: ${message}`,
+                content: `Cannot connect to ${host}:${port}: ${redactValue(message)}`,
               }),
             },
           ],
@@ -623,6 +637,10 @@ export function registerCryptoTools(
         dns_sans: dnsSans,
         host,
         port,
+        trusted: false,
+        validation:
+          'skipped (certificate fetched without chain or hostname ' +
+          'verification - do not treat as trusted)',
       };
 
       return {
@@ -657,10 +675,11 @@ export function registerCryptoTools(
       }),
     },
     async (_params) => {
-      throw new Error(
-        'convert_pkcs12_to_jks is not yet implemented. ' +
+      throw new HorizonError(501, {
+        message:
+          'convert_pkcs12_to_jks is not yet implemented. ' +
           'JKS conversion support will be added in a future release.',
-      );
+      });
     },
   );
 }

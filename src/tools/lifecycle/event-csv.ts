@@ -175,7 +175,7 @@ export async function exportEventsCsvFromSearch(
   max_rows: number;
   source: 'search_fallback';
 }> {
-  let records: readonly Record<string, unknown>[] = [];
+  const records: Record<string, unknown>[] = [];
   let totalAvailable: number | undefined;
   let hasMore = false;
   const maxPages = Math.ceil(EVENT_CSV_MAX_ROWS / EVENT_CSV_PAGE_SIZE);
@@ -190,7 +190,7 @@ export async function exportEventsCsvFromSearch(
       break;
     }
     const remaining = EVENT_CSV_MAX_ROWS - records.length;
-    records = [...records, ...page.batch.slice(0, remaining)];
+    records.push(...page.batch.slice(0, remaining));
     hasMore =
       page.hasMore || records.length < (totalAvailable ?? records.length);
     if (!hasMore || records.length >= EVENT_CSV_MAX_ROWS) break;
