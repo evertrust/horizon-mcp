@@ -1,6 +1,6 @@
 # Tool reference
 
-84 tools in 11 domains. Safety tiers:
+211 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -12,7 +12,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 
 ---
 
-## Assist (20 tools)
+## Assist (21 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
@@ -20,6 +20,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `get_license_info` | read-only | Horizon license details, quotas, feature flags |
 | `explain_grading_policy` | read-only | Explain policy; optionally explain a certificate against it |
 | `explain_grading_ruleset` | read-only | Explain ruleset; optionally explain a certificate against it |
+| `validate_hql` | read-only | Validate any Horizon search query by dialect (hcql/hrql/heql/hdql); canonical tool, the four validate_h*ql entries are thin aliases |
 | `validate_hcql` | read-only | Validate a certificate search query |
 | `validate_hrql` | read-only | Validate a request search query |
 | `validate_heql` | read-only | Validate an event search query |
@@ -150,3 +151,76 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `create_rest_notification` | mutating-safe | Create a REST notification with multi-step sequences |
 | `delete_trigger` | mutating-destructive | Delete a trigger (requires name confirmation) |
 | `simulate_trigger` | read-only | Test-fire a trigger without real certificate context |
+
+---
+
+## Configuration (126 tools)
+
+Source-grounded CRUD over Horizon configuration objects (see `docs/audit/` for
+the per-object contracts). Every family has read tools (`list_*`, `get_*`);
+mutating families add `create_*`/`update_*`/`delete_*`. Mandatory fields are
+required parameters; `delete_*` needs an `expected_<id>` echo; update is
+GET-strip-merge-PUT (omitted optional fields preserved). Polymorphic objects add
+a `describe_<obj>_schema` read tool that must be called before create/update.
+
+### Configuration: Certificate & PKI (31 tools)
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Certificate authorities | `list_cas` `get_ca` `create_ca` `update_ca` `delete_ca` | read-only + mutating |
+| Certificate profiles (11 protocol subtypes) | `describe_certificate_profile_schema` `list/get/create/update/delete_certificate_profile` | read-only + mutating |
+| Certificate labels | `list/get/create/update/delete_certificate_label` | read-only + mutating |
+| Certificate grading policies | `list_certificate_grading_policies` `get_certificate_grading_policy` | read-only (no write API) |
+| Certificate grading rulesets | `list_certificate_grading_rulesets` `get_certificate_grading_ruleset` | read-only (no write API) |
+| PKI connectors (21 subtypes) | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector` | read-only + mutating |
+| PKI queues | `list/get/create/update/delete_pki_queue` | read-only + mutating |
+
+### Configuration: RBAC (22 tools)
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Roles | `list/get/create/update/delete_role`, `list/add/remove_role_members` | read-only + mutating (privilege grant) |
+| Teams | `list/get/create/update/delete_team`, `list/add/remove_team_members`, `switch_team` | read-only + mutating (`switch_team` destructive) |
+| Password policies | `list/get/create/update/delete_password_policy` | read-only + mutating |
+
+### Configuration: Automation & integrations (29 tools)
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Automation policies | `list/get/create/update/delete_automation_policy` | read-only + mutating |
+| Execution policies | `list/get/create/update/delete_execution_policy` | read-only + mutating |
+| Third-party connectors (subtyped) | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating |
+| HTTP proxies | `list/get/create/update/delete_http_proxy` | read-only + mutating |
+| WCCE forest mappings | `list/get/create/update/delete_wcce_forest` | read-only + mutating |
+| Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger` | read-only + mutating (list/get/delete in Triggers domain above) |
+
+### Configuration: System & operations (20 tools)
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Storage backends (S3) | `list/get/create/update/delete_storage` | read-only + mutating |
+| System configuration (4 singleton types) | `describe_system_config_schema` `list_system_configs` `get_system_config` `update_system_config` | read-only + mutating (no create/delete) |
+| Scheduled tasks (report / thirdparty) | `describe_scheduled_task_schema` `list/get/create/update/delete_scheduled_task` | read-only + mutating |
+| Archives (certificate / event) | `describe_archive_schema` `list/get/create/delete_archive` | read-only + mutating (no update) |
+| Terms of Service (2.10 enrollment acceptance) | `list/get/create/update/delete_terms_of_service` | read-only + mutating |
+
+### Configuration: DCV automation (15 tools, Horizon 2.10)
+
+Domain Control Validation automation: a DCV policy binds a provider + provisioner
+and renews domain validation on a schedule.
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| DCV policies | `list/get/create/update/delete_dcv_policy` | read-only + mutating |
+| DCV providers (digicert) | `list/get/create/update/delete_dcv_provider` | read-only + mutating |
+| DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
+
+### Configuration: Identity & access (READ-ONLY, 4 tools)
+
+Deliberately read-only: this identity/access surface is inspectable but never
+mutable via the MCP server.
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Service accounts (incl. 2.10 JWKS trustConfig) | `list_service_accounts` `get_service_account` | read-only (no write tools) |
+| Identity providers (OIDC group-claim / JIT) | `list_identity_providers` `get_identity_provider` | read-only (no write tools) |

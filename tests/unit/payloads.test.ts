@@ -80,6 +80,11 @@ describe('extractors', () => {
       expect(result).toHaveLength(1);
       expect(result[0]![0]).toBe('valid');
     });
+
+    it('URL-encodes special characters in path segments', () => {
+      const result = extractCredential('a/b');
+      expect(result).toEqual([['a/b', '/api/v1/security/credentials/a%2Fb']]);
+    });
   });
 
   // -- extractPkiConnector --------------------------------------------------
@@ -97,6 +102,11 @@ describe('extractors', () => {
 
     it('returns empty for non-string value', () => {
       expect(extractPkiConnector(123)).toEqual([]);
+    });
+
+    it('URL-encodes special characters in the path segment', () => {
+      const result = extractPkiConnector('a/b');
+      expect(result).toEqual([['a/b', '/api/v1/pki/connectors/a%2Fb']]);
     });
   });
 

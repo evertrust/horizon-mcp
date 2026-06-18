@@ -171,8 +171,11 @@ describe('Documentation tools', () => {
     });
 
     const results = result['results'] as Array<Record<string, unknown>>;
+    // winhorizon is a latest-indexed product; derive the version from the
+    // catalog so the assertion survives documentation refreshes.
+    const winhorizonVersion = getLatestIndexedVersion('winhorizon');
     expect(results[0]?.['page_id']).toBe(
-      'winhorizon:2.0:admin-guide:ad_config',
+      `winhorizon:${winhorizonVersion}:admin-guide:ad_config`,
     );
   });
 

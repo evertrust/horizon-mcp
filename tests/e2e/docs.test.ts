@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { getLatestIndexedVersion } from '../../src/docs/catalog.js';
+import {
+  getAvailableVersions,
+  getLatestIndexedVersion,
+} from '../../src/docs/catalog.js';
 import {
   E2E_CONFIGURED,
   callTool,
@@ -11,6 +14,23 @@ import {
 function normalizeVersion(version: string): string {
   const match = version.match(/^(\d+\.\d+)/);
   return match ? match[1] : version;
+}
+
+/**
+ * Map a raw instance version (e.g. "2.10.0.d6e3bc0e") to the doc version the
+ * search_api_docs tool will actually resolve. This mirrors the tool's
+ * bestMatchingIndexedVersion logic: an exact (or normalized) indexed match wins,
+ * otherwise it falls back to the latest indexed line. When the live instance is
+ * a pre-release whose docs are not yet published/indexed (e.g. 2.10 while only
+ * <=2.9 is indexed), the tool correctly serves the latest indexed line.
+ */
+function toIndexedHorizonApiVersion(rawVersion: string): string {
+  const available = getAvailableVersions('horizon-api');
+  if (available.includes(rawVersion)) return rawVersion;
+  const normalized = normalizeVersion(rawVersion);
+  const exact = available.find((v) => normalizeVersion(v) === normalized);
+  if (exact) return exact;
+  return getLatestIndexedVersion('horizon-api') ?? '2.9';
 }
 
 async function resolveExpectedHorizonVersion(): Promise<{
@@ -25,7 +45,7 @@ async function resolveExpectedHorizonVersion(): Promise<{
     const version = license['version'];
     if (typeof version === 'string' && version.length > 0) {
       return {
-        version: normalizeVersion(version),
+        version: toIndexedHorizonApiVersion(version),
         source: 'license_info',
       };
     }
@@ -40,7 +60,7 @@ async function resolveExpectedHorizonVersion(): Promise<{
     const version = principal['_horizonVersion'];
     if (typeof version === 'string' && version.length > 0) {
       return {
-        version: normalizeVersion(version),
+        version: toIndexedHorizonApiVersion(version),
         source: 'whoami',
       };
     }
@@ -97,10 +117,13 @@ describe.skipIf(!E2E_CONFIGURED)('Documentation tools E2E', () => {
       max_results: 3,
     });
 
-    expect(result['resolved_product_version']).toBe('2.0');
+    // winhorizon is a latest-indexed product; derive the version from the
+    // catalog so the assertion survives documentation refreshes.
+    const winhorizonVersion = getLatestIndexedVersion('winhorizon') ?? '2.1';
+    expect(result['resolved_product_version']).toBe(winhorizonVersion);
     const results = result['results'] as Array<Record<string, unknown>>;
     expect(results[0]?.['page_id']).toBe(
-      'winhorizon:2.0:admin-guide:ad_config',
+      `winhorizon:${winhorizonVersion}:admin-guide:ad_config`,
     );
   });
 
@@ -123,14 +146,18 @@ describe.skipIf(!E2E_CONFIGURED)('Documentation tools E2E', () => {
       max_results: 3,
     });
 
-    expect(search['resolved_product_version']).toBe('0.5.0');
+    // terraform-provider-horizon is not a Horizon-versioned product, so the tool
+    // resolves to the latest indexed provider release (from the doc catalog).
+    const tfVersion =
+      getLatestIndexedVersion('terraform-provider-horizon') ?? '0.6.0';
+    const tfCertPageId = `terraform-provider-horizon:${tfVersion}:certificate`;
+
+    expect(search['resolved_product_version']).toBe(tfVersion);
     const results = search['results'] as Array<Record<string, unknown>>;
-    expect(results[0]?.['page_id']).toBe(
-      'terraform-provider-horizon:0.5.0:certificate',
-    );
+    expect(results[0]?.['page_id']).toBe(tfCertPageId);
 
     const page = await callTool('get_doc_page', {
-      page_id: 'terraform-provider-horizon:0.5.0:certificate',
+      page_id: tfCertPageId,
     });
 
     expect(page['title']).toBe('horizon_certificate Resource');

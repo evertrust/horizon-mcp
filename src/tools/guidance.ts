@@ -41,6 +41,18 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
     beforeCall:
       'run validate_hql with the matching dialect when correctness matters',
   },
+  search_certificates: {
+    useWhen:
+      'caller wants to find, list, or export individual certificates matching criteria',
+    doNotUseWhen:
+      'caller wants a count, total, or breakdown grouped by a field; use aggregate_certificates',
+  },
+  aggregate_certificates: {
+    useWhen:
+      'caller wants counts, totals, statistics, or a grouped-by breakdown (e.g. how many certificates per profile, status, or issuer)',
+    doNotUseWhen:
+      'caller wants the matching certificate records themselves; use search_certificates',
+  },
   search_docs: {
     useWhen:
       'caller asks how to install/configure/integrate a product (admin docs)',
