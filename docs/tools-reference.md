@@ -194,7 +194,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | WCCE forest mappings | `list/get/create/update/delete_wcce_forest` | read-only + mutating |
 | Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger` | read-only + mutating (list/get/delete in Triggers domain above) |
 
-### Configuration: System & operations (20 tools)
+### Configuration: System & operations (25 tools)
 
 | Object | Tools | Safety |
 |--------|-------|--------|

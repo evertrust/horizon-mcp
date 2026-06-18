@@ -42,7 +42,7 @@ Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-re
 ## Prerequisites
 
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
-- An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
+- An Evertrust Horizon instance (tested on 2.10, the primary QA target; also supports 2.8 and 2.9)
 - API credentials, a client certificate, or browser-based OIDC access to that instance
 
 ## Install
@@ -346,26 +346,21 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 
 | Horizon version | Status                                                                  |
 | --------------- | ----------------------------------------------------------------------- |
+| 2.10            | Tested - primary QA target (DCV automation, federated service accounts, identity providers, OIDC group claims, Terms of Service) |
 | 2.8.5+          | Tested (full feature set including Base64/Raw computation rules)        |
 | 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                     |
-| 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
-| 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
+| 2.7, 2.9        | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
 
 ## What is not supported
 
-The following capabilities require direct Horizon API calls or the Horizon UI:
+Most Horizon configuration objects now have full CRUD tools in the Configuration domain (126 tools): CAs, certificate profiles, PKI and third-party connectors, WCCE forests, PKI queues, triggers, storages, roles and teams, scheduled tasks, automation/execution/password policies, certificate labels, archives, system configuration, DCV automation, and Terms of Service.
 
-- **Configuration objects** - CAs, trust chains, labels, HTTP proxies, password policies, grading policies, and grading rulesets
-- **Profile management** - creating, updating, or deleting profiles (read-only listing and inspection are supported)
-- **Credential management** - creating, updating, or deleting stored credentials (read-only listing IS supported via `list_credentials`)
-- **PKI and third-party connector management** - connectors to ADCS, EJBCA, HashiCorp Vault, etc.
-- **Email/webhook trigger management** - email and webhook (Teams/Slack/Mattermost) triggers (REST notifications ARE supported via `create_rest_notification`)
-- **Trigger attachment to profiles** - use the Horizon admin UI or profile API
-- **Role, team, IDP, and principal administration**
-- **Analytics** - sync status and reindex operations
-- **SMTP and notification server configuration**
-- **Intune, Jamf, and MDM integration setup**
-- **Scheduler and system-level automation**
+The following remain read-only or out of scope:
+
+- **Read-only (list/inspect only)** - identity providers, service accounts, certificate grading policies and rulesets, and stored credentials (`list_credentials`). These can be listed and inspected but not created, updated, or deleted from the MCP server.
+- **Principal administration** - managing individual user principals.
+- **Analytics** - sync status and reindex operations.
+- **SMTP and global notification-server configuration** - individual REST/webhook notification triggers ARE supported via `create_trigger` / `create_rest_notification`.
 
 ## Contributing
 
