@@ -12,7 +12,6 @@ describe('loadSettings', () => {
       expect(settings.apiKey).toBe('');
       expect(settings.verifySsl).toBe(true);
       expect(settings.timeout).toBe(30);
-      expect(settings.loginTimeout).toBe(300);
       expect(settings.exportTimeout).toBe(120);
       expect(settings.logLevel).toBe('INFO');
       expect(settings.clientCert).toBe('');
@@ -108,11 +107,6 @@ describe('loadSettings', () => {
       expect(settings.timeout).toBe(60);
     });
 
-    it('coerces string to number for LOGIN_TIMEOUT', () => {
-      const settings = loadSettings({ HORIZON_LOGIN_TIMEOUT: '600' });
-      expect(settings.loginTimeout).toBe(600);
-    });
-
     it('coerces string to number for EXPORT_TIMEOUT', () => {
       const settings = loadSettings({ HORIZON_EXPORT_TIMEOUT: '240' });
       expect(settings.exportTimeout).toBe(240);
@@ -176,6 +170,118 @@ describe('loadSettings', () => {
 
       expect(settings.url).toBe('https://localhost');
       expect(settings.apiId).toBe('my-id');
+    });
+  });
+
+  describe('HTTP transport settings', () => {
+    it('defaults to stdio transport with safe HTTP defaults', () => {
+      const s = loadSettings({});
+      expect(s.transport).toBe('stdio');
+      expect(s.httpHost).toBe('127.0.0.1');
+      expect(s.httpPort).toBe(8080);
+      expect(s.httpPath).toBe('/mcp');
+      expect(s.publicUrl).toBe('');
+      expect(s.trustedHosts).toEqual([]);
+      expect(s.trustedOrigins).toEqual([]);
+      expect(s.httpAuthMode).toBe('service');
+      expect(s.sessionIdleTtl).toBe(300);
+      expect(s.sessionAbsTtl).toBe(3600);
+      expect(s.maxSessions).toBe(256);
+      expect(s.maxInflightToolcalls).toBe(8);
+      expect(s.maxBodyBytes).toBe(1048576);
+      expect(s.sseMaxDuration).toBe(3600);
+      expect(s.rateLimitRps).toBe(20);
+      expect(s.initRateLimit).toBe(5);
+      expect(s.httpTlsCert).toBe('');
+      expect(s.httpTlsKey).toBe('');
+      expect(s.inboundCertHeader).toBe('');
+      expect(s.trustedProxy).toBe('');
+      expect(s.forwardCertHeader).toBe('SSL_CLIENT_CERT');
+    });
+
+    it('reads HORIZON_TRANSPORT=http', () => {
+      expect(loadSettings({ HORIZON_TRANSPORT: 'http' }).transport).toBe(
+        'http',
+      );
+    });
+
+    it('lowercases the transport value', () => {
+      expect(loadSettings({ HORIZON_TRANSPORT: 'HTTP' }).transport).toBe(
+        'http',
+      );
+    });
+
+    it('rejects an invalid transport', () => {
+      expect(() => loadSettings({ HORIZON_TRANSPORT: 'grpc' })).toThrow();
+    });
+
+    it('reads and lowercases the HTTP auth mode', () => {
+      expect(
+        loadSettings({ HORIZON_HTTP_AUTH_MODE: 'mtls' }).httpAuthMode,
+      ).toBe('mtls');
+      expect(
+        loadSettings({ HORIZON_HTTP_AUTH_MODE: 'API-KEY' }).httpAuthMode,
+      ).toBe('api-key');
+    });
+
+    it('rejects an invalid HTTP auth mode', () => {
+      expect(() => loadSettings({ HORIZON_HTTP_AUTH_MODE: 'oidc' })).toThrow();
+    });
+
+    it('parses trusted hosts and origins as trimmed comma lists', () => {
+      const s = loadSettings({
+        HORIZON_TRUSTED_HOSTS: 'mcp.example.com, mcp.example.com:8443 ',
+        HORIZON_TRUSTED_ORIGINS: 'https://app.example.com',
+      });
+      expect(s.trustedHosts).toEqual([
+        'mcp.example.com',
+        'mcp.example.com:8443',
+      ]);
+      expect(s.trustedOrigins).toEqual(['https://app.example.com']);
+    });
+
+    it('drops empty entries from comma lists', () => {
+      const s = loadSettings({ HORIZON_TRUSTED_HOSTS: 'a.com,,  ,b.com,' });
+      expect(s.trustedHosts).toEqual(['a.com', 'b.com']);
+    });
+
+    it('coerces numeric HTTP settings', () => {
+      const s = loadSettings({
+        HORIZON_HTTP_PORT: '9443',
+        HORIZON_MAX_SESSIONS: '16',
+        HORIZON_MAX_BODY_BYTES: '2097152',
+      });
+      expect(s.httpPort).toBe(9443);
+      expect(s.maxSessions).toBe(16);
+      expect(s.maxBodyBytes).toBe(2097152);
+    });
+
+    it('allows 0 to disable the rate limits', () => {
+      const s = loadSettings({
+        HORIZON_RATE_LIMIT_RPS: '0',
+        HORIZON_INIT_RATE_LIMIT: '0',
+      });
+      expect(s.rateLimitRps).toBe(0);
+      expect(s.initRateLimit).toBe(0);
+    });
+
+    it('rejects a non-numeric port', () => {
+      expect(() => loadSettings({ HORIZON_HTTP_PORT: 'abc' })).toThrow();
+    });
+
+    it('reads the inbound/forward mTLS header settings', () => {
+      const s = loadSettings({
+        HORIZON_HTTP_TLS_CERT: '/tls/cert.pem',
+        HORIZON_HTTP_TLS_KEY: '/tls/key.pem',
+        HORIZON_INBOUND_CERT_HEADER: 'x-client-cert',
+        HORIZON_TRUSTED_PROXY: '10.0.0.0/8',
+        HORIZON_FORWARD_CERT_HEADER: 'SSL_CLIENT_CERT',
+      });
+      expect(s.httpTlsCert).toBe('/tls/cert.pem');
+      expect(s.httpTlsKey).toBe('/tls/key.pem');
+      expect(s.inboundCertHeader).toBe('x-client-cert');
+      expect(s.trustedProxy).toBe('10.0.0.0/8');
+      expect(s.forwardCertHeader).toBe('SSL_CLIENT_CERT');
     });
   });
 });

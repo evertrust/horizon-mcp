@@ -12,6 +12,4 @@ export default defineConfig({
   // Plain imports (import x from "./file.md") work with this loader.
   // Do NOT use ?raw suffix - that is a Vite convention, not supported here.
   loader: { '.md': 'text' },
-  // Playwright is an optional dep - never bundle it
-  external: ['playwright'],
 });
