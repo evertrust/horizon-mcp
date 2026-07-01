@@ -297,3 +297,39 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
     }
   }, 20000);
 });
+
+describe('HTTP server integration (readyz probe cache)', () => {
+  it('caches the /readyz Horizon probe in service mode', async () => {
+    const port = await freePort();
+    const env = {
+      HORIZON_TRANSPORT: 'http',
+      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_URL: 'https://horizon.test',
+      HORIZON_API_ID: 'svc',
+      HORIZON_API_KEY: 'k',
+      HORIZON_HTTP_HOST: '127.0.0.1',
+      HORIZON_HTTP_PORT: String(port),
+      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
+      HORIZON_VERIFY_SSL: 'false',
+    };
+    const settings = loadSettings(env);
+    const config = buildHttpConfig(settings, env);
+    const handle = await startHttpServer(settings, config);
+    const base = `http://127.0.0.1:${handle.port}/readyz`;
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      const before = probes();
+      const r1 = await fetch(base);
+      const r2 = await fetch(base);
+      expect(r1.status).toBe(200);
+      expect(r2.status).toBe(200);
+      // Two probes within the cache window trigger only one Horizon whoami.
+      expect(probes() - before).toBe(1);
+    } finally {
+      await handle.close();
+    }
+  }, 20000);
+});

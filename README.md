@@ -133,6 +133,7 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_SSE_MAX_DURATION`       | `3600`      | Max SSE stream lifetime, seconds.                                                                                                                          |
 | `HORIZON_RATE_LIMIT_RPS`         | `20`        | Per-session limit, counted per JSON-RPC message per second; `0` disables.                                                                                 |
 | `HORIZON_INIT_RATE_LIMIT`        | `5`         | Pre-session `initialize` attempts per second (global cap and per remote address); `0` disables.                                                           |
+| `HORIZON_IP_RATE_LIMIT`          | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-session limits; `0` disables.                                        |
 
 Inbound mTLS settings (only when `HORIZON_HTTP_AUTH_MODE=mtls`):
 

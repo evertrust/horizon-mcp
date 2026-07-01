@@ -192,6 +192,7 @@ describe('loadSettings', () => {
       expect(s.sseMaxDuration).toBe(3600);
       expect(s.rateLimitRps).toBe(20);
       expect(s.initRateLimit).toBe(5);
+      expect(s.ipRateLimit).toBe(600);
       expect(s.httpTlsCert).toBe('');
       expect(s.httpTlsKey).toBe('');
       expect(s.inboundCertHeader).toBe('');

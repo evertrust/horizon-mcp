@@ -44,6 +44,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
     "express": "^5",
+    "express-rate-limit": "8.5.2",
     "undici": "8.0.1",
     "zod": "4.3.6"
   },

@@ -5,6 +5,7 @@ import express, {
   type Request,
   type Response,
 } from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { type Server, createServer as createHttpServer } from 'node:http';
@@ -94,6 +95,22 @@ export async function startHttpServer(
   const initLimiter = new RateLimiter(settings.initRateLimit);
   const sessionLimiter = new RateLimiter(settings.rateLimitRps);
   const sinks = new Map<string, McpSink>();
+
+  // Coarse per-IP backstop (defense-in-depth in front of the fine-grained init
+  // and per-session limiters). Keyed by the socket peer (Express trust proxy
+  // stays off); HORIZON_IP_RATE_LIMIT=0 disables it.
+  const ipLimiter = rateLimit({
+    windowMs: 1000,
+    limit: settings.ipRateLimit > 0 ? settings.ipRateLimit : 1,
+    standardHeaders: true,
+    legacyHeaders: false,
+    skip: () => settings.ipRateLimit <= 0,
+    validate: false,
+  });
+
+  // Brief readiness cache so a burst of /readyz probes cannot hammer Horizon.
+  const READY_CACHE_MS = 10_000;
+  let readyCache: { at: number; healthy: boolean } | undefined;
 
   const manager = new SessionManager({
     maxSessions: settings.maxSessions,
@@ -409,25 +426,36 @@ export async function startHttpServer(
     res.status(200).json({ status: 'ok' });
   });
 
-  app.get('/readyz', async (req, res) => {
+  app.get('/readyz', ipLimiter, async (req, res) => {
     if (!hostOk(req)) {
       res.status(421).json({ status: 'misdirected' });
       return;
     }
-    // Only service mode holds an env credential to probe Horizon with.
+    // Only service mode holds an env credential to probe Horizon with. The
+    // result is cached briefly so a burst of probes cannot hammer Horizon.
     if (config.authMode === 'service') {
-      const { auth } = buildSessionAuth({ kind: 'service' }, config, settings);
-      const probe = new HorizonClient(settings.url, auth, clientOptions);
-      try {
-        await probe.validateAuth();
-      } catch {
+      const now = Date.now();
+      if (!readyCache || now - readyCache.at >= READY_CACHE_MS) {
+        const { auth } = buildSessionAuth(
+          { kind: 'service' },
+          config,
+          settings,
+        );
+        const probe = new HorizonClient(settings.url, auth, clientOptions);
+        let healthy = true;
+        try {
+          await probe.validateAuth();
+        } catch {
+          healthy = false;
+        }
         await probe.close().catch(() => undefined);
         await auth.cleanup().catch(() => undefined);
+        readyCache = { at: Date.now(), healthy };
+      }
+      if (!readyCache.healthy) {
         res.status(503).json({ status: 'horizon-unreachable' });
         return;
       }
-      await probe.close().catch(() => undefined);
-      await auth.cleanup().catch(() => undefined);
     }
     res.status(200).json({ status: 'ready' });
   });
@@ -456,6 +484,7 @@ export async function startHttpServer(
 
   app.all(
     config.path,
+    ipLimiter,
     hostOriginGuard,
     jsonParser,
     async (req: Request, res: Response) => {

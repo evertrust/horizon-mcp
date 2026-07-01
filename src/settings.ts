@@ -66,6 +66,7 @@ const settingsSchema = z.object({
   sseMaxDuration: z.coerce.number().int().positive().default(3600),
   rateLimitRps: z.coerce.number().int().nonnegative().default(20),
   initRateLimit: z.coerce.number().int().nonnegative().default(5),
+  ipRateLimit: z.coerce.number().int().nonnegative().default(600),
 
   // -- Inbound mTLS (only when HORIZON_HTTP_AUTH_MODE=mtls) ----------------
   httpTlsCert: z.string().default(''),
