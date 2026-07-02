@@ -6,7 +6,7 @@ import { HorizonClient } from './client/http.js';
 import { buildHttpConfig } from './http/config.js';
 import { startHttpServer } from './http/server.js';
 import { configureLogging, getLogger, setMcpLoggingSink } from './logging.js';
-import { createSessionServer } from './server-factory.js';
+import { assertToolsetsValid, createSessionServer } from './server-factory.js';
 import { type HorizonSettings, loadSettings } from './settings.js';
 
 const logger = getLogger('horizon_mcp.server');
@@ -38,7 +38,10 @@ async function runStdio(settings: HorizonSettings): Promise<void> {
     warnVersions: settings.warnVersions,
   });
 
-  const server = createSessionServer(client);
+  const server = createSessionServer(client, {
+    enabledToolsets: settings.enabledToolsets,
+    readOnly: settings.readOnly,
+  });
 
   logger.info(
     'Horizon MCP server ready (stdio) - auth will trigger on first tool call.',
@@ -93,6 +96,9 @@ async function runHttp(settings: HorizonSettings): Promise<void> {
 async function main(): Promise<void> {
   const settings = loadSettings();
   configureLogging(settings.logLevel);
+
+  // Fail-closed on a misconfigured toolset list before binding any transport.
+  assertToolsetsValid(settings.enabledToolsets);
 
   if (settings.transport === 'http') {
     await runHttp(settings);

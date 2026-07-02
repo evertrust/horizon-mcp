@@ -173,6 +173,38 @@ describe('loadSettings', () => {
     });
   });
 
+  describe('toolset gating settings', () => {
+    it('defaults enabledToolsets to undefined and readOnly to false', () => {
+      const s = loadSettings({});
+      expect(s.enabledToolsets).toBeUndefined();
+      expect(s.readOnly).toBe(false);
+    });
+
+    it('parses HORIZON_ENABLED_TOOLSETS as a trimmed comma list', () => {
+      const s = loadSettings({
+        HORIZON_ENABLED_TOOLSETS: 'lifecycle, docs , assist',
+      });
+      expect(s.enabledToolsets).toEqual(['lifecycle', 'docs', 'assist']);
+    });
+
+    it('collapses an empty toolset list to undefined (no filter)', () => {
+      const s = loadSettings({ HORIZON_ENABLED_TOOLSETS: '  , ,' });
+      expect(s.enabledToolsets).toBeUndefined();
+    });
+
+    it("parses HORIZON_READ_ONLY 'true' and '1' as true", () => {
+      expect(loadSettings({ HORIZON_READ_ONLY: 'true' }).readOnly).toBe(true);
+      expect(loadSettings({ HORIZON_READ_ONLY: 'TRUE' }).readOnly).toBe(true);
+      expect(loadSettings({ HORIZON_READ_ONLY: '1' }).readOnly).toBe(true);
+    });
+
+    it('parses other HORIZON_READ_ONLY values as false', () => {
+      expect(loadSettings({ HORIZON_READ_ONLY: 'false' }).readOnly).toBe(false);
+      expect(loadSettings({ HORIZON_READ_ONLY: '0' }).readOnly).toBe(false);
+      expect(loadSettings({ HORIZON_READ_ONLY: 'yes' }).readOnly).toBe(false);
+    });
+  });
+
   describe('HTTP transport settings', () => {
     it('defaults to stdio transport with safe HTTP defaults', () => {
       const s = loadSettings({});

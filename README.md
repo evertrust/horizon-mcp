@@ -109,6 +109,8 @@ The server auto-detects the authentication mode based on which variables are set
 | `HORIZON_LOG_LEVEL`            | No                | `INFO`               | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                  |
 | `HORIZON_TESTED_VERSIONS`      | No                | `2.8`                | Comma-separated list of Horizon versions known to fully work with this build.                |
 | `HORIZON_WARN_VERSIONS`        | No                | `2.7,2.9`            | Comma-separated list of versions that are likely to work but emit a warning.                 |
+| `HORIZON_ENABLED_TOOLSETS`     | No                | (all)                | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. Unset registers every toolset; an unknown name fails startup. |
+| `HORIZON_READ_ONLY`            | No                | `false`              | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup. |
 | `HORIZON_AUTH_MODE`            | DEPRECATED        |                      | No longer required. Kept readable for backward compatibility; setting it logs a warning.     |
 
 ### Streamable HTTP (`HORIZON_TRANSPORT=http`)
@@ -227,7 +229,7 @@ The MCP supports exactly two credential types against Horizon: a **Horizon API k
 In stdio mode the credential comes from the environment. In streamable HTTP mode, `HORIZON_HTTP_AUTH_MODE` selects how each caller's identity is established:
 
 - **`service`** - the MCP holds one env credential (an API key or mTLS to Horizon) and acts as a single identity for every caller; clients send only the URL. The anti-hijack session fingerprint does not apply in this mode (`Mcp-Session-Id` behaves as a bearer), so the front door must be access-controlled by network placement or an authenticating edge; use a least-privileged identity.
-- **`api-key`** (per-caller) - the client sends its own `X-API-ID` / `X-API-KEY`, which the MCP forwards to Horizon. This forwards a long-lived secret through the MCP.
+- **`api-key`** (per-caller) - the client sends its own `X-API-ID` / `X-API-KEY`, which the MCP forwards to Horizon. This forwards a long-lived secret through the MCP, so on a non-loopback bind the endpoint must terminate TLS (set `HORIZON_PUBLIC_URL` to an `https` origin behind a TLS-terminating proxy); a cleartext `http` endpoint on a non-loopback host refuses to start.
 - **`mtls`** (per-caller, terminate-and-forward) - the client presents a TLS client certificate; the MCP (or a trusted ingress) terminates the TLS with `optional_no_ca` semantics (proving possession, not validating the chain) and forwards the certificate to Horizon's Play backend in `HORIZON_FORWARD_CERT_HEADER`. Horizon validates the chain, revocation, and identity. No long-lived secret is forwarded. Most MCP clients cannot present a client certificate, so a local mTLS proxy on the client side is usually needed (see [docs/client-setup.md](docs/client-setup.md)).
 
 > [!IMPORTANT]

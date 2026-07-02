@@ -26,6 +26,20 @@ const csvListSchema = z
       .filter((s) => s.length > 0),
   );
 
+// Optional comma list: undefined when the env var is absent (or empties out),
+// otherwise a trimmed non-empty string array. Undefined means "no filter".
+const optionalCsvListSchema = z
+  .string()
+  .optional()
+  .transform((v) => {
+    if (v === undefined) return undefined;
+    const items = v
+      .split(',')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    return items.length > 0 ? items : undefined;
+  });
+
 const settingsSchema = z.object({
   url: z.string().default('https://localhost'),
   apiId: z.string().default(''),
@@ -45,6 +59,16 @@ const settingsSchema = z.object({
   logLevel: z.string().default('INFO'),
   testedVersions: z.array(z.string()).default(['2.8']),
   warnVersions: z.array(z.string()).default(['2.7', '2.9']),
+
+  // -- Toolset gating -----------------------------------------------------
+  // `enabledToolsets` (HORIZON_ENABLED_TOOLSETS) selects which tool domains to
+  // register; undefined means all. `readOnly` (HORIZON_READ_ONLY) drops every
+  // mutating tool at registration time when enabled.
+  enabledToolsets: optionalCsvListSchema,
+  readOnly: z
+    .string()
+    .default('false')
+    .transform((v) => v.toLowerCase() === 'true' || v === '1'),
 
   // -- Streamable HTTP transport ------------------------------------------
   // All HTTP-mode settings. `transport` selects stdio (default) vs http.
