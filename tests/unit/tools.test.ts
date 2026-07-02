@@ -504,37 +504,34 @@ describe('Lifecycle tools', () => {
       expect(parsed['content']).toBe(pem);
     });
 
-    it('rejects non-PEM format', async () => {
-      const result = await client.callTool({
+    it('rejects non-PEM format at the schema level', async () => {
+      const result = (await client.callTool({
         name: 'download_certificate',
         arguments: { certificate_id: 'abc-123', format: 'der' },
-      });
-      const parsed = parseToolResult(result);
+      })) as { isError?: boolean; content: Array<{ text: string }> };
 
-      expect(parsed['error']).toBeDefined();
-      expect(String(parsed['error'])).toContain('Only PEM');
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('format');
     });
 
-    it('rejects invalid format', async () => {
-      const result = await client.callTool({
+    it('rejects invalid format at the schema level', async () => {
+      const result = (await client.callTool({
         name: 'download_certificate',
         arguments: { certificate_id: 'abc-123', format: 'xml' },
-      });
-      const parsed = parseToolResult(result);
+      })) as { isError?: boolean; content: Array<{ text: string }> };
 
-      expect(parsed['error']).toBeDefined();
-      expect(String(parsed['error'])).toContain('Only PEM');
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('format');
     });
 
-    it('rejects JKS format', async () => {
-      const result = await client.callTool({
+    it('rejects JKS format at the schema level', async () => {
+      const result = (await client.callTool({
         name: 'download_certificate',
         arguments: { certificate_id: 'abc-123', format: 'jks' },
-      });
-      const parsed = parseToolResult(result);
+      })) as { isError?: boolean; content: Array<{ text: string }> };
 
-      expect(parsed['error']).toBeDefined();
-      expect(String(parsed['error'])).toContain('Only PEM');
+      expect(result.isError).toBe(true);
+      expect(result.content[0]!.text).toContain('format');
     });
   });
 
@@ -985,6 +982,31 @@ describe('Assist tools', () => {
       );
       expect(parsed['identifier']).toBe('test-admin');
       expect(parsed['roles']).toEqual(['admin']);
+    });
+
+    it('tolerates null collection fields (principal in no teams / no roles)', async () => {
+      // Horizon serializes absent collections as `null`, not `[]` or omitted.
+      // The output schema must accept null or the MCP stack rejects the whole
+      // whoami response before the client can read it.
+      const principal = {
+        identifier: 'svc-account',
+        name: 'Service Account',
+        team: null,
+        teams: null,
+        roles: null,
+        permissions: null,
+      };
+      mockClient.get.mockResolvedValueOnce(principal);
+
+      const result = await client.callTool({
+        name: 'whoami',
+        arguments: {},
+      });
+
+      expect((result as { isError?: boolean }).isError).toBeFalsy();
+      const parsed = parseToolResult(result);
+      expect(parsed['identifier']).toBe('svc-account');
+      expect(parsed['teams']).toBeNull();
     });
   });
 

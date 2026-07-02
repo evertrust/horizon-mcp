@@ -894,6 +894,9 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "format": {
           "default": "pem",
+          "enum": [
+            "pem",
+          ],
           "type": "string",
         },
       },
@@ -1266,6 +1269,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "max_chars": {
+          "default": 20000,
+          "type": "number",
+        },
+        "offset": {
+          "default": 0,
+          "type": "number",
+        },
         "page_id": {
           "type": "string",
         },
@@ -1543,6 +1554,32 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "list_triggers",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "max_chars": {
+          "default": 20000,
+          "type": "number",
+        },
+        "offset": {
+          "default": 0,
+          "type": "number",
+        },
+        "section": {
+          "type": "string",
+        },
+        "topic": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "topic",
+      ],
+      "type": "object",
+    },
+    "name": "read_knowledge",
   },
   {
     "inputSchema": {

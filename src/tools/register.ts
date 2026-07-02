@@ -20,19 +20,12 @@ import { buildToolDescription } from './guidance.js';
 
 type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
 
-export type TaskSupport = 'forbidden' | 'optional' | 'required';
-
-export interface ToolExecution {
-  readonly taskSupport: TaskSupport;
-}
-
 type ToolConfigBase = {
   title?: string;
   description?: string;
   inputSchema?: unknown;
   outputSchema?: unknown;
   annotations?: ToolAnnotations;
-  execution?: ToolExecution;
   _meta?: Record<string, unknown>;
 };
 
@@ -73,7 +66,6 @@ export interface RegisterToolOptions {
 interface Classification {
   readonly annotations: ToolAnnotations;
   readonly title: string;
-  readonly taskSupport?: TaskSupport;
 }
 
 const TITLE_OVERRIDES: Record<string, string> = {
@@ -113,16 +105,6 @@ function titleFromName(name: string): string {
     .join(' ');
 }
 
-const TASK_OPTIONAL_TOOLS: ReadonlySet<string> = new Set([
-  'export_certificates_csv',
-  'export_requests_csv',
-  'export_events_csv',
-  'download_certificate',
-  'download_report',
-  'generate_report',
-  'launch_discovery_campaign',
-]);
-
 function classify(name: string): Classification {
   const title = titleFromName(name);
 
@@ -135,7 +117,7 @@ function classify(name: string): Classification {
 
   // Read-only families
   if (
-    /^(search|list|get|aggregate|describe|validate|simulate|decode|export|download|explain|test)_/.test(
+    /^(search|list|get|read|aggregate|describe|validate|simulate|decode|export|download|explain|test)_/.test(
       name,
     ) ||
     name === 'whoami' ||
@@ -155,7 +137,6 @@ function classify(name: string): Classification {
     return {
       annotations: ann,
       title,
-      taskSupport: TASK_OPTIONAL_TOOLS.has(name) ? 'optional' : undefined,
     };
   }
 
@@ -200,7 +181,6 @@ function classify(name: string): Classification {
       openWorldHint: true,
     },
     title,
-    taskSupport: TASK_OPTIONAL_TOOLS.has(name) ? 'optional' : undefined,
   };
 }
 
@@ -239,6 +219,28 @@ function wrapHandler(
 }
 
 // ---------------------------------------------------------------------------
+// Per-server registration config (read-only gating)
+// ---------------------------------------------------------------------------
+//
+// Keyed on the McpServer instance rather than a module global so each session
+// server (HTTP builds one per session) carries its own config with no
+// cross-session leakage. `configureToolRegistration` is called once by the
+// server factory before any tool is registered.
+
+interface ToolRegistrationConfig {
+  readonly readOnly: boolean;
+}
+
+const registrationConfig = new WeakMap<McpServer, ToolRegistrationConfig>();
+
+export function configureToolRegistration(
+  server: McpServer,
+  config: ToolRegistrationConfig,
+): void {
+  registrationConfig.set(server, config);
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -249,8 +251,6 @@ function wrapHandler(
  *  - `annotations` defaults (readOnlyHint, destructiveHint, idempotentHint,
  *    openWorldHint, title) derived from the tool name. Explicit
  *    `config.annotations` overrides win.
- *  - `execution.taskSupport: 'optional'` on long-running tools (CSV exports,
- *    downloads, report generation, discovery campaign launches).
  *  - Compact `[when: ... | not: ... | pre: ...]` guidance suffix when
  *    `guidance.ts` has an explicit entry for the tool.
  *  - `HorizonError` -> `{ isError: true, structuredContent: { ... } }` so the
@@ -294,11 +294,16 @@ export function registerTool(
     ...config.annotations,
   };
   const title = config.title ?? classification.title;
-  const execution: ToolExecution | undefined =
-    config.execution ??
-    (classification.taskSupport
-      ? { taskSupport: classification.taskSupport }
-      : undefined);
+
+  // Read-only mode: skip registering any tool whose effective annotations do
+  // not mark it read-only. The caller ignores the return value, so returning
+  // undefined here is safe.
+  if (
+    registrationConfig.get(server)?.readOnly &&
+    annotations.readOnlyHint !== true
+  ) {
+    return undefined as unknown as ReturnType<McpServer['registerTool']>;
+  }
 
   const handler = wrapErrors
     ? wrapHandler(cb as (...args: unknown[]) => ToolResult)
@@ -314,7 +319,6 @@ export function registerTool(
         ? undefined
         : (config.inputSchema as unknown as AnySchema | ZodRawShapeCompat),
   };
-  if (execution !== undefined) sdkConfig['execution'] = execution;
 
   return server.registerTool(
     name,

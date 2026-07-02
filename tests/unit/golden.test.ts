@@ -92,10 +92,11 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'get_license_info',
   'explain_grading_policy',
   'explain_grading_ruleset',
-  // docs.ts (3)
+  // docs.ts (4)
   'search_docs',
   'search_api_docs',
   'get_doc_page',
+  'read_knowledge',
   // assist/computation.ts (2)
   'simulate_computation_rule',
   'simulate_datasource_flow',
@@ -262,9 +263,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 85 tools', async () => {
+  it('registers exactly 86 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(85);
+    expect(result.tools.length).toBe(86);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -329,6 +330,14 @@ describe('Golden tests', () => {
         `Tool ${tool.name} missing readOnlyHint`,
       ).toBe('boolean');
     }
+  });
+
+  it('submit_request is marked destructive (it can run revoke workflows)', async () => {
+    const result = await client.listTools();
+    const submit = result.tools.find((t) => t.name === 'submit_request');
+    expect(submit, 'submit_request tool missing').toBeTruthy();
+    expect(submit!.annotations?.destructiveHint).toBe(true);
+    expect(submit!.annotations?.readOnlyHint).toBe(false);
   });
 
   it('tools with explicit guidance use the compact [when: ...] format', async () => {
@@ -969,8 +978,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 85 tools', () => {
-    expect(toolNames.size).toBe(85);
+  it('registers exactly 86 tools', () => {
+    expect(toolNames.size).toBe(86);
   });
 
   it('excludes admin tools', () => {

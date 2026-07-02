@@ -403,20 +403,44 @@ export class HorizonClient {
   }
 
   private async _doLazyInit(): Promise<void> {
-    // 1. Trigger auth (browser login for Play Session, no-op for others)
+    await this._performInit(false);
+    this._initialized = true;
+  }
+
+  /**
+   * Strict, eager variant of lazy init for the HTTP per-session flow. Runs the
+   * exact same path as lazy init (refresh -> CSRF -> whoami -> capture
+   * principal/version -> version-compat log) but THROWS on any failure instead
+   * of logging-and-continuing, and marks the client initialized so the first
+   * tool call does not re-run init (and mutating calls still carry the captured
+   * CSRF token). The thrown error never echoes the caller's credential.
+   */
+  async validateAuth(): Promise<void> {
+    await this._performInit(true);
+    this._initialized = true;
+  }
+
+  /**
+   * Shared init body for lazy (`strict=false`, log-and-continue) and eager
+   * `validateAuth` (`strict=true`, throw). Factored into one method so the two
+   * paths cannot drift.
+   */
+  private async _performInit(strict: boolean): Promise<void> {
+    // 1. Trigger auth (no-op for API key / mTLS / cert-forward).
     await this._auth.refreshIfNeeded();
 
-    // 2. Fetch CSRF token
+    // 2. Fetch CSRF token.
     await this.fetchCsrfToken();
 
-    // 3. Whoami - capture principal name + Horizon version
-    try {
-      const headers = await this._auth.getHeaders();
-      if (this._csrfToken) {
-        headers['Csrf-Token'] = this._csrfToken;
-      }
+    // 3. Whoami - capture principal name + Horizon version.
+    const headers = await this._auth.getHeaders();
+    if (this._csrfToken) {
+      headers['Csrf-Token'] = this._csrfToken;
+    }
 
-      const resp = await undiciFetch(
+    let resp: Response;
+    try {
+      resp = await undiciFetch(
         `${this._baseUrl}/api/v1/security/principals/self`,
         {
           method: 'GET',
@@ -425,41 +449,47 @@ export class HorizonClient {
           signal: AbortSignal.timeout(this._timeout),
         },
       );
-
-      if (resp.status === 200) {
-        const principal = (await resp.json()) as Record<string, unknown>;
-        const identity = (principal['identity'] ?? {}) as Record<
-          string,
-          unknown
-        >;
-        this.principalName =
-          (identity['identifier'] as string | undefined) ??
-          (principal['identifier'] as string | undefined) ??
-          (principal['name'] as string | undefined) ??
-          'unknown';
-
-        this.horizonVersion = principal['_horizonVersion'] as
-          | string
-          | undefined;
-
-        logger.info(
-          `Authenticated as: ${this.principalName} (Horizon ${this.horizonVersion ?? 'unknown'})`,
-        );
-
-        // 4. Log version compatibility
-        if (this.horizonVersion) {
-          this._logVersionCompatibility(this.horizonVersion);
-        }
-      } else {
-        logger.warning(
-          `Whoami returned ${resp.status} - continuing without principal info`,
-        );
-      }
     } catch (err) {
+      if (strict) {
+        throw new HorizonError(0, {
+          message: `Authentication check could not reach Horizon: ${err}`,
+          remediation: 'Check HORIZON_URL and network connectivity.',
+        });
+      }
       logger.warning(`Whoami failed: ${err} - continuing`);
+      return;
     }
 
-    this._initialized = true;
+    if (resp.status !== 200) {
+      if (strict) {
+        // parseErrorResponse redacts secrets; the whoami body never contains
+        // the caller's credential.
+        const text = await resp.text().catch(() => '');
+        throw parseErrorResponse(resp.status, text);
+      }
+      logger.warning(
+        `Whoami returned ${resp.status} - continuing without principal info`,
+      );
+      return;
+    }
+
+    const principal = (await resp.json()) as Record<string, unknown>;
+    const identity = (principal['identity'] ?? {}) as Record<string, unknown>;
+    this.principalName =
+      (identity['identifier'] as string | undefined) ??
+      (principal['identifier'] as string | undefined) ??
+      (principal['name'] as string | undefined) ??
+      'unknown';
+    this.horizonVersion = principal['_horizonVersion'] as string | undefined;
+
+    logger.info(
+      `Authenticated as: ${this.principalName} (Horizon ${this.horizonVersion ?? 'unknown'})`,
+    );
+
+    // 4. Log version compatibility.
+    if (this.horizonVersion) {
+      this._logVersionCompatibility(this.horizonVersion);
+    }
   }
 
   private _logVersionCompatibility(version: string): void {

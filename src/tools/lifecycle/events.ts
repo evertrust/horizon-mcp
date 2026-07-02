@@ -127,14 +127,21 @@ export function registerEventTools(
         'Export audit events matching an HEQL query as CSV (max 1000 rows via ' +
         'paged search; use Horizon UI for full raw exports). Default columns: ' +
         '_id, code, module, node, timestamp, status; pass fields for detail.* ' +
-        'columns. Lowercase fields only. ' +
+        'columns. HEQL query fields are lowercase; the CSV `fields` columns are ' +
+        'camelCase (see the fields param). ' +
         'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HEQL query expression.'),
         fields: z
           .array(z.string())
           .optional()
-          .describe('Fields to include in the CSV export.'),
+          .describe(
+            'CSV columns to include, as camelCase API column names (SearchResult ' +
+              'columns) - NOT the lowercase HEQL query fields. Examples: code, ' +
+              'module, timestamp, status, plus detail.<key> for detail columns ' +
+              '(detail.actorId, detail.ip). Invalid names return a Horizon 500 ' +
+              'that lists the usable columns.',
+          ),
         sorted_by: z
           .string()
           .optional()

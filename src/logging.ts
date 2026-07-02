@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
@@ -46,6 +48,18 @@ export function setMcpLoggingSink(sink: McpSink | undefined): void {
   mcpSink = sink;
 }
 
+// Per-session sink override for HTTP mode. A single module-level `mcpSink`
+// would let one session's logs leak into another's client stream (last writer
+// wins), so HTTP mode never registers a global sink: it wraps each request's
+// handling in `runWithLoggingSink`, and `emit()` reads the current session's
+// sink from AsyncLocalStorage. The context propagates across awaits within the
+// handler, so concurrent sessions stay isolated.
+const sessionSinkStore = new AsyncLocalStorage<McpSink>();
+
+export function runWithLoggingSink<T>(sink: McpSink, fn: () => T): T {
+  return sessionSinkStore.run(sink, fn);
+}
+
 function emit(
   level: LogLevel,
   logger: string,
@@ -71,9 +85,12 @@ function emit(
 
   process.stderr.write(JSON.stringify(entry) + '\n');
 
-  if (mcpSink) {
+  // Session sink (HTTP mode, per-request via ALS) takes precedence over the
+  // global sink (stdio mode, set once). Stderr above always fires regardless.
+  const activeSink = sessionSinkStore.getStore() ?? mcpSink;
+  if (activeSink) {
     try {
-      mcpSink(MCP_LEVEL[level], { logger, msg, extra });
+      activeSink(MCP_LEVEL[level], { logger, msg, extra });
     } catch {
       // best-effort -- swallow sink errors
     }

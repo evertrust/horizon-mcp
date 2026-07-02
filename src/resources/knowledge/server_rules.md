@@ -46,10 +46,10 @@ often live only in the discovery metadata.
 ## 5. PKCS#12 / PFX retrieval
 
 The PKCS#12 bundle (certificate plus private key) is never on the certificate
-object. It is only returned in the enrollment REQUEST response. When the user
-asks for a PKCS#12, PFX, or private key:
+object. It is returned in the enrollment or recover REQUEST response. When the
+user asks for a PKCS#12, PFX, or private key:
 
-1. Find the enrollment request via `search_requests`.
+1. Find the enrollment or recover request via `search_requests`.
 2. Call `get_request` to read it; the `pkcs12` / `keyStore` field contains the
    base64-encoded bundle.
 
@@ -61,7 +61,8 @@ request.
 Before calling `submit_request`, call `get_request_template` to discover
 which fields are required, editable, computed, or fixed by the profile, then
 ask the user for any missing values. For `revoke`, `revocationReason` is
-mandatory. For any workflow, optionally offer the user a free-text
+strongly recommended; ask the user for it - Horizon defaults to `unspecified`
+if omitted. For any workflow, optionally offer the user a free-text
 `requesterComment` justification.
 
 The outcome of `submit_request` depends on permissions:
