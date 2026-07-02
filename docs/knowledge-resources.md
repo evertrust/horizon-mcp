@@ -8,6 +8,8 @@ The server exposes a generated knowledge catalog at `horizon://knowledge/*`:
 
 MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
 
+For clients with weak or missing MCP resource support, the same content is reachable through the `read_knowledge` tool (in the `docs` toolset): pass a `topic` slug (for example `query-languages`) and optionally a `section`, and page through long guides with `max_chars` / `offset`. Tool descriptions that reference `horizon://knowledge/*` URIs can always be resolved this way.
+
 | Resource | URI | Contents |
 |----------|-----|----------|
 | Profiles | `horizon://knowledge/profiles` | Module types, field reference, authorization modes |

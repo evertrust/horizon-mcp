@@ -2,6 +2,32 @@
 
 Configure your LLM client to connect to the horizon-mcp server.
 
+## Trimming the tool surface (recommended)
+
+The full server registers 212 tools, which costs roughly 45-55k context
+tokens per session before the first user message. If you do not need every
+domain, scope the server with two environment variables (they work in any
+client's `env` block below, and server-side in HTTP mode):
+
+- `HORIZON_ENABLED_TOOLSETS` - comma-separated list of domains to register.
+  Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`,
+  `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`.
+  Unknown names fail at startup with the valid list.
+- `HORIZON_READ_ONLY=true` - drop every mutating tool (create/update/delete,
+  request submission), keeping only read-only tools.
+
+Suggested presets:
+
+| Use case | Setting |
+| -------- | ------- |
+| Certificate operations (search, enroll, revoke, decode) | `HORIZON_ENABLED_TOOLSETS=lifecycle,assist,docs` |
+| Read-only auditing and reporting | `HORIZON_READ_ONLY=true` (optionally add a toolset list) |
+| Configuration administration | `HORIZON_ENABLED_TOOLSETS=config,assist,docs` |
+| Discovery review | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist` |
+
+A scoped lifecycle+docs+assist read-only server registers ~38 tools instead
+of 212, cutting the context cost by roughly 80%.
+
 ## Claude Desktop
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
