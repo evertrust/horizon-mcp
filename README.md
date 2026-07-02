@@ -12,7 +12,7 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 
 ## Features
 
-- **211 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **212 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 17 core topic URIs, 4 curated playbooks, plus auto-generated section URIs derived from H2 headings of the longest guides.
 - **Two credential types**: Horizon API key (`X-API-ID` / `X-API-KEY`) and TLS client certificate (PEM or PKCS12/PFX). Usable as a single server identity, or per caller over the HTTP transport.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
@@ -34,7 +34,7 @@ Tool counts per domain:
 | Discovery feed    |     4 | push-mode certificate and event ingestion                             |
 | Discovery events  |     3 | search, fetch, CSV export                                             |
 | Reports           |     3 | list, download, delete                                                |
-| Docs              |     3 | search product docs, search API docs, fetch a page                    |
+| Docs              |     4 | search product docs, search API docs, fetch a page, read knowledge    |
 | Profiles          |     2 | list and inspect (CRUD lives in the Horizon admin UI)                 |
 
 Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-reference.md).
@@ -239,7 +239,7 @@ See [docs/authentication.md](docs/authentication.md) for the full step-by-step g
 
 ## Tool catalog overview
 
-The 211 tools are grouped into 12 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
+The 212 tools are grouped into 12 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
 
 Knowledge resources are exposed at `horizon://knowledge/*` URIs. See [docs/knowledge-resources.md](docs/knowledge-resources.md) for the full catalog.
 
@@ -442,7 +442,7 @@ PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs f
 | [Installation](docs/installation.md)              | Install methods and troubleshooting                                            |
 | [Authentication](docs/authentication.md)          | Supported credential types with environment variable reference                 |
 | [Client setup](docs/client-setup.md)              | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector            |
-| [Tool reference](docs/tools-reference.md)         | All 211 tools by domain with safety tiers                                      |
+| [Tool reference](docs/tools-reference.md)         | All 212 tools by domain with safety tiers                                      |
 | [Knowledge resources](docs/knowledge-resources.md)| 17 core URIs, 4 curated playbooks, generated section resources                 |
 | [Development](docs/development.md)                | Dev setup, tests, linting                                                      |
 

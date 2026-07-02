@@ -78,7 +78,7 @@ Or with the standalone binary:
 }
 ```
 
-Start Claude Code from that directory. The 211 tools are available immediately.
+Start Claude Code from that directory. The 212 tools are available immediately.
 
 ## Cursor
 
@@ -218,7 +218,7 @@ export HORIZON_API_KEY=your-api-key
 bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 ```
 
-Opens a browser UI showing all 211 tools and the full knowledge resource catalog (17 core URIs + 4 curated playbooks + generated section URIs).
+Opens a browser UI showing all 212 tools and the full knowledge resource catalog (17 core URIs + 4 curated playbooks + generated section URIs).
 
 ## Connecting over streamable HTTP (remote server)
 
