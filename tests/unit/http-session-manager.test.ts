@@ -190,6 +190,49 @@ describe('sweepExpired', () => {
   });
 });
 
+describe('active stream keeps a session alive past idle TTL', () => {
+  it('skips idle sweep while a stream is attached but still honors absolute TTL', async () => {
+    let t = 1000;
+    const mgr = makeManager({
+      idleTtlMs: 100,
+      absTtlMs: 10_000,
+      now: () => t,
+    });
+    add(mgr, 's1');
+    mgr.addStream('s1');
+    t = 1500; // idle 500 >= 100, but a stream is attached -> not swept
+    expect(await mgr.sweepExpired()).toEqual([]);
+  });
+
+  it('reaps a streaming session once the absolute TTL is reached', async () => {
+    let t = 1000;
+    const mgr = makeManager({ idleTtlMs: 100, absTtlMs: 500, now: () => t });
+    const r = add(mgr, 's1');
+    mgr.addStream('s1');
+    t = 1600; // age 600 >= 500 absolute TTL fires despite the open stream
+    expect(await mgr.sweepExpired()).toEqual(['s1']);
+    expect(r.calls.server).toBe(1);
+  });
+
+  it('sweeps normally after the stream closes', async () => {
+    let t = 1000;
+    const mgr = makeManager({
+      idleTtlMs: 100,
+      absTtlMs: 10_000,
+      now: () => t,
+    });
+    add(mgr, 's1');
+    mgr.addStream('s1');
+    t = 5000;
+    expect(await mgr.sweepExpired()).toEqual([]); // survives while streaming
+    mgr.removeStream('s1'); // refreshes lastSeenAt at t=5000
+    t = 5050;
+    expect(await mgr.sweepExpired()).toEqual([]); // idle 50 < 100
+    t = 5200;
+    expect(await mgr.sweepExpired()).toEqual(['s1']); // idle 200 >= 100
+  });
+});
+
 describe('shutdownAll', () => {
   it('tears down every live session', async () => {
     const mgr = makeManager();

@@ -16,6 +16,8 @@ export interface SessionRecord extends SessionResources {
   lastSeenAt: number;
   closed: boolean;
   inflight: number;
+  /** Open standalone SSE streams; a positive count defers the idle sweep. */
+  activeStreams: number;
 }
 
 export interface SessionManagerOptions {
@@ -99,6 +101,7 @@ export class SessionManager {
       lastSeenAt: t,
       closed: false,
       inflight: 0,
+      activeStreams: 0,
     };
     this.sessions.set(input.sessionId, record);
     return record;
@@ -114,6 +117,27 @@ export class SessionManager {
   /** Look up a session WITHOUT refreshing its idle timer. */
   peek(sessionId: string): SessionRecord | undefined {
     return this.sessions.get(sessionId);
+  }
+
+  /** Refresh a session's idle timer without returning the record. */
+  touch(sessionId: string): void {
+    const record = this.sessions.get(sessionId);
+    if (record) record.lastSeenAt = this.now();
+  }
+
+  /** Mark a standalone SSE stream as attached (defers the idle sweep). */
+  addStream(sessionId: string): void {
+    const record = this.sessions.get(sessionId);
+    if (record) record.activeStreams += 1;
+  }
+
+  /** Detach a standalone SSE stream and restart the idle timer from now. */
+  removeStream(sessionId: string): void {
+    const record = this.sessions.get(sessionId);
+    if (record) {
+      record.activeStreams = Math.max(0, record.activeStreams - 1);
+      record.lastSeenAt = this.now();
+    }
   }
 
   markReady(sessionId: string): void {
@@ -189,7 +213,11 @@ export class SessionManager {
       if (record.closed) continue;
       const idle = t - record.lastSeenAt;
       const age = t - record.createdAt;
-      if (idle >= this.opts.idleTtlMs || age >= this.opts.absTtlMs) {
+      // An attached SSE stream defers the idle sweep (the stream refreshes
+      // lastSeenAt only at open), but the absolute TTL still reaps the session.
+      const idleExpired =
+        idle >= this.opts.idleTtlMs && record.activeStreams === 0;
+      if (idleExpired || age >= this.opts.absTtlMs) {
         expired.push(id);
       }
     }

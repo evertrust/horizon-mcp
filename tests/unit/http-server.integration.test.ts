@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock undici (the SERVER's Horizon client). The MCP CLIENT transport uses the
@@ -192,6 +193,14 @@ describe('HTTP server integration (api-key mode)', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 99, method: 'tools/list' }),
     });
     expect(res.status).toBe(401);
+    // The transport-level error echoes the request id and uses the server-error
+    // code (-32000) rather than the generic invalid-request -32600.
+    const err = (await res.json()) as {
+      id: number;
+      error: { code: number };
+    };
+    expect(err.id).toBe(99);
+    expect(err.error.code).toBe(-32000);
   }, 20000);
 
   it('tears down all sessions on close', async () => {
@@ -330,6 +339,61 @@ describe('HTTP server integration (readyz probe cache)', () => {
       expect(probes() - before).toBe(1);
     } finally {
       await handle.close();
+    }
+  }, 20000);
+
+  it('single-flights a concurrent burst of /readyz probes into one Horizon call', async () => {
+    const port = await freePort();
+    const env = {
+      HORIZON_TRANSPORT: 'http',
+      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_URL: 'https://horizon.test',
+      HORIZON_API_ID: 'svc',
+      HORIZON_API_KEY: 'k',
+      HORIZON_HTTP_HOST: '127.0.0.1',
+      HORIZON_HTTP_PORT: String(port),
+      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
+      HORIZON_VERIFY_SSL: 'false',
+      HORIZON_IP_RATE_LIMIT: '0',
+    };
+    const settings = loadSettings(env);
+    const config = buildHttpConfig(settings, env);
+    const handle = await startHttpServer(settings, config);
+    const base = `http://127.0.0.1:${handle.port}/readyz`;
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      const before = probes();
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () => fetch(base)),
+      );
+      for (const r of results) expect(r.status).toBe(200);
+      // Five simultaneous probes share a single in-flight Horizon whoami.
+      expect(probes() - before).toBe(1);
+    } finally {
+      await handle.close();
+    }
+  }, 20000);
+});
+
+describe('HTTP server integration (graceful shutdown)', () => {
+  it('resolves close() promptly despite a lingering idle keep-alive socket', async () => {
+    const ctx = await startApiKeyServer();
+    const sock = connect(ctx.handle.port, '127.0.0.1');
+    await new Promise<void>((resolve, reject) => {
+      sock.once('connect', () => resolve());
+      sock.once('error', reject);
+    });
+    try {
+      const start = Date.now();
+      await ctx.handle.close();
+      // Without closeAllConnections()/timeout, close() would hang on the idle
+      // socket until SIGKILL; the bounded drain keeps it well under the cap.
+      expect(Date.now() - start).toBeLessThan(2000);
+    } finally {
+      sock.destroy();
     }
   }, 20000);
 });

@@ -14,7 +14,15 @@ export class RateLimiter {
   constructor(
     private readonly limit: number,
     private readonly now: () => number = Date.now,
+    // Per-key ceilings that override the base limit (e.g. a global key that
+    // caps aggregate traffic above the per-peer limit). A base limit of 0
+    // still disables the limiter entirely, overrides included.
+    private readonly overrides: Readonly<Record<string, number>> = {},
   ) {}
+
+  private limitFor(key: string): number {
+    return this.overrides[key] ?? this.limit;
+  }
 
   private windowFor(key: string, t: number): Window {
     let w = this.windows.get(key);
@@ -29,7 +37,7 @@ export class RateLimiter {
   tryAcquire(key: string, cost = 1): boolean {
     if (this.limit <= 0) return true;
     const w = this.windowFor(key, this.now());
-    if (w.count + cost > this.limit) return false;
+    if (w.count + cost > this.limitFor(key)) return false;
     w.count += cost;
     return true;
   }
@@ -42,9 +50,11 @@ export class RateLimiter {
   tryAcquireAll(keys: readonly string[], cost = 1): boolean {
     if (this.limit <= 0) return true;
     const t = this.now();
-    const targets = keys.map((k) => this.windowFor(k, t));
-    if (targets.some((w) => w.count + cost > this.limit)) return false;
-    for (const w of targets) w.count += cost;
+    const targets = keys.map((k) => ({ key: k, w: this.windowFor(k, t) }));
+    if (targets.some(({ key, w }) => w.count + cost > this.limitFor(key))) {
+      return false;
+    }
+    for (const { w } of targets) w.count += cost;
     return true;
   }
 

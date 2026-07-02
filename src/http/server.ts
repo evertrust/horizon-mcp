@@ -17,7 +17,7 @@ import { HorizonClient } from '../client/http.js';
 import { getLogger, runWithLoggingSink } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
-import type { HttpConfig } from './config.js';
+import { type HttpConfig, serviceExposureWarning } from './config.js';
 import {
   CredentialError,
   buildSessionAuth,
@@ -92,7 +92,15 @@ export async function startHttpServer(
     config.mtls?.inbound?.header ?? '',
   ]);
 
-  const initLimiter = new RateLimiter(settings.initRateLimit);
+  // The init limiter enforces a per-remote-address cap AND an aggregate cap via
+  // a shared '__global__' key. Give the global key a higher ceiling (a multiple
+  // of the per-peer limit) so a single peer stays capped while total server
+  // throughput is not artificially pinned to one peer's budget.
+  const GLOBAL_INIT_KEY = '__global__';
+  const GLOBAL_INIT_MULTIPLIER = 4;
+  const initLimiter = new RateLimiter(settings.initRateLimit, undefined, {
+    [GLOBAL_INIT_KEY]: settings.initRateLimit * GLOBAL_INIT_MULTIPLIER,
+  });
   const sessionLimiter = new RateLimiter(settings.rateLimitRps);
   const sinks = new Map<string, McpSink>();
 
@@ -109,8 +117,43 @@ export async function startHttpServer(
   });
 
   // Brief readiness cache so a burst of /readyz probes cannot hammer Horizon.
+  // A single in-flight probe is shared by concurrent callers (single-flight),
+  // so a simultaneous burst triggers exactly one upstream validateAuth.
   const READY_CACHE_MS = 10_000;
   let readyCache: { at: number; healthy: boolean } | undefined;
+  let readyInflight: Promise<boolean> | undefined;
+
+  async function probeHorizon(): Promise<boolean> {
+    const { auth } = buildSessionAuth({ kind: 'service' }, config, settings);
+    const probe = new HorizonClient(settings.url, auth, clientOptions);
+    let healthy = true;
+    try {
+      await probe.validateAuth();
+    } catch {
+      healthy = false;
+    }
+    await probe.close().catch(() => undefined);
+    await auth.cleanup().catch(() => undefined);
+    return healthy;
+  }
+
+  async function ensureReady(): Promise<boolean> {
+    const now = Date.now();
+    if (readyCache && now - readyCache.at < READY_CACHE_MS) {
+      return readyCache.healthy;
+    }
+    if (!readyInflight) {
+      readyInflight = probeHorizon()
+        .then((healthy) => {
+          readyCache = { at: Date.now(), healthy };
+          return healthy;
+        })
+        .finally(() => {
+          readyInflight = undefined;
+        });
+    }
+    return readyInflight;
+  }
 
   const manager = new SessionManager({
     maxSessions: settings.maxSessions,
@@ -147,14 +190,18 @@ export async function startHttpServer(
     };
   }
 
+  // -32600 (Invalid Request) for genuinely malformed requests; -32000 (server
+  // error range) for server-side rejections (rate limit, auth mismatch). The
+  // id echoes the request's own id whenever the body was parsed.
   function sendError(
     res: Response,
     status: number,
     id: JsonRpcId | undefined,
     message: string,
+    code = -32600,
   ): void {
     if (!res.headersSent) {
-      res.status(status).json(jsonRpcErrorBody(id, -32600, message));
+      res.status(status).json(jsonRpcErrorBody(id, code, message));
     }
   }
 
@@ -164,7 +211,7 @@ export async function startHttpServer(
     id: JsonRpcId | undefined,
   ): void {
     if (err instanceof CredentialError) {
-      sendError(res, err.status, id, err.message);
+      sendError(res, err.status, id, err.message, -32000);
       return;
     }
     throw err;
@@ -178,16 +225,17 @@ export async function startHttpServer(
     fingerprint: string | undefined,
   ): boolean {
     if (!fingerprint) return true; // service mode: no per-caller binding
+    const id = firstId(req.body);
     let material;
     try {
       material = extractCredential(req, config);
     } catch (err) {
-      handleCredentialError(res, err, null);
+      handleCredentialError(res, err, id);
       return false;
     }
     const fp = credentialFingerprintOf(material);
     if (!fp || !fingerprintsMatch(fp, fingerprint)) {
-      sendError(res, 401, null, 'session credential does not match');
+      sendError(res, 401, id, 'session credential does not match', -32000);
       return false;
     }
     return true;
@@ -217,15 +265,21 @@ export async function startHttpServer(
     }
 
     const peer = req.socket.remoteAddress ?? 'unknown';
-    if (!initLimiter.tryAcquireAll(['__global__', peer])) {
-      sendError(res, 429, firstId(body), 'too many initialization attempts');
+    if (!initLimiter.tryAcquireAll([GLOBAL_INIT_KEY, peer])) {
+      sendError(
+        res,
+        429,
+        firstId(body),
+        'too many initialization attempts',
+        -32000,
+      );
       return;
     }
     // Reserve capacity atomically: the session is only registered later, inside
     // onsessioninitialized, after the validateAuth + connect awaits below, so a
     // plain canCreate() check would let concurrent initializes overshoot.
     if (!manager.tryReserve()) {
-      sendError(res, 503, firstId(body), 'maximum sessions reached');
+      sendError(res, 503, firstId(body), 'maximum sessions reached', -32000);
       return;
     }
 
@@ -262,11 +316,15 @@ export async function startHttpServer(
           status,
           firstId(body),
           status === 502 ? 'horizon unreachable' : 'authentication failed',
+          -32000,
         );
         return;
       }
 
-      mcp = createSessionServer(client);
+      mcp = createSessionServer(client, {
+        enabledToolsets: settings.enabledToolsets,
+        readOnly: settings.readOnly,
+      });
       // const aliases so the closure sees definitely-assigned values.
       const sessionClient = client;
       const sessionAuth = auth;
@@ -321,13 +379,16 @@ export async function startHttpServer(
     res: Response,
     sessionId: string,
   ): Promise<void> {
-    const record = manager.get(sessionId);
+    // Look up WITHOUT refreshing the idle timer: only an authenticated caller
+    // (fingerprint check below) should keep the session alive.
+    const record = manager.peek(sessionId);
     if (!record) {
-      sendError(res, 404, null, 'session not found');
+      sendError(res, 404, firstId(req.body), 'session not found');
       return;
     }
     if (!ensureFingerprintBinding(req, res, record.credentialFingerprint))
       return;
+    manager.touch(sessionId);
 
     const body: unknown = req.body;
     const methods = methodsOf(body);
@@ -349,7 +410,7 @@ export async function startHttpServer(
       messageCount > 0 &&
       !sessionLimiter.tryAcquire(sessionId, messageCount)
     ) {
-      sendError(res, 429, firstId(body), 'rate limit exceeded');
+      sendError(res, 429, firstId(body), 'rate limit exceeded', -32000);
       return;
     }
 
@@ -358,7 +419,13 @@ export async function startHttpServer(
     );
     if (isWork) {
       if (!manager.reserveInflight(sessionId)) {
-        sendError(res, 429, firstId(body), 'too many in-flight tool calls');
+        sendError(
+          res,
+          429,
+          firstId(body),
+          'too many in-flight tool calls',
+          -32000,
+        );
         return;
       }
       const release = once(() => manager.releaseInflight(sessionId));
@@ -396,6 +463,12 @@ export async function startHttpServer(
 
     if (req.method === 'GET') {
       res.setTimeout(settings.sseMaxDuration * 1000);
+      // A standalone SSE stream refreshes lastSeenAt only at open; count it as
+      // an active stream so the idle sweep does not reap the live connection.
+      manager.addStream(sessionId);
+      const release = once(() => manager.removeStream(sessionId));
+      res.on('close', release);
+      res.on('finish', release);
     }
     const sink =
       sinks.get(sessionId) ?? makeSink(record.server as unknown as McpServer);
@@ -418,7 +491,7 @@ export async function startHttpServer(
 
   // Health endpoints: unauthenticated, exempt from session/rate machinery,
   // still Host-validated.
-  app.get('/healthz', (req, res) => {
+  app.get('/healthz', ipLimiter, (req, res) => {
     if (!hostOk(req)) {
       res.status(421).json({ status: 'misdirected' });
       return;
@@ -432,27 +505,11 @@ export async function startHttpServer(
       return;
     }
     // Only service mode holds an env credential to probe Horizon with. The
-    // result is cached briefly so a burst of probes cannot hammer Horizon.
+    // result is cached briefly and single-flighted so a burst of probes cannot
+    // hammer Horizon.
     if (config.authMode === 'service') {
-      const now = Date.now();
-      if (!readyCache || now - readyCache.at >= READY_CACHE_MS) {
-        const { auth } = buildSessionAuth(
-          { kind: 'service' },
-          config,
-          settings,
-        );
-        const probe = new HorizonClient(settings.url, auth, clientOptions);
-        let healthy = true;
-        try {
-          await probe.validateAuth();
-        } catch {
-          healthy = false;
-        }
-        await probe.close().catch(() => undefined);
-        await auth.cleanup().catch(() => undefined);
-        readyCache = { at: Date.now(), healthy };
-      }
-      if (!readyCache.healthy) {
+      const healthy = await ensureReady();
+      if (!healthy) {
         res.status(503).json({ status: 'horizon-unreachable' });
         return;
       }
@@ -548,6 +605,15 @@ export async function startHttpServer(
       )
     : createHttpServer(app);
 
+  // Slowloris guard on request headers. requestTimeout is disabled because it
+  // bounds the time to receive the WHOLE request, which would kill long-lived
+  // SSE GET streams (up to sseMaxDuration) and slow tool calls (CSV exports up
+  // to exportTimeout); the response side is bounded by res.setTimeout instead.
+  // keepAliveTimeout sits a few seconds over the Node default.
+  httpServer.headersTimeout = 60_000;
+  httpServer.requestTimeout = 0;
+  httpServer.keepAliveTimeout = 10_000;
+
   await new Promise<void>((resolve, reject) => {
     httpServer.once('error', reject);
     httpServer.listen(config.port, config.host, () => {
@@ -582,6 +648,14 @@ export async function startHttpServer(
       `(auth mode: ${config.authMode}, public: ${config.publicEndpoint})`,
   );
 
+  const exposureWarning = serviceExposureWarning(settings);
+  if (exposureWarning) logger.warning(exposureWarning);
+
+  // Bound graceful shutdown: closeAllConnections() drops idle keep-alive
+  // sockets that would otherwise keep httpServer.close() pending indefinitely,
+  // and the race caps the drain so SIGTERM never hangs until SIGKILL.
+  const CLOSE_TIMEOUT_MS = 5000;
+
   return {
     port: boundPort,
     url: config.publicEndpoint,
@@ -592,7 +666,14 @@ export async function startHttpServer(
         httpServer.close(() => resolve()),
       );
       await manager.shutdownAll();
-      await closed;
+      httpServer.closeAllConnections?.();
+      await Promise.race([
+        closed,
+        new Promise<void>((resolve) => {
+          const t = setTimeout(resolve, CLOSE_TIMEOUT_MS);
+          t.unref?.();
+        }),
+      ]);
     },
   };
 }

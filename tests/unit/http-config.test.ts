@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildHttpConfig } from '../../src/http/config.js';
+import {
+  buildHttpConfig,
+  serviceExposureWarning,
+} from '../../src/http/config.js';
 import { loadSettings } from '../../src/settings.js';
 
 /**
@@ -40,8 +43,10 @@ describe('buildHttpConfig', () => {
     });
 
     it('allows a non-loopback bind when trusted hosts are given', () => {
+      // https public URL keeps api-key mode off the cleartext guard.
       const cfg = build({
         HORIZON_HTTP_HOST: '0.0.0.0',
+        HORIZON_PUBLIC_URL: 'https://mcp.example.com',
         HORIZON_TRUSTED_HOSTS: 'mcp.example.com',
       });
       expect(cfg.allowedHosts).toEqual(new Set(['mcp.example.com']));
@@ -259,6 +264,67 @@ describe('buildHttpConfig', () => {
           HORIZON_TRUSTED_PROXY: '10.0.0.0/8',
         }),
       ).toThrow(/header/i);
+    });
+  });
+
+  describe('api-key cleartext guard', () => {
+    it('refuses api-key mode on a non-loopback bind with a cleartext http endpoint', () => {
+      expect(() =>
+        build({
+          HORIZON_HTTP_HOST: '0.0.0.0',
+          HORIZON_TRUSTED_HOSTS: 'mcp.example.com',
+        }),
+      ).toThrow(/cleartext|http|TLS/i);
+    });
+
+    it('allows api-key mode on loopback over http', () => {
+      expect(() => build({ HORIZON_HTTP_HOST: '127.0.0.1' })).not.toThrow();
+    });
+
+    it('allows api-key mode on a non-loopback bind behind an https public URL', () => {
+      const cfg = build({
+        HORIZON_HTTP_HOST: '0.0.0.0',
+        HORIZON_PUBLIC_URL: 'https://mcp.example.com',
+      });
+      expect(cfg.authMode).toBe('api-key');
+    });
+  });
+
+  describe('service-mode exposure warning', () => {
+    function svcSettings(env: Record<string, string | undefined>) {
+      const full = {
+        HORIZON_TRANSPORT: 'http',
+        HORIZON_HTTP_AUTH_MODE: 'service',
+        HORIZON_API_ID: 'id',
+        HORIZON_API_KEY: 'key',
+        HORIZON_TRUSTED_HOSTS: 'mcp.example.com',
+        ...env,
+      };
+      return loadSettings(full);
+    }
+
+    it('warns when service mode binds a non-loopback host', () => {
+      const warning = serviceExposureWarning(
+        svcSettings({
+          HORIZON_HTTP_HOST: '0.0.0.0',
+        }),
+      );
+      expect(warning).toMatch(/unauthenticated|proxy/i);
+    });
+
+    it('does not warn when service mode binds loopback', () => {
+      expect(
+        serviceExposureWarning(svcSettings({ HORIZON_HTTP_HOST: '127.0.0.1' })),
+      ).toBeUndefined();
+    });
+
+    it('does not warn for api-key mode on a non-loopback bind', () => {
+      const settings = loadSettings({
+        HORIZON_TRANSPORT: 'http',
+        HORIZON_HTTP_AUTH_MODE: 'api-key',
+        HORIZON_HTTP_HOST: '0.0.0.0',
+      });
+      expect(serviceExposureWarning(settings)).toBeUndefined();
     });
   });
 

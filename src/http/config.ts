@@ -282,6 +282,23 @@ export function buildHttpConfig(
   const allowedOrigins = deriveAllowedOrigins(settings);
   const mtls = resolveAuthMode(settings);
 
+  // Fail closed: api-key mode carries per-caller credentials in request
+  // headers, so a cleartext http endpoint on a non-loopback bind would leak
+  // them on the wire. An https public URL (a TLS-terminating proxy in front)
+  // is the supported way to run non-loopback.
+  if (
+    settings.httpAuthMode === 'api-key' &&
+    !isLoopbackHost(settings.httpHost) &&
+    (publicUrl ? publicUrl.protocol !== 'https:' : true)
+  ) {
+    fail(
+      `api-key auth mode on non-loopback host "${settings.httpHost}" would ` +
+        `expose per-caller credentials over cleartext http. Terminate TLS ` +
+        `(set HORIZON_PUBLIC_URL to an https origin behind a TLS-terminating ` +
+        `proxy) or bind to loopback.`,
+    );
+  }
+
   return {
     host: settings.httpHost,
     port: settings.httpPort,
@@ -292,4 +309,27 @@ export function buildHttpConfig(
     authMode: settings.httpAuthMode,
     ...(mtls ? { mtls } : {}),
   };
+}
+
+/**
+ * A single prominent startup warning for service auth mode on a non-loopback
+ * bind: the endpoint is an unauthenticated proxy that acts with the server's
+ * Horizon identity, so it must be protected by network placement or an
+ * authenticating edge. Returns undefined when no warning applies.
+ */
+export function serviceExposureWarning(
+  settings: HorizonSettings,
+): string | undefined {
+  if (
+    settings.httpAuthMode === 'service' &&
+    !isLoopbackHost(settings.httpHost)
+  ) {
+    return (
+      `service auth mode on non-loopback host "${settings.httpHost}": this ` +
+      `endpoint is an UNAUTHENTICATED proxy that acts with the server's ` +
+      `Horizon identity. Any caller that can reach it acts as that identity. ` +
+      `Protect it by network placement or an authenticating edge.`
+    );
+  }
+  return undefined;
 }

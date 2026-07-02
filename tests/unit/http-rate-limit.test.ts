@@ -72,6 +72,36 @@ describe('RateLimiter', () => {
     });
   });
 
+  describe('per-key limit overrides', () => {
+    it('gives an overridden key a higher ceiling than the base limit', () => {
+      const clock = fakeClock();
+      // per-peer base limit 1, global key ceiling 4.
+      const rl = new RateLimiter(1, clock.now, { __global__: 4 });
+      // Distinct peers each get 1, while the global key absorbs up to 4.
+      expect(rl.tryAcquireAll(['__global__', 'a'])).toBe(true);
+      expect(rl.tryAcquireAll(['__global__', 'b'])).toBe(true);
+      expect(rl.tryAcquireAll(['__global__', 'c'])).toBe(true);
+      expect(rl.tryAcquireAll(['__global__', 'd'])).toBe(true);
+      // Global key is now full at 4 -> a fresh peer is still denied.
+      expect(rl.tryAcquireAll(['__global__', 'e'])).toBe(false);
+    });
+
+    it('still caps a single peer at the base limit even below the global ceiling', () => {
+      const clock = fakeClock();
+      const rl = new RateLimiter(1, clock.now, { __global__: 4 });
+      expect(rl.tryAcquireAll(['__global__', 'a'])).toBe(true);
+      // 'a' is full at the per-peer limit of 1 while global still has room.
+      expect(rl.tryAcquireAll(['__global__', 'a'])).toBe(false);
+    });
+
+    it('disables everything when the base limit is 0 regardless of overrides', () => {
+      const rl = new RateLimiter(0, undefined, { __global__: 4 });
+      for (let i = 0; i < 10; i++) {
+        expect(rl.tryAcquireAll(['__global__', 'a'])).toBe(true);
+      }
+    });
+  });
+
   describe('prune', () => {
     it('evicts windows whose period has elapsed (bounds the key map)', () => {
       const clock = fakeClock();
