@@ -10,7 +10,7 @@
     "horizon-mcp": "dist/index.js"
   },
   "files": [
-    "dist/"
+    "dist/index.js"
   ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org/",
