@@ -1,12 +1,12 @@
-import { existsSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { createAuthProvider } from '../../src/auth/index.js';
 import { MtlsAuthProvider } from '../../src/auth/mtls.js';
-import { PlaySessionAuthProvider } from '../../src/auth/play-session.js';
+import { loadSettings } from '../../src/settings.js';
 import type { HorizonSettings } from '../../src/settings.js';
 
 /**
@@ -17,22 +17,8 @@ function makeSettings(
   overrides: Partial<HorizonSettings> = {},
 ): HorizonSettings {
   return {
+    ...loadSettings({}),
     url: 'https://horizon.example.com',
-    apiId: '',
-    apiKey: '',
-    authMode: '',
-    clientCert: '',
-    clientKey: '',
-    clientKeyPassword: '',
-    clientPfx: '',
-    clientPfxPassword: '',
-    verifySsl: true,
-    loginTimeout: 300,
-    timeout: 30,
-    exportTimeout: 120,
-    logLevel: 'INFO',
-    testedVersions: ['2.8'],
-    warnVersions: ['2.7', '2.9'],
     ...overrides,
   };
 }
@@ -294,249 +280,6 @@ describe('MtlsAuthProvider (PFX)', () => {
 });
 
 // ===========================================================================
-// PlaySessionAuthProvider
-// ===========================================================================
-
-describe('PlaySessionAuthProvider', () => {
-  describe('constructor and initial state', () => {
-    it('starts in expired state with no cookie', () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      // The provider is newly created, so getHeaders should fail
-      // because there is no session cookie yet
-      expect(provider.csrfToken).toBeUndefined();
-    });
-
-    it('accepts a custom login timeout', () => {
-      const provider = new PlaySessionAuthProvider(
-        'https://horizon.test',
-        true,
-        60,
-      );
-      // We can verify this through the factory (tested below)
-      // but the constructor should not throw
-      expect(provider).toBeInstanceOf(PlaySessionAuthProvider);
-    });
-
-    it('strips trailing slash from horizon URL', () => {
-      // Just verify it doesn't throw - URL cleanup is internal
-      const provider = new PlaySessionAuthProvider('https://horizon.test///');
-      expect(provider).toBeInstanceOf(PlaySessionAuthProvider);
-    });
-  });
-
-  describe('getHeaders', () => {
-    it('throws when no session cookie is available', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      await expect(provider.getHeaders()).rejects.toThrow('No Play session');
-    });
-
-    it('returns Cookie header with PLAY_SESSION when cookie is set', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      // Use internal access to set state for testing
-      const p = provider as unknown as {
-        _sessionCookie: string;
-        _expired: boolean;
-      };
-      p._sessionCookie = 'abc123';
-      p._expired = false;
-
-      const headers = await provider.getHeaders();
-      expect(headers).toEqual({ Cookie: 'PLAY_SESSION=abc123' });
-    });
-
-    it('includes CSRF cookie when csrf token is set', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const p = provider as unknown as {
-        _sessionCookie: string;
-        _csrfTokenValue: string;
-        _expired: boolean;
-      };
-      p._sessionCookie = 'abc123';
-      p._csrfTokenValue = 'csrf-xyz';
-      p._expired = false;
-
-      const headers = await provider.getHeaders();
-      expect(headers).toEqual({
-        Cookie: 'PLAY_SESSION=abc123; csrf-token=csrf-xyz',
-      });
-    });
-  });
-
-  describe('markAuthFailed', () => {
-    it('sets expired flag to true', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const p = provider as unknown as {
-        _sessionCookie: string;
-        _expired: boolean;
-      };
-      p._expired = false;
-      p._sessionCookie = 'abc123';
-
-      await provider.markAuthFailed();
-      expect(p._expired).toBe(true);
-    });
-  });
-
-  describe('csrfToken property', () => {
-    it('returns undefined when no CSRF token', () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      expect(provider.csrfToken).toBeUndefined();
-    });
-
-    it('returns the CSRF value when set', () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const p = provider as unknown as { _csrfTokenValue: string };
-      p._csrfTokenValue = 'csrf-abc';
-      expect(provider.csrfToken).toBe('csrf-abc');
-    });
-  });
-
-  describe('refreshIfNeeded', () => {
-    it('triggers _acquireSession when expired', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const acquireMock = vi.fn().mockResolvedValue(undefined);
-      // Replace _acquireSession with a mock
-      (
-        provider as unknown as { _acquireSession: () => Promise<void> }
-      )._acquireSession = acquireMock;
-
-      await provider.refreshIfNeeded();
-      expect(acquireMock).toHaveBeenCalledOnce();
-    });
-
-    it('skips _acquireSession when not expired and cookie exists', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const p = provider as unknown as {
-        _sessionCookie: string;
-        _expired: boolean;
-        _acquireSession: () => Promise<void>;
-      };
-      p._expired = false;
-      p._sessionCookie = 'abc123';
-
-      const acquireMock = vi.fn().mockResolvedValue(undefined);
-      p._acquireSession = acquireMock;
-
-      await provider.refreshIfNeeded();
-      expect(acquireMock).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('playwright import error', () => {
-    it('throws a clear message when playwright is not installed', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-
-      // Mock the static method to throw ImportError
-      const original = PlaySessionAuthProvider['_checkPlaywrightAvailable'];
-      PlaySessionAuthProvider['_checkPlaywrightAvailable'] = () => {
-        throw new Error(
-          'Play session auth requires Playwright. ' +
-            'Install: npm install playwright && npx playwright install chromium',
-        );
-      };
-
-      try {
-        await expect(provider.refreshIfNeeded()).rejects.toThrow(
-          'Play session auth requires Playwright',
-        );
-      } finally {
-        PlaySessionAuthProvider['_checkPlaywrightAvailable'] = original;
-      }
-    });
-  });
-
-  describe('chromium not installed', () => {
-    it('wraps browser-missing error with clear message', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-
-      // Mock playwright check to pass
-      const origCheck = PlaySessionAuthProvider['_checkPlaywrightAvailable'];
-      PlaySessionAuthProvider['_checkPlaywrightAvailable'] = () =>
-        Promise.resolve();
-
-      // Instead of going through the full flow, directly test the error
-      // wrapping logic by mocking at a higher level
-      const mockAcquire = vi
-        .fn()
-        .mockRejectedValue(
-          new Error(
-            'Chromium browser not found. Run: npx playwright install chromium',
-          ),
-        );
-      (
-        provider as unknown as { _acquireSession: () => Promise<void> }
-      )._acquireSession = mockAcquire;
-
-      try {
-        await expect(provider.refreshIfNeeded()).rejects.toThrow(
-          'Chromium browser not found',
-        );
-      } finally {
-        PlaySessionAuthProvider['_checkPlaywrightAvailable'] = origCheck;
-      }
-    });
-  });
-
-  describe('cleanup', () => {
-    it('removes a tracked temp profile dir and clears the field', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const dir = makeTmpDir();
-      writeFileSync(join(dir, 'marker'), 'x');
-      const p = provider as unknown as { _userDataDir: string | undefined };
-      p._userDataDir = dir;
-
-      await provider.cleanup();
-
-      expect(existsSync(dir)).toBe(false);
-      expect(p._userDataDir).toBeUndefined();
-    });
-
-    it('is a no-op when no temp dir is tracked', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      await expect(provider.cleanup()).resolves.toBeUndefined();
-    });
-
-    it('is idempotent and does not throw if the dir is already gone', async () => {
-      const provider = new PlaySessionAuthProvider('https://horizon.test');
-      const dir = makeTmpDir();
-      const p = provider as unknown as { _userDataDir: string | undefined };
-      p._userDataDir = dir;
-
-      await provider.cleanup();
-      p._userDataDir = dir;
-      await expect(provider.cleanup()).resolves.toBeUndefined();
-      expect(existsSync(dir)).toBe(false);
-    });
-  });
-
-  describe('navigation error', () => {
-    it('wraps navigation failure with connectivity hint', async () => {
-      const provider = new PlaySessionAuthProvider(
-        'https://unreachable.invalid',
-      );
-
-      // Mock _acquireSession to throw the expected wrapped error
-      const mockAcquire = vi
-        .fn()
-        .mockRejectedValue(
-          new Error(
-            'Failed to navigate to https://unreachable.invalid. ' +
-              'Check HORIZON_URL and network connectivity. ' +
-              '(Error: net::ERR_NAME_NOT_RESOLVED)',
-          ),
-        );
-      (
-        provider as unknown as { _acquireSession: () => Promise<void> }
-      )._acquireSession = mockAcquire;
-
-      await expect(provider.refreshIfNeeded()).rejects.toThrow(
-        'Failed to navigate',
-      );
-    });
-  });
-});
-
-// ===========================================================================
 // createAuthProvider (factory)
 // ===========================================================================
 
@@ -600,20 +343,12 @@ describe('createAuthProvider (factory)', () => {
     });
   });
 
-  describe('Play Session fallback', () => {
-    it('falls back to PlaySessionAuthProvider when no certs or API key', () => {
+  describe('no credentials configured', () => {
+    it('throws a clear error when no certs or API key are set', () => {
       const settings = makeSettings();
-      const provider = createAuthProvider(settings);
-      expect(provider).toBeInstanceOf(PlaySessionAuthProvider);
-    });
-
-    it('passes login_timeout from settings to PlaySessionAuthProvider', () => {
-      const settings = makeSettings({ loginTimeout: 42 });
-      const provider = createAuthProvider(settings);
-      expect(provider).toBeInstanceOf(PlaySessionAuthProvider);
-      // Verify the timeout was passed through
-      const p = provider as unknown as { _loginTimeout: number };
-      expect(p._loginTimeout).toBe(42);
+      expect(() => createAuthProvider(settings)).toThrow(
+        /No Horizon credentials configured/i,
+      );
     });
   });
 
@@ -665,7 +400,7 @@ describe('createAuthProvider (factory)', () => {
       );
     });
 
-    it('prefers API key over Play Session when apiId is set', () => {
+    it('selects API key when only apiId is set', () => {
       const settings = makeSettings({
         apiId: 'my-id',
         apiKey: 'my-key',

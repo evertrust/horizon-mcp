@@ -424,13 +424,13 @@ describe('buildSearchResponse', () => {
 });
 
 describe('buildExportPayload', () => {
-  it('builds bounded export payload with row cap and count request', () => {
+  it('builds bounded export payload with row cap and no count request', () => {
     const payload = buildExportPayload('*');
 
     expect(payload.query).toBe('*');
     expect(payload.pageIndex).toBe(1);
     expect(payload.pageSize).toBe(1000);
-    expect(payload.withCount).toBe(true);
+    expect(payload).not.toHaveProperty('withCount');
     expect(payload).not.toHaveProperty('fields');
     expect(payload).not.toHaveProperty('sortedBy');
   });
@@ -617,18 +617,14 @@ describe('download_certificate failure branches surface isError', () => {
     ]);
   });
 
-  it('flags an unsupported format as an error result', async () => {
+  it('rejects an unsupported format at the schema level', async () => {
     const result = (await client.callTool({
       name: 'download_certificate',
       arguments: { certificate_id: 'abc-123', format: 'der' },
     })) as { isError?: boolean; content: Array<{ text: string }> };
 
     expect(result.isError).toBe(true);
-    const parsed = JSON.parse(result.content[0]!.text) as Record<
-      string,
-      unknown
-    >;
-    expect(String(parsed['error'])).toContain('Only PEM');
+    expect(result.content[0]!.text).toContain('format');
   });
 
   it('flags a missing PEM as an error result', async () => {

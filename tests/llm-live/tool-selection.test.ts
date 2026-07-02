@@ -52,6 +52,11 @@ describe.skipIf(SKIP)(
         const result = await runScenarioWithClaude(scenario.question, {
           model: process.env['HORIZON_LLM_LIVE_MODEL'] ?? 'claude-haiku-4-5',
           maxBudgetUsd: scenario.maxBudgetUsd,
+          // Stop as soon as the expected tool is selected: the assertion only
+          // inspects the first acceptable primary tool and its preceders, so
+          // running the full multi-turn answer just adds latency (and cost)
+          // and makes long scenarios flaky under the suite's parallel load.
+          stopWhenToolCalled: scenario.acceptablePrimaryTools,
         });
 
         expect(

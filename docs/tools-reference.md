@@ -1,6 +1,6 @@
 # Tool reference
 
-211 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
+212 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -38,13 +38,14 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `simulate_datasource_flow` | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads |
 | `convert_pkcs12_to_jks` | read-only | Convert PKCS#12 to JKS keystore |
 
-## Docs (3 tools)
+## Docs (4 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
 | `search_docs` | read-only | Search official product documentation; use this first, then `get_doc_page` |
 | `search_api_docs` | read-only | Search official Horizon API reference pages; use this first, then `get_doc_page` |
-| `get_doc_page` | read-only | Fetch the full indexed content for a page returned by a docs-search tool |
+| `get_doc_page` | read-only | Fetch the indexed content for a page returned by a docs-search tool (windowed via `max_chars`/`offset`) |
+| `read_knowledge` | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support |
 
 ## Lifecycle (17 tools)
 

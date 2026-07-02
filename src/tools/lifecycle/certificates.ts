@@ -147,14 +147,22 @@ export function registerCertificateTools(
     {
       description:
         'Export certificates matching an HCQL query as CSV (max 1000 rows; ' +
-        'use Horizon UI for full exports). Lowercase fields only. ' +
+        'use Horizon UI for full exports). HCQL query fields are lowercase; the ' +
+        'CSV `fields` columns are camelCase (see the fields param). ' +
         'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HCQL query expression.'),
         fields: z
           .array(z.string())
           .optional()
-          .describe('Fields to include in the CSV export.'),
+          .describe(
+            'CSV columns to include, as camelCase API column names (SearchResult ' +
+              'columns) - NOT the lowercase HCQL query fields. Examples: dn, ' +
+              'serial, contactEmail, autoRenew, module, profile, notAfter. Prefix ' +
+              'families: label.<key>, metadata.<key>, grade.<policy>, ' +
+              'team.displayname.<lang>. Invalid names return a Horizon 500 that ' +
+              'lists the usable columns.',
+          ),
         sorted_by: z
           .string()
           .optional()
@@ -194,34 +202,17 @@ export function registerCertificateTools(
       description:
         'Download a certificate as PEM. Returned as an embedded resource ' +
         '(application/x-pem-file). The PKCS#12 bundle is not on the certificate ' +
-        'object; for centralized enrollments retrieve it via search_requests + ' +
-        'get_request (pkcs12 / keyStore field).',
+        'object; for centralized enrollment or recover requests retrieve it via ' +
+        'search_requests + get_request (pkcs12 / keyStore field).',
       inputSchema: z.object({
         certificate_id: z.string().describe('Certificate ID.'),
         format: z
-          .string()
+          .enum(['pem'])
           .default('pem')
           .describe("Output format (only 'pem' is supported via the API)."),
       }),
     },
-    async ({ certificate_id, format }) => {
-      const fmt = format.toLowerCase();
-      if (fmt !== 'pem') {
-        return {
-          isError: true as const,
-          content: [
-            {
-              type: 'text' as const,
-              text: JSON.stringify({
-                error:
-                  `Only PEM format is available via the API. ` +
-                  `For ${fmt.toUpperCase()} format, use the Horizon UI.`,
-              }),
-            },
-          ],
-        };
-      }
-
+    async ({ certificate_id }) => {
       const cert = await client.get<Record<string, unknown>>(
         `/api/v1/certificates/${encodePathSegment(certificate_id)}`,
       );

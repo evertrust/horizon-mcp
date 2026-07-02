@@ -220,4 +220,95 @@ describe('Documentation tools', () => {
     expect(result['content']).toContain('GET /api/v1/requests/{id}');
     expect(result['content']).toContain('Retrieve a request');
   });
+
+  it('get_doc_page truncates long content and reports next_offset', async () => {
+    const client = await createDocsToolClient(createMockClient());
+
+    const result = await callJsonTool(client, 'get_doc_page', {
+      page_id: 'horizon-api:2.8:api-ref:request_get',
+      max_chars: 10,
+    });
+
+    const content = result['content'] as string;
+    expect(content.length).toBe(10);
+    const truncation = result['truncation'] as Record<string, unknown>;
+    expect(truncation['truncated']).toBe(true);
+    expect(truncation['offset']).toBe(0);
+    expect(truncation['returned_chars']).toBe(10);
+    expect(truncation['next_offset']).toBe(10);
+    expect(truncation['total_chars']).toBeGreaterThan(10);
+  });
+
+  it('get_doc_page continues from a supplied offset and marks the final window', async () => {
+    const client = await createDocsToolClient(createMockClient());
+
+    // First window reveals the total length via the truncation notice.
+    const head = await callJsonTool(client, 'get_doc_page', {
+      page_id: 'horizon-api:2.8:api-ref:request_get',
+      max_chars: 20,
+    });
+    const headTrunc = head['truncation'] as Record<string, unknown>;
+    expect(headTrunc['truncated']).toBe(true);
+    const total = headTrunc['total_chars'] as number;
+
+    // A window starting near the end returns only the remaining chars and is
+    // marked as the final (non-truncated) window.
+    const tail = await callJsonTool(client, 'get_doc_page', {
+      page_id: 'horizon-api:2.8:api-ref:request_get',
+      max_chars: 50000,
+      offset: total - 5,
+    });
+    const tailContent = tail['content'] as string;
+    expect(tailContent.length).toBe(5);
+    const tailTrunc = tail['truncation'] as Record<string, unknown>;
+    expect(tailTrunc['truncated']).toBe(false);
+    expect(tailTrunc['total_chars']).toBe(total);
+  });
+});
+
+describe('read_knowledge tool', () => {
+  it('returns the embedded content for a valid topic', async () => {
+    const client = await createDocsToolClient(createMockClient());
+
+    const result = await callJsonTool(client, 'read_knowledge', {
+      topic: 'server-rules',
+    });
+
+    expect(result['topic']).toBe('server-rules');
+    expect(result['uri']).toBe('horizon://knowledge/server-rules');
+    expect((result['content'] as string).length).toBeGreaterThan(0);
+    const truncation = result['truncation'] as Record<string, unknown>;
+    expect(truncation['total_chars']).toBeGreaterThan(0);
+  });
+
+  it('errors with the valid topic list for an unknown topic', async () => {
+    const client = await createDocsToolClient(createMockClient());
+
+    const result = await callJsonTool(client, 'read_knowledge', {
+      topic: 'not-a-real-topic',
+    });
+
+    expect(result['error']).toContain('not-a-real-topic');
+    const topics = result['valid_topics'] as string[];
+    expect(topics).toContain('server-rules');
+    expect(topics).toContain('query-languages');
+  });
+
+  it('truncates long content and reports next_offset', async () => {
+    const client = await createDocsToolClient(createMockClient());
+
+    const result = await callJsonTool(client, 'read_knowledge', {
+      topic: 'server-rules',
+      max_chars: 10,
+    });
+
+    const content = result['content'] as string;
+    expect(content.length).toBe(10);
+    const truncation = result['truncation'] as Record<string, unknown>;
+    expect(truncation['truncated']).toBe(true);
+    expect(truncation['offset']).toBe(0);
+    expect(truncation['returned_chars']).toBe(10);
+    expect(truncation['next_offset']).toBe(10);
+    expect(truncation['total_chars']).toBeGreaterThan(10);
+  });
 });

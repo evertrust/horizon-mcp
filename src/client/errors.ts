@@ -26,9 +26,9 @@ const SPECIFIC_REMEDIATION: Record<string, string> = {
   'HQL-001':
     'Invalid query syntax. Use validate_hcql/hrql/heql to check your query.',
   'SEC-AUTH-002':
-    'Authentication failed. Check credentials - ' +
-    'HORIZON_API_ID/HORIZON_API_KEY for API key auth, ' +
-    'client certificate for mTLS, or re-authenticate via browser.',
+    'Authentication failed. Check HORIZON_API_ID/HORIZON_API_KEY, ' +
+    'HORIZON_SERVICE_ACCOUNT/HORIZON_API_TOKEN or the client certificate settings; ' +
+    'in HTTP mode, check the X-API-ID/X-API-KEY or X-API-SVA/X-API-TOKEN headers.',
   'SEC-PERM-001':
     'Insufficient permissions. Check role assignments for the authenticated principal.',
 };

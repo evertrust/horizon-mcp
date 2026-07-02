@@ -12,6 +12,11 @@ import {
 import { searchDocPages } from '../docs/search.js';
 import type { DocPage, DocProduct } from '../docs/types.js';
 import { resolveDocVersion } from '../docs/versioning.js';
+import {
+  getKnowledgeSectionSlugs,
+  getKnowledgeTopicSlugs,
+  resolveKnowledge,
+} from '../resources/catalog.js';
 import { registerTool } from './register.js';
 
 const SEARCH_MAX_RESULTS = 10;
@@ -78,6 +83,45 @@ function selectProductPages(
   const pages = [...horizonPages, ...otherProductPages, ...companionPages];
 
   return product ? pages.filter((page) => page.product === product) : pages;
+}
+
+type ContentTruncation =
+  | {
+      truncated: true;
+      total_chars: number;
+      offset: number;
+      returned_chars: number;
+      next_offset: number;
+    }
+  | { truncated: false; total_chars: number };
+
+/**
+ * Window long content by `maxChars` starting at `offset`, returning the slice
+ * plus a truncation notice with `next_offset` for continuation. Shared by
+ * get_doc_page and read_knowledge.
+ */
+function windowContent(
+  full: string,
+  offset: number,
+  maxChars: number,
+): { content: string; truncation: ContentTruncation } {
+  const totalChars = full.length;
+  const content = full.slice(offset, offset + maxChars);
+  const endOffset = offset + content.length;
+  const truncated = endOffset < totalChars;
+
+  return {
+    content,
+    truncation: truncated
+      ? {
+          truncated: true,
+          total_chars: totalChars,
+          offset,
+          returned_chars: content.length,
+          next_offset: endOffset,
+        }
+      : { truncated: false, total_chars: totalChars },
+  };
 }
 
 function buildDocPageContent(page: DocPage): string {
@@ -287,17 +331,35 @@ export function registerDocsTools(
     'get_doc_page',
     {
       description:
-        'Return the full indexed content of a specific documentation page.\n\n' +
-        'Always call search_docs or search_api_docs first and pass one of their page_id values here. Do not guess or fabricate page IDs. If the page is not the one you need, go back to search and refine the query instead of guessing another page_id.',
+        'Return the indexed content of a specific documentation page.\n\n' +
+        'Always call search_docs or search_api_docs first and pass one of their page_id values here. Do not guess or fabricate page IDs. If the page is not the one you need, go back to search and refine the query instead of guessing another page_id.\n\n' +
+        'Long pages are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call the tool again with that offset to continue.',
       inputSchema: z.object({
         page_id: z
           .string()
           .describe(
             'Exact page_id returned by search_docs or search_api_docs.',
           ),
+        max_chars: z
+          .number()
+          .int()
+          .positive()
+          .max(50000)
+          .default(20000)
+          .describe(
+            'Maximum number of content characters to return in this window (1-50000, default 20000).',
+          ),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe(
+            'Character offset into the page content to start from. Use next_offset from a prior truncated response to continue.',
+          ),
       }),
     },
-    async ({ page_id }) => {
+    async ({ page_id, max_chars, offset }) => {
       const page = getDocPageById(page_id);
       if (!page) {
         return {
@@ -311,6 +373,13 @@ export function registerDocsTools(
           ],
         };
       }
+
+      const fullContent = buildDocPageContent(page);
+      const { content, truncation } = windowContent(
+        fullContent,
+        offset,
+        max_chars,
+      );
 
       return {
         content: [
@@ -328,7 +397,96 @@ export function registerDocsTools(
               summary: page.summary,
               method: page.method,
               path: page.api_path,
-              content: buildDocPageContent(page),
+              content,
+              truncation,
+            }),
+          },
+        ],
+      };
+    },
+  );
+
+  registerTool(
+    server,
+    'read_knowledge',
+    {
+      description:
+        'Return the embedded Horizon knowledge base content for a topic as tool output.\n\n' +
+        'Use when: a horizon://knowledge/* resource is referenced but the client cannot read MCP resources. This exposes the same guidance (server rules, query languages, workflows, integration recipes, ...) through a tool call instead.\n\n' +
+        'Pass a topic slug (the segment after horizon://knowledge/). Optionally pass a section slug to fetch a single section of a long topic. Call with no valid topic to get the list of valid topics in the error.\n\n' +
+        'Long topics are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call again with that offset to continue.',
+      inputSchema: z.object({
+        topic: z
+          .string()
+          .describe(
+            'Knowledge topic slug, e.g. server-rules, query-languages, tool-selection. This is the segment after horizon://knowledge/.',
+          ),
+        section: z
+          .string()
+          .optional()
+          .describe(
+            'Optional section slug within the topic (only some topics are split into sections).',
+          ),
+        max_chars: z
+          .number()
+          .int()
+          .positive()
+          .max(50000)
+          .default(20000)
+          .describe(
+            'Maximum number of content characters to return in this window (1-50000, default 20000).',
+          ),
+        offset: z
+          .number()
+          .int()
+          .min(0)
+          .default(0)
+          .describe(
+            'Character offset into the content to start from. Use next_offset from a prior truncated response to continue.',
+          ),
+      }),
+    },
+    async ({ topic, section, max_chars, offset }) => {
+      const resource = resolveKnowledge(topic, section);
+      if (!resource) {
+        const validTopics = getKnowledgeTopicSlugs();
+        const error = section
+          ? `Unknown section '${section}' for topic '${topic}'.`
+          : `Unknown knowledge topic '${topic}'.`;
+        const sections = getKnowledgeSectionSlugs(topic);
+        return {
+          content: [
+            {
+              type: 'text' as const,
+              text: JSON.stringify({
+                error,
+                valid_topics: validTopics,
+                ...(section && sections.length > 0
+                  ? { valid_sections: sections }
+                  : {}),
+              }),
+            },
+          ],
+        };
+      }
+
+      const { content, truncation } = windowContent(
+        resource.content,
+        offset,
+        max_chars,
+      );
+
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: JSON.stringify({
+              topic,
+              section: section ?? null,
+              uri: resource.uri,
+              description: resource.description,
+              content,
+              truncation,
             }),
           },
         ],
