@@ -22,8 +22,8 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup",
-    "build:binary": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp --external playwright",
-    "build:binaries": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-x64 --target=bun-linux-x64 --external playwright --external chromium-bidi --external electron && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-arm64 --target=bun-linux-arm64 --external playwright --external chromium-bidi --external electron && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-x64 --target=bun-darwin-x64 --external playwright --external chromium-bidi --external electron && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-arm64 --target=bun-darwin-arm64 --external playwright --external chromium-bidi --external electron && bun build --compile dist/index.js --outfile dist/horizon-mcp-windows-x64.exe --target=bun-windows-x64 --external playwright --external chromium-bidi --external electron",
+    "build:binary": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp",
+    "build:binaries": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-x64 --target=bun-linux-x64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-arm64 --target=bun-linux-arm64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-x64 --target=bun-darwin-x64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-arm64 --target=bun-darwin-arm64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-windows-x64.exe --target=bun-windows-x64",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.config.e2e.ts --reporter=verbose",
     "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon.test.ts -t \"exports events as CSV\" --reporter=verbose",
@@ -43,11 +43,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.29.0",
+    "express": "^5",
+    "express-rate-limit": "8.5.2",
     "undici": "8.0.1",
     "zod": "4.3.6"
-  },
-  "optionalDependencies": {
-    "playwright": "1.59.1"
   },
   "overrides": {
     "@hono/node-server": "^1.19.13",
@@ -63,6 +62,7 @@
     "@semantic-release/github": "^12.0.6",
     "@semantic-release/npm": "^13.1.5",
     "@trivago/prettier-plugin-sort-imports": "6.0.2",
+    "@types/express": "^5",
     "@types/node": "25.5.2",
     "eslint": "10.1.0",
     "eslint-config-prettier": "10.1.8",

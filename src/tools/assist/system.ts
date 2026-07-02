@@ -18,13 +18,18 @@ export function registerSystemTools(
         'For ownership queries combine the identifier and team list: ' +
         '`owner equals "<id>" or team in ("<t1>", ...)`. ' +
         'See horizon://knowledge/query-languages for ownership patterns.',
+      // Horizon serializes absent collections/values as `null` rather than
+      // omitting them (e.g. a principal in no teams gets `teams: null`). The
+      // raw response is piped straight into structuredContent, so every field
+      // must accept null (.nullish() = nullable + optional) or the MCP output
+      // validation rejects the whole whoami response before the client reads it.
       outputSchema: {
-        identifier: z.string().optional(),
-        name: z.string().optional(),
-        team: z.string().optional(),
-        teams: z.array(z.string()).optional(),
-        roles: z.array(z.unknown()).optional(),
-        permissions: z.unknown().optional(),
+        identifier: z.string().nullish(),
+        name: z.string().nullish(),
+        team: z.string().nullish(),
+        teams: z.array(z.string()).nullish(),
+        roles: z.array(z.unknown()).nullish(),
+        permissions: z.unknown().nullish(),
       },
     },
     async () => {
@@ -44,23 +49,27 @@ export function registerSystemTools(
     {
       description:
         'Return Horizon license info: modules, expiry, quotas, feature flags.',
+      // Raw license response is piped straight into structuredContent. Horizon
+      // may serialize absent fields as `null` (and the shape drifts across
+      // versions), so every field is .nullish() to keep output validation from
+      // rejecting an otherwise-valid response.
       outputSchema: {
-        isValid: z.boolean().optional(),
-        version: z.string().optional(),
-        expiration: z.number().optional(),
-        buildTime: z.number().optional(),
-        count: z.number().optional(),
-        dcvCount: z.number().optional(),
+        isValid: z.boolean().nullish(),
+        version: z.string().nullish(),
+        expiration: z.number().nullish(),
+        buildTime: z.number().nullish(),
+        count: z.number().nullish(),
+        dcvCount: z.number().nullish(),
         // Horizon 2.10 returns module entitlements as objects ({ module, items });
         // older instances returned bare module-name strings. Accept either.
         modules: z
           .array(z.union([z.string(), z.record(z.string(), z.unknown())]))
-          .optional(),
-        libraries: z.array(z.record(z.string(), z.unknown())).optional(),
-        releaseChannel: z.string().optional(),
+          .nullish(),
+        libraries: z.array(z.record(z.string(), z.unknown())).nullish(),
+        releaseChannel: z.string().nullish(),
         // Legacy / forward-compatible fields kept permissive.
-        expiry: z.string().optional(),
-        features: z.record(z.string(), z.unknown()).optional(),
+        expiry: z.string().nullish(),
+        features: z.record(z.string(), z.unknown()).nullish(),
       },
     },
     async () => {

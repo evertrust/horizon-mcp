@@ -35,6 +35,16 @@ export interface RunScenarioOptions {
   readonly model?: string;
   readonly maxTurns?: number;
   readonly maxBudgetUsd?: number;
+  /**
+   * Stop the agent loop as soon as one of these Horizon MCP tools is selected.
+   * The tool-selection assertion only needs the FIRST acceptable primary tool
+   * (its input is captured at the tool_use block, before execution) plus its
+   * benign preceders, so stopping there avoids running the full multi-turn
+   * answer - which otherwise makes long scenarios (e.g. one that enumerates
+   * every team's members) flaky under the suite's parallel load, and needlessly
+   * bills the trailing paid turns.
+   */
+  readonly stopWhenToolCalled?: readonly string[];
 }
 
 function buildMcpEnv(): Record<string, string> {
@@ -150,12 +160,18 @@ export async function runScenarioWithClaude(
     },
   };
 
+  const stopSet =
+    options.stopWhenToolCalled && options.stopWhenToolCalled.length > 0
+      ? new Set(options.stopWhenToolCalled)
+      : undefined;
+
   const q = query({ prompt, options: sdkOptions });
 
   try {
     for await (const msg of q as AsyncIterable<SDKMessage>) {
       if (msg.type === 'assistant' && msg.message?.content) {
         if (msg.error) errors.push(`assistant_error:${msg.error}`);
+        let reachedStopTool = false;
         for (const block of msg.message.content) {
           if (block.type === 'tool_use') {
             const isMcp = block.name.startsWith(MCP_TOOL_PREFIX);
@@ -169,10 +185,19 @@ export async function runScenarioWithClaude(
                 display,
                 (block.input ?? {}) as Record<string, unknown>,
               );
+              if (stopSet?.has(display)) reachedStopTool = true;
             }
           } else if (block.type === 'text') {
             assistantTextChunks.push(block.text);
           }
+        }
+        // Early-exit: the primary tool has been selected (with its input
+        // captured). The assertion needs nothing after it, so stop the loop -
+        // and the paid trailing turns - here rather than running the full
+        // multi-turn answer.
+        if (reachedStopTool) {
+          stopReason = 'stopped_at_primary_tool';
+          break;
         }
       } else if (msg.type === 'result') {
         turns = msg.num_turns;

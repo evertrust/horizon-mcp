@@ -245,7 +245,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         expect(result['truncated']).toBeDefined();
         expect(result['returned_rows']).toBeDefined();
         expect(typeof result['csv']).toBe('string');
-      });
+      }, 150_000);
 
       it('exports requests as CSV', async () => {
         const result = await callTool('export_requests_csv', {
@@ -257,7 +257,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         ).toBeDefined();
         expect(result['truncated']).toBeDefined();
         expect(typeof result['csv']).toBe('string');
-      });
+      }, 150_000);
 
       it('exports events as CSV', async () => {
         const result = await callTool(
@@ -274,7 +274,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         expect(result['max_rows']).toBe(1000);
         expect(typeof result['csv']).toBe('string');
         expect(result['returned_rows'] as number).toBeLessThanOrEqual(1000);
-      }, 120_000);
+      }, 150_000);
     });
 
     // -----------------------------------------------------------------------

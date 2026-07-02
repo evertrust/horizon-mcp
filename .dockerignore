@@ -1,0 +1,15 @@
+.git
+node_modules
+dist
+coverage
+tests
+docs
+.agents
+.claude
+.claude-plugin
+.codex-plugin
+skills
+*.log
+.env
+.env.*
+.DS_Store

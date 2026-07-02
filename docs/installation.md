@@ -51,17 +51,6 @@ chmod +x horizon-mcp
 
 Binaries are published for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
 
-## OIDC browser authentication (optional)
-
-For OIDC browser-based login, install Playwright and its Chromium browser:
-
-```bash
-bun install playwright
-bunx playwright install chromium
-```
-
-The standalone binaries are built with `--external playwright`, so Playwright must be present in the environment where the server actually runs.
-
 ## Next steps
 
 - [Authentication](authentication.md) - configure how the server connects to Horizon

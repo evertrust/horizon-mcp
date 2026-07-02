@@ -28,7 +28,7 @@ const SPECIFIC_REMEDIATION: Record<string, string> = {
   SecAuth001:
     'Authentication failed. Check credentials - ' +
     'HORIZON_API_ID/HORIZON_API_KEY for API key auth, ' +
-    'client certificate for mTLS, or re-authenticate via browser.',
+    'or the client certificate configuration for mTLS.',
   SecPerm001:
     'Insufficient permissions. Check role assignments for the authenticated principal.',
 };
