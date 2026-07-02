@@ -1,3 +1,13 @@
+## [2.0.0](https://github.com/evertrust/horizon-mcp/compare/v1.2.0...v2.0.0) (2026-07-02)
+
+### ⚠ BREAKING CHANGES
+
+* streamable HTTP transport (hostable) + remove OIDC browser auth (#15)
+
+### Features
+
+* streamable HTTP transport (hostable) + remove OIDC browser auth ([#15](https://github.com/evertrust/horizon-mcp/issues/15)) ([fbfe22d](https://github.com/evertrust/horizon-mcp/commit/fbfe22de5d171570dd3840bd54e9cc4bf4edbf77))
+
 ## [1.2.0](https://github.com/evertrust/horizon-mcp/compare/v1.1.3...v1.2.0) (2026-06-18)
 
 ### Features
