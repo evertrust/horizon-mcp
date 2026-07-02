@@ -102,12 +102,18 @@ export function registerRequestTools(
         'direct action permission (enrollApi, revokeApi, renewApi) the operation ' +
         'completes immediately; with only the request permission the request is ' +
         'created in PENDING state and needs approve_request. Surface that status ' +
-        'to the user. For revoke, revocationReason is mandatory (keycompromise, ' +
-        'cacompromise, affiliationchange, superseded, cessationofoperation, ' +
-        'certificatehold, removefromcrl, privilegewithdrawn, aacompromise, ' +
-        'unspecified). Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
+        'to the user. This can perform destructive workflows (revoke); confirm ' +
+        'with the user before submitting a revoke. For revoke, revocationReason is ' +
+        'strongly recommended - ask the user for it; Horizon defaults to ' +
+        "'unspecified' if omitted (keycompromise, cacompromise, affiliationchange, " +
+        'superseded, cessationofoperation, certificatehold, removefromcrl, ' +
+        'privilegewithdrawn, aacompromise, unspecified). ' +
+        'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
         'EST/SCEP enroll returns the challenge password in the response. ' +
         'Full workflow + examples: horizon://knowledge/workflows.',
+      // submit_request can run revoke workflows, so mark it destructive even
+      // though the name-prefix classifier treats it as an additive mutation.
+      annotations: { destructiveHint: true },
       inputSchema: z.object({
         workflow: z
           .string()
@@ -474,14 +480,21 @@ export function registerRequestTools(
     {
       description:
         'Export requests matching an HRQL query as CSV (max 1000 rows; use Horizon ' +
-        'UI for full exports). Lowercase fields only (registration.date, not ' +
-        'registrationDate). Full reference: horizon://knowledge/query-languages.',
+        'UI for full exports). HRQL query fields are lowercase (registration.date, ' +
+        'not registrationDate); the CSV `fields` columns are camelCase (see the ' +
+        'fields param). Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         query: z.string().describe('HRQL query expression.'),
         fields: z
           .array(z.string())
           .optional()
-          .describe('Fields to include in the CSV export.'),
+          .describe(
+            'CSV columns to include, as camelCase API column names (SearchResult ' +
+              'columns) - NOT the lowercase HRQL query fields. Examples: profile, ' +
+              'requestType, status, contactEmail, registrationDate. Prefix ' +
+              'families: label.<key>, metadata.<key>. Invalid names return a ' +
+              'Horizon 500 that lists the usable columns.',
+          ),
         sorted_by: z
           .string()
           .optional()

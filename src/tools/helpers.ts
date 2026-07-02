@@ -416,7 +416,6 @@ export function buildExportPayload(
     query,
     pageIndex: toApiPageIndex(0),
     pageSize: MAX_CSV_ROWS,
-    withCount: true,
   };
   if (fields && fields.length > 0) payload['fields'] = fields;
   const sorted = buildSortedBy(sortedBy);

@@ -298,5 +298,35 @@ export function getResourceByUri(uri: string): ResourceEntry | undefined {
   return getAllResources().find((r) => r.uri === uri);
 }
 
+/**
+ * Slugs of the top-level knowledge topics and playbooks (no split-section
+ * entries). Each slug maps to the URI `horizon://knowledge/<slug>`.
+ */
+export function getKnowledgeTopicSlugs(): string[] {
+  return [...CORE_RESOURCES, ...CURATED_RESOURCES].map((r) => r.name);
+}
+
+/** Section slugs available under a top-level topic (empty when none). */
+export function getKnowledgeSectionSlugs(topic: string): string[] {
+  const prefix = `horizon://knowledge/${topic}/`;
+  return getAllResources()
+    .filter((r) => r.uri.startsWith(prefix))
+    .map((r) => r.uri.slice(prefix.length));
+}
+
+/**
+ * Resolve knowledge content by topic slug and optional section slug. Returns
+ * undefined when the topic (or the topic+section pair) is unknown.
+ */
+export function resolveKnowledge(
+  topic: string,
+  section?: string,
+): ResourceEntry | undefined {
+  const uri = section
+    ? `horizon://knowledge/${topic}/${section}`
+    : `horizon://knowledge/${topic}`;
+  return getResourceByUri(uri);
+}
+
 /** URI template that covers split-section resources. */
 export const SECTION_URI_TEMPLATE = 'horizon://knowledge/{topic}/{section}';
