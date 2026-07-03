@@ -1,0 +1,71 @@
+name: Docs refresh
+
+on:
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    name: Refresh doc snapshots
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fetch secrets via Vault
+        uses: hashicorp/vault-action@v3
+        with:
+          url: ${{ vars.VAULT_ADDR }}
+          method: ${{ vars.VAULT_AUTH_METHOD }}
+          path: ${{ vars.VAULT_AUTH_PATH }}
+          secrets: |
+            ci/data/repositories/evertrust/horizon-mcp/github-app id | GITHUB_APP_ID ;
+            ci/data/repositories/evertrust/horizon-mcp/github-app private_key | GITHUB_APP_PRIVATE_KEY ;
+
+      - name: Fetch Github App token
+        uses: actions/create-github-app-token@v3
+        id: app-token
+        with:
+          client-id: ${{ env.GITHUB_APP_ID }}
+          private-key: ${{ env.GITHUB_APP_PRIVATE_KEY }}
+
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Refresh doc snapshots
+        run: bun run docs:refresh
+
+      - name: Open PR when snapshots drifted
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          if git diff --quiet -- src/generated/docs; then
+            echo "Snapshots are up to date."
+            exit 0
+          fi
+          git config user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
+          git config user.email '${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
+          git checkout -B docs/auto-refresh
+          git add src/generated/docs
+          git commit -m "chore: refresh doc snapshots"
+          git push -f origin docs/auto-refresh
+          if [ -z "$(gh pr list --head docs/auto-refresh --state open --json number --jq '.[].number')" ]; then
+            gh pr create \
+              --title "chore: refresh doc snapshots" \
+              --body "Automated nightly refresh: docs.evertrust.fr content drifted from the committed snapshots in src/generated/docs."
+          fi
