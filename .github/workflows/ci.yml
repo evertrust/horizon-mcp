@@ -78,8 +78,12 @@ jobs:
       - name: Verify API truth
         run: bun run verify:truth
 
-      - name: Verify docs inventory
+      # Non-blocking: docs.evertrust.fr publishes on its own schedule, so a
+      # drifted snapshot must not fail PRs or block releases. The nightly
+      # docs-refresh workflow opens an automated PR when drift is detected.
+      - name: Verify docs inventory (non-blocking)
         run: bun run docs:diff
+        continue-on-error: true
 
       - name: Test
         run: bun run test
