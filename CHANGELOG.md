@@ -1,3 +1,17 @@
+## [2.0.0](https://github.com/evertrust/horizon-mcp/compare/v1.2.0...v2.0.0) (2026-07-03)
+
+### ⚠ BREAKING CHANGES
+
+* streamable HTTP transport (hostable) + remove OIDC browser auth (#15)
+
+### Features
+
+* streamable HTTP transport (hostable) + remove OIDC browser auth ([#15](https://github.com/evertrust/horizon-mcp/issues/15)) ([fbfe22d](https://github.com/evertrust/horizon-mcp/commit/fbfe22de5d171570dd3840bd54e9cc4bf4edbf77))
+
+### Bug Fixes
+
+* ship only the JS bundle in the npm tarball ([#16](https://github.com/evertrust/horizon-mcp/issues/16)) ([4d456bd](https://github.com/evertrust/horizon-mcp/commit/4d456bd01a980612969e9ce2606c5f9d3a05de1a))
+
 ## [2.0.0](https://github.com/evertrust/horizon-mcp/compare/v1.2.0...v2.0.0) (2026-07-02)
 
 ### ⚠ BREAKING CHANGES
