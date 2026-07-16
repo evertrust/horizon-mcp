@@ -51,6 +51,11 @@ export interface HttpServerHandle {
   close(): Promise<void>;
 }
 
+export interface HttpServerOptions {
+  /** Primarily injectable so shutdown behavior can be tested quickly. */
+  closeTimeoutMs?: number;
+}
+
 type TransportLike = {
   handleRequest(req: unknown, res: unknown, body?: unknown): Promise<void>;
 };
@@ -78,6 +83,7 @@ function once(fn: () => void): () => void {
 export async function startHttpServer(
   settings: HorizonSettings,
   config: HttpConfig,
+  options: HttpServerOptions = {},
 ): Promise<HttpServerHandle> {
   const clientOptions = {
     timeout: settings.timeout,
@@ -414,11 +420,11 @@ export async function startHttpServer(
       return;
     }
 
-    const isWork = methods.some(
+    const workCount = methods.filter(
       (m) => m !== 'initialize' && m !== 'notifications/initialized',
-    );
-    if (isWork) {
-      if (!manager.reserveInflight(sessionId)) {
+    ).length;
+    if (workCount > 0) {
+      if (!manager.reserveInflight(sessionId, workCount)) {
         sendError(
           res,
           429,
@@ -428,7 +434,7 @@ export async function startHttpServer(
         );
         return;
       }
-      const release = once(() => manager.releaseInflight(sessionId));
+      const release = once(() => manager.releaseInflight(sessionId, workCount));
       res.on('close', release);
       res.on('finish', release);
     }
@@ -453,13 +459,16 @@ export async function startHttpServer(
       sendError(res, 400, null, 'missing Mcp-Session-Id');
       return;
     }
-    const record = manager.get(sessionId);
+    // Authenticate before refreshing the idle timer. Otherwise an attacker who
+    // knows a session id can keep it alive indefinitely with bad credentials.
+    const record = manager.peek(sessionId);
     if (!record) {
       sendError(res, 404, null, 'session not found');
       return;
     }
     if (!ensureFingerprintBinding(req, res, record.credentialFingerprint))
       return;
+    manager.touch(sessionId);
 
     if (req.method === 'GET') {
       res.setTimeout(settings.sseMaxDuration * 1000);
@@ -654,26 +663,34 @@ export async function startHttpServer(
   // Bound graceful shutdown: closeAllConnections() drops idle keep-alive
   // sockets that would otherwise keep httpServer.close() pending indefinitely,
   // and the race caps the drain so SIGTERM never hangs until SIGKILL.
-  const CLOSE_TIMEOUT_MS = 5000;
+  const closeTimeoutMs = options.closeTimeoutMs ?? 5000;
+  let closePromise: Promise<void> | undefined;
 
   return {
     port: boundPort,
     url: config.publicEndpoint,
     sessions: manager,
     async close() {
-      clearInterval(sweeper);
-      const closed = new Promise<void>((resolve) =>
-        httpServer.close(() => resolve()),
-      );
-      await manager.shutdownAll();
-      httpServer.closeAllConnections?.();
-      await Promise.race([
-        closed,
-        new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, CLOSE_TIMEOUT_MS);
-          t.unref?.();
-        }),
-      ]);
+      if (!closePromise) {
+        closePromise = (async () => {
+          clearInterval(sweeper);
+          const serverClosed = new Promise<void>((resolve) =>
+            httpServer.close(() => resolve()),
+          );
+          // Start session teardown concurrently and force existing sockets down.
+          const sessionsClosed = manager.shutdownAll();
+          httpServer.closeAllConnections?.();
+          const drained = Promise.all([serverClosed, sessionsClosed]).then(
+            () => undefined,
+          );
+          const timeout = new Promise<void>((resolve) => {
+            const t = setTimeout(resolve, closeTimeoutMs);
+            t.unref?.();
+          });
+          await Promise.race([drained, timeout]);
+        })();
+      }
+      await closePromise;
     },
   };
 }

@@ -218,7 +218,7 @@ describe('loadSettings', () => {
       expect(s.httpAuthMode).toBe('service');
       expect(s.sessionIdleTtl).toBe(300);
       expect(s.sessionAbsTtl).toBe(3600);
-      expect(s.maxSessions).toBe(256);
+      expect(s.maxSessions).toBe(8);
       expect(s.maxInflightToolcalls).toBe(8);
       expect(s.maxBodyBytes).toBe(1048576);
       expect(s.sseMaxDuration).toBe(3600);
@@ -287,6 +287,10 @@ describe('loadSettings', () => {
       expect(s.httpPort).toBe(9443);
       expect(s.maxSessions).toBe(16);
       expect(s.maxBodyBytes).toBe(2097152);
+    });
+
+    it('rejects a session limit above the supported memory safety ceiling', () => {
+      expect(() => loadSettings({ HORIZON_MAX_SESSIONS: '65' })).toThrow();
     });
 
     it('allows 0 to disable the rate limits', () => {

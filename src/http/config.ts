@@ -147,6 +147,7 @@ function derivePublicEndpoint(
   settings: HorizonSettings,
   path: string,
   publicUrl: URL | undefined,
+  listenerTls: boolean,
 ): string {
   if (publicUrl) {
     return new URL(path, publicUrl).toString();
@@ -154,7 +155,8 @@ function derivePublicEndpoint(
   const host = settings.httpHost;
   const hostPart =
     host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-  return `http://${hostPart}:${settings.httpPort}${path}`;
+  const scheme = listenerTls ? 'https' : 'http';
+  return `${scheme}://${hostPart}:${settings.httpPort}${path}`;
 }
 
 function deriveAllowedOrigins(settings: HorizonSettings): ReadonlySet<string> {
@@ -237,8 +239,25 @@ function resolveAuthMode(
 ): HttpMtlsConfig | undefined {
   switch (settings.httpAuthMode) {
     case 'service': {
+      const hasApiId = Boolean(settings.apiId);
+      const hasApiKey = Boolean(settings.apiKey);
+      if (hasApiId !== hasApiKey) {
+        fail(
+          `service API-key auth requires both HORIZON_API_ID and ` +
+            `HORIZON_API_KEY`,
+        );
+      }
+      if (settings.clientCert && settings.clientPfx) {
+        fail(`set HORIZON_CLIENT_CERT or HORIZON_CLIENT_PFX, not both`);
+      }
+      if (settings.clientCert && !settings.clientKey) {
+        fail(`HORIZON_CLIENT_CERT requires HORIZON_CLIENT_KEY`);
+      }
+      if (settings.clientKey && !settings.clientCert) {
+        fail(`HORIZON_CLIENT_KEY requires HORIZON_CLIENT_CERT`);
+      }
       const hasEnvCred = Boolean(
-        settings.clientCert || settings.clientPfx || settings.apiId,
+        settings.clientCert || settings.clientPfx || hasApiId,
       );
       if (!hasEnvCred) {
         fail(
@@ -278,9 +297,20 @@ export function buildHttpConfig(
     ? validatePublicUrl(settings.publicUrl)
     : undefined;
   const allowedHosts = deriveAllowedHosts(settings, publicUrl);
-  const publicEndpoint = derivePublicEndpoint(settings, path, publicUrl);
   const allowedOrigins = deriveAllowedOrigins(settings);
   const mtls = resolveAuthMode(settings);
+  const listenerTls = Boolean(mtls?.listener);
+  if (listenerTls && publicUrl?.protocol === 'http:') {
+    fail(
+      `HORIZON_PUBLIC_URL must use https when the MCP TLS listener is enabled`,
+    );
+  }
+  const publicEndpoint = derivePublicEndpoint(
+    settings,
+    path,
+    publicUrl,
+    listenerTls,
+  );
 
   // Fail closed: api-key mode carries per-caller credentials in request
   // headers, so a cleartext http endpoint on a non-loopback bind would leak

@@ -84,7 +84,10 @@ const settingsSchema = z.object({
   httpAuthMode: httpAuthModeSchema,
   sessionIdleTtl: z.coerce.number().int().positive().default(300),
   sessionAbsTtl: z.coerce.number().int().positive().default(3600),
-  maxSessions: z.coerce.number().int().positive().default(256),
+  // A fully registered MCP server currently costs roughly 22 MiB of V8 heap
+  // per session. Keep the default safe for a 1 GiB container and reject
+  // configurations whose projected heap use exceeds the supported envelope.
+  maxSessions: z.coerce.number().int().positive().max(64).default(8),
   maxInflightToolcalls: z.coerce.number().int().positive().default(8),
   maxBodyBytes: z.coerce.number().int().positive().default(1048576),
   sseMaxDuration: z.coerce.number().int().positive().default(3600),

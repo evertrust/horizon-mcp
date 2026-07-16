@@ -17,14 +17,14 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 - **Two credential types**: Horizon API key (`X-API-ID` / `X-API-KEY`) and TLS client certificate (PEM or PKCS12/PFX). Usable as a single server identity, or per caller over the HTTP transport.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
 - **Crypto decoding**: parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses to structured JSON without leaving the chat.
-- **Confirmation safeguards**: every mutating tool emits a STOP confirmation block; destructive tools additionally require an `expected_name` parameter that must match the target object.
+- **Destructive-operation safeguards**: `delete_*` and `flush_*` tools require an exact object-specific `expected_*` echo. Other mutations execute when called; use client-side approval controls and a least-privileged Horizon identity.
 - **Standalone binaries** for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
 
 Tool counts per domain:
 
 | Domain            | Tools | Highlights                                                            |
 | ----------------- | ----: | --------------------------------------------------------------------- |
-| Configuration     |   126 | CA / profile / RBAC / DCV / connector / policy CRUD (Horizon 2.8-2.10)|
+| Configuration     |   126 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
 | Assist            |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators        |
 | Lifecycle         |    17 | search/aggregate certs, requests, events, enroll, approve, revoke     |
 | Dashboards        |    12 | dashboard CRUD, charts, saved HQL queries                             |
@@ -35,7 +35,7 @@ Tool counts per domain:
 | Discovery events  |     3 | search, fetch, CSV export                                             |
 | Reports           |     3 | list, download, delete                                                |
 | Docs              |     4 | search product docs, search API docs, fetch a page, read knowledge    |
-| Profiles          |     2 | list and inspect (CRUD lives in the Horizon admin UI)                 |
+| Profiles          |     2 | list and inspect convenience tools; profile mutations live in the Configuration toolset |
 
 Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-reference.md).
 
@@ -129,13 +129,18 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_HTTP_AUTH_MODE`         | `service`   | `service` \| `api-key` \| `mtls`                                                                                                                          |
 | `HORIZON_SESSION_IDLE_TTL`       | `300`       | Seconds.                                                                                                                                                   |
 | `HORIZON_SESSION_ABS_TTL`        | `3600`      | Seconds.                                                                                                                                                   |
-| `HORIZON_MAX_SESSIONS`           | `256`       | Max concurrent sessions.                                                                                                                                   |
+| `HORIZON_MAX_SESSIONS`           | `8`         | Max concurrent sessions (hard ceiling `64`). Budget about 22 MiB of V8 heap per fully registered session, plus roughly 365 MiB process baseline.          |
 | `HORIZON_MAX_INFLIGHT_TOOLCALLS` | `8`         | Per-session in-flight tool calls.                                                                                                                          |
 | `HORIZON_MAX_BODY_BYTES`         | `1048576`   | Max request body bytes (1 MiB).                                                                                                                            |
 | `HORIZON_SSE_MAX_DURATION`       | `3600`      | Max SSE stream lifetime, seconds.                                                                                                                          |
 | `HORIZON_RATE_LIMIT_RPS`         | `20`        | Per-session limit, counted per JSON-RPC message per second; `0` disables.                                                                                 |
 | `HORIZON_INIT_RATE_LIMIT`        | `5`         | Pre-session `initialize` attempts per second (global cap and per remote address); `0` disables.                                                           |
 | `HORIZON_IP_RATE_LIMIT`          | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-session limits; `0` disables.                                        |
+
+Size HTTP deployments from the session limit, not only request throughput. The
+default of 8 is intended for a container with at least 1 GiB of memory. Raise it
+only with a matching memory limit and load test; the server rejects values over
+64 to prevent configurations known to exceed Node's normal heap envelope.
 
 Inbound mTLS settings (only when `HORIZON_HTTP_AUTH_MODE=mtls`):
 
@@ -157,7 +162,7 @@ These variables are read by the test suite only and never by the server itself:
 | `HORIZON_E2E_URL`      | `bun run test:e2e`       | Base URL of the Horizon instance for E2E tests.              |
 | `HORIZON_E2E_API_ID`   | `bun run test:e2e`       | API key identifier for E2E tests.                            |
 | `HORIZON_E2E_API_KEY`  | `bun run test:e2e`       | API key secret for E2E tests.                                |
-| `HORIZON_LLM_EVAL_MODEL` | `bun run test:llm`     | Model identifier used by the LLM evaluation harness.         |
+| `HORIZON_LLM_LIVE_MODEL` | `bun run test:llm:live` | Optional model override for the live LLM evaluation harness; defaults to `claude-haiku-4-5`. |
 
 ## Transports
 
@@ -171,6 +176,31 @@ See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP 
 ### Hosting
 
 Deploy one MCP per Horizon, co-located so the MCP-to-Horizon hop stays internal. Reuse Horizon's existing edge (its TLS termination and access control) for the client-to-MCP path rather than exposing the MCP unauthenticated, and pull secrets from your orchestrator's secret store. The server exposes `/healthz` (liveness) and `/readyz` (readiness) endpoints for container probes.
+
+The repository includes a production `Dockerfile`. For a local, loopback-only service-mode deployment, create an untracked `.env.http` file:
+
+```dotenv
+HORIZON_URL=https://horizon.example.com
+HORIZON_API_ID=your-api-id
+HORIZON_API_KEY=your-api-key
+HORIZON_HTTP_AUTH_MODE=service
+HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
+```
+
+Then build, run, and probe it:
+
+```bash
+docker build -t horizon-mcp .
+docker run --rm --name horizon-mcp \
+  --env-file .env.http \
+  -p 127.0.0.1:8080:8080 \
+  horizon-mcp
+
+curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
+curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
+```
+
+The image defaults to HTTP on `0.0.0.0:8080`. For remote hosting, terminate TLS and authentication at a trusted edge, set `HORIZON_PUBLIC_URL=https://mcp.example.com`, and do not publish service mode without access control: every reachable caller acts as the server credential. See [docs/installation.md](docs/installation.md) for the container checklist and [docs/client-setup.md](docs/client-setup.md) for remote clients.
 
 ## MCP client setup
 
@@ -224,7 +254,7 @@ For Codex, OpenCode, and MCP Inspector configurations, see [docs/client-setup.md
 
 ## Authentication modes
 
-The MCP supports exactly two credential types against Horizon: a **Horizon API key** (`X-API-ID` / `X-API-KEY`) and a **TLS client certificate** (supplied as PEM or PKCS12 / PFX, see the [Connection and authentication](#connection-and-authentication) table). The MCP never makes authorization decisions of its own: it forwards a Horizon credential and Horizon applies that principal's RBAC.
+The MCP supports exactly two credential types against Horizon: a **Horizon API key** (`X-API-ID` / `X-API-KEY`) and a **TLS client certificate** (supplied as PEM or PKCS12 / PFX, see the [Connection and authentication](#connection-and-authentication) table). Horizon applies the authenticated principal's RBAC. The MCP does not reimplement Horizon RBAC, but it can further narrow the exposed surface through `HORIZON_READ_ONLY`, `HORIZON_ENABLED_TOOLSETS`, the set of implemented tools, and explicit delete/flush confirmation echoes. It never grants access beyond the forwarded Horizon credential.
 
 In stdio mode the credential comes from the environment. In streamable HTTP mode, `HORIZON_HTTP_AUTH_MODE` selects how each caller's identity is established:
 
@@ -358,7 +388,7 @@ More granular scripts:
 | ------------------------ | ------------------------------------------------------- |
 | `bun run dev`            | Start the server with `tsx` (no build step).            |
 | `bun run build`          | Production build via `tsup`.                            |
-| `bun run test`           | Unit tests with Vitest (80%+ coverage threshold).       |
+| `bun run test`           | Unit tests with Vitest.                                 |
 | `bun run test:e2e`       | E2E tests against a live Horizon instance.              |
 | `bun run test:llm`       | Deterministic tool-selection scenarios (no LLM call).   |
 | `bun run test:llm:live`  | Real Claude-in-the-loop MCP usability tests.            |
@@ -378,8 +408,8 @@ Prerequisites:
 
 Cost / billing:
 
-- Each scenario consumes one or two Claude Haiku 4.5 turns drawn from your Claude plan's credits (or the dedicated Agent SDK monthly credit after Anthropic's 2026-06-15 billing change).
-- A hard `maxBudgetUsd` cap (default `$0.05`) and `maxTurns` cap (default `2`) are enforced per scenario to bound any runaway loop.
+- Each scenario uses Claude Haiku 4.5 by default and consumes Claude subscription credits; the actual number of turns varies with tool discovery and response size.
+- A hard `maxBudgetUsd` cap (default `$0.50`) and `maxTurns` cap (default `10`) are enforced per scenario to bound any runaway loop. Individual scenarios can declare stricter or higher caps; the largest current scenario cap is `$1.00`.
 - Override the model with `HORIZON_LLM_LIVE_MODEL=claude-sonnet-4-6 bun run test:llm:live` when you want a stricter fidelity check.
 
 The suite is intentionally excluded from `validate:ci` so PR builds never burn subscription credits.
@@ -401,22 +431,20 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 | 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                     |
 | 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
 | 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
+| 2.10            | Point-in-time QA E2E run completed on 2026-07-02; not yet in the default `HORIZON_TESTED_VERSIONS` support list |
+
+The version lists are operator-configurable. By default only `2.8` is treated as tested and `2.7,2.9` as warning versions. The 2.10 result above validates that QA snapshot and the 2.10-specific configuration tools; it is not a blanket compatibility guarantee for every 2.10 deployment.
 
 ## What is not supported
 
-The following capabilities require direct Horizon API calls or the Horizon UI:
+The server implements broad configuration administration, including certificate profiles, CAs, PKI and third-party connectors, roles, teams, triggers, MDM profile subtypes, scheduled-task definitions, and other objects listed in [the full tool reference](docs/tools-reference.md). The remaining intentional gaps are narrower:
 
-- **Configuration objects** - CAs, trust chains, labels, HTTP proxies, password policies, grading policies, and grading rulesets
-- **Profile management** - creating, updating, or deleting profiles (read-only listing and inspection are supported)
-- **Credential management** - creating, updating, or deleting stored credentials (read-only listing IS supported via `list_credentials`)
-- **PKI and third-party connector management** - connectors to ADCS, EJBCA, HashiCorp Vault, etc.
-- **Email/webhook trigger management** - email and webhook (Teams/Slack/Mattermost) triggers (REST notifications ARE supported via `create_rest_notification`)
-- **Trigger attachment to profiles** - use the Horizon admin UI or profile API
-- **Role, team, IDP, and principal administration**
-- **Analytics** - sync status and reindex operations
-- **SMTP and notification server configuration**
-- **Intune, Jamf, and MDM integration setup**
-- **Scheduler and system-level automation**
+- **Stored credential mutations** - credentials can be listed, but not created, updated, fetched with secret material, or deleted.
+- **Identity-provider and service-account mutations** - these objects are inspectable through read-only tools only.
+- **Principal administration** - there are no principal create/update/delete tools.
+- **Certificate grading policy/ruleset mutations** - listing and inspection are supported; Horizon's covered API surface has no corresponding write tools.
+- **Selected singleton or asymmetric APIs** - system configuration is update-only; archives have no update tool; scheduled-task definitions have CRUD but no `run_scheduled_task` execution tool.
+- **Analytics maintenance and SMTP server configuration** - sync/reindex operations and SMTP server administration are not registered.
 
 ## Contributing
 
@@ -427,9 +455,9 @@ PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs f
 > [!CAUTION]
 > **Experimental software** - this MCP server is experimental and should only be used for exploratory purposes at this time.
 >
-> **Permissions** - the MCP server authenticates as the configured user and the AI agent operates with that user's full permissions. Evertrust recommends against granting AI agents highly privileged access to the CLM to prevent unintended incidents.
+> **Permissions** - Horizon enforces the configured or per-caller identity's RBAC. The MCP may further restrict available operations through read-only mode, toolset filtering, implemented-tool coverage, and delete/flush confirmation echoes, but it cannot make an over-privileged Horizon identity safe. Use a least-privileged identity and client-side approval controls.
 >
-> **No guaranteed boundaries** - while the MCP server attempts to enforce permission boundaries between the user and the AI agent, this may not work in all cases. Users bear sole responsibility for actions taken by the AI agent on their behalf.
+> **No approval prompt guarantee** - most mutating tools execute as soon as the client calls them. Do not assume the server will display a confirmation prompt; approval UX is controlled by the MCP client except for the explicit delete/flush echo parameters.
 >
 > **AI-generated output** - all output is AI-generated and should be subject to manual human validation before being relied upon.
 >

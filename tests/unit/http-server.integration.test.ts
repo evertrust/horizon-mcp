@@ -21,6 +21,8 @@ vi.mock('undici', () => ({
 
 const { startHttpServer } = await import('../../src/http/server.js');
 const { buildHttpConfig } = await import('../../src/http/config.js');
+const { credentialFingerprintOf } =
+  await import('../../src/http/credentials.js');
 const { loadSettings } = await import('../../src/settings.js');
 const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
 const { StreamableHTTPClientTransport } =
@@ -83,7 +85,10 @@ interface ServerCtx {
   handle: Awaited<ReturnType<typeof startHttpServer>>;
 }
 
-async function startApiKeyServer(): Promise<ServerCtx> {
+async function startApiKeyServer(
+  overrides: Record<string, string> = {},
+  serverOptions: { closeTimeoutMs?: number } = {},
+): Promise<ServerCtx> {
   const port = await freePort();
   const env = {
     HORIZON_TRANSPORT: 'http',
@@ -93,10 +98,11 @@ async function startApiKeyServer(): Promise<ServerCtx> {
     HORIZON_HTTP_PORT: String(port),
     HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
     HORIZON_VERIFY_SSL: 'false',
+    ...overrides,
   };
   const settings = loadSettings(env);
   const config = buildHttpConfig(settings, env);
-  const handle = await startHttpServer(settings, config);
+  const handle = await startHttpServer(settings, config, serverOptions);
   return { base: `http://127.0.0.1:${handle.port}/mcp`, handle };
 }
 
@@ -201,6 +207,75 @@ describe('HTTP server integration (api-key mode)', () => {
     };
     expect(err.id).toBe(99);
     expect(err.error.code).toBe(-32000);
+  }, 20000);
+
+  it('does not refresh idle TTL for an unauthorized GET', async () => {
+    // Register a quiet synthetic session so the MCP client's background SSE
+    // stream cannot legitimately move lastSeenAt while this assertion runs.
+    const sid = 'ttl-probe-session';
+    ctx.handle.sessions.create({
+      sessionId: sid,
+      credentialFingerprint: credentialFingerprintOf({
+        kind: 'api-key',
+        apiId: 'alice',
+        apiKey: 'ka',
+      }),
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: { close: async () => undefined },
+      auth: { cleanup: async () => undefined },
+    });
+    const before = ctx.handle.sessions.peek(sid)!.lastSeenAt;
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const res = await fetch(ctx.base, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        'Mcp-Session-Id': sid,
+        'X-API-ID': 'mallory',
+        'X-API-KEY': 'wrong',
+      },
+    });
+
+    expect(res.status).toBe(401);
+    expect(ctx.handle.sessions.peek(sid)!.lastSeenAt).toBe(before);
+  }, 20000);
+
+  it('rejects a work batch whose total cost exceeds the inflight cap', async () => {
+    await ctx.handle.close();
+    ctx = await startApiKeyServer({ HORIZON_MAX_INFLIGHT_TOOLCALLS: '1' });
+    const a = makeClient(ctx.base, 'alice', 'ka');
+    openClients.push(a.client);
+    await a.client.connect(a.transport);
+    const sid = a.transport.sessionId!;
+
+    const res = await fetch(ctx.base, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        'Mcp-Session-Id': sid,
+        'X-API-ID': 'alice',
+        'X-API-KEY': 'ka',
+      },
+      body: JSON.stringify([
+        {
+          jsonrpc: '2.0',
+          id: 101,
+          method: 'tools/call',
+          params: { name: 'whoami', arguments: {} },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 102,
+          method: 'tools/call',
+          params: { name: 'whoami', arguments: {} },
+        },
+      ]),
+    });
+
+    expect(res.status).toBe(429);
   }, 20000);
 
   it('tears down all sessions on close', async () => {
@@ -395,5 +470,26 @@ describe('HTTP server integration (graceful shutdown)', () => {
     } finally {
       sock.destroy();
     }
+  }, 20000);
+
+  it('bounds the whole shutdown when a session resource never closes', async () => {
+    const ctx = await startApiKeyServer({}, { closeTimeoutMs: 50 });
+    const never = new Promise<void>(() => undefined);
+    ctx.handle.sessions.create({
+      sessionId: 'stuck',
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: { close: () => never },
+      auth: { cleanup: async () => undefined },
+    });
+
+    const result = await Promise.race([
+      ctx.handle.close().then(() => 'closed'),
+      new Promise<'timed-out'>((resolve) =>
+        setTimeout(() => resolve('timed-out'), 250),
+      ),
+    ]);
+
+    expect(result).toBe('closed');
   }, 20000);
 });

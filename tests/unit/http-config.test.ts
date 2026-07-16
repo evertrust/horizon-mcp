@@ -176,6 +176,19 @@ describe('buildHttpConfig', () => {
       );
       expect(cfg.authMode).toBe('service');
     });
+
+    it('rejects an incomplete API-key service credential', () => {
+      expect(() =>
+        buildHttpConfig(
+          loadSettings({
+            HORIZON_TRANSPORT: 'http',
+            HORIZON_HTTP_AUTH_MODE: 'service',
+            HORIZON_API_ID: 'id-without-key',
+          }),
+          {},
+        ),
+      ).toThrow(/HORIZON_API_ID.*HORIZON_API_KEY|both/i);
+    });
   });
 
   describe('auth mode: mtls', () => {
@@ -202,6 +215,17 @@ describe('buildHttpConfig', () => {
         keyPath: '/tls/key.pem',
       });
       expect(cfg.mtls?.forwardHeader).toBe('SSL_CLIENT_CERT');
+      expect(cfg.publicEndpoint).toBe('https://127.0.0.1:8080/mcp');
+    });
+
+    it('rejects an http public URL for a direct TLS listener', () => {
+      expect(() =>
+        mtls({
+          HORIZON_HTTP_TLS_CERT: '/tls/cert.pem',
+          HORIZON_HTTP_TLS_KEY: '/tls/key.pem',
+          HORIZON_PUBLIC_URL: 'http://mcp.example.com',
+        }),
+      ).toThrow(/HORIZON_PUBLIC_URL|https/i);
     });
 
     it('rejects a TLS listener with only one of cert/key', () => {

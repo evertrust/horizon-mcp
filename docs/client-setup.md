@@ -205,9 +205,10 @@ Add to `opencode.json`:
 {
   "mcp": {
     "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
+      "type": "local",
+      "command": ["bunx", "@evertrust/horizon-mcp"],
+      "enabled": true,
+      "environment": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
         "HORIZON_API_KEY": "your-api-key"
@@ -223,8 +224,10 @@ Or with the standalone binary:
 {
   "mcp": {
     "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
+      "type": "local",
+      "command": ["/path/to/horizon-mcp"],
+      "enabled": true,
+      "environment": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
         "HORIZON_API_KEY": "your-api-key"
@@ -321,7 +324,63 @@ In `~/.codex/config.toml`, give the server a `url` instead of a `command`. For `
 url = "https://horizon.example.com/mcp"
 ```
 
-For `api-key` mode the client must attach `X-API-ID` and `X-API-KEY` to each request. If your Codex version supports static request headers for remote MCP servers, set them there; otherwise point `url` at a local proxy that injects the headers (see below). In the **Codex Desktop app**, the same remote server can be added through **Settings > MCP** by entering the url.
+For `api-key` mode, Codex supports both literal `http_headers` and environment-backed `env_http_headers`. Environment-backed headers avoid storing the secret in `config.toml`:
+
+```toml
+[mcp_servers.horizon]
+url = "https://horizon.example.com/mcp"
+env_http_headers = { "X-API-ID" = "HORIZON_API_ID", "X-API-KEY" = "HORIZON_API_KEY" }
+```
+
+Set `HORIZON_API_ID` and `HORIZON_API_KEY` in the environment that launches Codex. If a managed environment cannot supply them, the literal form is available but stores credentials in plaintext:
+
+```toml
+[mcp_servers.horizon]
+url = "https://horizon.example.com/mcp"
+http_headers = { "X-API-ID" = "your-api-id", "X-API-KEY" = "your-api-key" }
+```
+
+In the **Codex Desktop app**, the same remote server can be added through **Settings > MCP servers** by entering the URL. Use the shared `config.toml` form above when custom headers are required.
+
+### Cursor
+
+For `service` mode, create `.cursor/mcp.json` with a remote URL:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "url": "https://horizon.example.com/mcp"
+    }
+  }
+}
+```
+
+For `api-key` mode, add `X-API-ID` and `X-API-KEY` in the remote server's `headers` object. Treat `.cursor/mcp.json` as sensitive if it contains literal credentials; client versions differ in environment interpolation support.
+
+### OpenCode
+
+OpenCode remote servers use `type: "remote"`. Disable automatic OAuth for Horizon's API-key mode and source the two headers from environment variables:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "horizon": {
+      "type": "remote",
+      "url": "https://horizon.example.com/mcp",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "X-API-ID": "{env:HORIZON_API_ID}",
+        "X-API-KEY": "{env:HORIZON_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+For `service` mode, omit `oauth` and `headers`; only `type`, `url`, and optionally `enabled` are needed.
 
 ### Per-caller mTLS: local proxy workaround
 

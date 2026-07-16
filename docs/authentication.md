@@ -5,7 +5,7 @@ Two Horizon credential types are supported: a **Horizon API key** and a **TLS cl
 - as a **server credential** (an environment variable), where the MCP authenticates to Horizon as one fixed identity for every caller, or
 - as a **per-caller credential** (HTTP transport only), where the client supplies its own credential and the MCP forwards it to Horizon on that caller's behalf.
 
-**The MCP never makes authorization decisions.** It only forwards a Horizon credential; Horizon resolves that credential to a principal and applies that principal's RBAC. Whatever the caller can do in Horizon is exactly what they can do through the MCP.
+Horizon resolves the forwarded credential to a principal and applies that principal's RBAC. The MCP does not reimplement Horizon RBAC and never grants access beyond that credential, but it can expose a narrower surface through `HORIZON_READ_ONLY`, `HORIZON_ENABLED_TOOLSETS`, implemented-tool coverage, and delete/flush confirmation echoes. Therefore the operations available through MCP are a subset of what the Horizon principal may be allowed to do, not necessarily an exact mirror.
 
 | Credential type | Server credential (env) | Per-caller credential (HTTP) |
 |-----------------|-------------------------|------------------------------|

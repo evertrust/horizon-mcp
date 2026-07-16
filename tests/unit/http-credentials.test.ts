@@ -6,6 +6,7 @@ import type { HttpConfig } from '../../src/http/config.js';
 import {
   CredentialError,
   buildSessionAuth,
+  credentialFingerprintOf,
   decodeForwardedCert,
   extractCredential,
   peerMatchesProxy,
@@ -230,7 +231,9 @@ describe('buildSessionAuth', () => {
       settings,
     );
     expect(auth).toBeInstanceOf(ApiKeyAuthProvider);
-    expect(fingerprint).toBe(credentialFingerprint('id:secret'));
+    expect(fingerprint).toBe(
+      credentialFingerprint(JSON.stringify(['id', 'secret'])),
+    );
   });
 
   it('mtls mode builds a CertForwardAuthProvider with a cert fingerprint', () => {
@@ -248,5 +251,21 @@ describe('buildSessionAuth', () => {
     );
     expect(auth).toBeInstanceOf(CertForwardAuthProvider);
     expect(fingerprint).toBe(credentialFingerprint(PEM));
+  });
+});
+
+describe('credentialFingerprintOf', () => {
+  it('cannot collide when API id/key boundaries contain colons', () => {
+    const left = credentialFingerprintOf({
+      kind: 'api-key',
+      apiId: 'tenant:a',
+      apiKey: 'secret',
+    });
+    const right = credentialFingerprintOf({
+      kind: 'api-key',
+      apiId: 'tenant',
+      apiKey: 'a:secret',
+    });
+    expect(left).not.toBe(right);
   });
 });

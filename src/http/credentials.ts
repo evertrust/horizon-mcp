@@ -215,7 +215,11 @@ export function credentialFingerprintOf(
     case 'service':
       return undefined;
     case 'api-key':
-      return credentialFingerprint(`${material.apiId}:${material.apiKey}`);
+      // A structured tuple preserves the id/key boundary even when either
+      // value contains a colon (unlike `${id}:${key}`).
+      return credentialFingerprint(
+        JSON.stringify([material.apiId, material.apiKey]),
+      );
     case 'cert':
       return credentialFingerprint(material.pem);
   }

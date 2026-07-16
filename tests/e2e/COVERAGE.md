@@ -1,8 +1,10 @@
 # E2E Test Coverage
 
-Last verified: 2026-07-02 against Horizon 2.10 QA (300/301 passing; the one
-failure was a CSV export test timeout, fixed by raising the per-test timeout
-above the tool's own CSV_TIMEOUT of 120s).
+Last full run: 2026-07-02 against a Horizon 2.10 QA snapshot. 300 of 301 tests
+completed successfully. The remaining CSV export test timed out; its test
+timeout was subsequently raised above the tool's 120-second CSV timeout, but a
+post-fix 301/301 full run is not recorded here. This is a point-in-time QA result,
+not a blanket support guarantee for every Horizon 2.10 deployment.
 
 ## Suite layout (Vitest, tests/e2e/)
 
@@ -26,11 +28,15 @@ left behind on the QA instance.
 | Tier           | File                                      | Description                                                                             |
 | -------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
 | Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 18 golden scenarios: right tool picked, disallowed tools avoided, required args present |
-| MCP loop       | `mcp-loop.test.ts`                        | Full tool execution loops against live Horizon                                          |
+| MCP loop       | `mcp-loop.test.ts`                        | Deterministic MCP tool execution against local fixtures                                 |
 | Smoke          | `smoke.test.ts`                           | Basic integration check                                                                 |
 
-Run with `bun run test:llm` (uses `HORIZON_LLM_EVAL_MODEL`, Sonnet by
-default). `tests/llm-live/` contains the live tool-selection eval runner.
+Run the deterministic suite with `bun run test:llm`; it makes no model call.
+`tests/llm-live/` contains the opt-in Claude tool-selection runner, invoked with
+`bun run test:llm:live`. It defaults to `claude-haiku-4-5`; override it with
+`HORIZON_LLM_LIVE_MODEL`. Live scenarios also require `HORIZON_E2E_*`
+credentials and are skipped when those credentials or Claude authentication are
+unavailable.
 
 ## Known environment-dependent skips
 
