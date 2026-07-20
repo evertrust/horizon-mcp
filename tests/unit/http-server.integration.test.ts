@@ -92,7 +92,7 @@ async function startApiKeyServer(
   const port = await freePort();
   const env = {
     HORIZON_TRANSPORT: 'http',
-    HORIZON_HTTP_AUTH_MODE: 'api-key',
+    HORIZON_HTTP_AUTH_METHODS: 'api-key',
     HORIZON_URL: 'https://horizon.test',
     HORIZON_HTTP_HOST: '127.0.0.1',
     HORIZON_HTTP_PORT: String(port),
@@ -114,6 +114,16 @@ function makeClient(base: string, apiId?: string, apiKey?: string) {
     requestInit: { headers },
   });
   const client = new Client({ name: 'itest', version: '0.0.0' });
+  return { client, transport };
+}
+
+function makeServiceClient(base: string, serviceAccount: string, jwt: string) {
+  const transport = new StreamableHTTPClientTransport(new URL(base), {
+    requestInit: {
+      headers: { 'X-API-SVA': serviceAccount, 'X-API-TOKEN': jwt },
+    },
+  });
+  const client = new Client({ name: 'itest-service', version: '0.0.0' });
   return { client, transport };
 }
 
@@ -289,15 +299,34 @@ describe('HTTP server integration (api-key mode)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (service mode rejects client creds)', () => {
-  it('rejects a client that supplies its own API key in service mode', async () => {
+describe('HTTP server integration (authentication whitelist)', () => {
+  it('forwards a caller-supplied service-account identity to Horizon', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
+    });
+    const service = makeServiceClient(ctx.base, 'ci-service', 'signed.jwt');
+    try {
+      await service.client.connect(service.transport);
+      const whoami = mockFetch.mock.calls.findLast((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      );
+      const headers = (
+        whoami?.[1] as { headers?: Record<string, string> } | undefined
+      )?.headers;
+      expect(headers?.['X-API-SVA']).toBe('ci-service');
+      expect(headers?.['X-API-TOKEN']).toBe('signed.jwt');
+    } finally {
+      await service.client.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a credential method that is not enabled', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
       HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'service-acct',
-      HORIZON_API_KEY: 'service-key',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
       HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
@@ -327,7 +356,7 @@ describe('HTTP server integration (service mode rejects client creds)', () => {
           },
         }),
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     } finally {
       await handle.close();
     }
@@ -339,7 +368,7 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'api-key',
+      HORIZON_HTTP_AUTH_METHODS: 'api-key',
       HORIZON_URL: 'https://horizon.test',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
@@ -382,49 +411,13 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (readyz probe cache)', () => {
-  it('caches the /readyz Horizon probe in service mode', async () => {
+describe('HTTP server integration (readyz)', () => {
+  it('reports process readiness without inventing a caller identity', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
       HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'svc',
-      HORIZON_API_KEY: 'k',
-      HORIZON_HTTP_HOST: '127.0.0.1',
-      HORIZON_HTTP_PORT: String(port),
-      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
-      HORIZON_VERIFY_SSL: 'false',
-    };
-    const settings = loadSettings(env);
-    const config = buildHttpConfig(settings, env);
-    const handle = await startHttpServer(settings, config);
-    const base = `http://127.0.0.1:${handle.port}/readyz`;
-    const probes = () =>
-      mockFetch.mock.calls.filter((c) =>
-        String(c[0]).includes('/api/v1/security/principals/self'),
-      ).length;
-    try {
-      const before = probes();
-      const r1 = await fetch(base);
-      const r2 = await fetch(base);
-      expect(r1.status).toBe(200);
-      expect(r2.status).toBe(200);
-      // Two probes within the cache window trigger only one Horizon whoami.
-      expect(probes() - before).toBe(1);
-    } finally {
-      await handle.close();
-    }
-  }, 20000);
-
-  it('single-flights a concurrent burst of /readyz probes into one Horizon call', async () => {
-    const port = await freePort();
-    const env = {
-      HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
-      HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'svc',
-      HORIZON_API_KEY: 'k',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
       HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
@@ -435,18 +428,15 @@ describe('HTTP server integration (readyz probe cache)', () => {
     const config = buildHttpConfig(settings, env);
     const handle = await startHttpServer(settings, config);
     const base = `http://127.0.0.1:${handle.port}/readyz`;
-    const probes = () =>
+    const probeCount = () =>
       mockFetch.mock.calls.filter((c) =>
         String(c[0]).includes('/api/v1/security/principals/self'),
       ).length;
     try {
-      const before = probes();
-      const results = await Promise.all(
-        Array.from({ length: 5 }, () => fetch(base)),
-      );
-      for (const r of results) expect(r.status).toBe(200);
-      // Five simultaneous probes share a single in-flight Horizon whoami.
-      expect(probes() - before).toBe(1);
+      const before = probeCount();
+      const response = await fetch(base);
+      expect(response.status).toBe(200);
+      expect(probeCount() - before).toBe(0);
     } finally {
       await handle.close();
     }

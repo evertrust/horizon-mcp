@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { CertForwardAuthProvider } from '../../src/auth/cert-forward.js';
+import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
+import { HttpAuthMethod } from '../../src/http/auth-methods.js';
 import type { HttpConfig } from '../../src/http/config.js';
 import {
   CredentialError,
@@ -25,7 +27,7 @@ function cfg(over: Partial<HttpConfig>): HttpConfig {
     publicEndpoint: 'http://127.0.0.1:8080/mcp',
     allowedHosts: new Set(['127.0.0.1:8080']),
     allowedOrigins: new Set(),
-    authMode: 'service',
+    acceptedAuthMethods: HttpAuthMethod.ApiKey,
     ...over,
   };
 }
@@ -79,54 +81,11 @@ describe('decodeForwardedCert', () => {
 });
 
 describe('extractCredential', () => {
-  describe('service mode', () => {
-    it('accepts a request with no client credential', () => {
-      const m = extractCredential(req({}), cfg({ authMode: 'service' }));
-      expect(m.kind).toBe('service');
-    });
-
-    it('rejects a client-supplied API key', () => {
-      expect(() =>
-        extractCredential(
-          req({ 'x-api-id': 'id', 'x-api-key': 'k' }),
-          cfg({ authMode: 'service' }),
-        ),
-      ).toThrow(CredentialError);
-    });
-
-    it('rejects a client-supplied cert header', () => {
-      expect(() =>
-        extractCredential(
-          req({ 'x-forwarded-client-cert': PEM }),
-          cfg({ authMode: 'service' }),
-        ),
-      ).toThrow(CredentialError);
-    });
-
-    it('rejects a client-supplied Authorization header', () => {
-      expect(() =>
-        extractCredential(
-          req({ authorization: 'Bearer x' }),
-          cfg({ authMode: 'service' }),
-        ),
-      ).toThrow(CredentialError);
-    });
-
-    it('rejects a client-supplied Cookie header', () => {
-      expect(() =>
-        extractCredential(
-          req({ cookie: 'session=x' }),
-          cfg({ authMode: 'service' }),
-        ),
-      ).toThrow(CredentialError);
-    });
-  });
-
-  describe('api-key mode', () => {
+  describe('api-key credentials', () => {
     it('extracts the API key headers', () => {
       const m = extractCredential(
         req({ 'x-api-id': 'id', 'x-api-key': 'secret' }),
-        cfg({ authMode: 'api-key' }),
+        cfg({ acceptedAuthMethods: HttpAuthMethod.ApiKey }),
       );
       expect(m).toEqual({ kind: 'api-key', apiId: 'id', apiKey: 'secret' });
     });
@@ -135,15 +94,84 @@ describe('extractCredential', () => {
       expect(() =>
         extractCredential(
           req({ 'x-api-id': 'id' }),
-          cfg({ authMode: 'api-key' }),
+          cfg({ acceptedAuthMethods: HttpAuthMethod.ApiKey }),
         ),
       ).toThrow(CredentialError);
     });
   });
 
+  describe('service-account credentials', () => {
+    it('extracts the service-account name and JWT', () => {
+      expect(
+        extractCredential(
+          req({ 'x-api-sva': 'ci', 'x-api-token': 'jwt' }),
+          cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
+        ),
+      ).toEqual({ kind: 'service', serviceAccount: 'ci', jwt: 'jwt' });
+    });
+
+    it('rejects a partial service-account credential', () => {
+      expect(() =>
+        extractCredential(
+          req({ 'x-api-sva': 'ci' }),
+          cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
+        ),
+      ).toThrow(CredentialError);
+    });
+
+    it('captures OAuth client credentials for automatic renewal', () => {
+      expect(
+        extractCredential(
+          req({
+            'x-api-sva': 'ci',
+            'x-api-token': 'jwt',
+            'x-oauth-client-id': 'client',
+            'x-oauth-client-secret': 'secret',
+            'x-oauth-scope': 'api.read',
+          }),
+          cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
+        ),
+      ).toEqual({
+        kind: 'service',
+        serviceAccount: 'ci',
+        jwt: 'jwt',
+        oauth: {
+          clientId: 'client',
+          clientSecret: 'secret',
+          scope: 'api.read',
+        },
+      });
+    });
+
+    it('rejects a partial OAuth client credential', () => {
+      expect(() =>
+        extractCredential(
+          req({
+            'x-api-sva': 'ci',
+            'x-api-token': 'jwt',
+            'x-oauth-client-id': 'client',
+          }),
+          cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
+        ),
+      ).toThrow(CredentialError);
+    });
+  });
+
+  it('rejects unsupported browser/session credentials', () => {
+    for (const headers of [
+      { authorization: 'Bearer x' },
+      { cookie: 'session=x' },
+      { 'x-forwarded-client-cert': PEM },
+    ]) {
+      expect(() => extractCredential(req(headers), cfg({}))).toThrow(
+        CredentialError,
+      );
+    }
+  });
+
   describe('mtls mode (inbound header topology)', () => {
     const inboundCfg = cfg({
-      authMode: 'mtls',
+      acceptedAuthMethods: HttpAuthMethod.Mtls,
       mtls: {
         forwardHeader: 'SSL_CLIENT_CERT',
         inbound: { header: 'x-client-cert', trustedProxy: '10.0.0.0/8' },
@@ -182,7 +210,7 @@ describe('extractCredential', () => {
 
   describe('mtls mode (TLS listener topology)', () => {
     const listenerCfg = cfg({
-      authMode: 'mtls',
+      acceptedAuthMethods: HttpAuthMethod.Mtls,
       mtls: {
         forwardHeader: 'SSL_CLIENT_CERT',
         listener: { certPath: '/c', keyPath: '/k' },
@@ -209,25 +237,24 @@ describe('extractCredential', () => {
 });
 
 describe('buildSessionAuth', () => {
-  it('service mode uses the env credential and binds no fingerprint', () => {
-    const settings = loadSettings({
-      HORIZON_API_ID: 'env',
-      HORIZON_API_KEY: 'k',
-    });
+  it('service credentials build a forwarding provider and bind a fingerprint', () => {
+    const settings = loadSettings({});
     const { auth, fingerprint } = buildSessionAuth(
-      { kind: 'service' },
-      cfg({ authMode: 'service' }),
+      { kind: 'service', serviceAccount: 'ci', jwt: 'jwt' },
+      cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
       settings,
     );
-    expect(auth).toBeInstanceOf(ApiKeyAuthProvider);
-    expect(fingerprint).toBeUndefined();
+    expect(auth).toBeInstanceOf(ServiceAccountAuthProvider);
+    expect(fingerprint).toBe(
+      credentialFingerprint(JSON.stringify(['ci', 'jwt'])),
+    );
   });
 
   it('api-key mode builds an ApiKeyAuthProvider with a credential fingerprint', () => {
     const settings = loadSettings({});
     const { auth, fingerprint } = buildSessionAuth(
       { kind: 'api-key', apiId: 'id', apiKey: 'secret' },
-      cfg({ authMode: 'api-key' }),
+      cfg({ acceptedAuthMethods: HttpAuthMethod.ApiKey }),
       settings,
     );
     expect(auth).toBeInstanceOf(ApiKeyAuthProvider);
@@ -241,7 +268,7 @@ describe('buildSessionAuth', () => {
     const { auth, fingerprint } = buildSessionAuth(
       { kind: 'cert', pem: PEM },
       cfg({
-        authMode: 'mtls',
+        acceptedAuthMethods: HttpAuthMethod.Mtls,
         mtls: {
           forwardHeader: 'SSL_CLIENT_CERT',
           listener: { certPath: '/c', keyPath: '/k' },

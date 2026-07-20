@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { HttpAuthMethod } from '../../src/http/auth-methods.js';
 import { loadSettings } from '../../src/settings.js';
 
 describe('loadSettings', () => {
@@ -215,7 +216,8 @@ describe('loadSettings', () => {
       expect(s.publicUrl).toBe('');
       expect(s.trustedHosts).toEqual([]);
       expect(s.trustedOrigins).toEqual([]);
-      expect(s.httpAuthMode).toBe('service');
+      expect(s.httpAuthMethods).toBe(HttpAuthMethod.ApiKey);
+      expect(s.httpAuthMode).toBe('');
       expect(s.sessionIdleTtl).toBe(300);
       expect(s.sessionAbsTtl).toBe(3600);
       expect(s.maxSessions).toBe(8);
@@ -248,17 +250,17 @@ describe('loadSettings', () => {
       expect(() => loadSettings({ HORIZON_TRANSPORT: 'grpc' })).toThrow();
     });
 
-    it('reads and lowercases the HTTP auth mode', () => {
+    it('reads and combines the HTTP authentication method whitelist', () => {
       expect(
-        loadSettings({ HORIZON_HTTP_AUTH_MODE: 'mtls' }).httpAuthMode,
-      ).toBe('mtls');
-      expect(
-        loadSettings({ HORIZON_HTTP_AUTH_MODE: 'API-KEY' }).httpAuthMode,
-      ).toBe('api-key');
+        loadSettings({ HORIZON_HTTP_AUTH_METHODS: 'MTLS | SERVICE' })
+          .httpAuthMethods,
+      ).toBe(HttpAuthMethod.Mtls | HttpAuthMethod.Service);
     });
 
-    it('rejects an invalid HTTP auth mode', () => {
-      expect(() => loadSettings({ HORIZON_HTTP_AUTH_MODE: 'oidc' })).toThrow();
+    it('rejects an invalid HTTP authentication method', () => {
+      expect(() =>
+        loadSettings({ HORIZON_HTTP_AUTH_METHODS: 'api-key,oidc' }),
+      ).toThrow();
     });
 
     it('parses trusted hosts and origins as trimmed comma lists', () => {

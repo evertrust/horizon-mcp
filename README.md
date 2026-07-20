@@ -14,7 +14,7 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 
 - **212 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 17 core topic URIs, 4 curated playbooks, plus auto-generated section URIs derived from H2 headings of the longest guides.
-- **Two credential types**: Horizon API key (`X-API-ID` / `X-API-KEY`) and TLS client certificate (PEM or PKCS12/PFX). Usable as a single server identity, or per caller over the HTTP transport.
+- **Three per-caller HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT, with an explicit multi-method whitelist and optional OAuth `client_credentials` renewal.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
 - **Crypto decoding**: parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses to structured JSON without leaving the chat.
 - **Destructive-operation safeguards**: `delete_*` and `flush_*` tools require an exact object-specific `expected_*` echo. Other mutations execute when called; use client-side approval controls and a least-privileged Horizon identity.
@@ -126,7 +126,7 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_PUBLIC_URL`             | (unset)     | Public origin/base URL clients reach the server at; the endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                      |
 | `HORIZON_TRUSTED_HOSTS`          | derived     | Comma list of allowed `Host` values; derived from `HORIZON_PUBLIC_URL` or, on a loopback bind, the loopback hosts. A non-loopback bind with neither set refuses to start. |
 | `HORIZON_TRUSTED_ORIGINS`        | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                         |
-| `HORIZON_HTTP_AUTH_MODE`         | `service`   | `service` \| `api-key` \| `mtls`                                                                                                                          |
+| `HORIZON_HTTP_AUTH_METHODS`      | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                    |
 | `HORIZON_SESSION_IDLE_TTL`       | `300`       | Seconds.                                                                                                                                                   |
 | `HORIZON_SESSION_ABS_TTL`        | `3600`      | Seconds.                                                                                                                                                   |
 | `HORIZON_MAX_SESSIONS`           | `8`         | Max concurrent sessions (hard ceiling `64`). Budget about 22 MiB of V8 heap per fully registered session, plus roughly 365 MiB process baseline.          |
@@ -142,7 +142,7 @@ default of 8 is intended for a container with at least 1 GiB of memory. Raise it
 only with a matching memory limit and load test; the server rejects values over
 64 to prevent configurations known to exceed Node's normal heap envelope.
 
-Inbound mTLS settings (only when `HORIZON_HTTP_AUTH_MODE=mtls`):
+Inbound mTLS settings (when `mtls` is included in `HORIZON_HTTP_AUTH_METHODS`):
 
 | Var                                              | Notes                                                                                                                                                          |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -171,19 +171,17 @@ The server speaks MCP over one of two transports, selected by `HORIZON_TRANSPORT
 - **stdio** (default) - local, single user. The MCP client launches the server as a child process and talks to it over stdin/stdout. The credential comes from the environment the client sets (an API key or mTLS to Horizon). This is the right choice for a developer running the server next to their IDE or chat client.
 - **streamable HTTP** (`HORIZON_TRANSPORT=http`) - hosted next to its Horizon, one MCP instance per Horizon. The Horizon URL is always taken from the `HORIZON_URL` environment variable and is never supplied by the client, so there is no multi-tenant routing. A single endpoint (default `/mcp`) serves multiple concurrent client sessions over `POST` / `GET` / `DELETE` with Server-Sent Events (SSE) responses, and each caller's session is isolated. Run a single replica to avoid session affinity; if you must scale out, route on the `Mcp-Session-Id` header so a session always lands on the same replica.
 
-See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP configuration and [Authentication modes](#authentication-modes) for how callers are identified in HTTP mode.
+See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP configuration and [Authentication methods](#authentication-methods) for how callers are identified in HTTP mode.
 
 ### Hosting
 
 Deploy one MCP per Horizon, co-located so the MCP-to-Horizon hop stays internal. Reuse Horizon's existing edge (its TLS termination and access control) for the client-to-MCP path rather than exposing the MCP unauthenticated, and pull secrets from your orchestrator's secret store. The server exposes `/healthz` (liveness) and `/readyz` (readiness) endpoints for container probes.
 
-The repository includes a production `Dockerfile`. For a local, loopback-only service-mode deployment, create an untracked `.env.http` file:
+The repository includes a production `Dockerfile`. For a local, loopback-only per-caller deployment, create an untracked `.env.http` file:
 
 ```dotenv
 HORIZON_URL=https://horizon.example.com
-HORIZON_API_ID=your-api-id
-HORIZON_API_KEY=your-api-key
-HORIZON_HTTP_AUTH_MODE=service
+HORIZON_HTTP_AUTH_METHODS=api-key,service
 HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
 ```
 
@@ -200,7 +198,7 @@ curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
 ```
 
-The image defaults to HTTP on `0.0.0.0:8080`. For remote hosting, terminate TLS and authentication at a trusted edge, set `HORIZON_PUBLIC_URL=https://mcp.example.com`, and do not publish service mode without access control: every reachable caller acts as the server credential. See [docs/installation.md](docs/installation.md) for the container checklist and [docs/client-setup.md](docs/client-setup.md) for remote clients.
+The image defaults to HTTP on `0.0.0.0:8080`. For remote hosting, terminate TLS at a trusted edge and set `HORIZON_PUBLIC_URL=https://mcp.example.com`. Every caller must present one whitelisted credential. See [docs/installation.md](docs/installation.md) for the container checklist and [docs/client-setup.md](docs/client-setup.md) for remote clients.
 
 ## MCP client setup
 
@@ -252,18 +250,20 @@ Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for glob
 
 For Codex, OpenCode, and MCP Inspector configurations, see [docs/client-setup.md](docs/client-setup.md). To point any of the above clients at a standalone binary instead of `bunx`, replace `command` with the absolute path to the downloaded binary and drop the `args` field.
 
-## Authentication modes
+## Authentication methods
 
-The MCP supports exactly two credential types against Horizon: a **Horizon API key** (`X-API-ID` / `X-API-KEY`) and a **TLS client certificate** (supplied as PEM or PKCS12 / PFX, see the [Connection and authentication](#connection-and-authentication) table). Horizon applies the authenticated principal's RBAC. The MCP does not reimplement Horizon RBAC, but it can further narrow the exposed surface through `HORIZON_READ_ONLY`, `HORIZON_ENABLED_TOOLSETS`, the set of implemented tools, and explicit delete/flush confirmation echoes. It never grants access beyond the forwarded Horizon credential.
+Horizon applies the authenticated principal's RBAC. The MCP does not reimplement Horizon RBAC, but it can further narrow the exposed surface through `HORIZON_READ_ONLY`, `HORIZON_ENABLED_TOOLSETS`, the set of implemented tools, and explicit delete/flush confirmation echoes. It never grants access beyond the forwarded Horizon credential.
 
-In stdio mode the credential comes from the environment. In streamable HTTP mode, `HORIZON_HTTP_AUTH_MODE` selects how each caller's identity is established:
+In stdio mode the credential comes from the environment. In streamable HTTP mode, `HORIZON_HTTP_AUTH_METHODS` whitelists one or more caller methods (for example `api-key,service`):
 
-- **`service`** - the MCP holds one env credential (an API key or mTLS to Horizon) and acts as a single identity for every caller; clients send only the URL. The anti-hijack session fingerprint does not apply in this mode (`Mcp-Session-Id` behaves as a bearer), so the front door must be access-controlled by network placement or an authenticating edge; use a least-privileged identity.
-- **`api-key`** (per-caller) - the client sends its own `X-API-ID` / `X-API-KEY`, which the MCP forwards to Horizon. This forwards a long-lived secret through the MCP, so on a non-loopback bind the endpoint must terminate TLS (set `HORIZON_PUBLIC_URL` to an `https` origin behind a TLS-terminating proxy); a cleartext `http` endpoint on a non-loopback host refuses to start.
+- **`service`** - the client sends `X-API-SVA` / `X-API-TOKEN`; the MCP forwards the JWKS service-account identity to Horizon. Optional protected OAuth client headers enable automatic OIDC discovery and `client_credentials` renewal before JWT expiry.
+- **`api-key`** - the client sends `X-API-ID` / `X-API-KEY`, which the MCP forwards to Horizon.
 - **`mtls`** (per-caller, terminate-and-forward) - the client presents a TLS client certificate; the MCP (or a trusted ingress) terminates the TLS with `optional_no_ca` semantics (proving possession, not validating the chain) and forwards the certificate to Horizon's Play backend in `HORIZON_FORWARD_CERT_HEADER`. Horizon validates the chain, revocation, and identity. No long-lived secret is forwarded. Most MCP clients cannot present a client certificate, so a local mTLS proxy on the client side is usually needed (see [docs/client-setup.md](docs/client-setup.md)).
 
+Requests with no credential, a disabled method, an incomplete pair, or multiple complete methods are rejected without fallback. Header credentials require TLS on non-loopback deployments.
+
 > [!IMPORTANT]
-> **Breaking change** - OIDC browser login (Playwright) has been **removed** in all transports, stdio included. Users who relied on it must switch to an API key or mTLS. A headless OIDC bearer token is deferred until Horizon supports a forwardable token.
+> **Breaking change** - OIDC browser login (Playwright) has been removed. HTTP service accounts use Horizon's `X-API-SVA` / `X-API-TOKEN` contract; third-party JWT renewal uses headless OAuth `client_credentials`.
 
 See [docs/authentication.md](docs/authentication.md) for the full step-by-step guide and troubleshooting tips.
 

@@ -17,6 +17,12 @@
 export const DEFAULT_SENSITIVE_HEADERS: ReadonlySet<string> = new Set([
   'x-api-id',
   'x-api-key',
+  'x-api-sva',
+  'x-api-token',
+  'x-oauth-client-id',
+  'x-oauth-client-secret',
+  'x-oauth-scope',
+  'x-oauth-audience',
   'authorization',
   'proxy-authorization',
   'cookie',

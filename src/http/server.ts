@@ -17,7 +17,8 @@ import { HorizonClient } from '../client/http.js';
 import { getLogger, runWithLoggingSink } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
-import { type HttpConfig, serviceExposureWarning } from './config.js';
+import { formatHttpAuthMethods } from './auth-methods.js';
+import type { HttpConfig } from './config.js';
 import {
   CredentialError,
   buildSessionAuth,
@@ -122,45 +123,6 @@ export async function startHttpServer(
     validate: false,
   });
 
-  // Brief readiness cache so a burst of /readyz probes cannot hammer Horizon.
-  // A single in-flight probe is shared by concurrent callers (single-flight),
-  // so a simultaneous burst triggers exactly one upstream validateAuth.
-  const READY_CACHE_MS = 10_000;
-  let readyCache: { at: number; healthy: boolean } | undefined;
-  let readyInflight: Promise<boolean> | undefined;
-
-  async function probeHorizon(): Promise<boolean> {
-    const { auth } = buildSessionAuth({ kind: 'service' }, config, settings);
-    const probe = new HorizonClient(settings.url, auth, clientOptions);
-    let healthy = true;
-    try {
-      await probe.validateAuth();
-    } catch {
-      healthy = false;
-    }
-    await probe.close().catch(() => undefined);
-    await auth.cleanup().catch(() => undefined);
-    return healthy;
-  }
-
-  async function ensureReady(): Promise<boolean> {
-    const now = Date.now();
-    if (readyCache && now - readyCache.at < READY_CACHE_MS) {
-      return readyCache.healthy;
-    }
-    if (!readyInflight) {
-      readyInflight = probeHorizon()
-        .then((healthy) => {
-          readyCache = { at: Date.now(), healthy };
-          return healthy;
-        })
-        .finally(() => {
-          readyInflight = undefined;
-        });
-    }
-    return readyInflight;
-  }
-
   const manager = new SessionManager({
     maxSessions: settings.maxSessions,
     idleTtlMs: settings.sessionIdleTtl * 1000,
@@ -230,7 +192,7 @@ export async function startHttpServer(
     res: Response,
     fingerprint: string | undefined,
   ): boolean {
-    if (!fingerprint) return true; // service mode: no per-caller binding
+    if (!fingerprint) return true;
     const id = firstId(req.body);
     let material;
     try {
@@ -312,6 +274,7 @@ export async function startHttpServer(
       client = new HorizonClient(settings.url, auth, clientOptions);
       try {
         await client.validateAuth();
+        auth.markValidated();
       } catch (err) {
         const status =
           err instanceof HorizonError && err.statusCode >= 400
@@ -513,16 +476,6 @@ export async function startHttpServer(
       res.status(421).json({ status: 'misdirected' });
       return;
     }
-    // Only service mode holds an env credential to probe Horizon with. The
-    // result is cached briefly and single-flighted so a burst of probes cannot
-    // hammer Horizon.
-    if (config.authMode === 'service') {
-      const healthy = await ensureReady();
-      if (!healthy) {
-        res.status(503).json({ status: 'horizon-unreachable' });
-        return;
-      }
-    }
     res.status(200).json({ status: 'ready' });
   });
 
@@ -654,11 +607,9 @@ export async function startHttpServer(
 
   logger.info(
     `HTTP transport listening on ${config.host}:${boundPort}${config.path} ` +
-      `(auth mode: ${config.authMode}, public: ${config.publicEndpoint})`,
+      `(accepted auth: ${formatHttpAuthMethods(config.acceptedAuthMethods)}, ` +
+      `public: ${config.publicEndpoint})`,
   );
-
-  const exposureWarning = serviceExposureWarning(settings);
-  if (exposureWarning) logger.warning(exposureWarning);
 
   // Bound graceful shutdown: closeAllConnections() drops idle keep-alive
   // sockets that would otherwise keep httpServer.close() pending indefinitely,

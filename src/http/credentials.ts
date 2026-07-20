@@ -1,8 +1,9 @@
 import { ApiKeyAuthProvider } from '../auth/apikey.js';
 import type { AuthProvider } from '../auth/base.js';
 import { CertForwardAuthProvider } from '../auth/cert-forward.js';
-import { createAuthProvider } from '../auth/index.js';
+import { ServiceAccountAuthProvider } from '../auth/service-account.js';
 import type { HorizonSettings } from '../settings.js';
+import { HttpAuthMethod, hasAuthMethod } from './auth-methods.js';
 import type { HttpConfig } from './config.js';
 import { credentialFingerprint } from './fingerprint.js';
 
@@ -17,8 +18,18 @@ export class CredentialError extends Error {
 }
 
 export type CredentialMaterial =
-  | { kind: 'service' }
   | { kind: 'api-key'; apiId: string; apiKey: string }
+  | {
+      kind: 'service';
+      serviceAccount: string;
+      jwt: string;
+      oauth?: {
+        clientId: string;
+        clientSecret: string;
+        scope?: string;
+        audience?: string;
+      };
+    }
   | { kind: 'cert'; pem: string };
 
 /** Minimal shape of the inbound request that credential resolution needs. */
@@ -30,13 +41,13 @@ export interface CredentialRequest {
   };
 }
 
-// Client-supplied credential headers that service mode must reject outright.
-const CLIENT_CRED_HEADERS = [
-  'x-api-id',
-  'x-api-key',
+const UNSUPPORTED_CRED_HEADERS = [
   'authorization',
   'proxy-authorization',
   'cookie',
+];
+
+const CERT_FORWARD_HEADER_ALIASES = [
   'ssl-client-cert',
   'ssl_client_cert',
   'x-forwarded-client-cert',
@@ -136,89 +147,170 @@ export function decodeForwardedCert(value: string): string {
 // -- Resolution ---------------------------------------------------------------
 
 /**
- * Resolve the credential material from a request per the fixed auth mode.
+ * Resolve one credential from the request and enforce the configured whitelist.
  * Throws CredentialError on a missing, wrong-type, or unexpected credential.
  */
 export function extractCredential(
   req: CredentialRequest,
   config: HttpConfig,
 ): CredentialMaterial {
-  switch (config.authMode) {
-    case 'service': {
-      for (const name of CLIENT_CRED_HEADERS) {
-        if (headerValue(req.headers, name) !== undefined) {
-          throw new CredentialError(
-            400,
-            `unexpected client credential header "${name}" in service auth mode`,
-          );
-        }
-      }
-      if (hasPeerCert(req)) {
-        throw new CredentialError(
-          400,
-          'unexpected client certificate in service auth mode',
-        );
-      }
-      return { kind: 'service' };
-    }
-
-    case 'api-key': {
-      const apiId = headerValue(req.headers, 'x-api-id');
-      const apiKey = headerValue(req.headers, 'x-api-key');
-      if (!apiId || !apiKey) {
-        throw new CredentialError(
-          401,
-          'api-key auth mode requires both X-API-ID and X-API-KEY headers',
-        );
-      }
-      return { kind: 'api-key', apiId, apiKey };
-    }
-
-    case 'mtls': {
-      const mtls = config.mtls;
-      if (!mtls) {
-        throw new CredentialError(500, 'mtls auth mode is misconfigured');
-      }
-      if (mtls.inbound) {
-        if (
-          !peerMatchesProxy(req.socket.remoteAddress, mtls.inbound.trustedProxy)
-        ) {
-          throw new CredentialError(
-            401,
-            'client certificate header presented from an untrusted peer',
-          );
-        }
-        const raw = headerValue(req.headers, mtls.inbound.header);
-        if (!raw) {
-          throw new CredentialError(401, 'missing client certificate header');
-        }
-        return { kind: 'cert', pem: decodeForwardedCert(raw) };
-      }
-      const cert = req.socket.getPeerCertificate?.();
-      if (!cert || !cert.raw || cert.raw.length === 0) {
-        throw new CredentialError(401, 'no client certificate was presented');
-      }
-      return { kind: 'cert', pem: derToPem(cert.raw) };
+  for (const name of UNSUPPORTED_CRED_HEADERS) {
+    if (headerValue(req.headers, name) !== undefined) {
+      throw new CredentialError(
+        400,
+        `unsupported client credential header "${name}"`,
+      );
     }
   }
+
+  const configuredInbound = config.mtls?.inbound?.header.toLowerCase();
+  for (const name of CERT_FORWARD_HEADER_ALIASES) {
+    if (
+      name !== configuredInbound &&
+      headerValue(req.headers, name) !== undefined
+    ) {
+      throw new CredentialError(
+        400,
+        `unexpected client certificate header "${name}"`,
+      );
+    }
+  }
+
+  const apiId = headerValue(req.headers, 'x-api-id');
+  const apiKey = headerValue(req.headers, 'x-api-key');
+  if (Boolean(apiId) !== Boolean(apiKey)) {
+    throw new CredentialError(
+      401,
+      'API-key authentication requires both X-API-ID and X-API-KEY headers',
+    );
+  }
+
+  const serviceAccount = headerValue(req.headers, 'x-api-sva');
+  const jwt = headerValue(req.headers, 'x-api-token');
+  if (Boolean(serviceAccount) !== Boolean(jwt)) {
+    throw new CredentialError(
+      401,
+      'service authentication requires both X-API-SVA and X-API-TOKEN headers',
+    );
+  }
+
+  const oauthClientId = headerValue(req.headers, 'x-oauth-client-id');
+  const oauthClientSecret = headerValue(req.headers, 'x-oauth-client-secret');
+  const oauthScope = headerValue(req.headers, 'x-oauth-scope');
+  const oauthAudience = headerValue(req.headers, 'x-oauth-audience');
+  const hasOauthMetadata = Boolean(
+    oauthClientId || oauthClientSecret || oauthScope || oauthAudience,
+  );
+  if (hasOauthMetadata && (!serviceAccount || !jwt)) {
+    throw new CredentialError(
+      400,
+      'OAuth renewal headers require a service-account credential',
+    );
+  }
+  if (Boolean(oauthClientId) !== Boolean(oauthClientSecret)) {
+    throw new CredentialError(
+      401,
+      'OAuth renewal requires both X-OAUTH-CLIENT-ID and X-OAUTH-CLIENT-SECRET',
+    );
+  }
+
+  const candidates: CredentialMaterial[] = [];
+  if (apiId && apiKey) candidates.push({ kind: 'api-key', apiId, apiKey });
+  if (serviceAccount && jwt) {
+    candidates.push({
+      kind: 'service',
+      serviceAccount,
+      jwt,
+      ...(oauthClientId && oauthClientSecret
+        ? {
+            oauth: {
+              clientId: oauthClientId,
+              clientSecret: oauthClientSecret,
+              ...(oauthScope ? { scope: oauthScope } : {}),
+              ...(oauthAudience ? { audience: oauthAudience } : {}),
+            },
+          }
+        : {}),
+    });
+  }
+
+  const mtls = config.mtls;
+  if (mtls?.inbound) {
+    const raw = headerValue(req.headers, mtls.inbound.header);
+    if (raw) {
+      if (
+        !peerMatchesProxy(req.socket.remoteAddress, mtls.inbound.trustedProxy)
+      ) {
+        throw new CredentialError(
+          401,
+          'client certificate header presented from an untrusted peer',
+        );
+      }
+      candidates.push({ kind: 'cert', pem: decodeForwardedCert(raw) });
+    }
+  } else if (mtls?.listener && hasPeerCert(req)) {
+    const cert = req.socket.getPeerCertificate?.();
+    if (cert?.raw) candidates.push({ kind: 'cert', pem: derToPem(cert.raw) });
+  }
+
+  if (candidates.length === 0) {
+    throw new CredentialError(
+      401,
+      'no accepted client credential was supplied',
+    );
+  }
+  if (candidates.length > 1) {
+    throw new CredentialError(
+      400,
+      'multiple client authentication methods were supplied',
+    );
+  }
+
+  const material = candidates[0]!;
+  const method =
+    material.kind === 'api-key'
+      ? HttpAuthMethod.ApiKey
+      : material.kind === 'service'
+        ? HttpAuthMethod.Service
+        : HttpAuthMethod.Mtls;
+  if (!hasAuthMethod(config.acceptedAuthMethods, method)) {
+    throw new CredentialError(
+      401,
+      `${material.kind} authentication is not accepted by this server`,
+    );
+  }
+  return material;
 }
 
 /**
- * The fingerprint a credential material binds to, or undefined for service mode
- * (no per-caller binding). Used both at session creation and on each later
- * request to re-verify the resent credential matches its session.
+ * The fingerprint a credential material binds to. Used both at session
+ * creation and on each later request to re-verify the resent credential
+ * matches its session.
  */
 export function credentialFingerprintOf(
   material: CredentialMaterial,
 ): string | undefined {
   switch (material.kind) {
-    case 'service':
-      return undefined;
     case 'api-key':
       // A structured tuple preserves the id/key boundary even when either
       // value contains a colon (unlike `${id}:${key}`).
       return credentialFingerprint(
         JSON.stringify([material.apiId, material.apiKey]),
+      );
+    case 'service':
+      return credentialFingerprint(
+        JSON.stringify(
+          material.oauth
+            ? [
+                material.serviceAccount,
+                material.jwt,
+                material.oauth.clientId,
+                material.oauth.clientSecret,
+                material.oauth.scope,
+                material.oauth.audience,
+              ]
+            : [material.serviceAccount, material.jwt],
+        ),
       );
     case 'cert':
       return credentialFingerprint(material.pem);
@@ -227,21 +319,27 @@ export function credentialFingerprintOf(
 
 /**
  * Build the per-session AuthProvider and (for per-caller modes) the credential
- * fingerprint used to anti-hijack-bind the session. Service mode forwards the
- * env identity and binds no fingerprint (Mcp-Session-Id behaves as a bearer).
+ * fingerprint used to anti-hijack-bind the session.
  */
 export function buildSessionAuth(
   material: CredentialMaterial,
   config: HttpConfig,
-  settings: HorizonSettings,
+  _settings: HorizonSettings,
 ): { auth: AuthProvider; fingerprint?: string } {
   const fingerprint = credentialFingerprintOf(material);
   switch (material.kind) {
-    case 'service':
-      return { auth: createAuthProvider(settings) };
     case 'api-key':
       return {
         auth: new ApiKeyAuthProvider(material.apiId, material.apiKey),
+        fingerprint,
+      };
+    case 'service':
+      return {
+        auth: new ServiceAccountAuthProvider(
+          material.serviceAccount,
+          material.jwt,
+          material.oauth,
+        ),
         fingerprint,
       };
     case 'cert': {

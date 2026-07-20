@@ -57,13 +57,11 @@ The repository `Dockerfile` builds the TypeScript bundle and runs it on Node 24
 as the unprivileged `node` user. The image defaults to
 `HORIZON_TRANSPORT=http`, `HORIZON_HTTP_HOST=0.0.0.0`, and port `8080`.
 
-Create an untracked `.env.http` file for a local service-mode deployment:
+Create an untracked `.env.http` file for a local per-caller deployment:
 
 ```dotenv
 HORIZON_URL=https://horizon.example.com
-HORIZON_API_ID=your-api-id
-HORIZON_API_KEY=your-api-key
-HORIZON_HTTP_AUTH_MODE=service
+HORIZON_HTTP_AUTH_METHODS=api-key,service
 HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
 ```
 
@@ -77,9 +75,9 @@ docker run --rm --name horizon-mcp \
   horizon-mcp
 ```
 
-Both probes are Host-validated. In `service` mode, readiness also validates the
-configured Horizon credential and caches the result briefly; per-caller modes
-have no server credential to probe:
+Both probes are Host-validated. Readiness reports that the listener can accept
+sessions; caller credentials are validated against Horizon during MCP session
+initialization:
 
 ```bash
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
@@ -93,8 +91,7 @@ For remote hosting:
 - terminate TLS at a trusted edge unless the MCP is configured with its own
   inbound mTLS listener;
 - keep secrets in the orchestrator's secret store, not the image or repository;
-- protect `service` mode with network placement or an authenticating edge,
-  because every reachable caller acts as the server credential;
+- whitelist only the caller authentication methods the deployment needs;
 - run one replica, or configure session affinity using `Mcp-Session-Id`;
 - send liveness/readiness probes with a Host value derived from
   `HORIZON_PUBLIC_URL` or included in `HORIZON_TRUSTED_HOSTS`.

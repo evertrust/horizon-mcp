@@ -1,20 +1,17 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  buildHttpConfig,
-  serviceExposureWarning,
-} from '../../src/http/config.js';
+import { HttpAuthMethod } from '../../src/http/auth-methods.js';
+import { buildHttpConfig } from '../../src/http/config.js';
 import { loadSettings } from '../../src/settings.js';
 
 /**
  * Build an HttpConfig from a flat env map. Defaults to http transport and
- * api-key auth mode (which needs no env credential), so host/path tests do
- * not have to supply a service credential.
+ * API-key authentication, so host/path tests do not need mTLS topology.
  */
 function build(env: Record<string, string | undefined>) {
   const full = {
     HORIZON_TRANSPORT: 'http',
-    HORIZON_HTTP_AUTH_MODE: 'api-key',
+    HORIZON_HTTP_AUTH_METHODS: 'api-key',
     ...env,
   };
   return buildHttpConfig(loadSettings(full), full);
@@ -151,43 +148,26 @@ describe('buildHttpConfig', () => {
     });
   });
 
-  describe('auth mode: service', () => {
-    it('requires an env credential', () => {
-      expect(() =>
-        buildHttpConfig(
-          loadSettings({
-            HORIZON_TRANSPORT: 'http',
-            HORIZON_HTTP_AUTH_MODE: 'service',
-          }),
-          {},
-        ),
-      ).toThrow(/service.*credential|credential.*service/i);
-    });
-
-    it('accepts a service mode with an API key env credential', () => {
-      const cfg = buildHttpConfig(
-        loadSettings({
-          HORIZON_TRANSPORT: 'http',
-          HORIZON_HTTP_AUTH_MODE: 'service',
-          HORIZON_API_ID: 'id',
-          HORIZON_API_KEY: 'key',
-        }),
-        {},
+  describe('authentication method whitelist', () => {
+    it('accepts and preserves multiple caller-supplied methods', () => {
+      const full = {
+        HORIZON_TRANSPORT: 'http',
+        HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
+      };
+      const cfg = buildHttpConfig(loadSettings(full), full);
+      expect(cfg.acceptedAuthMethods).toBe(
+        HttpAuthMethod.ApiKey | HttpAuthMethod.Service,
       );
-      expect(cfg.authMode).toBe('service');
     });
 
-    it('rejects an incomplete API-key service credential', () => {
-      expect(() =>
-        buildHttpConfig(
-          loadSettings({
-            HORIZON_TRANSPORT: 'http',
-            HORIZON_HTTP_AUTH_MODE: 'service',
-            HORIZON_API_ID: 'id-without-key',
-          }),
-          {},
-        ),
-      ).toThrow(/HORIZON_API_ID.*HORIZON_API_KEY|both/i);
+    it('fails clearly when the removed singular setting is still present', () => {
+      const full = {
+        HORIZON_TRANSPORT: 'http',
+        HORIZON_HTTP_AUTH_MODE: 'service',
+      };
+      expect(() => buildHttpConfig(loadSettings(full), full)).toThrow(
+        /HORIZON_HTTP_AUTH_METHODS/i,
+      );
     });
   });
 
@@ -195,7 +175,7 @@ describe('buildHttpConfig', () => {
     function mtls(env: Record<string, string | undefined>) {
       const full = {
         HORIZON_TRANSPORT: 'http',
-        HORIZON_HTTP_AUTH_MODE: 'mtls',
+        HORIZON_HTTP_AUTH_METHODS: 'mtls',
         ...env,
       };
       return buildHttpConfig(loadSettings(full), full);
@@ -310,45 +290,17 @@ describe('buildHttpConfig', () => {
         HORIZON_HTTP_HOST: '0.0.0.0',
         HORIZON_PUBLIC_URL: 'https://mcp.example.com',
       });
-      expect(cfg.authMode).toBe('api-key');
+      expect(cfg.acceptedAuthMethods).toBe(HttpAuthMethod.ApiKey);
     });
-  });
 
-  describe('service-mode exposure warning', () => {
-    function svcSettings(env: Record<string, string | undefined>) {
-      const full = {
-        HORIZON_TRANSPORT: 'http',
-        HORIZON_HTTP_AUTH_MODE: 'service',
-        HORIZON_API_ID: 'id',
-        HORIZON_API_KEY: 'key',
-        HORIZON_TRUSTED_HOSTS: 'mcp.example.com',
-        ...env,
-      };
-      return loadSettings(full);
-    }
-
-    it('warns when service mode binds a non-loopback host', () => {
-      const warning = serviceExposureWarning(
-        svcSettings({
+    it('also protects caller-supplied service credentials from cleartext transport', () => {
+      expect(() =>
+        build({
+          HORIZON_HTTP_AUTH_METHODS: 'service',
           HORIZON_HTTP_HOST: '0.0.0.0',
+          HORIZON_TRUSTED_HOSTS: 'mcp.example.com',
         }),
-      );
-      expect(warning).toMatch(/unauthenticated|proxy/i);
-    });
-
-    it('does not warn when service mode binds loopback', () => {
-      expect(
-        serviceExposureWarning(svcSettings({ HORIZON_HTTP_HOST: '127.0.0.1' })),
-      ).toBeUndefined();
-    });
-
-    it('does not warn for api-key mode on a non-loopback bind', () => {
-      const settings = loadSettings({
-        HORIZON_TRANSPORT: 'http',
-        HORIZON_HTTP_AUTH_MODE: 'api-key',
-        HORIZON_HTTP_HOST: '0.0.0.0',
-      });
-      expect(serviceExposureWarning(settings)).toBeUndefined();
+      ).toThrow(/cleartext|http|TLS/i);
     });
   });
 

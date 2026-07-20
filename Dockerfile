@@ -29,10 +29,10 @@ COPY package.json ./
 
 # Streamable HTTP defaults. The operator MUST also provide, at minimum:
 #   HORIZON_URL              the single Horizon backend this instance serves
-#   HORIZON_HTTP_AUTH_MODE   service | api-key | mtls
+#   HORIZON_HTTP_AUTH_METHODS   comma/pipe whitelist of api-key, mtls, service
 #   HORIZON_TRUSTED_HOSTS or HORIZON_PUBLIC_URL
 #       binding 0.0.0.0 with neither set fails closed and refuses to start
-#   plus the credential for the chosen auth mode (see README "Transports").
+#   caller credentials for one of the accepted methods (see README).
 #
 # Liveness/readiness probes should target /healthz and /readyz. Both are
 # Host-validated, so the probe MUST send a Host header that is in

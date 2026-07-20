@@ -259,30 +259,37 @@ The server endpoint is `HORIZON_PUBLIC_URL` joined with `HORIZON_HTTP_PATH` (def
 https://horizon.example.com/mcp
 ```
 
-The server decides how callers authenticate via `HORIZON_HTTP_AUTH_MODE`:
+The server whitelists one or more caller methods via `HORIZON_HTTP_AUTH_METHODS`:
 
-- `service` - the server holds a single set of Horizon credentials. Callers send no credentials of their own; the client needs only the url.
+- `service` - each caller sends `X-API-SVA` and `X-API-TOKEN`; optional OAuth client headers let the MCP renew the JWT.
 - `api-key` - each caller authenticates per-request with the `X-API-ID` and `X-API-KEY` HTTP headers.
 - `mtls` - each caller authenticates by presenting a TLS client certificate on the connection.
 
-(OIDC browser login has been removed; use one of the three modes above.)
+(OIDC browser login has been removed. The `service` method is headless Horizon JWKS service-account authentication.)
 
 These map onto three distinct client capabilities, and MCP clients differ in which they support:
 
-1. **Connecting to a remote url** - native in Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector (CLI), and Claude Desktop's connector. This is all that `service` mode needs.
-2. **Sending custom request headers** - additionally required for `api-key` mode (the `X-API-ID` and `X-API-KEY` headers). Supported directly by some clients; for the rest, inject the headers with a local proxy (see below).
+1. **Connecting to a remote url** - native in Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector (CLI), and Claude Desktop's connector.
+2. **Sending custom request headers** - required for `api-key` and `service`. Supported directly by some clients; for the rest, inject the headers with a local proxy (see below).
 3. **Presenting a TLS client certificate** - required for `mtls` mode. Most MCP clients cannot do this directly; see the per-caller mTLS subsection for the local-proxy workaround.
 
 ### Claude Code
 
-Use the HTTP transport form in `.mcp.json` instead of `command`/`args`. For `service` mode the url is all you need:
+Use the HTTP transport form in `.mcp.json` instead of `command`/`args`. For `service`, supply the Horizon service account and JWT. Add the four `X-OAUTH-*` headers shown in [authentication](authentication.md#service-account-jwt-renewal) when the MCP should renew the token:
 
 ```json
 {
   "mcpServers": {
     "horizon": {
       "type": "http",
-      "url": "https://horizon.example.com/mcp"
+      "url": "https://horizon.example.com/mcp",
+      "headers": {
+        "X-API-SVA": "your-horizon-service-account",
+        "X-API-TOKEN": "your-jwt",
+        "X-OAUTH-CLIENT-ID": "your-oauth-client-id",
+        "X-OAUTH-CLIENT-SECRET": "your-oauth-client-secret",
+        "X-OAUTH-SCOPE": "your-resource/.default"
+      }
     }
   }
 }
@@ -313,15 +320,16 @@ Claude Desktop's local config file (`claude_desktop_config.json`) launches stdio
 https://horizon.example.com/mcp
 ```
 
-That covers `service` mode, where the url is all the client needs (no credentials). The connector UI does not expose arbitrary static request headers, so for `api-key` mode point the connector at a local proxy that injects `X-API-ID` and `X-API-KEY` on the upstream request (same pattern as the mTLS workaround below).
+The connector UI does not expose arbitrary static request headers, so point it at a local proxy that injects the required API-key or service-account headers (same pattern as the mTLS workaround below).
 
 ### Codex (CLI and Desktop app)
 
-In `~/.codex/config.toml`, give the server a `url` instead of a `command`. For `service` mode:
+In `~/.codex/config.toml`, give the server a `url` instead of a `command`. For `service`, environment-backed headers keep the JWT and OAuth client secret out of the file:
 
 ```toml
 [mcp_servers.horizon]
 url = "https://horizon.example.com/mcp"
+env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_SERVICE_JWT", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
 ```
 
 For `api-key` mode, Codex supports both literal `http_headers` and environment-backed `env_http_headers`. Environment-backed headers avoid storing the secret in `config.toml`:
@@ -344,13 +352,17 @@ In the **Codex Desktop app**, the same remote server can be added through **Sett
 
 ### Cursor
 
-For `service` mode, create `.cursor/mcp.json` with a remote URL:
+For `service`, create `.cursor/mcp.json` with the required headers:
 
 ```json
 {
   "mcpServers": {
     "horizon": {
-      "url": "https://horizon.example.com/mcp"
+      "url": "https://horizon.example.com/mcp",
+      "headers": {
+        "X-API-SVA": "your-horizon-service-account",
+        "X-API-TOKEN": "your-jwt"
+      }
     }
   }
 }
@@ -380,11 +392,11 @@ OpenCode remote servers use `type: "remote"`. Disable automatic OAuth for Horizo
 }
 ```
 
-For `service` mode, omit `oauth` and `headers`; only `type`, `url`, and optionally `enabled` are needed.
+For `service`, replace the API-key pair with `X-API-SVA` / `X-API-TOKEN` and, when renewal is required, the protected `X-OAUTH-*` headers documented above.
 
 ### Per-caller mTLS: local proxy workaround
 
-When the server runs with `HORIZON_HTTP_AUTH_MODE=mtls`, each caller must present a TLS **client** certificate to the MCP server. Most MCP clients (Claude Code, Claude Desktop, Codex, and others) cannot attach a client certificate to their outbound HTTPS connection. This is a current limitation of the clients, not of the server.
+When `mtls` is included in `HORIZON_HTTP_AUTH_METHODS`, each mTLS caller must present a TLS **client** certificate to the MCP server. Most MCP clients (Claude Code, Claude Desktop, Codex, and others) cannot attach a client certificate to their outbound HTTPS connection. This is a current limitation of the clients, not of the server.
 
 The workaround is to run a small **mTLS proxy** on the client machine:
 
