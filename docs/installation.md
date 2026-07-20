@@ -2,15 +2,15 @@
 
 ## Prerequisites
 
-- Bun 1.x+ (recommended) or Node.js >= 24.10
-- An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
-- API credentials or a client certificate with appropriate permissions
+- Bun 1.x or later (recommended), or Node.js 24.10 or later.
+- An Evertrust Horizon instance. The maintainers test version 2.8 and expect compatibility with versions 2.7 and 2.9.
+- API credentials or a client certificate with the necessary permissions.
 
 ## Install methods
 
 ### bunx / npx (recommended)
 
-No installation needed, run directly:
+Run the package without an installation:
 
 ```bash
 bunx @evertrust/horizon-mcp
@@ -42,20 +42,24 @@ node dist/index.js
 
 ### Standalone binary
 
-Download the pre-built binary for your platform from the [releases page](https://github.com/evertrust/horizon-mcp/releases), then:
+Download the prebuilt binary for your platform from the [releases page](https://github.com/evertrust/horizon-mcp/releases). Then, run these commands:
 
 ```bash
 chmod +x horizon-mcp
 ./horizon-mcp
 ```
 
-Binaries are published for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
+The project provides binaries for macOS, Linux, and Windows. The macOS and Linux binaries support x64 and arm64 architectures.
 
-### Docker (streamable HTTP)
+### Docker with streamable HTTP
 
-The repository `Dockerfile` builds the TypeScript bundle and runs it on Node 24
-as the unprivileged `node` user. The image defaults to
-`HORIZON_TRANSPORT=http`, `HORIZON_HTTP_HOST=0.0.0.0`, and port `8080`.
+The repository `Dockerfile` builds the TypeScript bundle. It runs the bundle on Node 24 as the unprivileged `node` user.
+
+The image uses these default values:
+
+- `HORIZON_TRANSPORT=http`.
+- `HORIZON_HTTP_HOST=0.0.0.0`.
+- Port `8080`.
 
 Create an untracked `.env.http` file for a local per-caller deployment:
 
@@ -75,26 +79,24 @@ docker run --rm --name horizon-mcp \
   horizon-mcp
 ```
 
-Both probes are Host-validated. Readiness reports that the listener can accept
-sessions; caller credentials are validated against Horizon during MCP session
-initialization:
+The server validates the `Host` header of both probes. Readiness means that the listener can accept sessions.
+
+Horizon validates caller credentials during MCP session initialization:
 
 ```bash
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
 ```
 
-For remote hosting:
+For remote hosting, complete these steps:
 
-- set `HORIZON_PUBLIC_URL` to the externally reachable HTTPS origin (the MCP
-  endpoint is that origin joined with `HORIZON_HTTP_PATH`, default `/mcp`);
-- terminate TLS at a trusted edge unless the MCP is configured with its own
-  inbound mTLS listener;
-- keep secrets in the orchestrator's secret store, not the image or repository;
-- whitelist only the caller authentication methods the deployment needs;
-- run one replica, or configure session affinity using `Mcp-Session-Id`;
-- send liveness/readiness probes with a Host value derived from
-  `HORIZON_PUBLIC_URL` or included in `HORIZON_TRUSTED_HOSTS`.
+- Set `HORIZON_PUBLIC_URL` to the external HTTPS origin.
+- Set `HORIZON_HTTP_PATH` if the endpoint does not use the default `/mcp` path.
+- Terminate TLS at a trusted edge. Alternatively, configure the MCP inbound mTLS listener.
+- Store secrets in the orchestrator secret store. Do not store them in the image or repository.
+- Enable only the authentication methods that the deployment requires.
+- Run one replica. Alternatively, configure session affinity with `Mcp-Session-Id`.
+- Send probes with a `Host` value from `HORIZON_PUBLIC_URL` or `HORIZON_TRUSTED_HOSTS`.
 
 See the HTTP environment-variable table in the [README](../README.md#streamable-http-horizon_transporthttp) and remote examples in [client setup](client-setup.md).
 

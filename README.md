@@ -4,38 +4,52 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![CI](https://github.com/evertrust/horizon-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/evertrust/horizon-mcp/actions/workflows/ci.yml)
 
-An [MCP](https://modelcontextprotocol.io/) server for [Evertrust Horizon](https://www.evertrust.fr/) - a Certificate Lifecycle Management (CLM) platform. It lets MCP-compatible LLM clients (Claude Desktop, Claude Code, Cursor, Codex, OpenCode) drive certificate issuance, renewal and revocation, run HQL searches over certificates/requests/events, manage discovery campaigns and external datasources, decode X.509/CSR/CRL/OCSP/TSA payloads, and look up Evertrust's official product documentation through natural language. It is aimed at PKI engineers, platform teams and security operators who want to operate Horizon without leaving their IDE or chat client.
+Horizon MCP is an [MCP](https://modelcontextprotocol.io/) server for [Evertrust Horizon](https://www.evertrust.fr/). Horizon is a certificate lifecycle management (CLM) platform.
+
+The server lets supported LLM clients operate Horizon. Supported clients include Claude Desktop, Claude Code, Cursor, Codex, and OpenCode.
+
+You can issue, renew, and revoke certificates. You can also search Horizon data, manage discovery, decode cryptographic data, and read product documentation.
+
+The server is for PKI engineers, platform teams, and security operators. They can operate Horizon from an integrated development environment or chat client.
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **17 core knowledge URIs**, **4 curated integration playbooks**, and generated section resources for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
+Horizon MCP provides tools and domain information. It includes **17 core knowledge URIs**, **4 integration playbooks**, and generated resources for long operational guides.
+
+These resources explain Horizon concepts and help clients select tools. Clients can read the resources before they select a tool or create a payload.
+
+The server does not preload these resources. The server also cannot guarantee that a client reads them before an operation.
 
 ## Features
 
 - **212 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 17 core topic URIs, 4 curated playbooks, plus auto-generated section URIs derived from H2 headings of the longest guides.
-- **Three per-caller HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT, with an explicit multi-method whitelist and optional OAuth `client_credentials` renewal.
+- **Knowledge catalog**: 17 core topic URIs and 4 curated playbooks.
+  The server also generates section URIs from H2 headings in the longest guides.
+- **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. A whitelist can enable multiple methods.
+- **Service JWT renewal**: The MCP can use OAuth `client_credentials` to fetch and renew a caller's short-lived JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
-- **Crypto decoding**: parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses to structured JSON without leaving the chat.
-- **Destructive-operation safeguards**: `delete_*` and `flush_*` tools require an exact object-specific `expected_*` echo. Other mutations execute when called; use client-side approval controls and a least-privileged Horizon identity.
+- **Crypto decoding**: Parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses.
+  The tools return structured JSON in the chat.
+- **Destructive-operation safeguards**: `delete_*` and `flush_*` tools require an exact `expected_*` confirmation value.
+  Other changes run when the client calls them. Use client approval controls and a Horizon identity with minimum privileges.
 - **Standalone binaries** for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
 
 Tool counts per domain:
 
-| Domain            | Tools | Highlights                                                            |
-| ----------------- | ----: | --------------------------------------------------------------------- |
-| Configuration     |   126 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
-| Assist            |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators        |
-| Lifecycle         |    17 | search/aggregate certs, requests, events, enroll, approve, revoke     |
-| Dashboards        |    12 | dashboard CRUD, charts, saved HQL queries                             |
-| Datasources       |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run       |
-| Discovery         |     6 | campaign CRUD and flush                                               |
-| Triggers          |     6 | REST notifications and credential listing                             |
-| Discovery feed    |     4 | push-mode certificate and event ingestion                             |
-| Discovery events  |     3 | search, fetch, CSV export                                             |
-| Reports           |     3 | list, download, delete                                                |
-| Docs              |     4 | search product docs, search API docs, fetch a page, read knowledge    |
-| Profiles          |     2 | list and inspect convenience tools; profile mutations live in the Configuration toolset |
+| Domain           | Tools | Highlights                                                                              |
+| ---------------- | ----: | --------------------------------------------------------------------------------------- |
+| Configuration    |   126 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
+| Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
+| Lifecycle        |    17 | search/aggregate certs, requests, events, enroll, approve, revoke                       |
+| Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
+| Datasources      |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run                         |
+| Discovery        |     6 | campaign CRUD and flush                                                                 |
+| Triggers         |     6 | REST notifications and credential listing                                               |
+| Discovery feed   |     4 | push-mode certificate and event ingestion                                               |
+| Discovery events |     3 | search, fetch, CSV export                                                               |
+| Reports          |     3 | list, download, delete                                                                  |
+| Docs             |     4 | search product docs, search API docs, fetch a page, read knowledge                      |
+| Profiles         |     2 | list and inspect convenience tools; profile mutations live in the Configuration toolset |
 
 Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-reference.md).
 
@@ -86,96 +100,111 @@ node dist/index.js
 
 ## Configuration
 
-The server is configured entirely through `HORIZON_*` environment variables. A starter template lives in [.env.example](.env.example); copy it to `.env.local` and adjust.
+Configure the server with `HORIZON_*` environment variables. Copy [.env.example](.env.example) to `.env.local`, and then change the necessary values.
 
-The server auto-detects the authentication mode based on which variables are set. Priority order: **mTLS > API key**. If neither is configured, startup fails closed.
+The server detects stdio authentication from the configured variables. It gives mTLS priority over an API key.
+
+If you do not configure a credential, the server stops during startup.
 
 ### Connection and authentication
 
-| Variable                       | Required?         | Default              | Description                                                                                  |
-| ------------------------------ | ----------------- | -------------------- | -------------------------------------------------------------------------------------------- |
-| `HORIZON_URL`                  | Yes               | `https://localhost`  | Base URL of your Horizon instance. Trailing slash is stripped automatically.                 |
-| `HORIZON_API_ID`               | API key mode      |                      | API key identifier.                                                                          |
-| `HORIZON_API_KEY`              | API key mode      |                      | API key secret.                                                                              |
-| `HORIZON_CLIENT_CERT`          | mTLS (PEM) mode   |                      | Filesystem path to a PEM client certificate.                                                 |
-| `HORIZON_CLIENT_KEY`           | mTLS (PEM) mode   |                      | Filesystem path to the matching PEM private key.                                             |
-| `HORIZON_CLIENT_KEY_PASSWORD`  | No                |                      | Decryption password for an encrypted PEM private key.                                        |
-| `HORIZON_CLIENT_PFX`           | mTLS (PFX) mode   |                      | Filesystem path to a PKCS12 / PFX bundle.                                                    |
-| `HORIZON_CLIENT_PFX_PASSWORD`  | No                |                      | Decryption password for the PKCS12 bundle.                                                   |
-| `HORIZON_VERIFY_SSL`           | No                | `true`               | Set to `false` or `0` to skip TLS verification on the Horizon endpoint (development only).   |
-| `HORIZON_ALLOW_PRIVATE_TLS_PROBE` | No             | (blocked)            | By default `fetch_exposed_certificate` refuses to connect to private/link-local IPs (SSRF guard). Set to `1` to permit probing internal hosts (e.g. `10.x`, `192.168.x`, `127.0.0.1`). |
-| `HORIZON_TIMEOUT`              | No                | `30`                 | HTTP request timeout in seconds for standard API calls.                                      |
-| `HORIZON_EXPORT_TIMEOUT`       | No                | `120`                | Timeout in seconds for CSV exports and other long-running endpoints.                         |
-| `HORIZON_LOG_LEVEL`            | No                | `INFO`               | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                  |
-| `HORIZON_TESTED_VERSIONS`      | No                | `2.8`                | Comma-separated list of Horizon versions known to fully work with this build.                |
-| `HORIZON_WARN_VERSIONS`        | No                | `2.7,2.9`            | Comma-separated list of versions that are likely to work but emit a warning.                 |
-| `HORIZON_ENABLED_TOOLSETS`     | No                | (all)                | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. Unset registers every toolset; an unknown name fails startup. |
-| `HORIZON_READ_ONLY`            | No                | `false`              | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup. |
-| `HORIZON_AUTH_MODE`            | DEPRECATED        |                      | No longer required. Kept readable for backward compatibility; setting it logs a warning.     |
+| Variable                          | Required?       | Default             | Description                                                                                                                                                                                                                                                                                        |
+| --------------------------------- | --------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HORIZON_URL`                     | Yes             | `https://localhost` | Base URL of your Horizon instance. Trailing slash is stripped automatically.                                                                                                                                                                                                                       |
+| `HORIZON_API_ID`                  | API key mode    |                     | API key identifier.                                                                                                                                                                                                                                                                                |
+| `HORIZON_API_KEY`                 | API key mode    |                     | API key secret.                                                                                                                                                                                                                                                                                    |
+| `HORIZON_CLIENT_CERT`             | mTLS (PEM) mode |                     | Filesystem path to a PEM client certificate.                                                                                                                                                                                                                                                       |
+| `HORIZON_CLIENT_KEY`              | mTLS (PEM) mode |                     | Filesystem path to the matching PEM private key.                                                                                                                                                                                                                                                   |
+| `HORIZON_CLIENT_KEY_PASSWORD`     | No              |                     | Decryption password for an encrypted PEM private key.                                                                                                                                                                                                                                              |
+| `HORIZON_CLIENT_PFX`              | mTLS (PFX) mode |                     | Filesystem path to a PKCS12 / PFX bundle.                                                                                                                                                                                                                                                          |
+| `HORIZON_CLIENT_PFX_PASSWORD`     | No              |                     | Decryption password for the PKCS12 bundle.                                                                                                                                                                                                                                                         |
+| `HORIZON_VERIFY_SSL`              | No              | `true`              | Set to `false` or `0` to skip TLS verification on the Horizon endpoint (development only).                                                                                                                                                                                                         |
+| `HORIZON_ALLOW_PRIVATE_TLS_PROBE` | No              | (blocked)           | By default `fetch_exposed_certificate` refuses to connect to private/link-local IPs (SSRF guard). Set to `1` to permit probing internal hosts (e.g. `10.x`, `192.168.x`, `127.0.0.1`).                                                                                                             |
+| `HORIZON_TIMEOUT`                 | No              | `30`                | HTTP request timeout in seconds for standard API calls.                                                                                                                                                                                                                                            |
+| `HORIZON_EXPORT_TIMEOUT`          | No              | `120`               | Timeout in seconds for CSV exports and other long-running endpoints.                                                                                                                                                                                                                               |
+| `HORIZON_LOG_LEVEL`               | No              | `INFO`              | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                                                                                                                                                                                                        |
+| `HORIZON_TESTED_VERSIONS`         | No              | `2.8`               | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                      |
+| `HORIZON_WARN_VERSIONS`           | No              | `2.7,2.9`           | Comma-separated list of versions that are likely to work but emit a warning.                                                                                                                                                                                                                       |
+| `HORIZON_ENABLED_TOOLSETS`        | No              | (all)               | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. Unset registers every toolset; an unknown name fails startup. |
+| `HORIZON_READ_ONLY`               | No              | `false`             | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup.                                                                                                                                                                |
+| `HORIZON_AUTH_MODE`               | DEPRECATED      |                     | No longer required. Kept readable for backward compatibility; setting it logs a warning.                                                                                                                                                                                                           |
 
 ### Streamable HTTP (`HORIZON_TRANSPORT=http`)
 
 These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are ignored.
 
-| Var                              | Default     | Notes                                                                                                                                                     |
-| -------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HORIZON_TRANSPORT`              | `stdio`     | `stdio` \| `http`                                                                                                                                         |
-| `HORIZON_HTTP_HOST`              | `127.0.0.1` | Bind address; `0.0.0.0` only behind a trusted edge.                                                                                                       |
-| `HORIZON_HTTP_PORT`              | `8080`      | Bind port.                                                                                                                                                 |
-| `HORIZON_HTTP_PATH`              | `/mcp`      | Endpoint path; absolute, no query or fragment; trailing slash normalized.                                                                                 |
-| `HORIZON_PUBLIC_URL`             | (unset)     | Public origin/base URL clients reach the server at; the endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                      |
+| Var                              | Default     | Notes                                                                                                                                                                     |
+| -------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HORIZON_TRANSPORT`              | `stdio`     | `stdio` \| `http`                                                                                                                                                         |
+| `HORIZON_HTTP_HOST`              | `127.0.0.1` | Bind address; `0.0.0.0` only behind a trusted edge.                                                                                                                       |
+| `HORIZON_HTTP_PORT`              | `8080`      | Bind port.                                                                                                                                                                |
+| `HORIZON_HTTP_PATH`              | `/mcp`      | Endpoint path; absolute, no query or fragment; trailing slash normalized.                                                                                                 |
+| `HORIZON_PUBLIC_URL`             | (unset)     | Public origin/base URL clients reach the server at; the endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                                     |
 | `HORIZON_TRUSTED_HOSTS`          | derived     | Comma list of allowed `Host` values; derived from `HORIZON_PUBLIC_URL` or, on a loopback bind, the loopback hosts. A non-loopback bind with neither set refuses to start. |
-| `HORIZON_TRUSTED_ORIGINS`        | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                         |
-| `HORIZON_HTTP_AUTH_METHODS`      | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                    |
-| `HORIZON_SESSION_IDLE_TTL`       | `300`       | Seconds.                                                                                                                                                   |
-| `HORIZON_SESSION_ABS_TTL`        | `3600`      | Seconds.                                                                                                                                                   |
-| `HORIZON_MAX_SESSIONS`           | `8`         | Max concurrent sessions (hard ceiling `64`). Budget about 22 MiB of V8 heap per fully registered session, plus roughly 365 MiB process baseline.          |
-| `HORIZON_MAX_INFLIGHT_TOOLCALLS` | `8`         | Per-session in-flight tool calls.                                                                                                                          |
-| `HORIZON_MAX_BODY_BYTES`         | `1048576`   | Max request body bytes (1 MiB).                                                                                                                            |
-| `HORIZON_SSE_MAX_DURATION`       | `3600`      | Max SSE stream lifetime, seconds.                                                                                                                          |
-| `HORIZON_RATE_LIMIT_RPS`         | `20`        | Per-session limit, counted per JSON-RPC message per second; `0` disables.                                                                                 |
-| `HORIZON_INIT_RATE_LIMIT`        | `5`         | Pre-session `initialize` attempts per second (global cap and per remote address); `0` disables.                                                           |
-| `HORIZON_IP_RATE_LIMIT`          | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-session limits; `0` disables.                                        |
+| `HORIZON_TRUSTED_ORIGINS`        | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                                         |
+| `HORIZON_HTTP_AUTH_METHODS`      | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                                  |
+| `HORIZON_SESSION_IDLE_TTL`       | `300`       | Seconds.                                                                                                                                                                  |
+| `HORIZON_SESSION_ABS_TTL`        | `3600`      | Seconds.                                                                                                                                                                  |
+| `HORIZON_MAX_SESSIONS`           | `8`         | Max concurrent sessions (hard ceiling `64`). Budget about 22 MiB of V8 heap per fully registered session, plus roughly 365 MiB process baseline.                          |
+| `HORIZON_MAX_INFLIGHT_TOOLCALLS` | `8`         | Per-session in-flight tool calls.                                                                                                                                         |
+| `HORIZON_MAX_BODY_BYTES`         | `1048576`   | Max request body bytes (1 MiB).                                                                                                                                           |
+| `HORIZON_SSE_MAX_DURATION`       | `3600`      | Max SSE stream lifetime, seconds.                                                                                                                                         |
+| `HORIZON_RATE_LIMIT_RPS`         | `20`        | Per-session limit, counted per JSON-RPC message per second; `0` disables.                                                                                                 |
+| `HORIZON_INIT_RATE_LIMIT`        | `5`         | Pre-session `initialize` attempts per second (global cap and per remote address); `0` disables.                                                                           |
+| `HORIZON_IP_RATE_LIMIT`          | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-session limits; `0` disables.                                                       |
 
-Size HTTP deployments from the session limit, not only request throughput. The
-default of 8 is intended for a container with at least 1 GiB of memory. Raise it
-only with a matching memory limit and load test; the server rejects values over
-64 to prevent configurations known to exceed Node's normal heap envelope.
+Use the session limit to calculate the necessary memory. Do not use only the request throughput.
+
+The default limit of eight sessions requires a container with at least 1 GiB of memory. Test the load before you increase this limit.
+
+The server rejects values greater than 64. Higher values can exceed the normal Node.js heap limit.
 
 Inbound mTLS settings (when `mtls` is included in `HORIZON_HTTP_AUTH_METHODS`):
 
-| Var                                              | Notes                                                                                                                                                          |
-| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY` | MCP terminates client TLS itself with its own server cert/key (requests a client cert without requiring a trusted CA).                                         |
-| `HORIZON_INBOUND_CERT_HEADER`                    | Alternative: a trusted ingress terminates client TLS and forwards the client cert to the MCP in this header.                                                   |
-| `HORIZON_TRUSTED_PROXY`                          | IP/CIDR the inbound cert header is accepted from; REQUIRED with `HORIZON_INBOUND_CERT_HEADER`; matched on the direct TCP socket peer, never `X-Forwarded-For`. |
+| Var                                              | Notes                                                                                                                                                                    |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY` | MCP terminates client TLS itself with its own server cert/key (requests a client cert without requiring a trusted CA).                                                   |
+| `HORIZON_INBOUND_CERT_HEADER`                    | Alternative: a trusted ingress terminates client TLS and forwards the client cert to the MCP in this header.                                                             |
+| `HORIZON_TRUSTED_PROXY`                          | IP/CIDR the inbound cert header is accepted from; REQUIRED with `HORIZON_INBOUND_CERT_HEADER`; matched on the direct TCP socket peer, never `X-Forwarded-For`.           |
 | `HORIZON_FORWARD_CERT_HEADER`                    | Horizon-facing header the MCP sets with the captured cert; default `SSL_CLIENT_CERT` to match Horizon's `security.http.headers.certificate`; value is a URL-encoded PEM. |
 
-`HORIZON_URL` and the existing auth env vars (`HORIZON_API_ID`/`HORIZON_API_KEY`, `HORIZON_CLIENT_CERT`/`HORIZON_CLIENT_KEY`/`HORIZON_CLIENT_PFX`) are unchanged. In per-caller `mtls` mode `HORIZON_URL` must point at the internal Horizon Play backend that trusts the forwarded cert header (bypassing Horizon's own nginx). HTTP mode refuses to start if `HORIZON_ALLOW_PRIVATE_TLS_PROBE=1`.
+`HORIZON_URL` and the existing authentication variables are unchanged. In per-caller `mtls` mode, set `HORIZON_URL` to the internal Horizon Play backend.
+
+This backend must trust the forwarded certificate header. This connection bypasses the Horizon nginx server.
+
+HTTP mode does not start if `HORIZON_ALLOW_PRIVATE_TLS_PROBE=1`.
 
 ### Development and testing
 
 These variables are read by the test suite only and never by the server itself:
 
-| Variable               | Used by                  | Description                                                  |
-| ---------------------- | ------------------------ | ------------------------------------------------------------ |
-| `HORIZON_E2E_URL`      | `bun run test:e2e`       | Base URL of the Horizon instance for E2E tests.              |
-| `HORIZON_E2E_API_ID`   | `bun run test:e2e`       | API key identifier for E2E tests.                            |
-| `HORIZON_E2E_API_KEY`  | `bun run test:e2e`       | API key secret for E2E tests.                                |
+| Variable                 | Used by                 | Description                                                                                  |
+| ------------------------ | ----------------------- | -------------------------------------------------------------------------------------------- |
+| `HORIZON_E2E_URL`        | `bun run test:e2e`      | Base URL of the Horizon instance for E2E tests.                                              |
+| `HORIZON_E2E_API_ID`     | `bun run test:e2e`      | API key identifier for E2E tests.                                                            |
+| `HORIZON_E2E_API_KEY`    | `bun run test:e2e`      | API key secret for E2E tests.                                                                |
 | `HORIZON_LLM_LIVE_MODEL` | `bun run test:llm:live` | Optional model override for the live LLM evaluation harness; defaults to `claude-haiku-4-5`. |
 
 ## Transports
 
-The server speaks MCP over one of two transports, selected by `HORIZON_TRANSPORT`.
+`HORIZON_TRANSPORT` selects one of two MCP transports.
 
-- **stdio** (default) - local, single user. The MCP client launches the server as a child process and talks to it over stdin/stdout. The credential comes from the environment the client sets (an API key or mTLS to Horizon). This is the right choice for a developer running the server next to their IDE or chat client.
-- **streamable HTTP** (`HORIZON_TRANSPORT=http`) - hosted next to its Horizon, one MCP instance per Horizon. The Horizon URL is always taken from the `HORIZON_URL` environment variable and is never supplied by the client, so there is no multi-tenant routing. A single endpoint (default `/mcp`) serves multiple concurrent client sessions over `POST` / `GET` / `DELETE` with Server-Sent Events (SSE) responses, and each caller's session is isolated. Run a single replica to avoid session affinity; if you must scale out, route on the `Mcp-Session-Id` header so a session always lands on the same replica.
+- **stdio** (default) - Use this transport for one local user. The MCP client starts the server as a child process.
+  The client communicates through standard input and standard output. The client environment supplies an API key or an mTLS credential.
+- **streamable HTTP** (`HORIZON_TRANSPORT=http`) - Use this transport for a hosted server. Deploy one MCP instance for each Horizon instance.
+  The server always reads the Horizon URL from `HORIZON_URL`. A client cannot supply the Horizon URL.
+  One endpoint serves multiple isolated client sessions. The endpoint supports `POST`, `GET`, `DELETE`, and Server-Sent Events (SSE).
+  Use one replica when possible. If you use multiple replicas, route each `Mcp-Session-Id` value to the same replica.
 
 See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP configuration and [Authentication methods](#authentication-methods) for how callers are identified in HTTP mode.
 
 ### Hosting
 
-Deploy one MCP per Horizon, co-located so the MCP-to-Horizon hop stays internal. Reuse Horizon's existing edge (its TLS termination and access control) for the client-to-MCP path rather than exposing the MCP unauthenticated, and pull secrets from your orchestrator's secret store. The server exposes `/healthz` (liveness) and `/readyz` (readiness) endpoints for container probes.
+Deploy one MCP instance for each Horizon instance. Keep the connection from the MCP to Horizon on an internal network.
+
+Use a trusted TLS termination point for client connections. Store secrets in the orchestrator secret store.
+
+The server provides `/healthz` for liveness probes. It provides `/readyz` for readiness probes.
 
 The repository includes a production `Dockerfile`. For a local, loopback-only per-caller deployment, create an untracked `.env.http` file:
 
@@ -248,28 +277,54 @@ Create `.mcp.json` in your project root:
 
 Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for global access) with the same `mcpServers` block as Claude Code.
 
-For Codex, OpenCode, and MCP Inspector configurations, see [docs/client-setup.md](docs/client-setup.md). To point any of the above clients at a standalone binary instead of `bunx`, replace `command` with the absolute path to the downloaded binary and drop the `args` field.
+For Codex, OpenCode, and MCP Inspector configurations, see [docs/client-setup.md](docs/client-setup.md).
+
+To use a standalone binary, set `command` to the absolute path of the binary. Remove the `args` field.
 
 ## Authentication methods
 
-Horizon applies the authenticated principal's RBAC. The MCP does not reimplement Horizon RBAC, but it can further narrow the exposed surface through `HORIZON_READ_ONLY`, `HORIZON_ENABLED_TOOLSETS`, the set of implemented tools, and explicit delete/flush confirmation echoes. It never grants access beyond the forwarded Horizon credential.
+Horizon applies RBAC to the authenticated principal. The MCP does not duplicate Horizon RBAC.
 
-In stdio mode the credential comes from the environment. In streamable HTTP mode, `HORIZON_HTTP_AUTH_METHODS` whitelists one or more caller methods (for example `api-key,service`):
+The MCP can reduce the available operations with these controls:
 
-- **`service`** - the client sends `X-API-SVA` / `X-API-TOKEN`; the MCP forwards the JWKS service-account identity to Horizon. Optional protected OAuth client headers enable automatic OIDC discovery and `client_credentials` renewal before JWT expiry.
-- **`api-key`** - the client sends `X-API-ID` / `X-API-KEY`, which the MCP forwards to Horizon.
-- **`mtls`** (per-caller, terminate-and-forward) - the client presents a TLS client certificate; the MCP (or a trusted ingress) terminates the TLS with `optional_no_ca` semantics (proving possession, not validating the chain) and forwards the certificate to Horizon's Play backend in `HORIZON_FORWARD_CERT_HEADER`. Horizon validates the chain, revocation, and identity. No long-lived secret is forwarded. Most MCP clients cannot present a client certificate, so a local mTLS proxy on the client side is usually needed (see [docs/client-setup.md](docs/client-setup.md)).
+- `HORIZON_READ_ONLY`.
+- `HORIZON_ENABLED_TOOLSETS`.
+- The implemented tool set.
+- Explicit confirmation values for delete and flush operations.
 
-Requests with no credential, a disabled method, an incomplete pair, or multiple complete methods are rejected without fallback. Header credentials require TLS on non-loopback deployments.
+The MCP does not grant access beyond the forwarded Horizon credential.
+
+In stdio mode, the environment supplies the credential. In streamable HTTP mode, `HORIZON_HTTP_AUTH_METHODS` accepts one or more methods.
+
+For example, `api-key,service` enables both of these methods:
+
+- **`service`** - The client sends `X-API-SVA` and `X-API-TOKEN`. The MCP forwards both values directly to Horizon.
+  The client can also send protected OAuth credentials. The MCP uses them to fetch and renew the JWT with `client_credentials`.
+- **`api-key`** - The client sends `X-API-ID` and `X-API-KEY`. The MCP forwards both headers to Horizon.
+- **`mtls`** - The client presents a TLS client certificate. The MCP or a trusted ingress terminates TLS and forwards the certificate.
+  Horizon validates the certificate chain, revocation status, and identity. Most MCP clients require a local mTLS proxy.
+
+The MCP rejects invalid or ambiguous authentication without a fallback. This rule includes the following conditions:
+
+- The request has no credential.
+- The selected method is not enabled.
+- The request has an incomplete credential pair.
+- The request has more than one complete credential type.
+
+Use TLS for header credentials on all non-loopback deployments.
 
 > [!IMPORTANT]
-> **Breaking change** - OIDC browser login (Playwright) has been removed. HTTP service accounts use Horizon's `X-API-SVA` / `X-API-TOKEN` contract; third-party JWT renewal uses headless OAuth `client_credentials`.
+> **Breaking change** - The server no longer supports OIDC browser login with Playwright.
+> HTTP service accounts use `X-API-SVA` and `X-API-TOKEN`.
+> Third-party JWT renewal uses the headless OAuth `client_credentials` flow.
 
 See [docs/authentication.md](docs/authentication.md) for the full step-by-step guide and troubleshooting tips.
 
 ## Tool catalog overview
 
-The 212 tools are grouped into 12 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
+The 212 tools are in 12 domains. Each tool has explicit usage guidance for smaller models.
+
+The table at the top of this README gives the tool counts. The [tool reference](docs/tools-reference.md) gives safety tiers and descriptions.
 
 Knowledge resources are exposed at `horizon://knowledge/*` URIs. See [docs/knowledge-resources.md](docs/knowledge-resources.md) for the full catalog.
 
@@ -384,21 +439,25 @@ bun run validate:ci     # format:check + lint + typecheck + build + truth checks
 
 More granular scripts:
 
-| Command                  | Purpose                                                 |
-| ------------------------ | ------------------------------------------------------- |
-| `bun run dev`            | Start the server with `tsx` (no build step).            |
-| `bun run build`          | Production build via `tsup`.                            |
-| `bun run test`           | Unit tests with Vitest.                                 |
-| `bun run test:e2e`       | E2E tests against a live Horizon instance.              |
-| `bun run test:llm`       | Deterministic tool-selection scenarios (no LLM call).   |
-| `bun run test:llm:live`  | Real Claude-in-the-loop MCP usability tests.            |
-| `bun run lint`           | ESLint over `src/` and `tests/`.                        |
-| `bun run typecheck`      | `tsc --noEmit` only.                                    |
-| `bun run docs:refresh`   | Regenerate embedded docs from upstream sources.         |
+| Command                 | Purpose                                               |
+| ----------------------- | ----------------------------------------------------- |
+| `bun run dev`           | Start the server with `tsx` (no build step).          |
+| `bun run build`         | Production build via `tsup`.                          |
+| `bun run test`          | Unit tests with Vitest.                               |
+| `bun run test:e2e`      | E2E tests against a live Horizon instance.            |
+| `bun run test:llm`      | Deterministic tool-selection scenarios (no LLM call). |
+| `bun run test:llm:live` | Real Claude-in-the-loop MCP usability tests.          |
+| `bun run lint`          | ESLint over `src/` and `tests/`.                      |
+| `bun run typecheck`     | `tsc --noEmit` only.                                  |
+| `bun run docs:refresh`  | Regenerate embedded docs from upstream sources.       |
 
 ### Live LLM evaluation (`test:llm:live`)
 
-`bun run test:llm:live` drives the real Claude Agent SDK against the local Horizon MCP server, asking Claude a curated set of natural-language questions and asserting that it picks the right MCP tools. Use it before merging changes that alter tool names, descriptions, or input schemas - the deterministic ranker in `test:llm` is a fast proxy, but only a real model exposes whether your wording works for an actual user.
+`bun run test:llm:live` runs the Claude Agent SDK against the local Horizon MCP server. Claude receives a controlled set of questions.
+
+The test verifies that Claude selects the correct MCP tools. Run it after you change tool names, descriptions, or input schemas.
+
+The deterministic ranker in `test:llm` gives a fast initial result. A real model gives a better test of user wording.
 
 Prerequisites:
 
@@ -408,7 +467,8 @@ Prerequisites:
 
 Cost / billing:
 
-- Each scenario uses Claude Haiku 4.5 by default and consumes Claude subscription credits; the actual number of turns varies with tool discovery and response size.
+- Each scenario uses Claude Haiku 4.5 by default. Each scenario consumes Claude subscription credits.
+- The number of turns changes with tool discovery and response size.
 - A hard `maxBudgetUsd` cap (default `$0.50`) and `maxTurns` cap (default `10`) are enforced per scenario to bound any runaway loop. Individual scenarios can declare stricter or higher caps; the largest current scenario cap is `$1.00`.
 - Override the model with `HORIZON_LLM_LIVE_MODEL=claude-sonnet-4-6 bun run test:llm:live` when you want a stricter fidelity check.
 
@@ -419,60 +479,73 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 ## Troubleshooting
 
 - **`No Horizon credentials configured`** - exactly one auth mode must be fully configured. Provide both API key variables (`HORIZON_API_ID` + `HORIZON_API_KEY`) or the mTLS variables (cert+key, or pfx). Startup fails closed if neither is set.
-- **TLS handshake failures** - check `HORIZON_URL` uses `https://`, that the Horizon CA is trusted by your system store, and (for development only) that `HORIZON_VERIFY_SSL=false` is honoured.
+- **TLS handshake failures** - Make sure that `HORIZON_URL` uses `https://`. Make sure that the system store trusts the Horizon certificate authority.
+  For development only, you can set `HORIZON_VERIFY_SSL=false`.
 - **`HQL-001` parse errors** - HQL field names are lowercase (`contactemail`, not `contactEmail`). The two exceptions are `groupBy` and `sortedBy`, which are camelCase because they are API parameters rather than query fields. See `horizon://knowledge/query-languages`.
 - **Version compatibility warnings** - the server logs a warning when the connected Horizon version is in `HORIZON_WARN_VERSIONS`. Functionality is best-effort on those versions; promote to `HORIZON_TESTED_VERSIONS` only after running your own E2E suite.
 
 ## Compatibility
 
-| Horizon version | Status                                                                  |
-| --------------- | ----------------------------------------------------------------------- |
-| 2.8.5+          | Tested (full feature set including Base64/Raw computation rules)        |
-| 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                     |
-| 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
-| 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
+| Horizon version | Status                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| 2.8.5+          | Tested (full feature set including Base64/Raw computation rules)                                                |
+| 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                                                             |
+| 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
+| 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
 | 2.10            | Point-in-time QA E2E run completed on 2026-07-02; not yet in the default `HORIZON_TESTED_VERSIONS` support list |
 
-The version lists are operator-configurable. By default only `2.8` is treated as tested and `2.7,2.9` as warning versions. The 2.10 result above validates that QA snapshot and the 2.10-specific configuration tools; it is not a blanket compatibility guarantee for every 2.10 deployment.
+The operator can configure the version lists. By default, the server identifies only version 2.8 as tested.
+
+The server identifies versions 2.7 and 2.9 as warning versions. The version 2.10 result applies only to the specified QA snapshot.
 
 ## What is not supported
 
-The server implements broad configuration administration, including certificate profiles, CAs, PKI and third-party connectors, roles, teams, triggers, MDM profile subtypes, scheduled-task definitions, and other objects listed in [the full tool reference](docs/tools-reference.md). The remaining intentional gaps are narrower:
+The server supports many configuration objects. These objects include profiles, certificate authorities, connectors, roles, teams, triggers, and scheduled-task definitions.
+
+The [tool reference](docs/tools-reference.md) gives the complete list. The following limitations are intentional:
 
 - **Stored credential mutations** - credentials can be listed, but not created, updated, fetched with secret material, or deleted.
 - **Identity-provider and service-account mutations** - these objects are inspectable through read-only tools only.
 - **Principal administration** - there are no principal create/update/delete tools.
 - **Certificate grading policy/ruleset mutations** - listing and inspection are supported; Horizon's covered API surface has no corresponding write tools.
-- **Selected singleton or asymmetric APIs** - system configuration is update-only; archives have no update tool; scheduled-task definitions have CRUD but no `run_scheduled_task` execution tool.
+- **Selected singleton or asymmetric APIs** - System configuration is update-only. Archives have no update tool.
+  Scheduled-task definitions have CRUD tools but do not have a `run_scheduled_task` tool.
 - **Analytics maintenance and SMTP server configuration** - sync/reindex operations and SMTP server administration are not registered.
 
 ## Contributing
 
-PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs formatting, lint, typecheck, build, truth checks, docs diff, unit tests, and the LLM scenario suite). Source `.env.local` first if you have QA credentials; the LLM scenarios degrade gracefully without them but you get more signal with them set. Keep commits to one-line conventional messages (`type: description`).
+Before you open a pull request, run `bun run validate:ci`. This command runs all required local checks.
+
+If you have QA credentials, load `.env.local` first. QA credentials give more test coverage.
+
+Use one-line conventional commit messages with the `type: description` format.
 
 ## Safety and trust caveats
 
 > [!CAUTION]
 > **Experimental software** - this MCP server is experimental and should only be used for exploratory purposes at this time.
 >
-> **Permissions** - Horizon enforces the configured or per-caller identity's RBAC. The MCP may further restrict available operations through read-only mode, toolset filtering, implemented-tool coverage, and delete/flush confirmation echoes, but it cannot make an over-privileged Horizon identity safe. Use a least-privileged identity and client-side approval controls.
+> **Permissions** - Horizon enforces RBAC for the configured identity or caller identity. The MCP can further restrict the available operations.
+> These restrictions cannot make an identity with excessive privileges safe. Use an identity with minimum privileges and use client approval controls.
 >
-> **No approval prompt guarantee** - most mutating tools execute as soon as the client calls them. Do not assume the server will display a confirmation prompt; approval UX is controlled by the MCP client except for the explicit delete/flush echo parameters.
+> **No approval prompt guarantee** - Most tools that change data run when the client calls them. The MCP client controls approval prompts.
+> Only the delete and flush tools require explicit confirmation parameters.
 >
 > **AI-generated output** - all output is AI-generated and should be subject to manual human validation before being relied upon.
 >
-> **Third-party AI providers** - use of AI agents is subject to the terms of service and privacy policy of the AI provider. These are not controlled by the MCP server or by Evertrust.
+> **Third-party AI providers** - The AI provider's terms of service and privacy policy apply to AI agents.
+> The MCP server and Evertrust do not control these terms or policies.
 
 ## Documentation
 
-| Document                                          | Contents                                                                       |
-| ------------------------------------------------- | ------------------------------------------------------------------------------ |
-| [Installation](docs/installation.md)              | Install methods and troubleshooting                                            |
-| [Authentication](docs/authentication.md)          | Supported credential types with environment variable reference                 |
-| [Client setup](docs/client-setup.md)              | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector            |
-| [Tool reference](docs/tools-reference.md)         | All 212 tools by domain with safety tiers                                      |
-| [Knowledge resources](docs/knowledge-resources.md)| 17 core URIs, 4 curated playbooks, generated section resources                 |
-| [Development](docs/development.md)                | Dev setup, tests, linting                                                      |
+| Document                                           | Contents                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------- |
+| [Installation](docs/installation.md)               | Install methods and troubleshooting                                 |
+| [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
+| [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
+| [Tool reference](docs/tools-reference.md)          | All 212 tools by domain with safety tiers                           |
+| [Knowledge resources](docs/knowledge-resources.md) | 17 core URIs, 4 curated playbooks, generated section resources      |
+| [Development](docs/development.md)                 | Dev setup, tests, linting                                           |
 
 ## License
 
