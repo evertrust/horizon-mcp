@@ -179,11 +179,15 @@ export async function getStripMergePutExplicit(
 }
 
 export function normalizeItems(data: unknown): Record<string, unknown>[] {
-  if (data === null || data === undefined) return [];
+  if (data === null || typeof data !== 'object') return [];
   if (Array.isArray(data)) return data as Record<string, unknown>[];
   const obj = data as Record<string, unknown>;
-  if (Array.isArray(obj['items']))
-    return obj['items'] as Record<string, unknown>[];
+  if ('items' in obj) {
+    return Array.isArray(obj['items'])
+      ? (obj['items'] as Record<string, unknown>[])
+      : [];
+  }
+  if (Object.keys(obj).length === 0) return [];
   return [obj];
 }
 

@@ -628,7 +628,10 @@ export function registerTriggerTools(
       }),
     },
     async ({ name }) => {
-      const result = await client.patch(TRIGGER_BASE, { name });
+      const trigger = await client.get<Record<string, unknown>>(
+        `${TRIGGER_BASE}/${encodePathSegment(name)}`,
+      );
+      const result = await client.patch(TRIGGER_BASE, { trigger });
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

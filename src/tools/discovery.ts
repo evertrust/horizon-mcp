@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { HorizonError } from '../client/errors.js';
 import type { HorizonClient } from '../client/http.js';
+import { normalizeItems } from './datasources/shared.js';
 import {
   applyNameFilter,
   buildListResponse,
@@ -100,11 +101,7 @@ export function registerDiscoveryTools(
     },
     async ({ max_items, name_contains }) => {
       const data = await client.get<unknown>(CAMPAIGN_BASE);
-      let items: Record<string, unknown>[] = Array.isArray(data)
-        ? data
-        : (((data as Record<string, unknown>)['items'] as
-            | Record<string, unknown>[]
-            | undefined) ?? [data as Record<string, unknown>]);
+      let items = normalizeItems(data);
       items = applyNameFilter(items, name_contains);
       return {
         content: [
