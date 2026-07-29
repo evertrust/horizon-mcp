@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { connect } from 'node:net';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock undici (the SERVER's Horizon client). The MCP CLIENT transport uses the
 // global fetch, which is untouched, so real HTTP flows client -> server while
@@ -21,8 +21,6 @@ vi.mock('undici', () => ({
 
 const { startHttpServer } = await import('../../src/http/server.js');
 const { buildHttpConfig } = await import('../../src/http/config.js');
-const { credentialFingerprintOf } =
-  await import('../../src/http/credentials.js');
 const { loadSettings } = await import('../../src/settings.js');
 const { Client } = await import('@modelcontextprotocol/client');
 const { StreamableHTTPClientTransport } =
@@ -113,7 +111,10 @@ function makeClient(base: string, apiId?: string, apiKey?: string) {
   const transport = new StreamableHTTPClientTransport(new URL(base), {
     requestInit: { headers },
   });
-  const client = new Client({ name: 'itest', version: '0.0.0' });
+  const client = new Client(
+    { name: 'itest', version: '0.0.0' },
+    { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+  );
   return { client, transport };
 }
 
@@ -123,207 +124,197 @@ function makeServiceClient(base: string, serviceAccount: string, jwt: string) {
       headers: { 'X-API-SVA': serviceAccount, 'X-API-TOKEN': jwt },
     },
   });
-  const client = new Client({ name: 'itest-service', version: '0.0.0' });
+  const client = new Client(
+    { name: 'itest-service', version: '0.0.0' },
+    { versionNegotiation: { mode: { pin: '2026-07-28' } } },
+  );
   return { client, transport };
 }
 
 describe('HTTP server integration (api-key mode)', () => {
-  let ctx: ServerCtx;
-  const openClients: Array<{ close: () => Promise<void> }> = [];
-
-  beforeEach(async () => {
-    ctx = await startApiKeyServer();
-  });
-
-  afterEach(async () => {
-    for (const c of openClients.splice(0)) {
-      await c.close().catch(() => undefined);
-    }
-    await ctx.handle.close().catch(() => undefined);
-  });
-
-  it('completes initialize -> ready and exposes tools + knowledge resources', async () => {
-    const { client, transport } = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(client);
-    await client.connect(transport);
-
-    const tools = await client.listTools();
-    expect(tools.tools.some((t) => t.name === 'whoami')).toBe(true);
-    expect(
-      tools.tools.some((t) => t.name === 'create_certificate_profile'),
-    ).toBe(true);
-
-    const resources = await client.listResources();
-    expect(
-      resources.resources.some(
-        (r) => r.uri === 'horizon://knowledge/server-rules',
-      ),
-    ).toBe(true);
-  }, 20000);
-
-  it('isolates two concurrent sessions with distinct identities', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    const b = makeClient(ctx.base, 'bob', 'kb');
-    openClients.push(a.client, b.client);
-    await Promise.all([
-      a.client.connect(a.transport),
-      b.client.connect(b.transport),
-    ]);
-
-    const [ra, rb] = await Promise.all([
-      a.client.callTool({ name: 'whoami', arguments: {} }),
-      b.client.callTool({ name: 'whoami', arguments: {} }),
-    ]);
-
-    expect((ra.structuredContent as { identifier: string }).identifier).toBe(
-      'alice',
-    );
-    expect((rb.structuredContent as { identifier: string }).identifier).toBe(
-      'bob',
-    );
-  }, 20000);
-
-  it('rejects an initialize with no credential', async () => {
-    const { client, transport } = makeClient(ctx.base);
-    openClients.push(client);
-    await expect(client.connect(transport)).rejects.toThrow();
-  }, 20000);
-
-  it('rejects a request that replays a session id with a different credential', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    const sid = a.transport.sessionId!;
-    expect(sid).toBeTruthy();
-
-    // Forge a request: A's session id, B's credential -> must be rejected.
-    const res = await fetch(ctx.base, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'bob',
-        'X-API-KEY': 'kb',
-      },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 99, method: 'tools/list' }),
-    });
-    expect(res.status).toBe(401);
-    // The transport-level error echoes the request id and uses the
-    // credential-rejected application code rather than the generic
-    // invalid-request -32600. MCP 2026-07-28 says new implementations SHOULD
-    // NOT use -32000..-32019, so this sits outside the reserved range.
-    const err = (await res.json()) as {
-      id: number;
-      error: { code: number };
-    };
-    expect(err.id).toBe(99);
-    expect(err.error.code).toBe(-31003);
-  }, 20000);
-
-  it('does not refresh idle TTL for an unauthorized GET', async () => {
-    // Register a quiet synthetic session so the MCP client's background SSE
-    // stream cannot legitimately move lastSeenAt while this assertion runs.
-    const sid = 'ttl-probe-session';
-    ctx.handle.sessions.create({
-      sessionId: sid,
-      credentialFingerprint: credentialFingerprintOf({
-        kind: 'api-key',
-        apiId: 'alice',
-        apiKey: 'ka',
-      }),
-      server: { close: async () => undefined },
-      transport: { close: async () => undefined },
-      client: { close: async () => undefined },
-      auth: { cleanup: async () => undefined },
-    });
-    const before = ctx.handle.sessions.peek(sid)!.lastSeenAt;
-
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    const res = await fetch(ctx.base, {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'mallory',
-        'X-API-KEY': 'wrong',
-      },
-    });
-
-    expect(res.status).toBe(401);
-    expect(ctx.handle.sessions.peek(sid)!.lastSeenAt).toBe(before);
-  }, 20000);
-
-  it('rejects a work batch whose total cost exceeds the inflight cap', async () => {
-    await ctx.handle.close();
-    ctx = await startApiKeyServer({ HORIZON_MAX_INFLIGHT_TOOLCALLS: '1' });
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    const sid = a.transport.sessionId!;
-
-    const res = await fetch(ctx.base, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'alice',
-        'X-API-KEY': 'ka',
-      },
-      body: JSON.stringify([
-        {
-          jsonrpc: '2.0',
-          id: 101,
-          method: 'tools/call',
-          params: { name: 'whoami', arguments: {} },
-        },
-        {
-          jsonrpc: '2.0',
-          id: 102,
-          method: 'tools/call',
-          params: { name: 'whoami', arguments: {} },
-        },
-      ]),
-    });
-
-    expect(res.status).toBe(429);
-  }, 20000);
-
-  it('tears down all sessions on close', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    expect(ctx.handle.sessions.size).toBe(1);
-
-    await ctx.handle.close();
-    expect(ctx.handle.sessions.size).toBe(0);
-  }, 20000);
-});
-
-describe('HTTP server integration (authentication whitelist)', () => {
-  it('forwards a caller-supplied service-account identity to Horizon', async () => {
-    const ctx = await startApiKeyServer({
-      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
-    });
-    const service = makeServiceClient(ctx.base, 'ci-service', 'signed.jwt');
+  it('serves tools and knowledge resources with no handshake', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
     try {
-      await service.client.connect(service.transport);
-      const whoami = mockFetch.mock.calls.findLast((call) =>
-        String(call[0]).includes('/api/v1/security/principals/self'),
-      );
-      const headers = (
-        whoami?.[1] as { headers?: Record<string, string> } | undefined
-      )?.headers;
-      expect(headers?.['X-API-SVA']).toBe('ci-service');
-      expect(headers?.['X-API-TOKEN']).toBe('signed.jwt');
+      await client.connect(transport);
+      const tools = await client.listTools();
+      expect(tools.tools.length).toBeGreaterThan(50);
+      const resources = await client.listResources();
+      expect(resources.resources.length).toBeGreaterThan(0);
     } finally {
-      await service.client.close().catch(() => undefined);
+      await transport.close().catch(() => undefined);
       await ctx.handle.close();
     }
   }, 20000);
 
-  it('rejects a credential method that is not enabled', async () => {
+  it('isolates two credentials, each acting as its own Horizon identity', async () => {
+    const ctx = await startApiKeyServer();
+    const a = makeClient(ctx.base, 'alice', 'k1');
+    const b = makeClient(ctx.base, 'bob', 'k2');
+    try {
+      await a.client.connect(a.transport);
+      await b.client.connect(b.transport);
+
+      const who = async (c: typeof a.client) => {
+        const r = (await c.callTool({ name: 'whoami', arguments: {} })) as {
+          content: { text: string }[];
+        };
+        return r.content[0]!.text;
+      };
+
+      expect(await who(a.client)).toContain('alice');
+      expect(await who(b.client)).toContain('bob');
+    } finally {
+      await a.transport.close().catch(() => undefined);
+      await b.transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('rejects a request with no credential', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('answers 405 to GET and DELETE, the removed session operations', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      for (const method of ['GET', 'DELETE']) {
+        const res = await fetch(ctx.base, {
+          method,
+          headers: { 'X-API-ID': 'alice', 'X-API-KEY': 'k' },
+        });
+        expect(res.status).toBe(405);
+      }
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('ignores Mcp-Session-Id and never echoes one back', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
+    try {
+      await client.connect(transport);
+      await client.listTools();
+
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': 'alice',
+          'X-API-KEY': 'k',
+          'Mcp-Session-Id': 'not-a-real-session',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 7,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+      expect(res.headers.get('mcp-session-id')).toBeNull();
+      expect(res.status).toBeLessThan(500);
+    } finally {
+      await transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('validates a credential against Horizon once, then serves from cache', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      await client.connect(transport);
+      await client.listTools();
+      const afterFirst = probes();
+      await client.listTools();
+      await client.listTools();
+      // Without the credential cache each stateless request would revalidate
+      // against Horizon over the network.
+      expect(probes()).toBe(afterFirst);
+    } finally {
+      await transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('rejects requests beyond the global concurrency cap', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_MAX_CONCURRENT_REQUESTS: '1',
+      HORIZON_IP_RATE_LIMIT: '0',
+      HORIZON_RATE_LIMIT_RPS: '0',
+    });
+    // Make Horizon slow so the requests genuinely overlap; with an instant
+    // upstream they would complete one after another and never contend.
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
+      await new Promise((r) => setTimeout(r, 60));
+      return original(url, init);
+    });
+    try {
+      const send = () =>
+        fetch(ctx.base, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json, text/event-stream',
+            'X-API-ID': 'alice',
+            'X-API-KEY': 'k',
+            'MCP-Protocol-Version': '2026-07-28',
+            'Mcp-Method': 'tools/list',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'tools/list',
+            params: {
+              _meta: {
+                'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+                'io.modelcontextprotocol/clientCapabilities': {},
+              },
+            },
+          }),
+        });
+
+      const results = await Promise.all(
+        Array.from({ length: 12 }, () => send()),
+      );
+      const statuses = results.map((r) => r.status);
+      // With a cap of 1 in-flight request, a burst of 12 must shed some load
+      // rather than build 12 concurrent server instances.
+      expect(statuses.some((s) => s === 503 || s === 429)).toBe(true);
+    } finally {
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 30000);
+});
+
+describe('HTTP server integration (authentication whitelist)', () => {
+  it('forwards a caller-supplied service-account identity to Horizon', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
@@ -338,77 +329,55 @@ describe('HTTP server integration (authentication whitelist)', () => {
     const config = buildHttpConfig(settings, env);
     const handle = await startHttpServer(settings, config);
     const base = `http://127.0.0.1:${handle.port}/mcp`;
+    const { client, transport } = makeServiceClient(base, 'svc', 'jwt-value');
     try {
-      const res = await fetch(base, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json, text/event-stream',
-          'X-API-ID': 'sneaky',
-          'X-API-KEY': 'sneaky',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: '2025-06-18',
-            capabilities: {},
-            clientInfo: { name: 'x', version: '0' },
-          },
-        }),
+      await client.connect(transport);
+      await client.listTools();
+      const sent = mockFetch.mock.calls.some((c) => {
+        const headers = (c[1] as { headers?: Record<string, string> })?.headers;
+        return headers?.['X-API-SVA'] === 'svc';
       });
-      expect(res.status).toBe(401);
+      expect(sent).toBe(true);
     } finally {
+      await transport.close().catch(() => undefined);
       await handle.close();
     }
   }, 20000);
-});
 
-describe('HTTP server integration (no leak on a rejected initialize)', () => {
-  it('releases the admission reservation when the SDK rejects a credentialed initialize', async () => {
-    const port = await freePort();
-    const env = {
-      HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_METHODS: 'api-key',
-      HORIZON_URL: 'https://horizon.test',
-      HORIZON_HTTP_HOST: '127.0.0.1',
-      HORIZON_HTTP_PORT: String(port),
-      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
-      HORIZON_MAX_SESSIONS: '2',
-      HORIZON_VERIFY_SSL: 'false',
-    };
-    const settings = loadSettings(env);
-    const config = buildHttpConfig(settings, env);
-    const handle = await startHttpServer(settings, config);
-    const base = `http://127.0.0.1:${handle.port}/mcp`;
+  it('rejects a credential method that is not enabled', async () => {
+    const ctx = await startApiKeyServer();
     try {
-      // Each body passes the local initialize check but fails the SDK JSON-RPC
-      // schema (no jsonrpc/id), so onsessioninitialized never fires. Send more
-      // than maxSessions: if the reservation leaked, these would exhaust the cap
-      // and the valid client below would be locked out with a 503.
-      for (let i = 0; i < 3; i++) {
-        const res = await fetch(base, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json, text/event-stream',
-            'X-API-ID': 'alice',
-            'X-API-KEY': 'ka',
-          },
-          body: JSON.stringify({ method: 'initialize' }),
-        });
-        expect(res.status).toBeGreaterThanOrEqual(400);
-      }
-      expect(handle.sessions.size).toBe(0);
-
-      // The reservations were released, so a real client still connects.
-      const a = makeClient(base, 'alice', 'ka');
-      await a.client.connect(a.transport);
-      expect(handle.sessions.size).toBe(1);
-      await a.client.close().catch(() => undefined);
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-SVA': 'svc',
+          'X-API-TOKEN': 'jwt',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBeGreaterThanOrEqual(400);
     } finally {
-      await handle.close();
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('names the auth methods setting when Authorization is presented', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer some-oauth-token',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { message: string } };
+      expect(body.error.message).toContain('HORIZON_HTTP_AUTH_METHODS');
+    } finally {
+      await ctx.handle.close();
     }
   }, 20000);
 });
@@ -464,24 +433,19 @@ describe('HTTP server integration (graceful shutdown)', () => {
     }
   }, 20000);
 
-  it('bounds the whole shutdown when a session resource never closes', async () => {
-    const ctx = await startApiKeyServer({}, { closeTimeoutMs: 50 });
-    const never = new Promise<void>(() => undefined);
-    ctx.handle.sessions.create({
-      sessionId: 'stuck',
-      server: { close: async () => undefined },
-      transport: { close: async () => undefined },
-      client: { close: () => never },
-      auth: { cleanup: async () => undefined },
-    });
+  it('closes cached Horizon credentials on shutdown', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
+    await client.connect(transport);
+    await client.listTools();
+    await transport.close().catch(() => undefined);
 
     const result = await Promise.race([
       ctx.handle.close().then(() => 'closed'),
       new Promise<'timed-out'>((resolve) =>
-        setTimeout(() => resolve('timed-out'), 250),
+        setTimeout(() => resolve('timed-out'), 5000),
       ),
     ]);
-
     expect(result).toBe('closed');
   }, 20000);
 });

@@ -218,14 +218,13 @@ describe('loadSettings', () => {
       expect(s.trustedOrigins).toEqual([]);
       expect(s.httpAuthMethods).toBe(HttpAuthMethod.ApiKey);
       expect(s.httpAuthMode).toBe('');
-      expect(s.sessionIdleTtl).toBe(300);
-      expect(s.sessionAbsTtl).toBe(3600);
-      expect(s.maxSessions).toBe(8);
+      expect(s.maxConcurrentRequests).toBe(32);
+      expect(s.credentialCacheMax).toBe(64);
+      expect(s.credentialCacheTtl).toBe(300);
       expect(s.maxInflightToolcalls).toBe(8);
       expect(s.maxBodyBytes).toBe(1048576);
       expect(s.sseMaxDuration).toBe(3600);
       expect(s.rateLimitRps).toBe(20);
-      expect(s.initRateLimit).toBe(5);
       expect(s.ipRateLimit).toBe(600);
       expect(s.httpTlsCert).toBe('');
       expect(s.httpTlsKey).toBe('');
@@ -283,25 +282,39 @@ describe('loadSettings', () => {
     it('coerces numeric HTTP settings', () => {
       const s = loadSettings({
         HORIZON_HTTP_PORT: '9443',
-        HORIZON_MAX_SESSIONS: '16',
+        HORIZON_MAX_CONCURRENT_REQUESTS: '16',
         HORIZON_MAX_BODY_BYTES: '2097152',
       });
       expect(s.httpPort).toBe(9443);
-      expect(s.maxSessions).toBe(16);
+      expect(s.maxConcurrentRequests).toBe(16);
       expect(s.maxBodyBytes).toBe(2097152);
     });
 
-    it('rejects a session limit above the supported memory safety ceiling', () => {
-      expect(() => loadSettings({ HORIZON_MAX_SESSIONS: '65' })).toThrow();
+    it('rejects a concurrency limit above the supported memory ceiling', () => {
+      expect(() =>
+        loadSettings({ HORIZON_MAX_CONCURRENT_REQUESTS: '257' }),
+      ).toThrow();
+    });
+
+    it('bounds the credential cache size and TTL', () => {
+      expect(() =>
+        loadSettings({ HORIZON_CREDENTIAL_CACHE_MAX: '513' }),
+      ).toThrow();
+      expect(() =>
+        loadSettings({ HORIZON_CREDENTIAL_CACHE_TTL: '29' }),
+      ).toThrow();
+      expect(() =>
+        loadSettings({ HORIZON_CREDENTIAL_CACHE_TTL: '3601' }),
+      ).toThrow();
     });
 
     it('allows 0 to disable the rate limits', () => {
       const s = loadSettings({
         HORIZON_RATE_LIMIT_RPS: '0',
-        HORIZON_INIT_RATE_LIMIT: '0',
+        HORIZON_IP_RATE_LIMIT: '0',
       });
       expect(s.rateLimitRps).toBe(0);
-      expect(s.initRateLimit).toBe(0);
+      expect(s.ipRateLimit).toBe(0);
     });
 
     it('rejects a non-numeric port', () => {

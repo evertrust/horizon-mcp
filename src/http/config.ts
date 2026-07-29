@@ -278,6 +278,42 @@ export function buildHttpConfig(
         `set a comma- or pipe-separated whitelist such as "api-key,service"`,
     );
   }
+
+  // MCP 2026-07-28 removed protocol sessions. Fail closed rather than let a
+  // deployment believe a session limit is still in force.
+  const removedSessionVars: [string, string, string][] = [
+    [
+      'HORIZON_MAX_SESSIONS',
+      settings.maxSessions,
+      'HORIZON_MAX_CONCURRENT_REQUESTS',
+    ],
+    [
+      'HORIZON_SESSION_IDLE_TTL',
+      settings.sessionIdleTtl,
+      'HORIZON_CREDENTIAL_CACHE_TTL',
+    ],
+    [
+      'HORIZON_SESSION_ABS_TTL',
+      settings.sessionAbsTtl,
+      'HORIZON_CREDENTIAL_CACHE_TTL',
+    ],
+  ];
+  for (const [name, value, replacement] of removedSessionVars) {
+    if (value) {
+      fail(
+        `${name} is no longer supported: MCP revision 2026-07-28 removed ` +
+          `protocol sessions and this server is now stateless. Use ` +
+          `${replacement} instead.`,
+      );
+    }
+  }
+  if (settings.initRateLimit) {
+    fail(
+      `HORIZON_INIT_RATE_LIMIT is no longer supported: there is no ` +
+        `"initialize" request to rate-limit under MCP revision 2026-07-28. ` +
+        `Use HORIZON_RATE_LIMIT_RPS and HORIZON_IP_RATE_LIMIT instead.`,
+    );
+  }
   const acceptedAuthMethods = assertValidAuthMethodMask(
     settings.httpAuthMethods,
   );

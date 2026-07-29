@@ -87,17 +87,34 @@ const settingsSchema = z.object({
   // HTTP startup can fail with an actionable migration error instead of
   // silently ignoring an old HORIZON_HTTP_AUTH_MODE deployment variable.
   httpAuthMode: z.string().default(''),
-  sessionIdleTtl: z.coerce.number().int().positive().default(300),
-  sessionAbsTtl: z.coerce.number().int().positive().default(3600),
-  // A fully registered MCP server currently costs roughly 22 MiB of V8 heap
-  // per session. Keep the default safe for a 1 GiB container and reject
-  // configurations whose projected heap use exceeds the supported envelope.
-  maxSessions: z.coerce.number().int().positive().max(64).default(8),
+  // MCP 2026-07-28 has no protocol sessions, so the session knobs below are
+  // gone. They are kept in the parsed shape so HTTP startup fails with an
+  // actionable migration error naming the replacement instead of silently
+  // ignoring an existing deployment's variables.
+  sessionIdleTtl: z.string().default(''),
+  sessionAbsTtl: z.string().default(''),
+  maxSessions: z.string().default(''),
+  initRateLimit: z.string().default(''),
+
+  // Bounds simultaneous in-flight requests. Serving is now per-request: each
+  // one builds its own MCP server instance, so this is what caps peak heap.
+  // At the measured ~1.3 MiB marginal cost per instance the default is
+  // comfortable for a 1 GiB container.
+  maxConcurrentRequests: z.coerce
+    .number()
+    .int()
+    .positive()
+    .max(256)
+    .default(32),
+  // Validated Horizon credentials are cached across requests; without this
+  // every request would re-validate against Horizon over the network.
+  credentialCacheMax: z.coerce.number().int().positive().max(512).default(64),
+  credentialCacheTtl: z.coerce.number().int().min(30).max(3600).default(300),
+
   maxInflightToolcalls: z.coerce.number().int().positive().default(8),
   maxBodyBytes: z.coerce.number().int().positive().default(1048576),
   sseMaxDuration: z.coerce.number().int().positive().default(3600),
   rateLimitRps: z.coerce.number().int().nonnegative().default(20),
-  initRateLimit: z.coerce.number().int().nonnegative().default(5),
   ipRateLimit: z.coerce.number().int().nonnegative().default(600),
 
   // -- Inbound mTLS (when HORIZON_HTTP_AUTH_METHODS includes mtls) ----------

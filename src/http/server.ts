@@ -1,17 +1,16 @@
-import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
-import type { McpServer } from '@modelcontextprotocol/server';
+import { toNodeHandler } from '@modelcontextprotocol/node';
+import { createMcpHandler } from '@modelcontextprotocol/server';
 import express, {
   type NextFunction,
   type Request,
   type Response,
 } from 'express';
 import { rateLimit } from 'express-rate-limit';
-import { randomUUID } from 'node:crypto';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { readFileSync } from 'node:fs';
 import { type Server, createServer as createHttpServer } from 'node:http';
 import { createServer as createHttpsServer } from 'node:https';
 
-import type { AuthProvider } from '../auth/base.js';
 import { HorizonError } from '../client/errors.js';
 import { HorizonClient } from '../client/http.js';
 import { getLogger } from '../logging.js';
@@ -19,36 +18,26 @@ import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
 import { formatHttpAuthMethods } from './auth-methods.js';
 import type { HttpConfig } from './config.js';
+import { CredentialCache, type CredentialEntry } from './credential-cache.js';
 import {
   CredentialError,
+  type CredentialMaterial,
   buildSessionAuth,
   credentialFingerprintOf,
   extractCredential,
 } from './credentials.js';
-import {
-  credentialFingerprint,
-  fingerprintsMatch,
-  shortFingerprint,
-} from './fingerprint.js';
+import { shortFingerprint } from './fingerprint.js';
 import { buildSensitiveHeaderSet, scrubSensitiveHeaders } from './headers.js';
-import {
-  type JsonRpcId,
-  firstId,
-  jsonRpcErrorBody,
-  messagesOf,
-  methodsOf,
-  validateInitialize,
-} from './jsonrpc.js';
+import { type JsonRpcId, firstId, jsonRpcErrorBody } from './jsonrpc.js';
 import { corsHeaders, isHostAllowed, isOriginAllowed } from './middleware.js';
 import { RateLimiter } from './rate-limit.js';
-import { SessionManager } from './session-manager.js';
+import { KeyedSemaphore, Semaphore } from './semaphore.js';
 
 const logger = getLogger('horizon_mcp.http');
 
 export interface HttpServerHandle {
   port: number;
   url: string;
-  sessions: SessionManager;
   close(): Promise<void>;
 }
 
@@ -56,10 +45,6 @@ export interface HttpServerOptions {
   /** Primarily injectable so shutdown behavior can be tested quickly. */
   closeTimeoutMs?: number;
 }
-
-type TransportLike = {
-  handleRequest(req: unknown, res: unknown, body?: unknown): Promise<void>;
-};
 
 // Application-defined JSON-RPC error codes. MCP 2026-07-28 says new
 // implementations SHOULD NOT use -32000..-32019, which it reserves for the
@@ -102,20 +87,10 @@ export async function startHttpServer(
     config.mtls?.inbound?.header ?? '',
   ]);
 
-  // The init limiter enforces a per-remote-address cap AND an aggregate cap via
-  // a shared '__global__' key. Give the global key a higher ceiling (a multiple
-  // of the per-peer limit) so a single peer stays capped while total server
-  // throughput is not artificially pinned to one peer's budget.
-  const GLOBAL_INIT_KEY = '__global__';
-  const GLOBAL_INIT_MULTIPLIER = 4;
-  const initLimiter = new RateLimiter(settings.initRateLimit, undefined, {
-    [GLOBAL_INIT_KEY]: settings.initRateLimit * GLOBAL_INIT_MULTIPLIER,
-  });
-  const sessionLimiter = new RateLimiter(settings.rateLimitRps);
+  // Rate limiting is keyed by credential fingerprint now that there is no
+  // session id to key on. HORIZON_IP_RATE_LIMIT=0 disables the coarse backstop.
+  const credentialLimiter = new RateLimiter(settings.rateLimitRps);
 
-  // Coarse per-IP backstop (defense-in-depth in front of the fine-grained init
-  // and per-session limiters). Keyed by the socket peer (Express trust proxy
-  // stays off); HORIZON_IP_RATE_LIMIT=0 disables it.
   const ipLimiter = rateLimit({
     windowMs: 1000,
     limit: settings.ipRateLimit > 0 ? settings.ipRateLimit : 1,
@@ -125,15 +100,45 @@ export async function startHttpServer(
     validate: false,
   });
 
-  const manager = new SessionManager({
-    maxSessions: settings.maxSessions,
-    idleTtlMs: settings.sessionIdleTtl * 1000,
-    absTtlMs: settings.sessionAbsTtl * 1000,
-    maxInflight: settings.maxInflightToolcalls,
-    onTeardown: (sessionId) => {
-      sessionLimiter.forget(sessionId);
+  // Deleting the session layer removed the only bound on how many fully
+  // registered server instances can exist at once. These restore it.
+  const globalConcurrency = new Semaphore(settings.maxConcurrentRequests);
+  const perCredentialConcurrency = new KeyedSemaphore(
+    settings.maxInflightToolcalls,
+  );
+
+  const credentials = new CredentialCache({
+    max: settings.credentialCacheMax,
+    ttlMs: settings.credentialCacheTtl * 1000,
+    onCleanupError: (fingerprint, err) =>
+      logger.error(
+        `credential cleanup failed for ${shortFingerprint(fingerprint)}: ${err}`,
+      ),
+    build: async (fingerprint) => {
+      const material = pendingMaterial.get(fingerprint);
+      if (!material) {
+        throw new CredentialError(400, 'credential material unavailable');
+      }
+      const built = buildSessionAuth(material, config, settings);
+      const client = new HorizonClient(settings.url, built.auth, clientOptions);
+      try {
+        await client.validateAuth();
+        built.auth.markValidated();
+      } catch (err) {
+        // Never cache a failed validation: close what was built and rethrow so
+        // the next request revalidates.
+        await client.close().catch(() => undefined);
+        await built.auth.cleanup().catch(() => undefined);
+        throw err;
+      }
+      return { client, auth: built.auth };
     },
   });
+
+  // Hands the extracted credential material to the cache's build function for
+  // the duration of one miss. Keyed by fingerprint so concurrent misses on
+  // different credentials never read each other's material.
+  const pendingMaterial = new Map<string, CredentialMaterial>();
 
   // -32600 (Invalid Request) for genuinely malformed requests; the
   // APP_ERROR_* codes above for server-side rejections. The id echoes the
@@ -162,269 +167,116 @@ export async function startHttpServer(
     throw err;
   }
 
-  // Verify the resent credential still matches the session (anti-hijack).
-  // Returns true to continue, false after sending an error response.
-  function ensureFingerprintBinding(
+  // The per-request credential, made available to the MCP server factory.
+  // `req.auth` is deliberately NOT used for this: that slot is reserved for
+  // verified MCP AuthInfo if OAuth is ever added (see
+  // docs/adr/0001-mcp-authorization.md), and the Horizon credential is a
+  // different principal.
+  const requestCredential = new AsyncLocalStorage<CredentialEntry>();
+
+  // One instance per request: MCP 2026-07-28 has no sessions, and the SDK
+  // requires a fresh server per serving unit. Tool schemas are hoisted to
+  // module scope so this costs roughly 5 ms and ~1.3 MiB.
+  const handler = createMcpHandler(
+    () => {
+      const entry = requestCredential.getStore();
+      if (!entry) {
+        throw new Error('no Horizon credential bound to this request');
+      }
+      return createSessionServer(entry.client, {
+        enabledToolsets: settings.enabledToolsets,
+        readOnly: settings.readOnly,
+      });
+    },
+    {
+      // Modern-only: 2025-era requests are answered with the
+      // unsupported-protocol-version error naming the revisions we serve.
+      legacy: 'reject',
+      onerror: (err) => logger.error(`MCP handler error: ${err}`),
+    },
+  );
+
+  const nodeHandler = toNodeHandler(handler, {
+    onerror: (err) => logger.error(`MCP node adapter error: ${err}`),
+  });
+
+  /**
+   * Resolve the caller's credential, admitting the request only if it fits
+   * inside both concurrency budgets. Returns the entry plus a release function,
+   * or undefined after an error response has been sent.
+   */
+  async function admit(
     req: Request,
     res: Response,
-    fingerprint: string | undefined,
-  ): boolean {
-    if (!fingerprint) return true;
+  ): Promise<{ entry: CredentialEntry; release: () => void } | undefined> {
     const id = firstId(req.body);
-    let material;
+
+    let material: CredentialMaterial;
     try {
       material = extractCredential(req, config);
     } catch (err) {
       handleCredentialError(res, err, id);
-      return false;
-    }
-    const fp = credentialFingerprintOf(material);
-    if (!fp || !fingerprintsMatch(fp, fingerprint)) {
-      sendError(
-        res,
-        401,
-        id,
-        'session credential does not match',
-        APP_ERROR_CREDENTIAL,
-      );
-      return false;
-    }
-    return true;
-  }
-
-  async function dispatch(
-    transport: TransportLike,
-    req: Request,
-    res: Response,
-    body?: unknown,
-  ): Promise<void> {
-    // Scrub the captured secret headers from BOTH req.headers and
-    // req.rawHeaders before the SDK (via @hono/node-server) reads them.
-    scrubSensitiveHeaders(req, sensitive);
-    await transport.handleRequest(req, res, body);
-  }
-
-  async function handleInitialize(req: Request, res: Response): Promise<void> {
-    const body: unknown = req.body;
-    const valid = validateInitialize(body);
-    if (!valid.ok) {
-      sendError(res, 400, firstId(body), valid.reason);
-      return;
+      return undefined;
     }
 
-    const peer = req.socket.remoteAddress ?? 'unknown';
-    if (!initLimiter.tryAcquireAll([GLOBAL_INIT_KEY, peer])) {
+    const fingerprint = credentialFingerprintOf(material);
+    if (!fingerprint) {
+      sendError(res, 400, id, 'unusable credential', APP_ERROR_CREDENTIAL);
+      return undefined;
+    }
+
+    if (!credentialLimiter.tryAcquire(fingerprint, 1)) {
+      sendError(res, 429, id, 'rate limit exceeded', APP_ERROR_RATE_LIMITED);
+      return undefined;
+    }
+
+    const releaseGlobal = globalConcurrency.tryAcquire();
+    if (!releaseGlobal) {
+      sendError(res, 503, id, 'server at capacity', APP_ERROR_CAPACITY);
+      return undefined;
+    }
+    const releaseCredential = perCredentialConcurrency.tryAcquire(fingerprint);
+    if (!releaseCredential) {
+      releaseGlobal();
       sendError(
         res,
         429,
-        firstId(body),
-        'too many initialization attempts',
-        APP_ERROR_RATE_LIMITED,
-      );
-      return;
-    }
-    // Reserve capacity atomically: the session is only registered later, inside
-    // onsessioninitialized, after the validateAuth + connect awaits below, so a
-    // plain canCreate() check would let concurrent initializes overshoot.
-    if (!manager.tryReserve()) {
-      sendError(
-        res,
-        503,
-        firstId(body),
-        'maximum sessions reached',
+        id,
+        'too many concurrent requests for this credential',
         APP_ERROR_CAPACITY,
       );
-      return;
+      return undefined;
     }
+    const release = () => {
+      releaseCredential();
+      releaseGlobal();
+    };
 
-    // Own every resource until the session is registered. If the SDK rejects the
-    // initialize (e.g. a credentialed body that fails JSONRPCMessageSchema),
-    // onsessioninitialized never fires and the session is never tracked, so the
-    // finally below must release the reservation and close the orphans.
-    let registered = false;
-    let client: HorizonClient | undefined;
-    let auth: AuthProvider | undefined;
-    let mcp: McpServer | undefined;
     try {
-      let material;
-      try {
-        material = extractCredential(req, config);
-      } catch (err) {
-        handleCredentialError(res, err, firstId(body));
-        return;
+      pendingMaterial.set(fingerprint, material);
+      const entry = await credentials.get(fingerprint);
+      return { entry, release };
+    } catch (err) {
+      release();
+      if (err instanceof CredentialError) {
+        handleCredentialError(res, err, id);
+        return undefined;
       }
-
-      const built = buildSessionAuth(material, config, settings);
-      auth = built.auth;
-      const fingerprint = built.fingerprint;
-      client = new HorizonClient(settings.url, auth, clientOptions);
-      try {
-        await client.validateAuth();
-        auth.markValidated();
-      } catch (err) {
-        const status =
-          err instanceof HorizonError && err.statusCode >= 400
-            ? err.statusCode
-            : 502;
-        sendError(
-          res,
-          status,
-          firstId(body),
-          status === 502 ? 'horizon unreachable' : 'authentication failed',
-          APP_ERROR_CREDENTIAL,
-        );
-        return;
-      }
-
-      mcp = createSessionServer(client, {
-        enabledToolsets: settings.enabledToolsets,
-        readOnly: settings.readOnly,
-      });
-      // const aliases so the closure sees definitely-assigned values.
-      const sessionClient = client;
-      const sessionAuth = auth;
-      const sessionMcp = mcp;
-      const transport = new NodeStreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (sessionId) => {
-          manager.create({
-            sessionId,
-            server: sessionMcp,
-            transport,
-            client: sessionClient,
-            auth: sessionAuth,
-            credentialFingerprint: fingerprint,
-          });
-          registered = true;
-          logger.info('session initialized', {
-            session: shortFingerprint(credentialFingerprint(sessionId)),
-          });
-        },
-        onsessionclosed: (sessionId) => {
-          void manager.handleSessionClosed(sessionId);
-        },
-      });
-      mcp.server.oninitialized = () => {
-        const sid = transport.sessionId;
-        if (sid) manager.markReady(sid);
-      };
-      await mcp.connect(transport);
-
-      await dispatch(transport as unknown as TransportLike, req, res, body);
-    } finally {
-      if (!registered) {
-        manager.releaseReservation();
-        // server.close() cascades to the transport in SDK 1.29.0.
-        if (mcp) await mcp.close().catch(() => undefined);
-        if (client) await client.close().catch(() => undefined);
-        if (auth) await auth.cleanup().catch(() => undefined);
-      }
-    }
-  }
-
-  async function handleExistingPost(
-    req: Request,
-    res: Response,
-    sessionId: string,
-  ): Promise<void> {
-    // Look up WITHOUT refreshing the idle timer: only an authenticated caller
-    // (fingerprint check below) should keep the session alive.
-    const record = manager.peek(sessionId);
-    if (!record) {
-      sendError(res, 404, firstId(req.body), 'session not found');
-      return;
-    }
-    if (!ensureFingerprintBinding(req, res, record.credentialFingerprint))
-      return;
-    manager.touch(sessionId);
-
-    const body: unknown = req.body;
-    const methods = methodsOf(body);
-
-    if (record.state === 'initializing') {
-      const handshakeOnly = methods.every(
-        (m) => m === 'initialize' || m === 'notifications/initialized',
-      );
-      if (!handshakeOnly) {
-        sendError(res, 409, firstId(body), 'session is not ready');
-        return;
-      }
-    }
-
-    // Rate limit is charged per JSON-RPC message (a batch of N costs N),
-    // including method-less messages such as responses/notifications.
-    const messageCount = messagesOf(body).length;
-    if (
-      messageCount > 0 &&
-      !sessionLimiter.tryAcquire(sessionId, messageCount)
-    ) {
+      const status =
+        err instanceof HorizonError && err.statusCode >= 400
+          ? err.statusCode
+          : 502;
       sendError(
         res,
-        429,
-        firstId(body),
-        'rate limit exceeded',
-        APP_ERROR_RATE_LIMITED,
+        status,
+        id,
+        status === 502 ? 'horizon unreachable' : 'authentication failed',
+        APP_ERROR_CREDENTIAL,
       );
-      return;
+      return undefined;
+    } finally {
+      pendingMaterial.delete(fingerprint);
     }
-
-    const workCount = methods.filter(
-      (m) => m !== 'initialize' && m !== 'notifications/initialized',
-    ).length;
-    if (workCount > 0) {
-      if (!manager.reserveInflight(sessionId, workCount)) {
-        sendError(
-          res,
-          429,
-          firstId(body),
-          'too many in-flight tool calls',
-          APP_ERROR_CAPACITY,
-        );
-        return;
-      }
-      const release = once(() => manager.releaseInflight(sessionId, workCount));
-      res.on('close', release);
-      res.on('finish', release);
-    }
-
-    await dispatch(
-      record.transport as unknown as TransportLike,
-      req,
-      res,
-      body,
-    );
-  }
-
-  async function handleSessionStream(
-    req: Request,
-    res: Response,
-  ): Promise<void> {
-    const sessionId = headerStr(req.headers['mcp-session-id']);
-    if (!sessionId) {
-      sendError(res, 400, null, 'missing Mcp-Session-Id');
-      return;
-    }
-    // Authenticate before refreshing the idle timer. Otherwise an attacker who
-    // knows a session id can keep it alive indefinitely with bad credentials.
-    const record = manager.peek(sessionId);
-    if (!record) {
-      sendError(res, 404, null, 'session not found');
-      return;
-    }
-    if (!ensureFingerprintBinding(req, res, record.credentialFingerprint))
-      return;
-    manager.touch(sessionId);
-
-    if (req.method === 'GET') {
-      res.setTimeout(settings.sseMaxDuration * 1000);
-      // A standalone SSE stream refreshes lastSeenAt only at open; count it as
-      // an active stream so the idle sweep does not reap the live connection.
-      manager.addStream(sessionId);
-      const release = once(() => manager.removeStream(sessionId));
-      res.on('close', release);
-      res.on('finish', release);
-    }
-    await dispatch(record.transport as unknown as TransportLike, req, res);
   }
 
   // -- Express app ----------------------------------------------------------
@@ -476,27 +328,37 @@ export async function startHttpServer(
 
   const jsonParser = express.json({ limit: settings.maxBodyBytes });
 
+  // GET and DELETE were the 2025 session operations; `createMcpHandler`
+  // answers them with 405 itself, so the method is not routed here.
   app.all(
     config.path,
     ipLimiter,
     hostOriginGuard,
     jsonParser,
     async (req: Request, res: Response) => {
+      let release: (() => void) | undefined;
       try {
-        if (req.method === 'POST') {
-          const sessionId = headerStr(req.headers['mcp-session-id']);
-          if (sessionId) {
-            await handleExistingPost(req, res, sessionId);
-          } else {
-            await handleInitialize(req, res);
-          }
-          return;
-        }
-        if (req.method === 'GET' || req.method === 'DELETE') {
-          await handleSessionStream(req, res);
-          return;
-        }
-        sendError(res, 405, null, 'method not allowed');
+        const admitted = await admit(req, res);
+        if (!admitted) return;
+        release = admitted.release;
+
+        // Scrub the captured secret headers from BOTH req.headers and
+        // req.rawHeaders before the SDK reads them: @hono/node-server rebuilds
+        // Web headers from the raw array.
+        scrubSensitiveHeaders(req, sensitive);
+
+        const done = once(release);
+        res.on('close', done);
+        res.on('finish', done);
+        release = undefined;
+
+        // The parsed body MUST be passed explicitly. express.json() has already
+        // consumed the stream, and toNodeHandler treats a function third
+        // argument (Express's `next`) as absent rather than as a body, so
+        // mounting this as bare middleware would hand the SDK an empty body.
+        await requestCredential.run(admitted.entry, () =>
+          nodeHandler(req, res, req.body),
+        );
       } catch (err) {
         logger.error(`Unhandled HTTP error: ${err}`);
         if (!res.headersSent) {
@@ -504,6 +366,8 @@ export async function startHttpServer(
             .status(500)
             .json(jsonRpcErrorBody(null, -32603, 'internal error'));
         }
+      } finally {
+        release?.();
       }
     },
   );
@@ -563,20 +427,14 @@ export async function startHttpServer(
   const boundPort =
     typeof address === 'object' && address ? address.port : config.port;
 
+  // Expire cached credentials and bound the rate-limiter key maps.
   const sweepIntervalMs = Math.min(
     60_000,
-    Math.max(
-      1000,
-      Math.floor(
-        Math.min(settings.sessionIdleTtl, settings.sessionAbsTtl) * 500,
-      ),
-    ),
+    Math.max(1000, Math.floor(settings.credentialCacheTtl * 500)),
   );
   const sweeper = setInterval(() => {
-    void manager.sweepExpired();
-    // Bound the rate-limiter key maps (e.g. the per-remote-address init limiter).
-    initLimiter.prune();
-    sessionLimiter.prune();
+    void credentials.sweep();
+    credentialLimiter.prune();
   }, sweepIntervalMs);
   sweeper.unref?.();
 
@@ -595,7 +453,6 @@ export async function startHttpServer(
   return {
     port: boundPort,
     url: config.publicEndpoint,
-    sessions: manager,
     async close() {
       if (!closePromise) {
         closePromise = (async () => {
@@ -603,10 +460,14 @@ export async function startHttpServer(
           const serverClosed = new Promise<void>((resolve) =>
             httpServer.close(() => resolve()),
           );
-          // Start session teardown concurrently and force existing sockets down.
-          const sessionsClosed = manager.shutdownAll();
+          // Stop accepting, then release the MCP handler and every cached
+          // Horizon client concurrently, forcing existing sockets down.
+          const drainedResources = (async () => {
+            await handler.close().catch(() => undefined);
+            await credentials.close();
+          })();
           httpServer.closeAllConnections?.();
-          const drained = Promise.all([serverClosed, sessionsClosed]).then(
+          const drained = Promise.all([serverClosed, drainedResources]).then(
             () => undefined,
           );
           const timeout = new Promise<void>((resolve) => {

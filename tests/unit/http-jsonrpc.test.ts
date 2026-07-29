@@ -4,8 +4,6 @@ import {
   firstId,
   jsonRpcErrorBody,
   messagesOf,
-  methodsOf,
-  validateInitialize,
 } from '../../src/http/jsonrpc.js';
 
 describe('messagesOf', () => {
@@ -21,40 +19,12 @@ describe('messagesOf', () => {
   });
 });
 
-describe('methodsOf', () => {
-  it('extracts methods, ignoring non-method entries', () => {
-    expect(methodsOf([{ method: 'tools/call' }, { id: 1 }])).toEqual([
-      'tools/call',
-    ]);
-  });
-});
-
 describe('firstId', () => {
   it('returns the first message id', () => {
     expect(firstId({ id: 7, method: 'initialize' })).toBe(7);
   });
   it('returns null when there is no id', () => {
     expect(firstId({ method: 'x' })).toBeNull();
-  });
-});
-
-describe('validateInitialize', () => {
-  it('accepts a single initialize message', () => {
-    expect(validateInitialize({ method: 'initialize', id: 1 }).ok).toBe(true);
-  });
-  it('rejects an empty body', () => {
-    expect(validateInitialize(undefined).ok).toBe(false);
-  });
-  it('rejects a batch', () => {
-    expect(
-      validateInitialize([
-        { method: 'initialize', id: 1 },
-        { method: 'initialize', id: 2 },
-      ]).ok,
-    ).toBe(false);
-  });
-  it('rejects a first message that is not initialize', () => {
-    expect(validateInitialize({ method: 'tools/list', id: 1 }).ok).toBe(false);
   });
 });
 

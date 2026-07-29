@@ -315,4 +315,22 @@ describe('buildHttpConfig', () => {
       expect(() => build({})).not.toThrow();
     });
   });
+
+  describe('removed session settings', () => {
+    // MCP 2026-07-28 removed protocol sessions. These must fail closed rather
+    // than let an existing deployment believe a session limit still applies.
+    it.each([
+      ['HORIZON_MAX_SESSIONS', '8', 'HORIZON_MAX_CONCURRENT_REQUESTS'],
+      ['HORIZON_SESSION_IDLE_TTL', '300', 'HORIZON_CREDENTIAL_CACHE_TTL'],
+      ['HORIZON_SESSION_ABS_TTL', '3600', 'HORIZON_CREDENTIAL_CACHE_TTL'],
+    ])('rejects %s and names its replacement', (name, value, replacement) => {
+      expect(() => build({ [name]: value })).toThrow(replacement);
+    });
+
+    it('rejects HORIZON_INIT_RATE_LIMIT, which has nothing left to limit', () => {
+      expect(() => build({ HORIZON_INIT_RATE_LIMIT: '5' })).toThrow(
+        /no longer supported/,
+      );
+    });
+  });
 });

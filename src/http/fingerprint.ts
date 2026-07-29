@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes } from 'node:crypto';
 
 // Per-process random HMAC key. Fingerprints are only ever compared within the
 // lifetime of one process (to bind a session to its credential), so a fresh
@@ -16,17 +16,6 @@ const SHORT_LEN = 12;
  */
 export function credentialFingerprint(canonical: string): string {
   return createHmac('sha256', FINGERPRINT_KEY).update(canonical).digest('hex');
-}
-
-/**
- * Timing-safe comparison of two hex fingerprints. Returns false (never throws)
- * when the lengths differ, so it is safe to call on attacker-controlled input.
- */
-export function fingerprintsMatch(a: string, b: string): boolean {
-  const ba = Buffer.from(a, 'hex');
-  const bb = Buffer.from(b, 'hex');
-  if (ba.length !== bb.length || ba.length === 0) return false;
-  return timingSafeEqual(ba, bb);
 }
 
 /** A truncated fingerprint prefix, safe to put in logs. */
