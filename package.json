@@ -45,12 +45,17 @@
     "@modelcontextprotocol/sdk": "1.29.0",
     "express": "^5",
     "express-rate-limit": "8.5.2",
-    "undici": "8.0.1",
+    "undici": "8.7.0",
     "zod": "4.3.6"
   },
   "overrides": {
-    "@hono/node-server": "^1.19.13",
-    "fast-uri": "^3.1.2"
+    "@hono/node-server": "^1.19.14",
+    "@actions/http-client": "4.0.1",
+    "fast-uri": "^3.1.2",
+    "hono": "4.12.30",
+    "ip-address": "10.2.0",
+    "qs": "6.15.3",
+    "vite": "8.1.4"
   },
   "devDependencies": {
     "@anthropic-ai/claude-agent-sdk": "0.3.145",
@@ -75,6 +80,6 @@
     "tsx": "4.21.0",
     "typescript": "6.0.2",
     "typescript-eslint": "8.58.0",
-    "vitest": "4.1.2"
+    "vitest": "4.1.10"
   }
 }

@@ -1,8 +1,11 @@
-# Configuration CRUD Tools - Design Spec
+# Configuration CRUD Tools - Implemented Design Record
 
 **Date:** 2026-06-04
-**Branch:** `feat/config-crud-tools`
-**Status:** Approved (design), pending implementation via workflow
+**Original branch:** `feat/config-crud-tools`
+**Status:** Implemented and shipped; retained as a historical design record
+
+> [!IMPORTANT]
+> This document records the approved implementation plan and its source-grounding method. It is not the current user-facing contract. The delivered surface intentionally differs where Horizon exposes no write API or where mutation was excluded: grading policies/rulesets, service accounts, and identity providers are read-only; system configuration is update-only; archives have no update operation. See [tools-reference.md](tools-reference.md) for the complete current tool list and runtime safety tiers.
 
 ## Goal
 
@@ -16,7 +19,7 @@ independently verified before any tool is generated.
 
 ## Scope
 
-### In scope (full CRUD tools + full destructive QA round-trip tests)
+### Original planned scope (not the delivered contract)
 
 Certificate & PKI:
 - Certificate profile (`/api/v1/certificate/profiles`)
@@ -53,7 +56,7 @@ Gap-fill:
 The exact route paths, verbs, and controllers above come from a medium-breadth
 exploration and are treated as a **draft** to be verified by the audit phase.
 
-### Out of scope (explicitly excluded - "not LLM territory")
+### Explicitly excluded from the original plan
 
 Identity & access surface under `/api/v1/security/*`:
 - Identity providers, local identities, service accounts, tenants, SCIM
@@ -79,7 +82,7 @@ and verified from source per object.
 A single dedicated workflow runs four phases, pipelined per object so each
 object flows independently through audit -> build -> test.
 
-### Phase 1 - AUDIT (gitnexus + Scala source)
+### Planned phase 1 - AUDIT (gitnexus + Scala source)
 For each in-scope object, locate the Play controller, route, request body case
 class / JSON `Reads`/`Format`, enums, and validation. Emit a structured
 **contract**:
@@ -95,7 +98,7 @@ the same source to confirm fields, mandatory-ness, and immutability match
 exactly. A completeness critic checks that no object, verb, or mandatory field
 was dropped. Contracts that fail verification are re-audited.
 
-### Phase 2 - BUILD
+### Planned phase 2 - BUILD
 One agent per object writes `src/tools/config/<object>.ts` (its own file, so
 parallel writes never conflict) plus a unit test file, consuming **only** the
 verified contract. Shared CRUD wiring lives in `src/tools/config/_scaffold.ts`.
@@ -118,13 +121,13 @@ The audit classifies each object **flat** vs **complex/polymorphic**:
 Profile coverage spans **all** profile/enrollment-config CRUD endpoints the
 audit enumerates from `openapi/paths`, not just managed/monitored.
 
-### Phase 3 - REVIEW + PIPELINE
+### Planned phase 3 - REVIEW + PIPELINE
 `code-reviewer` per file (bugs, security, maintainability). Then a single serial
 wiring step registers every family in `src/index.ts` and
 `tests/e2e/setup.ts:registerAllTools`. Then `lint` + `typecheck` + unit tests to
 green.
 
-### Phase 4 - QA (live instance)
+### Planned phase 4 - QA (live instance)
 E2E tests per object run against live QA with `.env.local` sourced. Full
 create -> read-back/assert -> update -> assert -> delete -> assert-gone, with
 guaranteed teardown. Per user decision, this is destructive for all object types

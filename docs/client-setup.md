@@ -1,32 +1,41 @@
 # Client setup
 
-Configure your LLM client to connect to the horizon-mcp server.
+Configure your large language model (LLM) client to connect to Horizon MCP.
 
 ## Trimming the tool surface (recommended)
 
-The full server registers 212 tools, which costs roughly 45-55k context
-tokens per session before the first user message. If you do not need every
-domain, scope the server with two environment variables (they work in any
-client's `env` block below, and server-side in HTTP mode):
+The full server registers 212 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
 
-- `HORIZON_ENABLED_TOOLSETS` - comma-separated list of domains to register.
-  Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`,
-  `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`.
-  Unknown names fail at startup with the valid list.
-- `HORIZON_READ_ONLY=true` - drop every mutating tool (create/update/delete,
-  request submission), keeping only read-only tools.
+If you do not need all domains, use these environment variables to reduce the tool set:
+
+- `HORIZON_ENABLED_TOOLSETS` - Enter a comma-separated list of domains. You can use this variable in all client `env` blocks and HTTP deployments.
+- `HORIZON_READ_ONLY=true` - Remove all tools that change data. Keep only read-only tools.
+
+`HORIZON_ENABLED_TOOLSETS` accepts these names:
+
+- `lifecycle`
+- `profiles`
+- `dashboards`
+- `discovery`
+- `datasources`
+- `reports`
+- `triggers`
+- `docs`
+- `assist`
+- `config`
+
+The server stops during startup if a name is not valid. The error message gives the valid names.
 
 Suggested presets:
 
-| Use case | Setting |
-| -------- | ------- |
-| Certificate operations (search, enroll, revoke, decode) | `HORIZON_ENABLED_TOOLSETS=lifecycle,assist,docs` |
-| Read-only auditing and reporting | `HORIZON_READ_ONLY=true` (optionally add a toolset list) |
-| Configuration administration | `HORIZON_ENABLED_TOOLSETS=config,assist,docs` |
-| Discovery review | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist` |
+| Use case                                                | Setting                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------- |
+| Certificate operations (search, enroll, revoke, decode) | `HORIZON_ENABLED_TOOLSETS=lifecycle,assist,docs`         |
+| Read-only auditing and reporting                        | `HORIZON_READ_ONLY=true` (optionally add a toolset list) |
+| Configuration administration                            | `HORIZON_ENABLED_TOOLSETS=config,assist,docs`            |
+| Discovery review                                        | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist`    |
 
-A scoped lifecycle+docs+assist read-only server registers ~38 tools instead
-of 212, cutting the context cost by roughly 80%.
+A read-only `lifecycle,docs,assist` server registers approximately 38 tools. This configuration decreases the context use by approximately 80 percent.
 
 ## Claude Desktop
 
@@ -104,7 +113,7 @@ Or with the standalone binary:
 }
 ```
 
-Start Claude Code from that directory. The 212 tools are available immediately.
+Start Claude Code from that directory. The server makes the 212 tools available immediately.
 
 ## Cursor
 
@@ -205,9 +214,10 @@ Add to `opencode.json`:
 {
   "mcp": {
     "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
+      "type": "local",
+      "command": ["bunx", "@evertrust/horizon-mcp"],
+      "enabled": true,
+      "environment": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
         "HORIZON_API_KEY": "your-api-key"
@@ -223,8 +233,10 @@ Or with the standalone binary:
 {
   "mcp": {
     "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
+      "type": "local",
+      "command": ["/path/to/horizon-mcp"],
+      "enabled": true,
+      "environment": {
         "HORIZON_URL": "https://horizon.example.com",
         "HORIZON_API_ID": "your-api-id",
         "HORIZON_API_KEY": "your-api-key"
@@ -244,48 +256,63 @@ export HORIZON_API_KEY=your-api-key
 bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 ```
 
-Opens a browser UI showing all 212 tools and the full knowledge resource catalog (17 core URIs + 4 curated playbooks + generated section URIs).
+This command opens the MCP Inspector in a browser. The inspector shows all tools and knowledge resources.
 
-## Connecting over streamable HTTP (remote server)
+## Connect through streamable HTTP
 
-The examples above launch horizon-mcp as a local subprocess over stdio. The server can also run as a long-lived process that speaks the MCP **streamable HTTP** transport, so clients connect to it over the network instead of spawning it. This is the right setup when the server is shared, runs in a container, or sits behind a gateway.
+The previous examples start Horizon MCP as a local stdio process. You can also run the server with the **streamable HTTP** transport.
 
-The server endpoint is `HORIZON_PUBLIC_URL` joined with `HORIZON_HTTP_PATH` (default `/mcp`), for example:
+This transport lets remote clients connect to one long-running server. Use it for a shared server, a container, or a server behind a gateway.
+
+The server joins `HORIZON_PUBLIC_URL` with `HORIZON_HTTP_PATH`. The default path is `/mcp`.
+
+For example:
 
 ```
 https://horizon.example.com/mcp
 ```
 
-The server decides how callers authenticate via `HORIZON_HTTP_AUTH_MODE`:
+The server accepts one or more methods from `HORIZON_HTTP_AUTH_METHODS`:
 
-- `service` - the server holds a single set of Horizon credentials. Callers send no credentials of their own; the client needs only the url.
-- `api-key` - each caller authenticates per-request with the `X-API-ID` and `X-API-KEY` HTTP headers.
-- `mtls` - each caller authenticates by presenting a TLS client certificate on the connection.
+- `service` - Send `X-API-SVA` and `X-API-TOKEN`. Send the OAuth client headers if the MCP must renew the JWT.
+- `api-key` - Send `X-API-ID` and `X-API-KEY` on each request.
+- `mtls` - Present a TLS client certificate on the connection.
 
-(OIDC browser login has been removed; use one of the three modes above.)
+The server does not support OpenID Connect (OIDC) browser login. The `service` method uses headless Horizon JWKS service-account authentication.
 
-These map onto three distinct client capabilities, and MCP clients differ in which they support:
+MCP clients do not support all connection capabilities. Your client must support the capabilities for the selected authentication method:
 
-1. **Connecting to a remote url** - native in Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector (CLI), and Claude Desktop's connector. This is all that `service` mode needs.
-2. **Sending custom request headers** - additionally required for `api-key` mode (the `X-API-ID` and `X-API-KEY` headers). Supported directly by some clients; for the rest, inject the headers with a local proxy (see below).
-3. **Presenting a TLS client certificate** - required for `mtls` mode. Most MCP clients cannot do this directly; see the per-caller mTLS subsection for the local-proxy workaround.
+1. **Connect to a remote URL.** Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector, and the Claude Desktop connector support remote URLs.
+2. **Send custom request headers.** The `api-key` and `service` methods require this capability. Use a local proxy if necessary.
+3. **Present a TLS client certificate.** The `mtls` method requires this capability. Most MCP clients require the local proxy procedure below.
 
 ### Claude Code
 
-Use the HTTP transport form in `.mcp.json` instead of `command`/`args`. For `service` mode the url is all you need:
+Use the HTTP transport form in `.mcp.json`. Do not use `command` or `args` for this configuration.
+
+For `service`, supply the Horizon service-account name and an initial JWT. The MCP sends these values directly to Horizon.
+
+Supply the OAuth client headers when the MCP must renew the JWT. See [Service-account JWT renewal](authentication.md#service-account-jwt-renewal) for the header requirements.
 
 ```json
 {
   "mcpServers": {
     "horizon": {
       "type": "http",
-      "url": "https://horizon.example.com/mcp"
+      "url": "https://horizon.example.com/mcp",
+      "headers": {
+        "X-API-SVA": "your-horizon-service-account",
+        "X-API-TOKEN": "your-jwt",
+        "X-OAUTH-CLIENT-ID": "your-oauth-client-id",
+        "X-OAUTH-CLIENT-SECRET": "your-oauth-client-secret",
+        "X-OAUTH-SCOPE": "your-resource/.default"
+      }
     }
   }
 }
 ```
 
-For `api-key` mode, add the `X-API-ID` and `X-API-KEY` headers:
+For `api-key`, add the `X-API-ID` and `X-API-KEY` headers:
 
 ```json
 {
@@ -304,35 +331,113 @@ For `api-key` mode, add the `X-API-ID` and `X-API-KEY` headers:
 
 ### Claude Desktop
 
-Claude Desktop's local config file (`claude_desktop_config.json`) launches stdio servers only. To reach a remote HTTP server, add it as a custom connector: open **Settings > Connectors > Add custom connector** and paste the server url:
+The Claude Desktop local configuration file starts stdio servers only. To connect to a remote server, add a custom connector:
+
+1. Open **Settings > Connectors > Add custom connector**.
+2. Paste the server URL:
 
 ```
 https://horizon.example.com/mcp
 ```
 
-That covers `service` mode, where the url is all the client needs (no credentials). The connector UI does not expose arbitrary static request headers, so for `api-key` mode point the connector at a local proxy that injects `X-API-ID` and `X-API-KEY` on the upstream request (same pattern as the mTLS workaround below).
+The connector interface does not support arbitrary static request headers. Use a local proxy to add the required authentication headers.
+
+Use the same proxy pattern as the [mTLS procedure](#per-caller-mtls-local-proxy-procedure).
 
 ### Codex (CLI and Desktop app)
 
-In `~/.codex/config.toml`, give the server a `url` instead of a `command`. For `service` mode:
+In `~/.codex/config.toml`, set `url` instead of `command`. For `service`, use environment-backed headers.
+
+This configuration keeps the JWT and OAuth client secret out of the file:
 
 ```toml
 [mcp_servers.horizon]
 url = "https://horizon.example.com/mcp"
+env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_SERVICE_JWT", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
 ```
 
-For `api-key` mode the client must attach `X-API-ID` and `X-API-KEY` to each request. If your Codex version supports static request headers for remote MCP servers, set them there; otherwise point `url` at a local proxy that injects the headers (see below). In the **Codex Desktop app**, the same remote server can be added through **Settings > MCP** by entering the url.
+For `api-key`, Codex supports `http_headers` and `env_http_headers`. Use `env_http_headers` to keep the secret out of `config.toml`:
 
-### Per-caller mTLS: local proxy workaround
+```toml
+[mcp_servers.horizon]
+url = "https://horizon.example.com/mcp"
+env_http_headers = { "X-API-ID" = "HORIZON_API_ID", "X-API-KEY" = "HORIZON_API_KEY" }
+```
 
-When the server runs with `HORIZON_HTTP_AUTH_MODE=mtls`, each caller must present a TLS **client** certificate to the MCP server. Most MCP clients (Claude Code, Claude Desktop, Codex, and others) cannot attach a client certificate to their outbound HTTPS connection. This is a current limitation of the clients, not of the server.
+Set `HORIZON_API_ID` and `HORIZON_API_KEY` in the environment that starts Codex.
 
-The workaround is to run a small **mTLS proxy** on the client machine:
+If the environment cannot supply them, use literal headers. This configuration stores credentials as plain text:
 
-- The MCP client speaks plain MCP over HTTP to the proxy on localhost, for example `http://127.0.0.1:8081/mcp`.
-- The proxy opens the upstream TLS connection to the real server (`https://horizon.example.com/mcp`) and presents the client certificate and private key on that connection.
+```toml
+[mcp_servers.horizon]
+url = "https://horizon.example.com/mcp"
+http_headers = { "X-API-ID" = "your-api-id", "X-API-KEY" = "your-api-key" }
+```
 
-So the client config simply points at the loopback address instead of the server. For Claude Code:
+In the **Codex Desktop app**, add the remote server through **Settings > MCP servers**. Enter the server URL.
+
+Use the shared `config.toml` configuration when you require custom headers.
+
+### Cursor
+
+For `service`, create `.cursor/mcp.json` with the required headers:
+
+```json
+{
+  "mcpServers": {
+    "horizon": {
+      "url": "https://horizon.example.com/mcp",
+      "headers": {
+        "X-API-SVA": "your-horizon-service-account",
+        "X-API-TOKEN": "your-jwt"
+      }
+    }
+  }
+}
+```
+
+For `api-key`, add `X-API-ID` and `X-API-KEY` to the remote server `headers` object.
+
+Protect `.cursor/mcp.json` if it contains credentials. Cursor versions have different support for environment variable interpolation.
+
+### OpenCode
+
+OpenCode remote servers use `type: "remote"`. Disable automatic OAuth for Horizon's API-key mode and source the two headers from environment variables:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "horizon": {
+      "type": "remote",
+      "url": "https://horizon.example.com/mcp",
+      "enabled": true,
+      "oauth": false,
+      "headers": {
+        "X-API-ID": "{env:HORIZON_API_ID}",
+        "X-API-KEY": "{env:HORIZON_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+For `service`, replace the API-key headers with `X-API-SVA` and `X-API-TOKEN`.
+
+If the MCP must renew the JWT, also add the protected `X-OAUTH-*` headers.
+
+### Per-caller mTLS: local proxy procedure
+
+When you enable `mtls`, each caller must present a TLS **client** certificate. Most MCP clients cannot attach this certificate to an HTTPS connection.
+
+Use an **mTLS proxy** on the client computer:
+
+1. Configure the proxy to listen on a loopback address, such as `http://127.0.0.1:8081/mcp`.
+2. Configure the proxy to connect to `https://horizon.example.com/mcp`.
+3. Configure the proxy to present the client certificate and private key to the server.
+4. Configure the MCP client to connect to the proxy loopback address.
+
+For example, use this Claude Code configuration:
 
 ```json
 {
@@ -345,4 +450,8 @@ So the client config simply points at the loopback address instead of the server
 }
 ```
 
-Any TLS-terminating local proxy that can present a client certificate works here (for example stunnel, an nginx/Envoy stream proxy, or a purpose-built mTLS forwarder). The proxy holds the certificate and key; the MCP client stays unaware of them. The same loopback-proxy pattern also serves clients that cannot set custom request headers: have the proxy add `X-API-ID` and `X-API-KEY` for `api-key` mode.
+Use a local proxy that can present a client certificate. Examples include stunnel, an nginx or Envoy stream proxy, and an mTLS forwarder.
+
+The proxy holds the certificate and private key. The MCP client does not access them.
+
+You can also use the proxy to add custom request headers. For `api-key`, configure the proxy to add `X-API-ID` and `X-API-KEY`.

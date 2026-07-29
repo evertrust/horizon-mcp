@@ -1,6 +1,9 @@
 import { defineConfig } from 'vitest/config';
 
+import { generatedDocJsonRuntimePlugin } from './vitest.generated-doc-json.js';
+
 export default defineConfig({
+  plugins: [generatedDocJsonRuntimePlugin()],
   test: {
     globals: true,
     environment: 'node',

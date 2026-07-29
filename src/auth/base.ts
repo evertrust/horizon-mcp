@@ -16,6 +16,11 @@ export abstract class AuthProvider {
     // No-op default - override in providers supporting re-auth (Play Session)
   }
 
+  /** Signal that the initial credential was accepted by Horizon. */
+  markValidated(): void {
+    // No-op default; dynamic providers may use this as a network trust gate.
+  }
+
   /** Release resources (e.g., temp files). Called during server shutdown. */
   async cleanup(): Promise<void> {
     // No-op default

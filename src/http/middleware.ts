@@ -1,3 +1,4 @@
+import { HttpAuthMethod, hasAuthMethod } from './auth-methods.js';
 import type { HttpConfig } from './config.js';
 
 /**
@@ -36,8 +37,18 @@ export function allowedRequestHeaders(config: HttpConfig): string[] {
     'Mcp-Protocol-Version',
     'Last-Event-ID',
   ];
-  if (config.authMode === 'api-key') {
+  if (hasAuthMethod(config.acceptedAuthMethods, HttpAuthMethod.ApiKey)) {
     base.push('X-API-ID', 'X-API-KEY');
+  }
+  if (hasAuthMethod(config.acceptedAuthMethods, HttpAuthMethod.Service)) {
+    base.push(
+      'X-API-SVA',
+      'X-API-TOKEN',
+      'X-OAUTH-CLIENT-ID',
+      'X-OAUTH-CLIENT-SECRET',
+      'X-OAUTH-SCOPE',
+      'X-OAUTH-AUDIENCE',
+    );
   }
   return base;
 }
