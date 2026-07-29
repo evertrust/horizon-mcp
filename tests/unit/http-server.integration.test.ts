@@ -449,3 +449,61 @@ describe('HTTP server integration (graceful shutdown)', () => {
     expect(result).toBe('closed');
   }, 20000);
 });
+
+describe('HTTP server integration (response lifetime cap)', () => {
+  it('closes a subscriptions/listen stream once HORIZON_SSE_MAX_DURATION elapses', async () => {
+    // A listen stream holds a global and a per-credential concurrency permit
+    // for as long as it is open. Without this cap, idle streams would pin the
+    // serving budget indefinitely.
+    const ctx = await startApiKeyServer({ HORIZON_SSE_MAX_DURATION: '2' });
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          'X-API-ID': 'alice',
+          'X-API-KEY': 'k',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'subscriptions/listen',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'subscriptions/listen',
+          params: {
+            notifications: { toolsListChanged: true },
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(200);
+      expect(res.headers.get('content-type')).toContain('text/event-stream');
+
+      // Drain until the server drops the socket. The read loop ending at all
+      // is the assertion: an uncapped stream would never end.
+      const started = Date.now();
+      const reader = res.body!.getReader();
+      try {
+        for (;;) {
+          const { done } = await reader.read();
+          if (done) break;
+        }
+      } catch {
+        // A destroyed socket surfaces as a read error, which is also a close.
+      }
+      const elapsed = Date.now() - started;
+      // Both bounds matter. The upper one proves the stream is capped at all;
+      // the lower one proves the cap is what closed it, rather than the stream
+      // ending on its own for some unrelated reason.
+      expect(elapsed).toBeGreaterThan(1500);
+      expect(elapsed).toBeLessThan(8000);
+      await reader.cancel().catch(() => undefined);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+});

@@ -352,6 +352,19 @@ export async function startHttpServer(
         res.on('finish', done);
         release = undefined;
 
+        // Bound how long one response may stay open. This is the only lifetime
+        // cap on a `subscriptions/listen` stream, which holds both a global and
+        // a per-credential concurrency permit for as long as it is open; enough
+        // idle streams would otherwise pin the whole serving budget. It also
+        // backstops a slow tool call, whose upstream leg is already bounded by
+        // exportTimeout. Destroying the socket fires 'close', which releases.
+        res.setTimeout(settings.sseMaxDuration * 1000, () => {
+          logger.warning(
+            `response exceeded ${settings.sseMaxDuration}s, closing it`,
+          );
+          res.destroy();
+        });
+
         // The parsed body MUST be passed explicitly. express.json() has already
         // consumed the stream, and toNodeHandler treats a function third
         // argument (Express's `next`) as absent rather than as a body, so
@@ -408,8 +421,9 @@ export async function startHttpServer(
 
   // Slowloris guard on request headers. requestTimeout is disabled because it
   // bounds the time to receive the WHOLE request, which would kill long-lived
-  // SSE GET streams (up to sseMaxDuration) and slow tool calls (CSV exports up
-  // to exportTimeout); the response side is bounded by res.setTimeout instead.
+  // `subscriptions/listen` streams (up to sseMaxDuration) and slow tool calls
+  // (CSV exports up to exportTimeout); the response side is bounded by the
+  // res.setTimeout in the request handler instead.
   // keepAliveTimeout sits a few seconds over the Node default.
   httpServer.headersTimeout = 60_000;
   httpServer.requestTimeout = 0;
