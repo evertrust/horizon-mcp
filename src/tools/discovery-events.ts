@@ -26,6 +26,84 @@ import {
 } from './helpers.js';
 import { registerTool } from './register.js';
 
+const SEARCH_DISCOVERY_EVENTS_CONFIG = {
+  description:
+    'Search discovery events with HDQL. Lowercase fields (certificateid, ' +
+    'sessionid, timestamp, error.code, client.*). Operators: equals, before, ' +
+    'after, contains, and/or/not. ' +
+    'Full reference: horizon://knowledge/query-languages. ' +
+    'Pagination: page_index is 0-based; use next_page_index from the previous ' +
+    'response; stop when has_more is false. Pass sorted_by for stable order.',
+  inputSchema: z.object({
+    query: z.string().describe('HDQL query string.'),
+    page_index: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Page index (0-based). Use next_page_index from the previous response to paginate.',
+      ),
+    page_size: z
+      .number()
+      .int()
+      .min(1)
+      .max(100)
+      .default(25)
+      .describe('Results per page, max 100 (default 25).'),
+    sorted_by: z
+      .string()
+      .optional()
+      .describe(
+        "Sort specification, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
+      ),
+    with_count: z
+      .boolean()
+      .default(true)
+      .describe(
+        'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
+      ),
+    enable_analytics: z
+      .boolean()
+      .default(true)
+      .describe('Enable analytics on the search (default true).'),
+  }),
+  outputSchema: SEARCH_RESPONSE_OUTPUT_SCHEMA,
+};
+
+const GET_DISCOVERY_EVENT_CONFIG = {
+  description:
+    'Get full details of a discovery event by ID.\n\n' +
+    'Returns the complete discovery event record including certificate ' +
+    'data, session info, client details, and any error information.',
+  inputSchema: z.object({
+    event_id: z.string().describe('The discovery event ID.'),
+  }),
+};
+
+const EXPORT_DISCOVERY_EVENTS_CSV_CONFIG = {
+  description:
+    'Export discovery events matching an HDQL query as CSV (max 1000 rows; ' +
+    'use Horizon UI for full exports). Lowercase fields only. ' +
+    'Full reference: horizon://knowledge/query-languages.',
+  inputSchema: z.object({
+    query: z.string().describe('HDQL query string.'),
+    fields: z
+      .array(z.string())
+      .optional()
+      .describe('Specific fields to include in the CSV columns.'),
+    sorted_by: z
+      .string()
+      .optional()
+      .describe("Sort specification, e.g. 'timestamp:Desc'."),
+    enable_analytics: z
+      .boolean()
+      .default(true)
+      .describe('Enable analytics on the export (default true).'),
+  }),
+  outputSchema: CSV_EXPORT_OUTPUT_SCHEMA,
+};
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -41,50 +119,7 @@ export function registerDiscoveryEventTools(
   registerTool(
     server,
     'search_discovery_events',
-    {
-      description:
-        'Search discovery events with HDQL. Lowercase fields (certificateid, ' +
-        'sessionid, timestamp, error.code, client.*). Operators: equals, before, ' +
-        'after, contains, and/or/not. ' +
-        'Full reference: horizon://knowledge/query-languages. ' +
-        'Pagination: page_index is 0-based; use next_page_index from the previous ' +
-        'response; stop when has_more is false. Pass sorted_by for stable order.',
-      inputSchema: z.object({
-        query: z.string().describe('HDQL query string.'),
-        page_index: z
-          .number()
-          .int()
-          .min(0)
-          .default(0)
-          .describe(
-            'Page index (0-based). Use next_page_index from the previous response to paginate.',
-          ),
-        page_size: z
-          .number()
-          .int()
-          .min(1)
-          .max(100)
-          .default(25)
-          .describe('Results per page, max 100 (default 25).'),
-        sorted_by: z
-          .string()
-          .optional()
-          .describe(
-            "Sort specification, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
-          ),
-        with_count: z
-          .boolean()
-          .default(true)
-          .describe(
-            'Include total matching count in response so has_more/next_page_index are reliable. Default true.',
-          ),
-        enable_analytics: z
-          .boolean()
-          .default(true)
-          .describe('Enable analytics on the search (default true).'),
-      }),
-      outputSchema: SEARCH_RESPONSE_OUTPUT_SCHEMA,
-    },
+    SEARCH_DISCOVERY_EVENTS_CONFIG,
     async ({
       query,
       page_index,
@@ -127,15 +162,7 @@ export function registerDiscoveryEventTools(
   registerTool(
     server,
     'get_discovery_event',
-    {
-      description:
-        'Get full details of a discovery event by ID.\n\n' +
-        'Returns the complete discovery event record including certificate ' +
-        'data, session info, client details, and any error information.',
-      inputSchema: z.object({
-        event_id: z.string().describe('The discovery event ID.'),
-      }),
-    },
+    GET_DISCOVERY_EVENT_CONFIG,
     async ({ event_id }) => {
       const result = await client.get(
         `/api/v1/discovery/events/${encodePathSegment(event_id)}`,
@@ -153,28 +180,7 @@ export function registerDiscoveryEventTools(
   registerTool(
     server,
     'export_discovery_events_csv',
-    {
-      description:
-        'Export discovery events matching an HDQL query as CSV (max 1000 rows; ' +
-        'use Horizon UI for full exports). Lowercase fields only. ' +
-        'Full reference: horizon://knowledge/query-languages.',
-      inputSchema: z.object({
-        query: z.string().describe('HDQL query string.'),
-        fields: z
-          .array(z.string())
-          .optional()
-          .describe('Specific fields to include in the CSV columns.'),
-        sorted_by: z
-          .string()
-          .optional()
-          .describe("Sort specification, e.g. 'timestamp:Desc'."),
-        enable_analytics: z
-          .boolean()
-          .default(true)
-          .describe('Enable analytics on the export (default true).'),
-      }),
-      outputSchema: CSV_EXPORT_OUTPUT_SCHEMA,
-    },
+    EXPORT_DISCOVERY_EVENTS_CSV_CONFIG,
     async ({ query, fields, sorted_by, enable_analytics }) => {
       const payload = buildExportPayload(query, fields, sorted_by);
       const path =

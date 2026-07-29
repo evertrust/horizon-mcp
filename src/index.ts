@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 
 import { createAuthProvider } from './auth/index.js';
 import { HorizonClient } from './client/http.js';
 import { buildHttpConfig } from './http/config.js';
 import { startHttpServer } from './http/server.js';
-import { configureLogging, getLogger, setMcpLoggingSink } from './logging.js';
+import { configureLogging, getLogger } from './logging.js';
 import { assertToolsetsValid, createSessionServer } from './server-factory.js';
 import { type HorizonSettings, loadSettings } from './settings.js';
 
@@ -38,46 +38,30 @@ async function runStdio(settings: HorizonSettings): Promise<void> {
     warnVersions: settings.warnVersions,
   });
 
-  const server = createSessionServer(client, {
-    enabledToolsets: settings.enabledToolsets,
-    readOnly: settings.readOnly,
-  });
+  // Modern-only: a 2025-era opening is answered with the
+  // unsupported-protocol-version error naming the revision this server speaks,
+  // and the connection stays open for a modern opening. `serveStdio` pins one
+  // instance per connection, so the factory runs once here.
+  const handle = serveStdio(
+    () =>
+      createSessionServer(client, {
+        enabledToolsets: settings.enabledToolsets,
+        readOnly: settings.readOnly,
+      }),
+    {
+      legacy: 'reject',
+      onerror: (err) => logger.error(`stdio transport error: ${err}`),
+    },
+  );
 
   logger.info(
     'Horizon MCP server ready (stdio) - auth will trigger on first tool call.',
   );
 
   installShutdown(async () => {
+    await handle.close();
     await client.close();
     await auth.cleanup();
-  });
-
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-
-  // Forward server logs through `notifications/message` now that the transport
-  // is connected. Best-effort: any failure stays local and never crashes the
-  // server. (HTTP mode does NOT use this global sink - it routes per-session.)
-  setMcpLoggingSink((level, payload) => {
-    void Promise.resolve()
-      .then(() =>
-        server.server.sendLoggingMessage({
-          level: level as
-            | 'debug'
-            | 'info'
-            | 'notice'
-            | 'warning'
-            | 'error'
-            | 'critical'
-            | 'alert'
-            | 'emergency',
-          logger: payload.logger,
-          data: { msg: payload.msg, ...(payload.extra ?? {}) },
-        }),
-      )
-      .catch(() => {
-        // transport not ready or closing -- keep the log local only
-      });
   });
 }
 

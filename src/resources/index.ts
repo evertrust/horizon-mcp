@@ -1,4 +1,7 @@
-import { ResourceTemplate } from '@modelcontextprotocol/server';
+import {
+  ResourceNotFoundError,
+  ResourceTemplate,
+} from '@modelcontextprotocol/server';
 import type { McpServer } from '@modelcontextprotocol/server';
 import { createHash } from 'node:crypto';
 
@@ -133,7 +136,10 @@ export function registerAllResources(server: McpServer): void {
     async (uri: URL) => {
       const entry = getResourceByUri(uri.href);
       if (!entry) {
-        throw new Error(`Section not found: ${uri.href}`);
+        // MCP 2026-07-28 requires resource-not-found to be -32602 with the
+        // requested URI echoed in the error data. A plain Error would surface
+        // as an internal error instead.
+        throw new ResourceNotFoundError(uri.href);
       }
       return {
         contents: [

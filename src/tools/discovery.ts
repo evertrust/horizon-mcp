@@ -65,6 +65,155 @@ function validateName(name: string): void {
   }
 }
 
+const LIST_DISCOVERY_CAMPAIGNS_CONFIG = {
+  description:
+    'List discovery campaigns with optional name filtering.\n\n' +
+    'Client-side filtering is applied after fetching all campaigns. ' +
+    'Use name_contains for substring search.',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(50)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on campaign name.'),
+  }),
+};
+
+const GET_DISCOVERY_CAMPAIGN_CONFIG = {
+  description: 'Get a single discovery campaign by name.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Exact campaign name.'),
+  }),
+};
+
+const CREATE_DISCOVERY_CAMPAIGN_CONFIG = {
+  description:
+    'Create a new discovery campaign.\n\n' +
+    'After creating the campaign, the actual scan is performed by the ' +
+    'horizon-cli agent installed on a host with network access to the ' +
+    'targets. See horizon://knowledge/discovery-workflows for all CLI ' +
+    'commands: netscan (network scan), localscan (filesystem scan), ' +
+    'netimport (cloud/appliance import), importscan (third-party tools), ' +
+    'and localimport (folder/CSV bulk import for PKI migrations).\n\n' +
+    'Prerequisites: Grading policies must exist if referenced (use list_grading_policies). ' +
+    'Identity providers in authorization_levels must exist (use list_identity_providers).\n' +
+    '(manual feed workflow), search_discovery_events (view results).\n\n' +
+    'Campaign names cannot contain dots (DotlessNameIdentifier).\n\n' +
+    "authorization_levels must contain 'search' and 'feed' sections, each with:\n" +
+    '  - accessLevel (required): "everyone", "authenticated", or "authorized"\n' +
+    '  - enforcedIdentityProviders (optional): list of identity provider names',
+  inputSchema: z.object({
+    name: z.string().describe('Unique campaign name (no dots allowed).'),
+    authorization_levels: authorizationLevelsSchema.describe(
+      'Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. ' +
+        'Valid accessLevel values: "everyone", "authenticated", "authorized". ' +
+        'Optional per-section: "enforcedIdentityProviders": ["idp-name"].',
+    ),
+    event_on_success: z
+      .boolean()
+      .default(true)
+      .describe('Generate events on successful scans (default true).'),
+    event_on_warning: z
+      .boolean()
+      .default(true)
+      .describe('Generate events on scan warnings (default true).'),
+    event_on_failure: z
+      .boolean()
+      .default(true)
+      .describe('Generate events on scan failures (default true).'),
+    enabled: z
+      .boolean()
+      .default(true)
+      .describe('Whether the campaign is active (default true).'),
+    description: z
+      .string()
+      .optional()
+      .describe('Optional human-readable description.'),
+    hosts: z
+      .array(z.string())
+      .optional()
+      .describe('Optional list of hosts/IP ranges to scan.'),
+    ports: z
+      .array(z.number().int())
+      .optional()
+      .describe('Optional list of ports to scan.'),
+    grading_policies: z
+      .array(z.string())
+      .optional()
+      .describe('Optional list of grading policy names to apply.'),
+  }),
+};
+
+const UPDATE_DISCOVERY_CAMPAIGN_CONFIG = {
+  description:
+    'Update an existing discovery campaign (GET -> strip -> merge -> PUT).\n\n' +
+    'Uses the GET-strip-merge-PUT pattern: fetches the current state, ' +
+    'strips server-populated fields, merges your overrides, and PUTs ' +
+    'the result back.',
+  inputSchema: z.object({
+    name: z.string().describe('Campaign name to update.'),
+    authorization_levels: authorizationLevelsSchema
+      .optional()
+      .describe('New access control configuration.'),
+    event_on_success: z
+      .boolean()
+      .optional()
+      .describe('Whether to generate events on success.'),
+    event_on_warning: z
+      .boolean()
+      .optional()
+      .describe('Whether to generate events on warnings.'),
+    event_on_failure: z
+      .boolean()
+      .optional()
+      .describe('Whether to generate events on failures.'),
+    enabled: z.boolean().optional().describe('Whether the campaign is active.'),
+    description: z.string().optional().describe('New description.'),
+    hosts: z
+      .array(z.string())
+      .optional()
+      .describe('New list of hosts/IP ranges.'),
+    ports: z.array(z.number().int()).optional().describe('New list of ports.'),
+    grading_policies: z
+      .array(z.string())
+      .optional()
+      .describe('New list of grading policy names.'),
+    clear_fields: z
+      .array(z.string())
+      .optional()
+      .describe('Top-level field names to explicitly set to null.'),
+  }),
+};
+
+const DELETE_DISCOVERY_CAMPAIGN_CONFIG = {
+  description: 'Delete a discovery campaign. Requires name confirmation.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Campaign name to delete.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a deletion safeguard.'),
+  }),
+};
+
+const FLUSH_DISCOVERY_CAMPAIGN_CONFIG = {
+  description:
+    'Flush (purge all events from) a discovery campaign. Requires name confirmation.\n\n' +
+    'Sends a PATCH to purge all discovery events associated with the ' +
+    'campaign. This is irreversible.',
+  inputSchema: z.object({
+    name: z.string().describe('Campaign name to flush.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a flush safeguard.'),
+  }),
+};
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -80,25 +229,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'list_discovery_campaigns',
-    {
-      description:
-        'List discovery campaigns with optional name filtering.\n\n' +
-        'Client-side filtering is applied after fetching all campaigns. ' +
-        'Use name_contains for substring search.',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(50)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on campaign name.'),
-      }),
-    },
+    LIST_DISCOVERY_CAMPAIGNS_CONFIG,
     async ({ max_items, name_contains }) => {
       const data = await client.get<unknown>(CAMPAIGN_BASE);
       let items = normalizeItems(data);
@@ -117,12 +248,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'get_discovery_campaign',
-    {
-      description: 'Get a single discovery campaign by name.\n\n',
-      inputSchema: z.object({
-        name: z.string().describe('Exact campaign name.'),
-      }),
-    },
+    GET_DISCOVERY_CAMPAIGN_CONFIG,
     async ({ name }) => {
       const result = await client.get(
         `${CAMPAIGN_BASE}/${encodePathSegment(name)}`,
@@ -140,63 +266,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'create_discovery_campaign',
-    {
-      description:
-        'Create a new discovery campaign.\n\n' +
-        'After creating the campaign, the actual scan is performed by the ' +
-        'horizon-cli agent installed on a host with network access to the ' +
-        'targets. See horizon://knowledge/discovery-workflows for all CLI ' +
-        'commands: netscan (network scan), localscan (filesystem scan), ' +
-        'netimport (cloud/appliance import), importscan (third-party tools), ' +
-        'and localimport (folder/CSV bulk import for PKI migrations).\n\n' +
-        'Prerequisites: Grading policies must exist if referenced (use list_grading_policies). ' +
-        'Identity providers in authorization_levels must exist (use list_identity_providers).\n' +
-        '(manual feed workflow), search_discovery_events (view results).\n\n' +
-        'Campaign names cannot contain dots (DotlessNameIdentifier).\n\n' +
-        "authorization_levels must contain 'search' and 'feed' sections, each with:\n" +
-        '  - accessLevel (required): "everyone", "authenticated", or "authorized"\n' +
-        '  - enforcedIdentityProviders (optional): list of identity provider names',
-      inputSchema: z.object({
-        name: z.string().describe('Unique campaign name (no dots allowed).'),
-        authorization_levels: authorizationLevelsSchema.describe(
-          'Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. ' +
-            'Valid accessLevel values: "everyone", "authenticated", "authorized". ' +
-            'Optional per-section: "enforcedIdentityProviders": ["idp-name"].',
-        ),
-        event_on_success: z
-          .boolean()
-          .default(true)
-          .describe('Generate events on successful scans (default true).'),
-        event_on_warning: z
-          .boolean()
-          .default(true)
-          .describe('Generate events on scan warnings (default true).'),
-        event_on_failure: z
-          .boolean()
-          .default(true)
-          .describe('Generate events on scan failures (default true).'),
-        enabled: z
-          .boolean()
-          .default(true)
-          .describe('Whether the campaign is active (default true).'),
-        description: z
-          .string()
-          .optional()
-          .describe('Optional human-readable description.'),
-        hosts: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of hosts/IP ranges to scan.'),
-        ports: z
-          .array(z.number().int())
-          .optional()
-          .describe('Optional list of ports to scan.'),
-        grading_policies: z
-          .array(z.string())
-          .optional()
-          .describe('Optional list of grading policy names to apply.'),
-      }),
-    },
+    CREATE_DISCOVERY_CAMPAIGN_CONFIG,
     async ({
       name,
       authorization_levels,
@@ -248,52 +318,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'update_discovery_campaign',
-    {
-      description:
-        'Update an existing discovery campaign (GET -> strip -> merge -> PUT).\n\n' +
-        'Uses the GET-strip-merge-PUT pattern: fetches the current state, ' +
-        'strips server-populated fields, merges your overrides, and PUTs ' +
-        'the result back.',
-      inputSchema: z.object({
-        name: z.string().describe('Campaign name to update.'),
-        authorization_levels: authorizationLevelsSchema
-          .optional()
-          .describe('New access control configuration.'),
-        event_on_success: z
-          .boolean()
-          .optional()
-          .describe('Whether to generate events on success.'),
-        event_on_warning: z
-          .boolean()
-          .optional()
-          .describe('Whether to generate events on warnings.'),
-        event_on_failure: z
-          .boolean()
-          .optional()
-          .describe('Whether to generate events on failures.'),
-        enabled: z
-          .boolean()
-          .optional()
-          .describe('Whether the campaign is active.'),
-        description: z.string().optional().describe('New description.'),
-        hosts: z
-          .array(z.string())
-          .optional()
-          .describe('New list of hosts/IP ranges.'),
-        ports: z
-          .array(z.number().int())
-          .optional()
-          .describe('New list of ports.'),
-        grading_policies: z
-          .array(z.string())
-          .optional()
-          .describe('New list of grading policy names.'),
-        clear_fields: z
-          .array(z.string())
-          .optional()
-          .describe('Top-level field names to explicitly set to null.'),
-      }),
-    },
+    UPDATE_DISCOVERY_CAMPAIGN_CONFIG,
     async ({
       name,
       authorization_levels,
@@ -354,16 +379,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'delete_discovery_campaign',
-    {
-      description:
-        'Delete a discovery campaign. Requires name confirmation.\n\n',
-      inputSchema: z.object({
-        name: z.string().describe('Campaign name to delete.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a deletion safeguard.'),
-      }),
-    },
+    DELETE_DISCOVERY_CAMPAIGN_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.delete(`${CAMPAIGN_BASE}/${encodePathSegment(name)}`);
@@ -385,18 +401,7 @@ export function registerDiscoveryTools(
   registerTool(
     server,
     'flush_discovery_campaign',
-    {
-      description:
-        'Flush (purge all events from) a discovery campaign. Requires name confirmation.\n\n' +
-        'Sends a PATCH to purge all discovery events associated with the ' +
-        'campaign. This is irreversible.',
-      inputSchema: z.object({
-        name: z.string().describe('Campaign name to flush.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a flush safeguard.'),
-      }),
-    },
+    FLUSH_DISCOVERY_CAMPAIGN_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.patch(`${CAMPAIGN_BASE}/${encodePathSegment(name)}`, {});

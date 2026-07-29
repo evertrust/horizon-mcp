@@ -209,14 +209,16 @@ describe('HTTP server integration (api-key mode)', () => {
       body: JSON.stringify({ jsonrpc: '2.0', id: 99, method: 'tools/list' }),
     });
     expect(res.status).toBe(401);
-    // The transport-level error echoes the request id and uses the server-error
-    // code (-32000) rather than the generic invalid-request -32600.
+    // The transport-level error echoes the request id and uses the
+    // credential-rejected application code rather than the generic
+    // invalid-request -32600. MCP 2026-07-28 says new implementations SHOULD
+    // NOT use -32000..-32019, so this sits outside the reserved range.
     const err = (await res.json()) as {
       id: number;
       error: { code: number };
     };
     expect(err.id).toBe(99);
-    expect(err.error.code).toBe(-32000);
+    expect(err.error.code).toBe(-31003);
   }, 20000);
 
   it('does not refresh idle TTL for an unauthorized GET', async () => {

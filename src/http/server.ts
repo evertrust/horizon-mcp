@@ -14,7 +14,7 @@ import { createServer as createHttpsServer } from 'node:https';
 import type { AuthProvider } from '../auth/base.js';
 import { HorizonError } from '../client/errors.js';
 import { HorizonClient } from '../client/http.js';
-import { getLogger, runWithLoggingSink } from '../logging.js';
+import { getLogger } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
 import { formatHttpAuthMethods } from './auth-methods.js';
@@ -61,10 +61,13 @@ type TransportLike = {
   handleRequest(req: unknown, res: unknown, body?: unknown): Promise<void>;
 };
 
-type McpSink = (
-  level: string,
-  payload: { logger: string; msg: string; extra?: Record<string, unknown> },
-) => void;
+// Application-defined JSON-RPC error codes. MCP 2026-07-28 says new
+// implementations SHOULD NOT use -32000..-32019, which it reserves for the
+// legacy codes it renumbered away from, so these sit outside the
+// -32768..-32000 pre-defined range entirely.
+const APP_ERROR_RATE_LIMITED = -31001;
+const APP_ERROR_CAPACITY = -31002;
+const APP_ERROR_CREDENTIAL = -31003;
 
 function headerStr(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
@@ -109,7 +112,6 @@ export async function startHttpServer(
     [GLOBAL_INIT_KEY]: settings.initRateLimit * GLOBAL_INIT_MULTIPLIER,
   });
   const sessionLimiter = new RateLimiter(settings.rateLimitRps);
-  const sinks = new Map<string, McpSink>();
 
   // Coarse per-IP backstop (defense-in-depth in front of the fine-grained init
   // and per-session limiters). Keyed by the socket peer (Express trust proxy
@@ -130,37 +132,12 @@ export async function startHttpServer(
     maxInflight: settings.maxInflightToolcalls,
     onTeardown: (sessionId) => {
       sessionLimiter.forget(sessionId);
-      sinks.delete(sessionId);
     },
   });
 
-  function makeSink(server: McpServer): McpSink {
-    return (level, payload) => {
-      void Promise.resolve()
-        .then(() =>
-          server.server.sendLoggingMessage({
-            level: level as
-              | 'debug'
-              | 'info'
-              | 'notice'
-              | 'warning'
-              | 'error'
-              | 'critical'
-              | 'alert'
-              | 'emergency',
-            logger: payload.logger,
-            data: { msg: payload.msg, ...(payload.extra ?? {}) },
-          }),
-        )
-        .catch(() => {
-          // transport closing / client opted out - keep the log local only
-        });
-    };
-  }
-
-  // -32600 (Invalid Request) for genuinely malformed requests; -32000 (server
-  // error range) for server-side rejections (rate limit, auth mismatch). The
-  // id echoes the request's own id whenever the body was parsed.
+  // -32600 (Invalid Request) for genuinely malformed requests; the
+  // APP_ERROR_* codes above for server-side rejections. The id echoes the
+  // request's own id whenever the body was parsed.
   function sendError(
     res: Response,
     status: number,
@@ -179,7 +156,7 @@ export async function startHttpServer(
     id: JsonRpcId | undefined,
   ): void {
     if (err instanceof CredentialError) {
-      sendError(res, err.status, id, err.message, -32000);
+      sendError(res, err.status, id, err.message, APP_ERROR_CREDENTIAL);
       return;
     }
     throw err;
@@ -203,7 +180,13 @@ export async function startHttpServer(
     }
     const fp = credentialFingerprintOf(material);
     if (!fp || !fingerprintsMatch(fp, fingerprint)) {
-      sendError(res, 401, id, 'session credential does not match', -32000);
+      sendError(
+        res,
+        401,
+        id,
+        'session credential does not match',
+        APP_ERROR_CREDENTIAL,
+      );
       return false;
     }
     return true;
@@ -211,7 +194,6 @@ export async function startHttpServer(
 
   async function dispatch(
     transport: TransportLike,
-    sink: McpSink,
     req: Request,
     res: Response,
     body?: unknown,
@@ -219,9 +201,7 @@ export async function startHttpServer(
     // Scrub the captured secret headers from BOTH req.headers and
     // req.rawHeaders before the SDK (via @hono/node-server) reads them.
     scrubSensitiveHeaders(req, sensitive);
-    await runWithLoggingSink(sink, () =>
-      transport.handleRequest(req, res, body),
-    );
+    await transport.handleRequest(req, res, body);
   }
 
   async function handleInitialize(req: Request, res: Response): Promise<void> {
@@ -239,7 +219,7 @@ export async function startHttpServer(
         429,
         firstId(body),
         'too many initialization attempts',
-        -32000,
+        APP_ERROR_RATE_LIMITED,
       );
       return;
     }
@@ -247,7 +227,13 @@ export async function startHttpServer(
     // onsessioninitialized, after the validateAuth + connect awaits below, so a
     // plain canCreate() check would let concurrent initializes overshoot.
     if (!manager.tryReserve()) {
-      sendError(res, 503, firstId(body), 'maximum sessions reached', -32000);
+      sendError(
+        res,
+        503,
+        firstId(body),
+        'maximum sessions reached',
+        APP_ERROR_CAPACITY,
+      );
       return;
     }
 
@@ -285,7 +271,7 @@ export async function startHttpServer(
           status,
           firstId(body),
           status === 502 ? 'horizon unreachable' : 'authentication failed',
-          -32000,
+          APP_ERROR_CREDENTIAL,
         );
         return;
       }
@@ -309,7 +295,6 @@ export async function startHttpServer(
             auth: sessionAuth,
             credentialFingerprint: fingerprint,
           });
-          sinks.set(sessionId, makeSink(sessionMcp));
           registered = true;
           logger.info('session initialized', {
             session: shortFingerprint(credentialFingerprint(sessionId)),
@@ -325,13 +310,7 @@ export async function startHttpServer(
       };
       await mcp.connect(transport);
 
-      await dispatch(
-        transport as unknown as TransportLike,
-        makeSink(mcp),
-        req,
-        res,
-        body,
-      );
+      await dispatch(transport as unknown as TransportLike, req, res, body);
     } finally {
       if (!registered) {
         manager.releaseReservation();
@@ -379,7 +358,13 @@ export async function startHttpServer(
       messageCount > 0 &&
       !sessionLimiter.tryAcquire(sessionId, messageCount)
     ) {
-      sendError(res, 429, firstId(body), 'rate limit exceeded', -32000);
+      sendError(
+        res,
+        429,
+        firstId(body),
+        'rate limit exceeded',
+        APP_ERROR_RATE_LIMITED,
+      );
       return;
     }
 
@@ -393,7 +378,7 @@ export async function startHttpServer(
           429,
           firstId(body),
           'too many in-flight tool calls',
-          -32000,
+          APP_ERROR_CAPACITY,
         );
         return;
       }
@@ -402,11 +387,8 @@ export async function startHttpServer(
       res.on('finish', release);
     }
 
-    const sink =
-      sinks.get(sessionId) ?? makeSink(record.server as unknown as McpServer);
     await dispatch(
       record.transport as unknown as TransportLike,
-      sink,
       req,
       res,
       body,
@@ -442,14 +424,7 @@ export async function startHttpServer(
       res.on('close', release);
       res.on('finish', release);
     }
-    const sink =
-      sinks.get(sessionId) ?? makeSink(record.server as unknown as McpServer);
-    await dispatch(
-      record.transport as unknown as TransportLike,
-      sink,
-      req,
-      res,
-    );
+    await dispatch(record.transport as unknown as TransportLike, req, res);
   }
 
   // -- Express app ----------------------------------------------------------

@@ -156,9 +156,14 @@ export function extractCredential(
 ): CredentialMaterial {
   for (const name of UNSUPPORTED_CRED_HEADERS) {
     if (headerValue(req.headers, name) !== undefined) {
+      // A conformant MCP client that tried OAuth would otherwise get a bare
+      // 400 with no way to tell what this endpoint does accept. See
+      // docs/adr/0001-mcp-authorization.md for why OAuth is not supported yet.
       throw new CredentialError(
         400,
-        `unsupported client credential header "${name}"`,
+        `unsupported client credential header "${name}": this server does not ` +
+          `support MCP OAuth authorization. Use one of the methods enabled by ` +
+          `HORIZON_HTTP_AUTH_METHODS (api-key, mtls, service).`,
       );
     }
   }
