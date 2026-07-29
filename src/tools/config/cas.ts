@@ -143,6 +143,80 @@ function buildCaBody(args: {
   return o;
 }
 
+const CREATE_CAS_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'CA name. Immutable primary key, server-validated regex [0-9a-zA-Z-_ ]+ (no leading/trailing space).',
+    ),
+  certificate: z
+    .string()
+    .describe(
+      'PEM-encoded X.509 CA certificate. Must be a CA cert (basicConstraints cA=true) with a thumbprint unique across existing CAs.',
+    ),
+  trusted_for_client_authentication: z
+    .boolean()
+    .describe('Whether the CA is trusted for client (mTLS) authentication.'),
+  trusted_for_server_authentication: z
+    .boolean()
+    .describe('Whether the CA is trusted for server authentication.'),
+  outdated_revocation_status_policy: z
+    .enum(OUTDATED_REVOCATION_STATUS_POLICIES)
+    .describe('Behaviour when revocation status cannot be obtained.'),
+  public: z.boolean().describe('Whether the CA is public.'),
+  subject_key_identifier: optionalFields.subject_key_identifier.optional(),
+  responder_url: optionalFields.responder_url.optional(),
+  crl_url: optionalFields.crl_url.optional(),
+  refresh: optionalFields.refresh.optional(),
+  timeout: optionalFields.timeout.optional(),
+  proxy: optionalFields.proxy.optional(),
+  cache_time_to_idle: optionalFields.cache_time_to_idle.optional(),
+  downloadable: optionalFields.downloadable.optional(),
+  identifier_mapping: optionalFields.identifier_mapping.optional(),
+  name_mapping: optionalFields.name_mapping.optional(),
+  email_mapping: optionalFields.email_mapping.optional(),
+});
+
+const UPDATE_CAS_SCHEMA = z.object({
+  name: z.string().describe('CA name to update (immutable lookup key).'),
+  certificate: z
+    .string()
+    .describe(
+      'PEM-encoded X.509 CA certificate. REQUIRED by the request schema even ' +
+        'on update, but IGNORED: the server keeps the previously stored certificate.',
+    ),
+  trusted_for_client_authentication: z
+    .boolean()
+    .describe(
+      'Whether the CA is trusted for client auth. Cannot be set to false while ' +
+        'referenced as an authorized CA by an automation policy, EST profile, or ACME-External profile.',
+    ),
+  trusted_for_server_authentication: z
+    .boolean()
+    .describe('Whether the CA is trusted for server authentication.'),
+  outdated_revocation_status_policy: z
+    .enum(OUTDATED_REVOCATION_STATUS_POLICIES)
+    .describe('Behaviour when revocation status cannot be obtained.'),
+  public: z.boolean().describe('Whether the CA is public.'),
+  subject_key_identifier: optionalFields.subject_key_identifier.optional(),
+  responder_url: optionalFields.responder_url.optional(),
+  crl_url: optionalFields.crl_url.optional(),
+  refresh: optionalFields.refresh.optional(),
+  timeout: optionalFields.timeout.optional(),
+  proxy: optionalFields.proxy.optional(),
+  cache_time_to_idle: optionalFields.cache_time_to_idle.optional(),
+  downloadable: optionalFields.downloadable.optional(),
+  identifier_mapping: optionalFields.identifier_mapping.optional(),
+  name_mapping: optionalFields.name_mapping.optional(),
+  email_mapping: optionalFields.email_mapping.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["responderUrl","proxy"].',
+    ),
+});
+
 export function registerCaTools(
   server: McpServer,
   client: HorizonClient,
@@ -164,41 +238,7 @@ export function registerCaTools(
       'outdated_revocation_status_policy',
       'public',
     ],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'CA name. Immutable primary key, server-validated regex [0-9a-zA-Z-_ ]+ (no leading/trailing space).',
-        ),
-      certificate: z
-        .string()
-        .describe(
-          'PEM-encoded X.509 CA certificate. Must be a CA cert (basicConstraints cA=true) with a thumbprint unique across existing CAs.',
-        ),
-      trusted_for_client_authentication: z
-        .boolean()
-        .describe(
-          'Whether the CA is trusted for client (mTLS) authentication.',
-        ),
-      trusted_for_server_authentication: z
-        .boolean()
-        .describe('Whether the CA is trusted for server authentication.'),
-      outdated_revocation_status_policy: z
-        .enum(OUTDATED_REVOCATION_STATUS_POLICIES)
-        .describe('Behaviour when revocation status cannot be obtained.'),
-      public: z.boolean().describe('Whether the CA is public.'),
-      subject_key_identifier: optionalFields.subject_key_identifier.optional(),
-      responder_url: optionalFields.responder_url.optional(),
-      crl_url: optionalFields.crl_url.optional(),
-      refresh: optionalFields.refresh.optional(),
-      timeout: optionalFields.timeout.optional(),
-      proxy: optionalFields.proxy.optional(),
-      cache_time_to_idle: optionalFields.cache_time_to_idle.optional(),
-      downloadable: optionalFields.downloadable.optional(),
-      identifier_mapping: optionalFields.identifier_mapping.optional(),
-      name_mapping: optionalFields.name_mapping.optional(),
-      email_mapping: optionalFields.email_mapping.optional(),
-    }),
+    inputSchema: CREATE_CAS_SCHEMA,
     buildPayload: (args) => buildCaBody(args),
   });
 
@@ -207,45 +247,7 @@ export function registerCaTools(
       'Update an existing Certificate Authority. The CA certificate itself ' +
       'cannot be changed: the server keeps the previously stored certificate ' +
       'even though the value must still be sent.',
-    inputSchema: z.object({
-      name: z.string().describe('CA name to update (immutable lookup key).'),
-      certificate: z
-        .string()
-        .describe(
-          'PEM-encoded X.509 CA certificate. REQUIRED by the request schema even ' +
-            'on update, but IGNORED: the server keeps the previously stored certificate.',
-        ),
-      trusted_for_client_authentication: z
-        .boolean()
-        .describe(
-          'Whether the CA is trusted for client auth. Cannot be set to false while ' +
-            'referenced as an authorized CA by an automation policy, EST profile, or ACME-External profile.',
-        ),
-      trusted_for_server_authentication: z
-        .boolean()
-        .describe('Whether the CA is trusted for server authentication.'),
-      outdated_revocation_status_policy: z
-        .enum(OUTDATED_REVOCATION_STATUS_POLICIES)
-        .describe('Behaviour when revocation status cannot be obtained.'),
-      public: z.boolean().describe('Whether the CA is public.'),
-      subject_key_identifier: optionalFields.subject_key_identifier.optional(),
-      responder_url: optionalFields.responder_url.optional(),
-      crl_url: optionalFields.crl_url.optional(),
-      refresh: optionalFields.refresh.optional(),
-      timeout: optionalFields.timeout.optional(),
-      proxy: optionalFields.proxy.optional(),
-      cache_time_to_idle: optionalFields.cache_time_to_idle.optional(),
-      downloadable: optionalFields.downloadable.optional(),
-      identifier_mapping: optionalFields.identifier_mapping.optional(),
-      name_mapping: optionalFields.name_mapping.optional(),
-      email_mapping: optionalFields.email_mapping.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["responderUrl","proxy"].',
-        ),
-    }),
+    inputSchema: UPDATE_CAS_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildCaBody(rest);

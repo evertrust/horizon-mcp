@@ -62,6 +62,30 @@ const proxySchema = z
   .string()
   .describe('Optional name of an existing HTTP proxy configuration.');
 
+const CREATE_DCV_PROVIDERS_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('Provider name. Immutable primary key (the update lookup key).'),
+  type: typeSchema,
+  endpoint: endpointSchema,
+  credentials: credentialsSchema,
+  timeout: timeoutSchema,
+  proxy: proxySchema.optional(),
+});
+
+const UPDATE_DCV_PROVIDERS_SCHEMA = z.object({
+  name: z.string().describe('Provider name to update (immutable key).'),
+  type: typeSchema,
+  endpoint: endpointSchema.optional(),
+  credentials: credentialsSchema.optional(),
+  timeout: timeoutSchema.optional(),
+  proxy: proxySchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
 export function registerDcvProviderTools(
   server: McpServer,
   client: HorizonClient,
@@ -81,18 +105,7 @@ export function registerDcvProviderTools(
       'connector, which issues certificates. credentials must reference an ' +
       'existing credentials object with the DCV target.',
     mandatoryFields: ['name', 'type', 'endpoint', 'credentials', 'timeout'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Provider name. Immutable primary key (the update lookup key).',
-        ),
-      type: typeSchema,
-      endpoint: endpointSchema,
-      credentials: credentialsSchema,
-      timeout: timeoutSchema,
-      proxy: proxySchema.optional(),
-    }),
+    inputSchema: CREATE_DCV_PROVIDERS_SCHEMA,
     buildPayload: (args) => {
       const body: Record<string, unknown> = {
         name: args.name,
@@ -110,18 +123,7 @@ export function registerDcvProviderTools(
     description:
       'Update an existing DCV provider configuration. The submitted type must ' +
       'match the stored one.',
-    inputSchema: z.object({
-      name: z.string().describe('Provider name to update (immutable key).'),
-      type: typeSchema,
-      endpoint: endpointSchema.optional(),
-      credentials: credentialsSchema.optional(),
-      timeout: timeoutSchema.optional(),
-      proxy: proxySchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
+    inputSchema: UPDATE_DCV_PROVIDERS_SCHEMA,
     buildOverrides: (args) => {
       const o: Record<string, unknown> = { type: args.type };
       if (args.endpoint !== undefined) o['endpoint'] = args.endpoint;

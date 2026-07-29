@@ -98,6 +98,34 @@ function buildAutomationPolicyBody(args: {
   return o;
 }
 
+const CREATE_AUTOMATION_POLICIES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'Automation policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+    ),
+  profile: profileSchema,
+  execution_policy: executionPolicySchema.optional(),
+  trust_chains: trustChainsSchema.optional(),
+  compliance_policy: compliancePolicySchema.optional(),
+});
+
+const UPDATE_AUTOMATION_POLICIES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('Automation policy name to update (immutable key).'),
+  profile: profileSchema.optional(),
+  execution_policy: executionPolicySchema.optional(),
+  trust_chains: trustChainsSchema.optional(),
+  compliance_policy: compliancePolicySchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["executionPolicy","trustChains","compliancePolicy"].',
+    ),
+});
+
 export function registerAutomationPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -113,37 +141,13 @@ export function registerAutomationPolicyTools(
       '(est/scep/webra/acme/acme-external) to optional execution, trust-chain, ' +
       'and compliance settings.',
     mandatoryFields: ['name', 'profile'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Automation policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
-        ),
-      profile: profileSchema,
-      execution_policy: executionPolicySchema.optional(),
-      trust_chains: trustChainsSchema.optional(),
-      compliance_policy: compliancePolicySchema.optional(),
-    }),
+    inputSchema: CREATE_AUTOMATION_POLICIES_SCHEMA,
     buildPayload: (args) => buildAutomationPolicyBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing automation policy configuration.',
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('Automation policy name to update (immutable key).'),
-      profile: profileSchema.optional(),
-      execution_policy: executionPolicySchema.optional(),
-      trust_chains: trustChainsSchema.optional(),
-      compliance_policy: compliancePolicySchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["executionPolicy","trustChains","compliancePolicy"].',
-        ),
-    }),
+    inputSchema: UPDATE_AUTOMATION_POLICIES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildAutomationPolicyBody(rest);

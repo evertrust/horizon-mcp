@@ -74,6 +74,39 @@ function buildPkiQueueBody(args: {
   return o;
 }
 
+const CREATE_PKI_QUEUES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('PKI queue name. Immutable primary key, must not already exist.'),
+  size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
+  cluster_wide: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Optional: whether the queue is shared cluster-wide. Defaults to ' +
+        'false (matching Horizon) and is always sent on create, so you ' +
+        'need not ask the user unless they want it cluster-wide.',
+    ),
+  description: descriptionSchema.optional(),
+  throttle_duration: throttleDurationSchema.optional(),
+  throttle_parallelism: throttleParallelismSchema.optional(),
+});
+
+const UPDATE_PKI_QUEUES_SCHEMA = z.object({
+  name: z.string().describe('PKI queue name to update (immutable key).'),
+  size: z.number().int().optional(),
+  cluster_wide: z.boolean().optional(),
+  description: descriptionSchema.optional(),
+  throttle_duration: throttleDurationSchema.optional(),
+  throttle_parallelism: throttleParallelismSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["description","throttleDuration"].',
+    ),
+});
+
 export function registerPkiQueueTools(
   server: McpServer,
   client: HorizonClient,
@@ -88,44 +121,13 @@ export function registerPkiQueueTools(
       'Create a PKI queue used to throttle and bound concurrent PKI connector ' +
       'operations.',
     mandatoryFields: ['name', 'size'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'PKI queue name. Immutable primary key, must not already exist.',
-        ),
-      size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
-      cluster_wide: z
-        .boolean()
-        .default(false)
-        .describe(
-          'Optional: whether the queue is shared cluster-wide. Defaults to ' +
-            'false (matching Horizon) and is always sent on create, so you ' +
-            'need not ask the user unless they want it cluster-wide.',
-        ),
-      description: descriptionSchema.optional(),
-      throttle_duration: throttleDurationSchema.optional(),
-      throttle_parallelism: throttleParallelismSchema.optional(),
-    }),
+    inputSchema: CREATE_PKI_QUEUES_SCHEMA,
     buildPayload: (args) => buildPkiQueueBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing PKI queue configuration.',
-    inputSchema: z.object({
-      name: z.string().describe('PKI queue name to update (immutable key).'),
-      size: z.number().int().optional(),
-      cluster_wide: z.boolean().optional(),
-      description: descriptionSchema.optional(),
-      throttle_duration: throttleDurationSchema.optional(),
-      throttle_parallelism: throttleParallelismSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["description","throttleDuration"].',
-        ),
-    }),
+    inputSchema: UPDATE_PKI_QUEUES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildPkiQueueBody(rest);

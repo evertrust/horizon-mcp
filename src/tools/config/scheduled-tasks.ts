@@ -242,6 +242,30 @@ const configSchema = z
       'parameters.',
   );
 
+const CREATE_SCHEDULED_TASKS_SCHEMA = z.object({
+  type: typeSchema,
+  name: nameSchema,
+  cron: cronSchema,
+  enabled: enabledSchema,
+  report_type: reportTypeSchema.optional(),
+  config: configSchema.optional(),
+});
+
+const UPDATE_SCHEDULED_TASKS_SCHEMA = z.object({
+  type: typeSchema,
+  name: z.string().describe('Task name to update (immutable lookup key).'),
+  cron: cronSchema,
+  enabled: enabledSchema,
+  report_type: reportTypeSchema.optional(),
+  config: configSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["hqlQuery","description"].',
+    ),
+});
+
 export function registerScheduledTaskTools(
   server: McpServer,
   client: HorizonClient,
@@ -267,14 +291,7 @@ export function registerScheduledTaskTools(
       'email report). Polymorphic: call describe_scheduled_task_schema first to ' +
       'learn the required `config` fields for the chosen type/reportType.',
     mandatoryFields: ['type', 'name', 'cron', 'enabled'],
-    inputSchema: z.object({
-      type: typeSchema,
-      name: nameSchema,
-      cron: cronSchema,
-      enabled: enabledSchema,
-      report_type: reportTypeSchema.optional(),
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_SCHEDULED_TASKS_SCHEMA,
     buildPayload: (args) => buildScheduledTaskBody(args),
   });
 
@@ -282,20 +299,7 @@ export function registerScheduledTaskTools(
     description:
       'Update an existing scheduled task. The submitted subtype must match the ' +
       'stored one (cannot convert thirdparty<->report or attachment<->link).',
-    inputSchema: z.object({
-      type: typeSchema,
-      name: z.string().describe('Task name to update (immutable lookup key).'),
-      cron: cronSchema,
-      enabled: enabledSchema,
-      report_type: reportTypeSchema.optional(),
-      config: configSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["hqlQuery","description"].',
-        ),
-    }),
+    inputSchema: UPDATE_SCHEDULED_TASKS_SCHEMA,
     buildOverrides: (args) =>
       buildScheduledTaskBody({
         type: args.type,

@@ -99,6 +99,31 @@ function buildForestBody(args: {
 const templateMappingsDescribe =
   'Array of template->profile mappings (may be empty). Each: template, profile, enrollment_mode (required); eobo_trusted_cas, template_version (optional).';
 
+const CREATE_WCCE_FORESTS_SCHEMA = z.object({
+  forest: z
+    .string()
+    .describe(
+      'AD forest name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
+    ),
+  template_mappings: z
+    .array(templateMappingSchema)
+    .describe(templateMappingsDescribe),
+});
+
+const UPDATE_WCCE_FORESTS_SCHEMA = z.object({
+  forest: z
+    .string()
+    .describe('Forest name to update (immutable key, locates the record).'),
+  template_mappings: z
+    .array(templateMappingSchema)
+    .optional()
+    .describe(templateMappingsDescribe),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null.'),
+});
+
 export function registerWcceForestTools(
   server: McpServer,
   client: HorizonClient,
@@ -123,35 +148,14 @@ export function registerWcceForestTools(
       'Services uses a PKI connector (create_pki_connector, type "evtadcs" or ' +
       'legacy "msadcs"), never a WCCE forest mapping.',
     mandatoryFields: ['forest', 'template_mappings'],
-    inputSchema: z.object({
-      forest: z
-        .string()
-        .describe(
-          'AD forest name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
-        ),
-      template_mappings: z
-        .array(templateMappingSchema)
-        .describe(templateMappingsDescribe),
-    }),
+    inputSchema: CREATE_WCCE_FORESTS_SCHEMA,
     buildPayload: (args) => buildForestBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update an existing WCCE forest mapping. Located by forest; PUT full-replace.',
-    inputSchema: z.object({
-      forest: z
-        .string()
-        .describe('Forest name to update (immutable key, locates the record).'),
-      template_mappings: z
-        .array(templateMappingSchema)
-        .optional()
-        .describe(templateMappingsDescribe),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null.'),
-    }),
+    inputSchema: UPDATE_WCCE_FORESTS_SCHEMA,
     buildOverrides: ({ template_mappings }) =>
       buildForestBody({ template_mappings }),
   });

@@ -133,6 +133,30 @@ function buildExecutionPolicyBody(args: {
   return o;
 }
 
+const CREATE_EXECUTION_POLICIES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'Execution policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+    ),
+  description: descriptionSchema.optional(),
+  authorized_periods: authorizedPeriodsSchema.optional(),
+  forbidden_periods: forbiddenPeriodsSchema.optional(),
+});
+
+const UPDATE_EXECUTION_POLICIES_SCHEMA = z.object({
+  name: z.string().describe('Execution policy name to update (immutable key).'),
+  description: descriptionSchema.optional(),
+  authorized_periods: authorizedPeriodsSchema.optional(),
+  forbidden_periods: forbiddenPeriodsSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["description","authorizedPeriods"].',
+    ),
+});
+
 export function registerExecutionPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -147,35 +171,13 @@ export function registerExecutionPolicyTools(
       'Create an execution policy (time-window constraints that gate when ' +
       'automation policies are allowed to run).',
     mandatoryFields: ['name'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Execution policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
-        ),
-      description: descriptionSchema.optional(),
-      authorized_periods: authorizedPeriodsSchema.optional(),
-      forbidden_periods: forbiddenPeriodsSchema.optional(),
-    }),
+    inputSchema: CREATE_EXECUTION_POLICIES_SCHEMA,
     buildPayload: (args) => buildExecutionPolicyBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing execution policy configuration.',
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('Execution policy name to update (immutable key).'),
-      description: descriptionSchema.optional(),
-      authorized_periods: authorizedPeriodsSchema.optional(),
-      forbidden_periods: forbiddenPeriodsSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["description","authorizedPeriods"].',
-        ),
-    }),
+    inputSchema: UPDATE_EXECUTION_POLICIES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildExecutionPolicyBody(rest);

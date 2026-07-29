@@ -198,6 +198,23 @@ function validateSystemConfigBody(body: Record<string, unknown>): void {
   });
 }
 
+const UPDATE_SYSTEM_CONFIGURATION_SCHEMA = z.object({
+  type: typeSchema,
+  cron: cronSchema.optional(),
+  triggers: triggersSchema.optional(),
+  logo: optionalStrings.logo.optional(),
+  headerStart: optionalStrings.headerStart.optional(),
+  headerEnd: optionalStrings.headerEnd.optional(),
+  announcements: announcementsSchema.optional(),
+  archiveStorage: optionalStrings.archiveStorage.optional(),
+  magicLinkReportStorage: optionalStrings.magicLinkReportStorage.optional(),
+  config: configSchema,
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["archiveStorage"].'),
+});
+
 export function registerSystemConfigTools(
   server: McpServer,
   client: HorizonClient,
@@ -232,24 +249,7 @@ export function registerSystemConfigTools(
       'server-bootstrapped; this PUT replaceOne by type is a FULL REPLACE, and ' +
       'the wrapper does GET-strip-merge so omitted fields are preserved. Call ' +
       'describe_system_config_schema first.',
-    inputSchema: z.object({
-      type: typeSchema,
-      cron: cronSchema.optional(),
-      triggers: triggersSchema.optional(),
-      logo: optionalStrings.logo.optional(),
-      headerStart: optionalStrings.headerStart.optional(),
-      headerEnd: optionalStrings.headerEnd.optional(),
-      announcements: announcementsSchema.optional(),
-      archiveStorage: optionalStrings.archiveStorage.optional(),
-      magicLinkReportStorage: optionalStrings.magicLinkReportStorage.optional(),
-      config: configSchema,
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["archiveStorage"].',
-        ),
-    }),
+    inputSchema: UPDATE_SYSTEM_CONFIGURATION_SCHEMA,
     buildOverrides: (args) => {
       const overrides = buildSystemConfigBody(args as SystemConfigArgs);
       validateSystemConfigBody(overrides);

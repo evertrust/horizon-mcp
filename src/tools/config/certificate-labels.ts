@@ -46,6 +46,33 @@ const localizedStringSchema = z
       'ISO 3166-1 two-letter code.',
   );
 
+const CREATE_CERTIFICATE_LABELS_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'Technical name of the label. Immutable primary key, server-validated ' +
+        'against regex [0-9a-zA-Z-_]+ (alphanumeric, hyphen, underscore; NO dots).',
+    ),
+  display_name: localizedStringSchema
+    .optional()
+    .describe('Localized display names of the label.'),
+  description: localizedStringSchema
+    .optional()
+    .describe('Localized descriptions of the label.'),
+});
+
+const UPDATE_CERTIFICATE_LABELS_SCHEMA = z.object({
+  name: z.string().describe('Label name to update (immutable key).'),
+  display_name: localizedStringSchema.optional(),
+  description: localizedStringSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["displayName","description"].',
+    ),
+});
+
 export function registerCertificateLabelTools(
   server: McpServer,
   client: HorizonClient,
@@ -60,20 +87,7 @@ export function registerCertificateLabelTools(
       'Create a certificate label used to tag/categorize certificates ' +
       '(referenced by certificate profiles and PKI connectors).',
     mandatoryFields: ['name'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Technical name of the label. Immutable primary key, server-validated ' +
-            'against regex [0-9a-zA-Z-_]+ (alphanumeric, hyphen, underscore; NO dots).',
-        ),
-      display_name: localizedStringSchema
-        .optional()
-        .describe('Localized display names of the label.'),
-      description: localizedStringSchema
-        .optional()
-        .describe('Localized descriptions of the label.'),
-    }),
+    inputSchema: CREATE_CERTIFICATE_LABELS_SCHEMA,
     buildPayload: ({ name, display_name, description }) => {
       const body: Record<string, unknown> = { name };
       if (display_name !== undefined) body['displayName'] = display_name;
@@ -84,17 +98,7 @@ export function registerCertificateLabelTools(
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing certificate label configuration.',
-    inputSchema: z.object({
-      name: z.string().describe('Label name to update (immutable key).'),
-      display_name: localizedStringSchema.optional(),
-      description: localizedStringSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["displayName","description"].',
-        ),
-    }),
+    inputSchema: UPDATE_CERTIFICATE_LABELS_SCHEMA,
     buildOverrides: ({ display_name, description }) => {
       const o: Record<string, unknown> = {};
       if (display_name !== undefined) o['displayName'] = display_name;

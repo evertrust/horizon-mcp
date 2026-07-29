@@ -161,6 +161,50 @@ function buildBody(args: Record<string, unknown>): Record<string, unknown> {
   return body;
 }
 
+const CREATE_DCV_PROVISIONERS_SCHEMA = z.object({
+  name: fields.name,
+  type: fields.type,
+  ttl: fields.ttl,
+  timeout: fields.timeout,
+  endpoint: fields.endpoint.optional(),
+  credentials: fields.credentials.optional(),
+  proxy: fields.proxy.optional(),
+  delegationZone: fields.delegationZone.optional(),
+  zoneIdMappings: fields.zoneIdMappings.optional(),
+  tenantId: fields.tenantId.optional(),
+  subscriptionId: fields.subscriptionId.optional(),
+  resourceGroupName: fields.resourceGroupName.optional(),
+  authorityHost: fields.authorityHost.optional(),
+  dnsName: fields.dnsName.optional(),
+  dnsView: fields.dnsView.optional(),
+  region: fields.region.optional(),
+  roleArn: fields.roleArn.optional(),
+});
+
+const UPDATE_DCV_PROVISIONERS_SCHEMA = z.object({
+  name: fields.name,
+  type: fields.type,
+  ttl: fields.ttl.optional(),
+  timeout: fields.timeout.optional(),
+  endpoint: fields.endpoint.optional(),
+  credentials: fields.credentials.optional(),
+  proxy: fields.proxy.optional(),
+  delegationZone: fields.delegationZone.optional(),
+  zoneIdMappings: fields.zoneIdMappings.optional(),
+  tenantId: fields.tenantId.optional(),
+  subscriptionId: fields.subscriptionId.optional(),
+  resourceGroupName: fields.resourceGroupName.optional(),
+  authorityHost: fields.authorityHost.optional(),
+  dnsName: fields.dnsName.optional(),
+  dnsView: fields.dnsView.optional(),
+  region: fields.region.optional(),
+  roleArn: fields.roleArn.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
 export function registerDcvProvisionerTools(
   server: McpServer,
   client: HorizonClient,
@@ -182,25 +226,7 @@ export function registerDcvProvisionerTools(
       'connector, type akv). Required fields depend on type (see the type field ' +
       'description).',
     mandatoryFields: ['name', 'type', 'ttl', 'timeout'],
-    inputSchema: z.object({
-      name: fields.name,
-      type: fields.type,
-      ttl: fields.ttl,
-      timeout: fields.timeout,
-      endpoint: fields.endpoint.optional(),
-      credentials: fields.credentials.optional(),
-      proxy: fields.proxy.optional(),
-      delegationZone: fields.delegationZone.optional(),
-      zoneIdMappings: fields.zoneIdMappings.optional(),
-      tenantId: fields.tenantId.optional(),
-      subscriptionId: fields.subscriptionId.optional(),
-      resourceGroupName: fields.resourceGroupName.optional(),
-      authorityHost: fields.authorityHost.optional(),
-      dnsName: fields.dnsName.optional(),
-      dnsView: fields.dnsView.optional(),
-      region: fields.region.optional(),
-      roleArn: fields.roleArn.optional(),
-    }),
+    inputSchema: CREATE_DCV_PROVISIONERS_SCHEMA,
     preValidate: (args) => {
       const missing = missingForType(
         args.type,
@@ -220,29 +246,7 @@ export function registerDcvProvisionerTools(
     description:
       'Update an existing DCV provisioner. The submitted type must match the ' +
       'stored one. Only supplied fields change (GET-merge full-replace).',
-    inputSchema: z.object({
-      name: fields.name,
-      type: fields.type,
-      ttl: fields.ttl.optional(),
-      timeout: fields.timeout.optional(),
-      endpoint: fields.endpoint.optional(),
-      credentials: fields.credentials.optional(),
-      proxy: fields.proxy.optional(),
-      delegationZone: fields.delegationZone.optional(),
-      zoneIdMappings: fields.zoneIdMappings.optional(),
-      tenantId: fields.tenantId.optional(),
-      subscriptionId: fields.subscriptionId.optional(),
-      resourceGroupName: fields.resourceGroupName.optional(),
-      authorityHost: fields.authorityHost.optional(),
-      dnsName: fields.dnsName.optional(),
-      dnsView: fields.dnsView.optional(),
-      region: fields.region.optional(),
-      roleArn: fields.roleArn.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
+    inputSchema: UPDATE_DCV_PROVISIONERS_SCHEMA,
     buildOverrides: (args) => {
       const o: Record<string, unknown> = { type: args.type };
       if (args.ttl !== undefined) o['ttl'] = args.ttl;

@@ -70,6 +70,24 @@ const permissionsSchema = z
     'Array of Permission objects. Each element MUST include a `value`; `filter` is optional.',
   );
 
+const CREATE_ROLES_SCHEMA = z.object({
+  name: nameSchema,
+  description: descriptionSchema.optional(),
+  permissions: permissionsSchema.optional(),
+});
+
+const UPDATE_ROLES_SCHEMA = z.object({
+  name: z.string().describe('Role name to update (immutable key).'),
+  description: descriptionSchema.optional(),
+  permissions: permissionsSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["description","permissions"].',
+    ),
+});
+
 export function registerRoleTools(
   server: McpServer,
   client: HorizonClient,
@@ -87,11 +105,7 @@ export function registerRoleTools(
       'permission strings the user specified; never infer permissions or use ' +
       'broad wildcards (e.g. "*:*:*"). If the user was not explicit, ask.',
     mandatoryFields: ['name'],
-    inputSchema: z.object({
-      name: nameSchema,
-      description: descriptionSchema.optional(),
-      permissions: permissionsSchema.optional(),
-    }),
+    inputSchema: CREATE_ROLES_SCHEMA,
     buildPayload: ({ name, description, permissions }) => {
       const body: Record<string, unknown> = { name };
       if (description !== undefined) body['description'] = description;
@@ -107,17 +121,7 @@ export function registerRoleTools(
       'ONLY the exact permission strings the user specified; never infer them or ' +
       'widen scope with wildcards. Note that omitting `permissions` preserves the ' +
       'current set (GET-merge), while passing it REPLACES the whole set.',
-    inputSchema: z.object({
-      name: z.string().describe('Role name to update (immutable key).'),
-      description: descriptionSchema.optional(),
-      permissions: permissionsSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["description","permissions"].',
-        ),
-    }),
+    inputSchema: UPDATE_ROLES_SCHEMA,
     buildOverrides: ({ description, permissions }) => {
       const o: Record<string, unknown> = {};
       if (description !== undefined) o['description'] = description;

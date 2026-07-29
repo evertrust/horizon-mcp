@@ -51,6 +51,30 @@ const contentsSchema = z
       'server-validated). Must contain at least one entry.',
   );
 
+const CREATE_TERMS_OF_SERVICE_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('ToS name. Immutable primary key (the update lookup key).'),
+  contents: contentsSchema,
+  description: z
+    .string()
+    .optional()
+    .describe('Optional free-text description.'),
+});
+
+const UPDATE_TERMS_OF_SERVICE_SCHEMA = z.object({
+  name: z.string().describe('ToS name to update (immutable key).'),
+  contents: contentsSchema.optional(),
+  description: z
+    .string()
+    .optional()
+    .describe('Optional free-text description.'),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["description"].'),
+});
+
 export function registerTermsOfServiceTools(
   server: McpServer,
   client: HorizonClient,
@@ -67,16 +91,7 @@ export function registerTermsOfServiceTools(
       'Create a Terms of Service entry that enrollment workflows can require ' +
       'users to accept. contents holds the localized markdown text.',
     mandatoryFields: ['name', 'contents'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('ToS name. Immutable primary key (the update lookup key).'),
-      contents: contentsSchema,
-      description: z
-        .string()
-        .optional()
-        .describe('Optional free-text description.'),
-    }),
+    inputSchema: CREATE_TERMS_OF_SERVICE_SCHEMA,
     buildPayload: ({ name, contents, description }) => {
       const body: Record<string, unknown> = { name, contents };
       if (description !== undefined) body['description'] = description;
@@ -86,18 +101,7 @@ export function registerTermsOfServiceTools(
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing Terms of Service entry.',
-    inputSchema: z.object({
-      name: z.string().describe('ToS name to update (immutable key).'),
-      contents: contentsSchema.optional(),
-      description: z
-        .string()
-        .optional()
-        .describe('Optional free-text description.'),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["description"].'),
-    }),
+    inputSchema: UPDATE_TERMS_OF_SERVICE_SCHEMA,
     buildOverrides: ({ contents, description }) => {
       const o: Record<string, unknown> = {};
       if (contents !== undefined) o['contents'] = contents;

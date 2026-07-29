@@ -113,6 +113,22 @@ function mergeBody(
   return body;
 }
 
+const CREATE_TRIGGERS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+});
+
+const UPDATE_TRIGGERS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
 export function registerTriggerCrudTools(
   server: McpServer,
   client: HorizonClient,
@@ -139,11 +155,7 @@ export function registerTriggerCrudTools(
       'describe_trigger_schema for the chosen type first - never guess the ' +
       '`config` fields.',
     mandatoryFields: ['name', 'type'],
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_TRIGGERS_SCHEMA,
     nextSteps:
       'A trigger runs only when bound to a certificate profile for specific ' +
       'lifecycle events. Ask the user which certificate profile(s) and which ' +
@@ -161,15 +173,7 @@ export function registerTriggerCrudTools(
       'Update an existing trigger. The subtype (type) cannot change. ' +
       'Full-replace: pass the complete `config` for the subtype (call ' +
       'describe_trigger_schema).',
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
+    inputSchema: UPDATE_TRIGGERS_SCHEMA,
     buildOverrides: ({ name, type, config }) =>
       mergeBody(name, type, config ?? {}),
   });

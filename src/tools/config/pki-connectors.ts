@@ -203,6 +203,22 @@ function mergeBody(
   return body;
 }
 
+const CREATE_PKI_CONNECTORS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+});
+
+const UPDATE_PKI_CONNECTORS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
 export function registerPkiConnectorTools(
   server: McpServer,
   client: HorizonClient,
@@ -235,11 +251,7 @@ export function registerPkiConnectorTools(
       'describe_pki_connector_schema for the chosen type first to learn the ' +
       'exact required `config` fields - never guess.',
     mandatoryFields: ['name', 'type'],
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_PKI_CONNECTORS_SCHEMA,
     buildPayload: ({ name, type, config }) =>
       mergeBody(name, type, config ?? {}),
     nextSteps:
@@ -255,15 +267,7 @@ export function registerPkiConnectorTools(
       'Update an existing PKI connector. The subtype (type) cannot change. ' +
       'Full-replace: omitted optional fields revert to defaults, so pass the ' +
       'complete `config` for the subtype (call describe_pki_connector_schema).',
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
+    inputSchema: UPDATE_PKI_CONNECTORS_SCHEMA,
     buildOverrides: ({ name, type, config }) =>
       mergeBody(name, type, config ?? {}),
   });

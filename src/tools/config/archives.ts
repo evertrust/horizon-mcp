@@ -145,6 +145,13 @@ const configSchema = z
       'those as their own parameters.',
   );
 
+const CREATE_ARCHIVES_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  filename: filenameSchema,
+  config: configSchema.optional(),
+});
+
 export function registerArchiveTools(
   server: McpServer,
   client: HorizonClient,
@@ -173,12 +180,7 @@ export function registerArchiveTools(
       'before a given instant (requires CLM, PKI or DCV license). ' +
       'Create-and-delete only: there is no update.',
     mandatoryFields: ['name', 'type', 'filename'],
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      filename: filenameSchema,
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_ARCHIVES_SCHEMA,
     buildPayload: (args) => buildArchiveBody(args),
   });
 

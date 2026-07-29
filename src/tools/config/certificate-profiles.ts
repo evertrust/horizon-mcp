@@ -213,6 +213,66 @@ function assertProfileUpdateBody(body: Record<string, unknown>): void {
   });
 }
 
+const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
+  module: z
+    .enum(MODULES)
+    .describe(
+      'Profile protocol/subtype discriminator (lowercase). Immutable after creation.',
+    ),
+  name: z
+    .string()
+    .describe(
+      'Profile name. Immutable primary key. Ask the user - never invent it.',
+    ),
+  enabled: z.boolean().describe('Whether the profile is enabled.'),
+  authorization_levels: objectRecord.describe(
+    'CertificateProfileAuthorizationLevels object (per-action access levels). ' +
+      'See describe_certificate_profile_schema for the structure.',
+  ),
+  requests_policy: objectRecord.describe(
+    'RequestsPolicy object (per-action request lifetimes).',
+  ),
+  self_permissions: objectRecord.describe(
+    'CertificateProfileSelfPermissions object (self-service flags).',
+  ),
+  crypto_policy: objectRecord.describe(
+    'Crypto policy object (key types, escrow, P12 handling).',
+  ),
+  config: objectRecord
+    .optional()
+    .describe(
+      'All other subtype-specific top-level fields (e.g. pkiConnector, ca, ' +
+        'mode, scepRA, caps, authorizationMode, certificateTemplate, ' +
+        'displayName, triggers, gradingPolicies). Keys must be the exact ' +
+        'camelCase API names from describe_certificate_profile_schema.',
+    ),
+});
+
+const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
+  name: z.string().describe('Profile name to update (immutable lookup key).'),
+  enabled: z.boolean().optional().describe('Whether the profile is enabled.'),
+  authorization_levels: objectRecord
+    .optional()
+    .describe('CertificateProfileAuthorizationLevels object.'),
+  requests_policy: objectRecord.optional().describe('RequestsPolicy object.'),
+  self_permissions: objectRecord
+    .optional()
+    .describe('CertificateProfileSelfPermissions object.'),
+  crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
+  config: objectRecord
+    .optional()
+    .describe(
+      'Other subtype-specific top-level fields to override (exact camelCase ' +
+        'API names from describe_certificate_profile_schema). module is immutable.',
+    ),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["proxy","gradingPolicies"].',
+    ),
+});
+
 export function registerCertificateProfileTools(
   server: McpServer,
   client: HorizonClient,
@@ -246,40 +306,7 @@ export function registerCertificateProfileTools(
       'see the exact required structure for the chosen module, then pass the ' +
       'subtype-specific fields in `config`.',
     mandatoryFields: MANDATORY_INPUT_FIELDS,
-    inputSchema: z.object({
-      module: z
-        .enum(MODULES)
-        .describe(
-          'Profile protocol/subtype discriminator (lowercase). Immutable after creation.',
-        ),
-      name: z
-        .string()
-        .describe(
-          'Profile name. Immutable primary key. Ask the user - never invent it.',
-        ),
-      enabled: z.boolean().describe('Whether the profile is enabled.'),
-      authorization_levels: objectRecord.describe(
-        'CertificateProfileAuthorizationLevels object (per-action access levels). ' +
-          'See describe_certificate_profile_schema for the structure.',
-      ),
-      requests_policy: objectRecord.describe(
-        'RequestsPolicy object (per-action request lifetimes).',
-      ),
-      self_permissions: objectRecord.describe(
-        'CertificateProfileSelfPermissions object (self-service flags).',
-      ),
-      crypto_policy: objectRecord.describe(
-        'Crypto policy object (key types, escrow, P12 handling).',
-      ),
-      config: objectRecord
-        .optional()
-        .describe(
-          'All other subtype-specific top-level fields (e.g. pkiConnector, ca, ' +
-            'mode, scepRA, caps, authorizationMode, certificateTemplate, ' +
-            'displayName, triggers, gradingPolicies). Keys must be the exact ' +
-            'camelCase API names from describe_certificate_profile_schema.',
-        ),
-    }),
+    inputSchema: CREATE_CERTIFICATE_PROFILES_SCHEMA,
     buildPayload: (args) => {
       const body = buildProfileBody(args);
       assertProfileBody(body);
@@ -291,37 +318,7 @@ export function registerCertificateProfileTools(
     description:
       'Update an existing certificate profile (full-replace of the body). ' +
       'module cannot change. Call describe_certificate_profile_schema FIRST.',
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('Profile name to update (immutable lookup key).'),
-      enabled: z
-        .boolean()
-        .optional()
-        .describe('Whether the profile is enabled.'),
-      authorization_levels: objectRecord
-        .optional()
-        .describe('CertificateProfileAuthorizationLevels object.'),
-      requests_policy: objectRecord
-        .optional()
-        .describe('RequestsPolicy object.'),
-      self_permissions: objectRecord
-        .optional()
-        .describe('CertificateProfileSelfPermissions object.'),
-      crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
-      config: objectRecord
-        .optional()
-        .describe(
-          'Other subtype-specific top-level fields to override (exact camelCase ' +
-            'API names from describe_certificate_profile_schema). module is immutable.',
-        ),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["proxy","gradingPolicies"].',
-        ),
-    }),
+    inputSchema: UPDATE_CERTIFICATE_PROFILES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, clear_fields: _clear, ...rest } = args;
       const body = buildProfileBody(rest);

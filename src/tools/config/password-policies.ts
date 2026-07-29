@@ -105,6 +105,34 @@ function buildPasswordPolicyBody(args: {
   return o;
 }
 
+const CREATE_PASSWORD_POLICIES_SCHEMA = z.object({
+  name: nameSchema,
+  min_char: minCharSchema,
+  max_char: maxCharSchema.optional(),
+  min_up_char: minUpCharSchema.optional(),
+  min_lo_char: minLoCharSchema.optional(),
+  min_di_char: minDiCharSchema.optional(),
+  sp_char: spCharSchema.optional(),
+  min_sp_char: minSpCharSchema.optional(),
+});
+
+const UPDATE_PASSWORD_POLICIES_SCHEMA = z.object({
+  name: z.string().describe('Password policy name to update (immutable key).'),
+  min_char: minCharSchema.optional(),
+  max_char: maxCharSchema.optional(),
+  min_up_char: minUpCharSchema.optional(),
+  min_lo_char: minLoCharSchema.optional(),
+  min_di_char: minDiCharSchema.optional(),
+  sp_char: spCharSchema.optional(),
+  min_sp_char: minSpCharSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["maxChar","spChar"].',
+    ),
+});
+
 export function registerPasswordPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -121,39 +149,13 @@ export function registerPasswordPolicyTools(
       'passwords. At least one character class (min_up_char, min_lo_char, ' +
       'min_di_char, or min_sp_char) must be supplied.',
     mandatoryFields: ['name', 'min_char'],
-    inputSchema: z.object({
-      name: nameSchema,
-      min_char: minCharSchema,
-      max_char: maxCharSchema.optional(),
-      min_up_char: minUpCharSchema.optional(),
-      min_lo_char: minLoCharSchema.optional(),
-      min_di_char: minDiCharSchema.optional(),
-      sp_char: spCharSchema.optional(),
-      min_sp_char: minSpCharSchema.optional(),
-    }),
+    inputSchema: CREATE_PASSWORD_POLICIES_SCHEMA,
     buildPayload: (args) => buildPasswordPolicyBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing password policy configuration.',
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('Password policy name to update (immutable key).'),
-      min_char: minCharSchema.optional(),
-      max_char: maxCharSchema.optional(),
-      min_up_char: minUpCharSchema.optional(),
-      min_lo_char: minLoCharSchema.optional(),
-      min_di_char: minDiCharSchema.optional(),
-      sp_char: spCharSchema.optional(),
-      min_sp_char: minSpCharSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["maxChar","spChar"].',
-        ),
-    }),
+    inputSchema: UPDATE_PASSWORD_POLICIES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildPasswordPolicyBody(rest);
