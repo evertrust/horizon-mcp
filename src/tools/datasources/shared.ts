@@ -80,9 +80,16 @@ export function validateAuthType(authType: string): string | undefined {
 // ---------------------------------------------------------------------------
 
 export function normalizeItems(data: unknown): Record<string, unknown>[] {
+  if (data === null || typeof data !== 'object') return [];
   if (Array.isArray(data)) return data as Record<string, unknown>[];
   const obj = data as Record<string, unknown>;
-  return (obj['items'] as Record<string, unknown>[] | undefined) ?? [obj];
+  if ('items' in obj) {
+    return Array.isArray(obj['items'])
+      ? (obj['items'] as Record<string, unknown>[])
+      : [];
+  }
+  if (Object.keys(obj).length === 0) return [];
+  return [obj];
 }
 
 export function applyTypeFilter(
