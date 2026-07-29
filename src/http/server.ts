@@ -17,7 +17,8 @@ import { HorizonClient } from '../client/http.js';
 import { getLogger, runWithLoggingSink } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
-import { type HttpConfig, serviceExposureWarning } from './config.js';
+import { formatHttpAuthMethods } from './auth-methods.js';
+import type { HttpConfig } from './config.js';
 import {
   CredentialError,
   buildSessionAuth,
@@ -51,6 +52,11 @@ export interface HttpServerHandle {
   close(): Promise<void>;
 }
 
+export interface HttpServerOptions {
+  /** Primarily injectable so shutdown behavior can be tested quickly. */
+  closeTimeoutMs?: number;
+}
+
 type TransportLike = {
   handleRequest(req: unknown, res: unknown, body?: unknown): Promise<void>;
 };
@@ -78,6 +84,7 @@ function once(fn: () => void): () => void {
 export async function startHttpServer(
   settings: HorizonSettings,
   config: HttpConfig,
+  options: HttpServerOptions = {},
 ): Promise<HttpServerHandle> {
   const clientOptions = {
     timeout: settings.timeout,
@@ -115,45 +122,6 @@ export async function startHttpServer(
     skip: () => settings.ipRateLimit <= 0,
     validate: false,
   });
-
-  // Brief readiness cache so a burst of /readyz probes cannot hammer Horizon.
-  // A single in-flight probe is shared by concurrent callers (single-flight),
-  // so a simultaneous burst triggers exactly one upstream validateAuth.
-  const READY_CACHE_MS = 10_000;
-  let readyCache: { at: number; healthy: boolean } | undefined;
-  let readyInflight: Promise<boolean> | undefined;
-
-  async function probeHorizon(): Promise<boolean> {
-    const { auth } = buildSessionAuth({ kind: 'service' }, config, settings);
-    const probe = new HorizonClient(settings.url, auth, clientOptions);
-    let healthy = true;
-    try {
-      await probe.validateAuth();
-    } catch {
-      healthy = false;
-    }
-    await probe.close().catch(() => undefined);
-    await auth.cleanup().catch(() => undefined);
-    return healthy;
-  }
-
-  async function ensureReady(): Promise<boolean> {
-    const now = Date.now();
-    if (readyCache && now - readyCache.at < READY_CACHE_MS) {
-      return readyCache.healthy;
-    }
-    if (!readyInflight) {
-      readyInflight = probeHorizon()
-        .then((healthy) => {
-          readyCache = { at: Date.now(), healthy };
-          return healthy;
-        })
-        .finally(() => {
-          readyInflight = undefined;
-        });
-    }
-    return readyInflight;
-  }
 
   const manager = new SessionManager({
     maxSessions: settings.maxSessions,
@@ -224,7 +192,7 @@ export async function startHttpServer(
     res: Response,
     fingerprint: string | undefined,
   ): boolean {
-    if (!fingerprint) return true; // service mode: no per-caller binding
+    if (!fingerprint) return true;
     const id = firstId(req.body);
     let material;
     try {
@@ -306,6 +274,7 @@ export async function startHttpServer(
       client = new HorizonClient(settings.url, auth, clientOptions);
       try {
         await client.validateAuth();
+        auth.markValidated();
       } catch (err) {
         const status =
           err instanceof HorizonError && err.statusCode >= 400
@@ -414,11 +383,11 @@ export async function startHttpServer(
       return;
     }
 
-    const isWork = methods.some(
+    const workCount = methods.filter(
       (m) => m !== 'initialize' && m !== 'notifications/initialized',
-    );
-    if (isWork) {
-      if (!manager.reserveInflight(sessionId)) {
+    ).length;
+    if (workCount > 0) {
+      if (!manager.reserveInflight(sessionId, workCount)) {
         sendError(
           res,
           429,
@@ -428,7 +397,7 @@ export async function startHttpServer(
         );
         return;
       }
-      const release = once(() => manager.releaseInflight(sessionId));
+      const release = once(() => manager.releaseInflight(sessionId, workCount));
       res.on('close', release);
       res.on('finish', release);
     }
@@ -453,13 +422,16 @@ export async function startHttpServer(
       sendError(res, 400, null, 'missing Mcp-Session-Id');
       return;
     }
-    const record = manager.get(sessionId);
+    // Authenticate before refreshing the idle timer. Otherwise an attacker who
+    // knows a session id can keep it alive indefinitely with bad credentials.
+    const record = manager.peek(sessionId);
     if (!record) {
       sendError(res, 404, null, 'session not found');
       return;
     }
     if (!ensureFingerprintBinding(req, res, record.credentialFingerprint))
       return;
+    manager.touch(sessionId);
 
     if (req.method === 'GET') {
       res.setTimeout(settings.sseMaxDuration * 1000);
@@ -503,16 +475,6 @@ export async function startHttpServer(
     if (!hostOk(req)) {
       res.status(421).json({ status: 'misdirected' });
       return;
-    }
-    // Only service mode holds an env credential to probe Horizon with. The
-    // result is cached briefly and single-flighted so a burst of probes cannot
-    // hammer Horizon.
-    if (config.authMode === 'service') {
-      const healthy = await ensureReady();
-      if (!healthy) {
-        res.status(503).json({ status: 'horizon-unreachable' });
-        return;
-      }
     }
     res.status(200).json({ status: 'ready' });
   });
@@ -645,35 +607,41 @@ export async function startHttpServer(
 
   logger.info(
     `HTTP transport listening on ${config.host}:${boundPort}${config.path} ` +
-      `(auth mode: ${config.authMode}, public: ${config.publicEndpoint})`,
+      `(accepted auth: ${formatHttpAuthMethods(config.acceptedAuthMethods)}, ` +
+      `public: ${config.publicEndpoint})`,
   );
-
-  const exposureWarning = serviceExposureWarning(settings);
-  if (exposureWarning) logger.warning(exposureWarning);
 
   // Bound graceful shutdown: closeAllConnections() drops idle keep-alive
   // sockets that would otherwise keep httpServer.close() pending indefinitely,
   // and the race caps the drain so SIGTERM never hangs until SIGKILL.
-  const CLOSE_TIMEOUT_MS = 5000;
+  const closeTimeoutMs = options.closeTimeoutMs ?? 5000;
+  let closePromise: Promise<void> | undefined;
 
   return {
     port: boundPort,
     url: config.publicEndpoint,
     sessions: manager,
     async close() {
-      clearInterval(sweeper);
-      const closed = new Promise<void>((resolve) =>
-        httpServer.close(() => resolve()),
-      );
-      await manager.shutdownAll();
-      httpServer.closeAllConnections?.();
-      await Promise.race([
-        closed,
-        new Promise<void>((resolve) => {
-          const t = setTimeout(resolve, CLOSE_TIMEOUT_MS);
-          t.unref?.();
-        }),
-      ]);
+      if (!closePromise) {
+        closePromise = (async () => {
+          clearInterval(sweeper);
+          const serverClosed = new Promise<void>((resolve) =>
+            httpServer.close(() => resolve()),
+          );
+          // Start session teardown concurrently and force existing sockets down.
+          const sessionsClosed = manager.shutdownAll();
+          httpServer.closeAllConnections?.();
+          const drained = Promise.all([serverClosed, sessionsClosed]).then(
+            () => undefined,
+          );
+          const timeout = new Promise<void>((resolve) => {
+            const t = setTimeout(resolve, closeTimeoutMs);
+            t.unref?.();
+          });
+          await Promise.race([drained, timeout]);
+        })();
+      }
+      await closePromise;
     },
   };
 }

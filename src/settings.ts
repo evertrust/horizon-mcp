@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { parseHttpAuthMethods } from './http/auth-methods.js';
+
 // Case-insensitive enum: lowercases the env value before matching, so
 // HORIZON_TRANSPORT=HTTP and =http both resolve to 'http'. An unknown value
 // fails the parse (fail closed), never silently falls back.
@@ -9,11 +11,10 @@ const transportSchema = z
   .transform((v) => v.toLowerCase())
   .pipe(z.enum(['stdio', 'http']));
 
-const httpAuthModeSchema = z
+const httpAuthMethodsSchema = z
   .string()
-  .default('service')
-  .transform((v) => v.toLowerCase())
-  .pipe(z.enum(['service', 'api-key', 'mtls']));
+  .default('api-key')
+  .transform(parseHttpAuthMethods);
 
 // Comma-separated env list -> trimmed, non-empty string array.
 const csvListSchema = z
@@ -81,10 +82,17 @@ const settingsSchema = z.object({
   publicUrl: z.string().default(''),
   trustedHosts: csvListSchema,
   trustedOrigins: csvListSchema,
-  httpAuthMode: httpAuthModeSchema,
+  httpAuthMethods: httpAuthMethodsSchema,
+  // Removed in favour of the plural whitelist. Kept in the parsed shape so
+  // HTTP startup can fail with an actionable migration error instead of
+  // silently ignoring an old HORIZON_HTTP_AUTH_MODE deployment variable.
+  httpAuthMode: z.string().default(''),
   sessionIdleTtl: z.coerce.number().int().positive().default(300),
   sessionAbsTtl: z.coerce.number().int().positive().default(3600),
-  maxSessions: z.coerce.number().int().positive().default(256),
+  // A fully registered MCP server currently costs roughly 22 MiB of V8 heap
+  // per session. Keep the default safe for a 1 GiB container and reject
+  // configurations whose projected heap use exceeds the supported envelope.
+  maxSessions: z.coerce.number().int().positive().max(64).default(8),
   maxInflightToolcalls: z.coerce.number().int().positive().default(8),
   maxBodyBytes: z.coerce.number().int().positive().default(1048576),
   sseMaxDuration: z.coerce.number().int().positive().default(3600),
@@ -92,7 +100,7 @@ const settingsSchema = z.object({
   initRateLimit: z.coerce.number().int().nonnegative().default(5),
   ipRateLimit: z.coerce.number().int().nonnegative().default(600),
 
-  // -- Inbound mTLS (only when HORIZON_HTTP_AUTH_MODE=mtls) ----------------
+  // -- Inbound mTLS (when HORIZON_HTTP_AUTH_METHODS includes mtls) ----------
   httpTlsCert: z.string().default(''),
   httpTlsKey: z.string().default(''),
   inboundCertHeader: z.string().default(''),

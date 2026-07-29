@@ -21,6 +21,8 @@ vi.mock('undici', () => ({
 
 const { startHttpServer } = await import('../../src/http/server.js');
 const { buildHttpConfig } = await import('../../src/http/config.js');
+const { credentialFingerprintOf } =
+  await import('../../src/http/credentials.js');
 const { loadSettings } = await import('../../src/settings.js');
 const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
 const { StreamableHTTPClientTransport } =
@@ -83,20 +85,24 @@ interface ServerCtx {
   handle: Awaited<ReturnType<typeof startHttpServer>>;
 }
 
-async function startApiKeyServer(): Promise<ServerCtx> {
+async function startApiKeyServer(
+  overrides: Record<string, string> = {},
+  serverOptions: { closeTimeoutMs?: number } = {},
+): Promise<ServerCtx> {
   const port = await freePort();
   const env = {
     HORIZON_TRANSPORT: 'http',
-    HORIZON_HTTP_AUTH_MODE: 'api-key',
+    HORIZON_HTTP_AUTH_METHODS: 'api-key',
     HORIZON_URL: 'https://horizon.test',
     HORIZON_HTTP_HOST: '127.0.0.1',
     HORIZON_HTTP_PORT: String(port),
     HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
     HORIZON_VERIFY_SSL: 'false',
+    ...overrides,
   };
   const settings = loadSettings(env);
   const config = buildHttpConfig(settings, env);
-  const handle = await startHttpServer(settings, config);
+  const handle = await startHttpServer(settings, config, serverOptions);
   return { base: `http://127.0.0.1:${handle.port}/mcp`, handle };
 }
 
@@ -108,6 +114,16 @@ function makeClient(base: string, apiId?: string, apiKey?: string) {
     requestInit: { headers },
   });
   const client = new Client({ name: 'itest', version: '0.0.0' });
+  return { client, transport };
+}
+
+function makeServiceClient(base: string, serviceAccount: string, jwt: string) {
+  const transport = new StreamableHTTPClientTransport(new URL(base), {
+    requestInit: {
+      headers: { 'X-API-SVA': serviceAccount, 'X-API-TOKEN': jwt },
+    },
+  });
+  const client = new Client({ name: 'itest-service', version: '0.0.0' });
   return { client, transport };
 }
 
@@ -203,6 +219,75 @@ describe('HTTP server integration (api-key mode)', () => {
     expect(err.error.code).toBe(-32000);
   }, 20000);
 
+  it('does not refresh idle TTL for an unauthorized GET', async () => {
+    // Register a quiet synthetic session so the MCP client's background SSE
+    // stream cannot legitimately move lastSeenAt while this assertion runs.
+    const sid = 'ttl-probe-session';
+    ctx.handle.sessions.create({
+      sessionId: sid,
+      credentialFingerprint: credentialFingerprintOf({
+        kind: 'api-key',
+        apiId: 'alice',
+        apiKey: 'ka',
+      }),
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: { close: async () => undefined },
+      auth: { cleanup: async () => undefined },
+    });
+    const before = ctx.handle.sessions.peek(sid)!.lastSeenAt;
+
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    const res = await fetch(ctx.base, {
+      method: 'GET',
+      headers: {
+        Accept: 'text/event-stream',
+        'Mcp-Session-Id': sid,
+        'X-API-ID': 'mallory',
+        'X-API-KEY': 'wrong',
+      },
+    });
+
+    expect(res.status).toBe(401);
+    expect(ctx.handle.sessions.peek(sid)!.lastSeenAt).toBe(before);
+  }, 20000);
+
+  it('rejects a work batch whose total cost exceeds the inflight cap', async () => {
+    await ctx.handle.close();
+    ctx = await startApiKeyServer({ HORIZON_MAX_INFLIGHT_TOOLCALLS: '1' });
+    const a = makeClient(ctx.base, 'alice', 'ka');
+    openClients.push(a.client);
+    await a.client.connect(a.transport);
+    const sid = a.transport.sessionId!;
+
+    const res = await fetch(ctx.base, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
+        'Mcp-Session-Id': sid,
+        'X-API-ID': 'alice',
+        'X-API-KEY': 'ka',
+      },
+      body: JSON.stringify([
+        {
+          jsonrpc: '2.0',
+          id: 101,
+          method: 'tools/call',
+          params: { name: 'whoami', arguments: {} },
+        },
+        {
+          jsonrpc: '2.0',
+          id: 102,
+          method: 'tools/call',
+          params: { name: 'whoami', arguments: {} },
+        },
+      ]),
+    });
+
+    expect(res.status).toBe(429);
+  }, 20000);
+
   it('tears down all sessions on close', async () => {
     const a = makeClient(ctx.base, 'alice', 'ka');
     openClients.push(a.client);
@@ -214,15 +299,34 @@ describe('HTTP server integration (api-key mode)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (service mode rejects client creds)', () => {
-  it('rejects a client that supplies its own API key in service mode', async () => {
+describe('HTTP server integration (authentication whitelist)', () => {
+  it('forwards a caller-supplied service-account identity to Horizon', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
+    });
+    const service = makeServiceClient(ctx.base, 'ci-service', 'signed.jwt');
+    try {
+      await service.client.connect(service.transport);
+      const whoami = mockFetch.mock.calls.findLast((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      );
+      const headers = (
+        whoami?.[1] as { headers?: Record<string, string> } | undefined
+      )?.headers;
+      expect(headers?.['X-API-SVA']).toBe('ci-service');
+      expect(headers?.['X-API-TOKEN']).toBe('signed.jwt');
+    } finally {
+      await service.client.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a credential method that is not enabled', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
       HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'service-acct',
-      HORIZON_API_KEY: 'service-key',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
       HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
@@ -252,7 +356,7 @@ describe('HTTP server integration (service mode rejects client creds)', () => {
           },
         }),
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     } finally {
       await handle.close();
     }
@@ -264,7 +368,7 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'api-key',
+      HORIZON_HTTP_AUTH_METHODS: 'api-key',
       HORIZON_URL: 'https://horizon.test',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
@@ -307,49 +411,13 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (readyz probe cache)', () => {
-  it('caches the /readyz Horizon probe in service mode', async () => {
+describe('HTTP server integration (readyz)', () => {
+  it('reports process readiness without inventing a caller identity', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
+      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
       HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'svc',
-      HORIZON_API_KEY: 'k',
-      HORIZON_HTTP_HOST: '127.0.0.1',
-      HORIZON_HTTP_PORT: String(port),
-      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
-      HORIZON_VERIFY_SSL: 'false',
-    };
-    const settings = loadSettings(env);
-    const config = buildHttpConfig(settings, env);
-    const handle = await startHttpServer(settings, config);
-    const base = `http://127.0.0.1:${handle.port}/readyz`;
-    const probes = () =>
-      mockFetch.mock.calls.filter((c) =>
-        String(c[0]).includes('/api/v1/security/principals/self'),
-      ).length;
-    try {
-      const before = probes();
-      const r1 = await fetch(base);
-      const r2 = await fetch(base);
-      expect(r1.status).toBe(200);
-      expect(r2.status).toBe(200);
-      // Two probes within the cache window trigger only one Horizon whoami.
-      expect(probes() - before).toBe(1);
-    } finally {
-      await handle.close();
-    }
-  }, 20000);
-
-  it('single-flights a concurrent burst of /readyz probes into one Horizon call', async () => {
-    const port = await freePort();
-    const env = {
-      HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
-      HORIZON_URL: 'https://horizon.test',
-      HORIZON_API_ID: 'svc',
-      HORIZON_API_KEY: 'k',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
       HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
@@ -360,18 +428,15 @@ describe('HTTP server integration (readyz probe cache)', () => {
     const config = buildHttpConfig(settings, env);
     const handle = await startHttpServer(settings, config);
     const base = `http://127.0.0.1:${handle.port}/readyz`;
-    const probes = () =>
+    const probeCount = () =>
       mockFetch.mock.calls.filter((c) =>
         String(c[0]).includes('/api/v1/security/principals/self'),
       ).length;
     try {
-      const before = probes();
-      const results = await Promise.all(
-        Array.from({ length: 5 }, () => fetch(base)),
-      );
-      for (const r of results) expect(r.status).toBe(200);
-      // Five simultaneous probes share a single in-flight Horizon whoami.
-      expect(probes() - before).toBe(1);
+      const before = probeCount();
+      const response = await fetch(base);
+      expect(response.status).toBe(200);
+      expect(probeCount() - before).toBe(0);
     } finally {
       await handle.close();
     }
@@ -395,5 +460,26 @@ describe('HTTP server integration (graceful shutdown)', () => {
     } finally {
       sock.destroy();
     }
+  }, 20000);
+
+  it('bounds the whole shutdown when a session resource never closes', async () => {
+    const ctx = await startApiKeyServer({}, { closeTimeoutMs: 50 });
+    const never = new Promise<void>(() => undefined);
+    ctx.handle.sessions.create({
+      sessionId: 'stuck',
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: { close: () => never },
+      auth: { cleanup: async () => undefined },
+    });
+
+    const result = await Promise.race([
+      ctx.handle.close().then(() => 'closed'),
+      new Promise<'timed-out'>((resolve) =>
+        setTimeout(() => resolve('timed-out'), 250),
+      ),
+    ]);
+
+    expect(result).toBe('closed');
   }, 20000);
 });

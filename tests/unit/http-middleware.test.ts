@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { isHostAllowed, isOriginAllowed } from '../../src/http/middleware.js';
+import { HttpAuthMethod } from '../../src/http/auth-methods.js';
+import type { HttpConfig } from '../../src/http/config.js';
+import {
+  allowedRequestHeaders,
+  isHostAllowed,
+  isOriginAllowed,
+} from '../../src/http/middleware.js';
 
 describe('isHostAllowed', () => {
   const allowed = new Set(['mcp.example.com', '127.0.0.1:8080']);
@@ -45,5 +51,24 @@ describe('isOriginAllowed', () => {
 
   it('rejects any Origin when none are configured', () => {
     expect(isOriginAllowed('https://app.example.com', new Set())).toBe(false);
+  });
+});
+
+describe('allowedRequestHeaders', () => {
+  it('exposes headers for every whitelisted authentication method', () => {
+    const config = {
+      acceptedAuthMethods:
+        HttpAuthMethod.ApiKey | HttpAuthMethod.Service | HttpAuthMethod.Mtls,
+    } as HttpConfig;
+    expect(allowedRequestHeaders(config)).toEqual(
+      expect.arrayContaining([
+        'X-API-ID',
+        'X-API-KEY',
+        'X-API-SVA',
+        'X-API-TOKEN',
+        'X-OAUTH-CLIENT-ID',
+        'X-OAUTH-CLIENT-SECRET',
+      ]),
+    );
   });
 });

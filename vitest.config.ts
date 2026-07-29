@@ -1,8 +1,11 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vitest/config';
 
+import { generatedDocJsonRuntimePlugin } from './vitest.generated-doc-json.js';
+
 export default defineConfig({
   plugins: [
+    generatedDocJsonRuntimePlugin(),
     {
       name: 'md-raw',
       transform(_code: string, id: string) {

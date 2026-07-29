@@ -145,17 +145,20 @@ export class SessionManager {
     if (record) record.state = 'ready';
   }
 
-  reserveInflight(sessionId: string): boolean {
+  reserveInflight(sessionId: string, cost = 1): boolean {
     const record = this.sessions.get(sessionId);
     if (!record) return false;
-    if (record.inflight >= this.opts.maxInflight) return false;
-    record.inflight += 1;
+    if (!Number.isSafeInteger(cost) || cost <= 0) return false;
+    if (record.inflight + cost > this.opts.maxInflight) return false;
+    record.inflight += cost;
     return true;
   }
 
-  releaseInflight(sessionId: string): void {
+  releaseInflight(sessionId: string, cost = 1): void {
     const record = this.sessions.get(sessionId);
-    if (record) record.inflight = Math.max(0, record.inflight - 1);
+    if (record && Number.isSafeInteger(cost) && cost > 0) {
+      record.inflight = Math.max(0, record.inflight - cost);
+    }
   }
 
   /**
@@ -168,8 +171,8 @@ export class SessionManager {
     record.closed = true;
     record.state = 'closing';
     this.sessions.delete(sessionId);
-    await this.closeHorizon(record);
     this.opts.onTeardown?.(sessionId, 'delete');
+    await this.closeHorizon(record);
   }
 
   /**
@@ -183,26 +186,24 @@ export class SessionManager {
     record.state = 'closing';
     // Delete before closing so the cascaded onsessionclosed finds nothing.
     this.sessions.delete(sessionId);
+    // Remove ancillary state synchronously too. Resource shutdown is best
+    // effort and may stall, but a dead session must stop consuming capacity.
+    this.opts.onTeardown?.(sessionId, reason);
     try {
       await record.server.close();
     } catch {
       // best-effort - the closed flag already prevents re-entry
     }
     await this.closeHorizon(record);
-    this.opts.onTeardown?.(sessionId, reason);
   }
 
   private async closeHorizon(record: SessionRecord): Promise<void> {
-    try {
-      await record.client.close();
-    } catch {
-      // best-effort
-    }
-    try {
-      await record.auth.cleanup();
-    } catch {
-      // best-effort
-    }
+    // Run independently: a stuck client close must not prevent credential
+    // cleanup from starting.
+    await Promise.allSettled([
+      Promise.resolve().then(() => record.client.close()),
+      Promise.resolve().then(() => record.auth.cleanup()),
+    ]);
   }
 
   /** Tear down idle- or absolute-expired sessions. Returns the swept ids. */
@@ -221,16 +222,14 @@ export class SessionManager {
         expired.push(id);
       }
     }
-    for (const id of expired) {
-      await this.teardown(id, 'ttl');
-    }
+    await Promise.all(expired.map((id) => this.teardown(id, 'ttl')));
     return expired;
   }
 
   /** Tear down every live session (graceful shutdown). */
   async shutdownAll(): Promise<void> {
-    for (const id of [...this.sessions.keys()]) {
-      await this.teardown(id, 'shutdown');
-    }
+    await Promise.all(
+      [...this.sessions.keys()].map((id) => this.teardown(id, 'shutdown')),
+    );
   }
 }
