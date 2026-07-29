@@ -182,6 +182,27 @@ describe('Profile tools', () => {
       const items = parsed['items'] as Array<Record<string, unknown>>;
       expect(items[0]!['name']).toBe('WebRA-Prod');
     });
+
+    it.each([
+      ['an empty bare array', []],
+      ['an envelope with an empty items array', { items: [] }],
+      ['an object with the collection field absent', {}],
+    ])('returns no profiles for %s', async (_description, upstreamResponse) => {
+      mockClient.get.mockResolvedValueOnce(upstreamResponse);
+
+      const result = await client.callTool({
+        name: 'list_profiles',
+        arguments: {},
+      });
+
+      expect(parseToolResult(result)).toEqual({
+        items: [],
+        count: 0,
+        total_available: 0,
+        truncated: false,
+        kind: 'profile',
+      });
+    });
   });
 });
 
@@ -240,6 +261,43 @@ describe('Trigger tools', () => {
       expect(parsed['count']).toBe(1);
       const items = parsed['items'] as Array<Record<string, unknown>>;
       expect(items[0]!['name']).toBe('deploy-rest');
+    });
+  });
+
+  describe('simulate_trigger', () => {
+    it('fetches the named trigger and sends the full body under trigger', async () => {
+      const trigger = {
+        _id: 'trigger-id',
+        name: 'deploy-rest',
+        type: 'rest',
+        events: ['on_enroll'],
+        sequence: [
+          {
+            method: 'POST',
+            url: 'https://example.test/deploy',
+            authenticationType: 'noauth',
+            expectedHttpCodes: [200],
+            timeout: '30 seconds',
+          },
+        ],
+      };
+      mockClient.get.mockResolvedValueOnce(trigger);
+      mockClient.patch.mockResolvedValueOnce({
+        status: 'success',
+        message: 'Rest notification successfully sent',
+      });
+
+      await client.callTool({
+        name: 'simulate_trigger',
+        arguments: { name: 'deploy-rest' },
+      });
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/api/v1/triggers/deploy-rest',
+      );
+      expect(mockClient.patch).toHaveBeenCalledWith('/api/v1/triggers', {
+        trigger,
+      });
     });
   });
 });

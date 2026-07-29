@@ -76,6 +76,27 @@ describe('ca tools registration', () => {
   });
 });
 
+describe('list_cas empty collection normalization', () => {
+  it.each([
+    ['an empty bare array', []],
+    ['an envelope with an empty items array', { items: [] }],
+    ['an object with the collection field absent', {}],
+  ])('returns no items for %s', async (_description, upstreamResponse) => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce(upstreamResponse);
+
+    const res = await client.callTool({ name: 'list_cas', arguments: {} });
+
+    expect(parse(res)).toEqual({
+      items: [],
+      count: 0,
+      total_available: 0,
+      truncated: false,
+      kind: 'ca',
+    });
+  });
+});
+
 describe('create_ca (mandatory + snake_case -> camelCase mapping)', () => {
   let client: Client;
   let mc: MockClient;
