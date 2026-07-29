@@ -149,6 +149,22 @@ describe('Discovery campaign tools', () => {
       expect(parsed['count']).toBe(2);
     });
 
+    it('returns no campaigns when the collection field is absent', async () => {
+      mockClient.get.mockResolvedValueOnce({});
+      const result = await client.callTool({
+        name: 'list_discovery_campaigns',
+        arguments: {},
+      });
+
+      expect(parseToolResult(result)).toEqual({
+        items: [],
+        count: 0,
+        total_available: 0,
+        truncated: false,
+        kind: 'discovery_campaign',
+      });
+    });
+
     it('truncates results', async () => {
       mockClient.get.mockResolvedValueOnce(
         Array.from({ length: 60 }, (_, i) => ({ name: `camp-${i}` })),
