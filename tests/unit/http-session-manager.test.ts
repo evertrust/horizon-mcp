@@ -108,6 +108,15 @@ describe('SessionManager basics', () => {
     mgr.releaseInflight('s1');
     expect(mgr.reserveInflight('s1')).toBe(true);
   });
+
+  it('charges an entire JSON-RPC batch atomically against the inflight cap', () => {
+    const mgr = makeManager({ maxInflight: 2 });
+    add(mgr, 's1');
+    expect(mgr.reserveInflight('s1', 2)).toBe(true);
+    expect(mgr.reserveInflight('s1')).toBe(false);
+    mgr.releaseInflight('s1', 2);
+    expect(mgr.reserveInflight('s1')).toBe(true);
+  });
 });
 
 describe('teardown discipline', () => {
@@ -159,6 +168,29 @@ describe('teardown discipline', () => {
     expect(r.calls.client).toBe(1);
     expect(r.calls.auth).toBe(1);
     expect(r.calls.server).toBe(1);
+  });
+
+  it('still cleans auth when client.close throws synchronously', async () => {
+    const mgr = makeManager();
+    let cleaned = 0;
+    mgr.create({
+      sessionId: 's1',
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: {
+        close: () => {
+          throw new Error('sync close failure');
+        },
+      },
+      auth: {
+        cleanup: async () => {
+          cleaned++;
+        },
+      },
+    });
+
+    await expect(mgr.teardown('s1', 'ttl')).resolves.toBeUndefined();
+    expect(cleaned).toBe(1);
   });
 });
 
@@ -244,5 +276,26 @@ describe('shutdownAll', () => {
     expect(r2.calls.server).toBe(1);
     expect(r1.calls.client).toBe(1);
     expect(r2.calls.client).toBe(1);
+  });
+
+  it('removes session state and runs ancillary cleanup before a resource stalls', async () => {
+    const tornDown: string[] = [];
+    const mgr = makeManager({
+      onTeardown: (sessionId) => tornDown.push(sessionId),
+    });
+    const never = new Promise<void>(() => undefined);
+    mgr.create({
+      sessionId: 'stuck',
+      server: { close: async () => undefined },
+      transport: { close: async () => undefined },
+      client: { close: () => never },
+      auth: { cleanup: async () => undefined },
+    });
+
+    void mgr.teardown('stuck', 'shutdown');
+    await Promise.resolve();
+
+    expect(mgr.size).toBe(0);
+    expect(tornDown).toEqual(['stuck']);
   });
 });

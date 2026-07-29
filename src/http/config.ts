@@ -1,4 +1,10 @@
 import type { HorizonSettings } from '../settings.js';
+import {
+  HttpAuthMethod,
+  type HttpAuthMethodMask,
+  assertValidAuthMethodMask,
+  hasAuthMethod,
+} from './auth-methods.js';
 
 /**
  * Resolved, fail-closed HTTP configuration. Built once at startup (HTTP mode
@@ -22,7 +28,7 @@ export interface HttpConfig {
   readonly publicEndpoint: string;
   readonly allowedHosts: ReadonlySet<string>;
   readonly allowedOrigins: ReadonlySet<string>;
-  readonly authMode: 'service' | 'api-key' | 'mtls';
+  readonly acceptedAuthMethods: HttpAuthMethodMask;
   readonly mtls?: HttpMtlsConfig;
 }
 
@@ -40,6 +46,8 @@ const FORBIDDEN_HEADERS: ReadonlySet<string> = new Set([
   'authorization',
   'x-api-id',
   'x-api-key',
+  'x-api-sva',
+  'x-api-token',
   'csrf-token',
 ]);
 
@@ -147,6 +155,7 @@ function derivePublicEndpoint(
   settings: HorizonSettings,
   path: string,
   publicUrl: URL | undefined,
+  listenerTls: boolean,
 ): string {
   if (publicUrl) {
     return new URL(path, publicUrl).toString();
@@ -154,7 +163,8 @@ function derivePublicEndpoint(
   const host = settings.httpHost;
   const hostPart =
     host.includes(':') && !host.startsWith('[') ? `[${host}]` : host;
-  return `http://${hostPart}:${settings.httpPort}${path}`;
+  const scheme = listenerTls ? 'https' : 'http';
+  return `${scheme}://${hostPart}:${settings.httpPort}${path}`;
 }
 
 function deriveAllowedOrigins(settings: HorizonSettings): ReadonlySet<string> {
@@ -232,28 +242,25 @@ function resolveMtls(settings: HorizonSettings): HttpMtlsConfig {
   };
 }
 
-function resolveAuthMode(
+function resolveMtlsForMethods(
   settings: HorizonSettings,
 ): HttpMtlsConfig | undefined {
-  switch (settings.httpAuthMode) {
-    case 'service': {
-      const hasEnvCred = Boolean(
-        settings.clientCert || settings.clientPfx || settings.apiId,
-      );
-      if (!hasEnvCred) {
-        fail(
-          `service auth mode requires an env credential ` +
-            `(HORIZON_API_ID/HORIZON_API_KEY or ` +
-            `HORIZON_CLIENT_CERT/KEY or HORIZON_CLIENT_PFX)`,
-        );
-      }
-      return undefined;
-    }
-    case 'api-key':
-      return undefined;
-    case 'mtls':
-      return resolveMtls(settings);
+  if (hasAuthMethod(settings.httpAuthMethods, HttpAuthMethod.Mtls)) {
+    return resolveMtls(settings);
   }
+
+  if (
+    settings.httpTlsCert ||
+    settings.httpTlsKey ||
+    settings.inboundCertHeader ||
+    settings.trustedProxy
+  ) {
+    fail(
+      `inbound mTLS settings are configured but mtls is not listed in ` +
+        `HORIZON_HTTP_AUTH_METHODS`,
+    );
+  }
+  return undefined;
 }
 
 /**
@@ -265,6 +272,15 @@ export function buildHttpConfig(
   settings: HorizonSettings,
   env: Record<string, string | undefined> = process.env,
 ): HttpConfig {
+  if (settings.httpAuthMode) {
+    fail(
+      `HORIZON_HTTP_AUTH_MODE was replaced by HORIZON_HTTP_AUTH_METHODS; ` +
+        `set a comma- or pipe-separated whitelist such as "api-key,service"`,
+    );
+  }
+  const acceptedAuthMethods = assertValidAuthMethodMask(
+    settings.httpAuthMethods,
+  );
   if (env['HORIZON_ALLOW_PRIVATE_TLS_PROBE'] === '1') {
     fail(
       `HORIZON_ALLOW_PRIVATE_TLS_PROBE=1 is not allowed in HTTP mode: it would ` +
@@ -278,21 +294,34 @@ export function buildHttpConfig(
     ? validatePublicUrl(settings.publicUrl)
     : undefined;
   const allowedHosts = deriveAllowedHosts(settings, publicUrl);
-  const publicEndpoint = derivePublicEndpoint(settings, path, publicUrl);
   const allowedOrigins = deriveAllowedOrigins(settings);
-  const mtls = resolveAuthMode(settings);
+  const mtls = resolveMtlsForMethods(settings);
+  const listenerTls = Boolean(mtls?.listener);
+  if (listenerTls && publicUrl?.protocol === 'http:') {
+    fail(
+      `HORIZON_PUBLIC_URL must use https when the MCP TLS listener is enabled`,
+    );
+  }
+  const publicEndpoint = derivePublicEndpoint(
+    settings,
+    path,
+    publicUrl,
+    listenerTls,
+  );
 
-  // Fail closed: api-key mode carries per-caller credentials in request
-  // headers, so a cleartext http endpoint on a non-loopback bind would leak
-  // them on the wire. An https public URL (a TLS-terminating proxy in front)
-  // is the supported way to run non-loopback.
+  // Fail closed: API-key and JWKS service-account methods carry per-caller
+  // credentials in headers, so cleartext HTTP on a non-loopback bind leaks
+  // them on the wire. An HTTPS public URL denotes a TLS-terminating edge.
+  const carriesHeaderCredentials =
+    hasAuthMethod(acceptedAuthMethods, HttpAuthMethod.ApiKey) ||
+    hasAuthMethod(acceptedAuthMethods, HttpAuthMethod.Service);
   if (
-    settings.httpAuthMode === 'api-key' &&
+    carriesHeaderCredentials &&
     !isLoopbackHost(settings.httpHost) &&
     (publicUrl ? publicUrl.protocol !== 'https:' : true)
   ) {
     fail(
-      `api-key auth mode on non-loopback host "${settings.httpHost}" would ` +
+      `header-based authentication on non-loopback host "${settings.httpHost}" would ` +
         `expose per-caller credentials over cleartext http. Terminate TLS ` +
         `(set HORIZON_PUBLIC_URL to an https origin behind a TLS-terminating ` +
         `proxy) or bind to loopback.`,
@@ -306,30 +335,7 @@ export function buildHttpConfig(
     publicEndpoint,
     allowedHosts,
     allowedOrigins,
-    authMode: settings.httpAuthMode,
+    acceptedAuthMethods,
     ...(mtls ? { mtls } : {}),
   };
-}
-
-/**
- * A single prominent startup warning for service auth mode on a non-loopback
- * bind: the endpoint is an unauthenticated proxy that acts with the server's
- * Horizon identity, so it must be protected by network placement or an
- * authenticating edge. Returns undefined when no warning applies.
- */
-export function serviceExposureWarning(
-  settings: HorizonSettings,
-): string | undefined {
-  if (
-    settings.httpAuthMode === 'service' &&
-    !isLoopbackHost(settings.httpHost)
-  ) {
-    return (
-      `service auth mode on non-loopback host "${settings.httpHost}": this ` +
-      `endpoint is an UNAUTHENTICATED proxy that acts with the server's ` +
-      `Horizon identity. Any caller that can reach it acts as that identity. ` +
-      `Protect it by network placement or an authenticating edge.`
-    );
-  }
-  return undefined;
 }
