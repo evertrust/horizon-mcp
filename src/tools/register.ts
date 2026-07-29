@@ -1,24 +1,17 @@
 import type {
-  McpServer,
-  ToolCallback,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import type {
-  AnySchema,
-  ZodRawShapeCompat,
-} from '@modelcontextprotocol/sdk/server/zod-compat.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
   CallToolResult,
-  ServerNotification,
-  ServerRequest,
+  McpServer,
+  ServerContext,
+  StandardSchemaWithJSON,
   ToolAnnotations,
-} from '@modelcontextprotocol/sdk/types.js';
+  ToolCallback,
+} from '@modelcontextprotocol/server';
 import type { z } from 'zod';
 
 import { HorizonError } from '../client/errors.js';
 import { buildToolDescription } from './guidance.js';
 
-type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+type ToolExtra = ServerContext;
 
 type ToolConfigBase = {
   title?: string;
@@ -317,12 +310,12 @@ export function registerTool(
     inputSchema:
       config.inputSchema === undefined
         ? undefined
-        : (config.inputSchema as unknown as AnySchema | ZodRawShapeCompat),
+        : (config.inputSchema as StandardSchemaWithJSON),
   };
 
   return server.registerTool(
     name,
     sdkConfig as never,
-    handler as unknown as ToolCallback<AnySchema | ZodRawShapeCompat>,
+    handler as unknown as ToolCallback<StandardSchemaWithJSON>,
   );
 }

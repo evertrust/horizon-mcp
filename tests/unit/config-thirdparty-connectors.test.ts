@@ -7,9 +7,8 @@
  * failure), netscaler's extra mandatory fields, the GET-strip-merge-PUT update
  * cycle (PUT on collection root, _id/tenant stripped), and the delete safety echo.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerThirdpartyConnectorTools } from '../../src/tools/config/thirdparty-connectors.js';

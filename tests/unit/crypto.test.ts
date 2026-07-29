@@ -7,9 +7,8 @@
  *   - decode_* tools cap input size via Zod before forwarding to Horizon
  *   - convert_pkcs12_to_jks surfaces a clean tool error (not a protocol error)
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import * as dns from 'node:dns';
 import {
   afterEach,

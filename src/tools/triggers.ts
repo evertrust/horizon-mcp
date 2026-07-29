@@ -13,7 +13,7 @@
  *   - horizon://knowledge/rest-notifications
  *   - horizon://knowledge/automation
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';

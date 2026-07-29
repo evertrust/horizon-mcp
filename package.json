@@ -42,11 +42,13 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.29.0",
     "express": "^5",
     "express-rate-limit": "8.5.2",
     "undici": "8.7.0",
-    "zod": "4.3.6"
+    "zod": "4.3.6",
+    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/node": "2.0.0",
+    "@modelcontextprotocol/client": "2.0.0"
   },
   "overrides": {
     "@hono/node-server": "^1.19.14",

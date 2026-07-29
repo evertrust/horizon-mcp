@@ -4,9 +4,8 @@
  * Verifies that only list/get tools are registered (no create/update/delete),
  * and that they hit the /api/v1/security/service-accounts routes.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { registerServiceAccountTools } from '../../src/tools/config/service-accounts.js';

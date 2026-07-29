@@ -7,9 +7,8 @@
  * that the list result is shaped as a list response. Modeled on
  * tests/unit/config-certificate-grading-policies.test.ts.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { registerCertificateGradingRulesetTools } from '../../src/tools/config/certificate-grading-rulesets.js';

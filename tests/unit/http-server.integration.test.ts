@@ -24,9 +24,9 @@ const { buildHttpConfig } = await import('../../src/http/config.js');
 const { credentialFingerprintOf } =
   await import('../../src/http/credentials.js');
 const { loadSettings } = await import('../../src/settings.js');
-const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
+const { Client } = await import('@modelcontextprotocol/client');
 const { StreamableHTTPClientTransport } =
-  await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
+  await import('@modelcontextprotocol/client');
 
 function fakeResponse(status: number, body: unknown): Response {
   const text = typeof body === 'string' ? body : JSON.stringify(body);

@@ -7,7 +7,7 @@
  * Knowledge resources:
  *   - horizon://knowledge/query-languages
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

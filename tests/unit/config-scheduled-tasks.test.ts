@@ -8,9 +8,8 @@
  * on collection root, audited server fields stripped), the delete safety echo,
  * and that describe returns the embedded schema.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerScheduledTaskTools } from '../../src/tools/config/scheduled-tasks.js';

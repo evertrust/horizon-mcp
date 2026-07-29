@@ -10,7 +10,7 @@
  *   - horizon://knowledge/discovery (concepts, data structures, search patterns)
  *   - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';

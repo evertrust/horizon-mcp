@@ -7,9 +7,8 @@
  *                 submit_request, approve/deny/cancel_request
  *   Assist      - whoami, decode_x509, validate_hcql, describe_query_fields
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 

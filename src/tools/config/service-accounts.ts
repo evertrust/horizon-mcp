@@ -12,7 +12,7 @@
  * TrustConfig.scala + ServiceAccountApiV1Controller.scala.
  * Route: /api/v1/security/service-accounts, item /{name}.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 
 import type { HorizonClient } from '../../client/http.js';
 import { type ConfigSpec, registerReadTools } from './_scaffold.js';

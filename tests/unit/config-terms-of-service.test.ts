@@ -5,9 +5,8 @@
  * optional description), non-empty-contents enforcement, mandatory-field
  * enforcement, GET-merge-PUT update on the collection root, and delete echo.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerTermsOfServiceTools } from '../../src/tools/config/terms-of-service.js';

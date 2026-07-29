@@ -11,7 +11,7 @@
  * root (body-keyed full-replace, located by `forest`); the wrapper does
  * GET-merge so omitted fields are preserved.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

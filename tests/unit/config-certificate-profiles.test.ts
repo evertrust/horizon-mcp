@@ -8,9 +8,8 @@
  * _id + tenant stripped), the delete safety echo, and that the describe tool
  * returns the embedded JSON Schema.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerCertificateProfileTools } from '../../src/tools/config/certificate-profiles.js';

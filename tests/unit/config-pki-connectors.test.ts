@@ -7,9 +7,8 @@
  * update cycle (PUT on collection root, audited strip fields removed), the
  * delete safety echo, and that describe_pki_connector_schema returns the schema.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerPkiConnectorTools } from '../../src/tools/config/pki-connectors.js';

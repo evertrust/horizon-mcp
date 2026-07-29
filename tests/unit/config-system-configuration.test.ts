@@ -7,9 +7,8 @@
  * enforcement, the GET-strip-merge-PUT upsert cycle (PUT on collection root,
  * [_id, tenant] stripped), and absence of a delete tool (the API has no DELETE).
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerSystemConfigTools } from '../../src/tools/config/system-configuration.js';

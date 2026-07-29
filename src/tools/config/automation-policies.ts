@@ -10,7 +10,7 @@
  * full-replace via replaceOne on name); the wrapper does GET-merge so omitted
  * fields are preserved unless cleared. The server-generated _id is stripped.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

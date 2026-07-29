@@ -7,9 +7,8 @@
  *   HORIZON_E2E_API_ID   - API key identifier
  *   HORIZON_E2E_API_KEY  - API key secret
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { afterAll, beforeAll } from 'vitest';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
@@ -117,7 +116,6 @@ export async function callTool(
   const client = getMcpClient();
   const result = await client.callTool(
     { name, arguments: args },
-    undefined,
     opts?.timeout ? { timeout: opts.timeout } : undefined,
   );
 
@@ -171,7 +169,6 @@ export async function callToolRaw(
   const client = getMcpClient();
   const result = await client.callTool(
     { name, arguments: args },
-    undefined,
     opts?.timeout ? { timeout: opts.timeout } : undefined,
   );
 

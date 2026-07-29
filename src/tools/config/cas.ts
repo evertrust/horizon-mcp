@@ -13,7 +13,7 @@
  * update the server force-overrides it with the previously stored certificate -
  * we still send it because the schema requires it.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

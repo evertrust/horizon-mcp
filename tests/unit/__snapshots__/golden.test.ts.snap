@@ -4,16 +4,18 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
 [
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "chart": {
           "additionalProperties": {},
+          "description": "Chart configuration object. Required fields: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"]}. Valid chart types: area, donut, heatmap, bar-horizontal, line, metric, pie, polar, pyramid, radar, table, treemap, bar-vertical. Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), "direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), "log" (boolean - logarithmic scale), "description" (string).",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "dashboard_name": {
+          "description": "Name of the dashboard to modify.",
           "type": "string",
         },
       },
@@ -27,17 +29,20 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "group_by": {
+          "description": "List of field names to group by (camelCase).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "having": {
+          "description": "Optional post-aggregation filter on count.",
           "properties": {
             "operator": {
+              "description": "Comparison operator.",
               "enum": [
                 "gt",
                 "gte",
@@ -49,6 +54,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
               "type": "string",
             },
             "value": {
+              "description": "Threshold count value.",
               "type": "number",
             },
           },
@@ -59,10 +65,12 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "object",
         },
         "query": {
+          "description": "HCQL filter expression (ALL LOWERCASE field names).",
           "type": "string",
         },
         "sort_order": {
           "default": "Desc",
+          "description": "Bucket sort order.",
           "enum": [
             "Asc",
             "Desc",
@@ -82,17 +90,20 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "group_by": {
+          "description": "List of field names to group by (camelCase).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "having": {
+          "description": "Optional post-aggregation filter on count.",
           "properties": {
             "operator": {
+              "description": "Comparison operator.",
               "enum": [
                 "gt",
                 "gte",
@@ -104,6 +115,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
               "type": "string",
             },
             "value": {
+              "description": "Threshold count value.",
               "type": "number",
             },
           },
@@ -114,10 +126,12 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "object",
         },
         "query": {
+          "description": "HRQL filter expression (ALL LOWERCASE field names).",
           "type": "string",
         },
         "sort_order": {
           "default": "Desc",
+          "description": "Bucket sort order.",
           "enum": [
             "Asc",
             "Desc",
@@ -137,9 +151,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "request_id": {
+          "description": "The request ID to approve.",
           "type": "string",
         },
       },
@@ -152,9 +167,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "request_id": {
+          "description": "The request ID to cancel.",
           "type": "string",
         },
       },
@@ -167,19 +183,23 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "alias": {
           "default": "horizon",
+          "description": "Key entry alias in the JKS keystore",
           "type": "string",
         },
         "jks_password": {
+          "description": "Password for the output JKS keystore (defaults to pkcs12_password)",
           "type": "string",
         },
         "pkcs12_base64": {
+          "description": "Base64-encoded PKCS#12 bundle",
           "type": "string",
         },
         "pkcs12_password": {
+          "description": "Password for the PKCS#12 bundle",
           "type": "string",
         },
       },
@@ -193,9 +213,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "charts": {
+          "description": "List of chart objects (default: empty list for blank dashboard). Each chart: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"], "i": "1", "x": 0, "y": 0, "w": 6, "h": 4}. Recommended: start with charts=[] and use add_dashboard_chart interactively.",
           "items": {
             "additionalProperties": {},
             "propertyNames": {
@@ -206,6 +227,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "dashboard_type": {
+          "description": "Dashboard scope - "certificate" or "request".",
           "enum": [
             "certificate",
             "request",
@@ -213,9 +235,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "description": {
+          "description": "Optional human-readable description.",
           "type": "string",
         },
         "name": {
+          "description": "Unique dashboard name (IMMUTABLE - cannot be renamed later).",
           "type": "string",
         },
       },
@@ -229,10 +253,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "authorization_levels": {
           "additionalProperties": {},
+          "description": "Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. Valid accessLevel values: "everyone", "authenticated", "authorized". Optional per-section: "enforcedIdentityProviders": ["idp-name"].",
           "properties": {
             "feed": {
               "additionalProperties": {},
@@ -288,42 +313,53 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "object",
         },
         "description": {
+          "description": "Optional human-readable description.",
           "type": "string",
         },
         "enabled": {
           "default": true,
+          "description": "Whether the campaign is active (default true).",
           "type": "boolean",
         },
         "event_on_failure": {
           "default": true,
+          "description": "Generate events on scan failures (default true).",
           "type": "boolean",
         },
         "event_on_success": {
           "default": true,
+          "description": "Generate events on successful scans (default true).",
           "type": "boolean",
         },
         "event_on_warning": {
           "default": true,
+          "description": "Generate events on scan warnings (default true).",
           "type": "boolean",
         },
         "grading_policies": {
+          "description": "Optional list of grading policy names to apply.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "hosts": {
+          "description": "Optional list of hosts/IP ranges to scan.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "name": {
+          "description": "Unique campaign name (no dots allowed).",
           "type": "string",
         },
         "ports": {
+          "description": "Optional list of ports to scan.",
           "items": {
-            "type": "number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
           },
           "type": "array",
         },
@@ -338,12 +374,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "description": {
+          "description": "Human-readable description.",
           "type": "string",
         },
         "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
           "items": {
             "properties": {
               "lang": {
@@ -362,19 +400,26 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "host": {
+          "description": "DNS server IP address. Omit for Horizon's default resolver.",
           "type": "string",
         },
         "lookup": {
+          "description": "DNS hostname to look up - supports {{key}} TemplateString syntax.",
           "type": "string",
         },
         "name": {
+          "description": "Unique datasource name (immutable primary key).",
           "type": "string",
         },
         "port": {
           "default": 53,
-          "type": "number",
+          "description": "DNS server port (default 53).",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "record_types": {
+          "description": "DNS record types to return: "a", "aaaa", "cname", "ptr", "txt". Omit for all.",
           "items": {
             "type": "string",
           },
@@ -382,6 +427,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "timeout": {
           "default": "10 seconds",
+          "description": "Query timeout in duration format (default "10 seconds").",
           "type": "string",
         },
       },
@@ -395,9 +441,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
           "items": {
             "properties": {
               "key": {
@@ -420,19 +467,24 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "base_dn": {
+          "description": "LDAP search base DN - supports {{key}} TemplateString syntax.",
           "type": "string",
         },
         "credentials": {
+          "description": "Name of existing PasswordCredentials for LDAP bind.",
           "type": "string",
         },
         "description": {
+          "description": "Human-readable description.",
           "type": "string",
         },
         "disable_hostname_validation": {
           "default": false,
+          "description": "Skip hostname validation on TLS (default false).",
           "type": "boolean",
         },
         "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
           "items": {
             "properties": {
               "lang": {
@@ -451,30 +503,43 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "filter": {
+          "description": "LDAP search filter - supports {{key}} TemplateString syntax.",
           "type": "string",
         },
         "follow_referrals": {
+          "description": "Enable LDAP referral traversal.",
           "type": "boolean",
         },
         "hostname": {
+          "description": "LDAP server URL (e.g. "ldaps://ldap.corp.example.com").",
           "type": "string",
         },
         "limit": {
-          "type": "number",
+          "description": "Maximum number of LDAP results to return.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "name": {
+          "description": "Unique datasource name (immutable primary key).",
           "type": "string",
         },
         "port": {
-          "type": "number",
+          "description": "LDAP port. Default: 389 (LDAP) or 636 (LDAPS).",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "proxy": {
+          "description": "Name of an existing HTTP proxy object.",
           "type": "string",
         },
         "secure": {
+          "description": "Use secure LDAP (LDAPS).",
           "type": "boolean",
         },
         "timeout": {
+          "description": "Query timeout in duration format (e.g. "10s", "30 seconds").",
           "type": "string",
         },
       },
@@ -493,9 +558,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
           "items": {
             "properties": {
               "key": {
@@ -518,15 +584,19 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "authentication_type": {
+          "description": "Auth scheme: "noauth", "basic", "x509", "bearer", or "custom".",
           "type": "string",
         },
         "credentials": {
+          "description": "Name of existing credentials. Required when authentication_type is not "noauth".",
           "type": "string",
         },
         "description": {
+          "description": "Human-readable description.",
           "type": "string",
         },
         "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
           "items": {
             "properties": {
               "lang": {
@@ -545,12 +615,16 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "expected_http_codes": {
+          "description": "HTTP status codes indicating success (e.g. [200, 201]).",
           "items": {
-            "type": "number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
           },
           "type": "array",
         },
         "headers": {
+          "description": "Custom HTTP headers as [{name, value}].",
           "items": {
             "properties": {
               "name": {
@@ -569,24 +643,31 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "method": {
+          "description": "HTTP method (GET, POST, PUT, DELETE, etc.).",
           "type": "string",
         },
         "name": {
+          "description": "Unique datasource name (immutable primary key).",
           "type": "string",
         },
         "payload": {
+          "description": "Request body - supports {{key}} TemplateString syntax.",
           "type": "string",
         },
         "payload_type": {
+          "description": "Payload format hint (e.g. "json").",
           "type": "string",
         },
         "proxy": {
+          "description": "Name of an existing HTTP proxy object.",
           "type": "string",
         },
         "timeout": {
+          "description": "Request timeout in duration format (e.g. "10s").",
           "type": "string",
         },
         "url": {
+          "description": "Endpoint URL - supports {{key}} TemplateString syntax.",
           "type": "string",
         },
       },
@@ -604,18 +685,24 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "event": {
+          "description": "Single lifecycle event to subscribe to. Examples: "on_enroll", "on_revoke", "on_renew", "on_expire".",
           "type": "string",
         },
         "licence_usage_percent": {
-          "type": "number",
+          "description": "Threshold 1-100 for on_license_usage. MANDATORY for on_license_usage only.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "name": {
+          "description": "Unique trigger name (immutable primary key).",
           "type": "string",
         },
         "on_trigger_error": {
+          "description": "Names of triggers to fire if this notification fails.",
           "items": {
             "type": "string",
           },
@@ -623,15 +710,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "retries": {
           "default": 10,
-          "type": "number",
+          "description": "Retry count on failure with exponential backoff (default 10).",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "run_on_renewed": {
+          "description": "Whether to fire even if certificate was renewed. MANDATORY for on_expire only.",
           "type": "boolean",
         },
         "run_period": {
+          "description": "Duration for periodic events (e.g. "30 days"). MANDATORY for on_expire, on_pending_*, on_license_expiration, on_credentials_expiration. FORBIDDEN for all other events.",
           "type": "string",
         },
         "sequence": {
+          "description": "Ordered list of REST call steps. Each step: {url, method, authenticationType, expectedHttpCodes, timeout, ...}.",
           "items": {
             "additionalProperties": {},
             "propertyNames": {
@@ -653,9 +746,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "data": {
+          "description": "PEM-encoded CRL string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -668,9 +763,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "pem": {
+          "description": "PEM-encoded CSR string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -683,9 +780,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "data": {
+          "description": "Base64-encoded DER bytes of the OCSP response.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -698,9 +797,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "data": {
+          "description": "Base64-encoded DER bytes of the timestamping response.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -713,9 +814,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "pem": {
+          "description": "PEM-encoded X.509 certificate string (including BEGIN/END markers) or base64-encoded DER bytes.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -728,12 +831,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Dashboard name to delete.",
           "type": "string",
         },
       },
@@ -747,12 +852,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Datasource name to delete.",
           "type": "string",
         },
       },
@@ -766,12 +873,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Campaign name to delete.",
           "type": "string",
         },
       },
@@ -785,12 +894,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_uuid": {
+          "description": "Must exactly match report_uuid as a deletion safeguard.",
           "type": "string",
         },
         "report_uuid": {
+          "description": "UUID of the report to delete.",
           "type": "string",
         },
       },
@@ -804,12 +915,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Saved query name to delete.",
           "type": "string",
         },
       },
@@ -823,12 +936,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Trigger name to delete.",
           "type": "string",
         },
       },
@@ -842,9 +957,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "request_id": {
+          "description": "The request ID to deny.",
           "type": "string",
         },
       },
@@ -857,9 +973,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query_type": {
+          "description": "Query language type - one of: hcql, hrql, heql, hdql.",
           "type": "string",
         },
       },
@@ -872,9 +989,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "data": {
+          "description": "The cryptographic data to detect and parse. Can be PEM-encoded, base64-encoded DER, or PKCS#7 content.",
+          "maxLength": 2000000,
           "type": "string",
         },
       },
@@ -887,13 +1006,15 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_id": {
+          "description": "Certificate ID.",
           "type": "string",
         },
         "format": {
           "default": "pem",
+          "description": "Output format (only 'pem' is supported via the API).",
           "enum": [
             "pem",
           ],
@@ -909,9 +1030,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "report_uuid": {
+          "description": "UUID of the report to download.",
           "type": "string",
         },
       },
@@ -924,12 +1046,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "campaign_name": {
+          "description": "Name of the discovery campaign.",
           "type": "string",
         },
         "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
           "type": "string",
         },
       },
@@ -943,12 +1067,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_pem": {
+          "description": "Optional PEM-encoded certificate to evaluate against the policy.",
           "type": "string",
         },
         "policy_name": {
+          "description": "Name of the grading policy to inspect.",
           "type": "string",
         },
       },
@@ -961,12 +1087,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_pem": {
+          "description": "Optional PEM-encoded certificate to evaluate against the ruleset.",
           "type": "string",
         },
         "ruleset_name": {
+          "description": "Name of the grading ruleset to inspect.",
           "type": "string",
         },
       },
@@ -979,18 +1107,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HCQL query fields. Examples: dn, serial, contactEmail, autoRenew, module, profile, notAfter. Prefix families: label.<key>, metadata.<key>, grade.<policy>, team.displayname.<lang>. Invalid names return a Horizon 500 that lists the usable columns.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "query": {
+          "description": "HCQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'notAfter' or 'notAfter:Desc'.",
           "type": "string",
         },
       },
@@ -1003,22 +1134,26 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "enable_analytics": {
           "default": true,
+          "description": "Enable analytics on the export (default true).",
           "type": "boolean",
         },
         "fields": {
+          "description": "Specific fields to include in the CSV columns.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "query": {
+          "description": "HDQL query string.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort specification, e.g. 'timestamp:Desc'.",
           "type": "string",
         },
       },
@@ -1031,18 +1166,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HEQL query fields. Examples: code, module, timestamp, status, plus detail.<key> for detail columns (detail.actorId, detail.ip). Invalid names return a Horizon 500 that lists the usable columns.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "query": {
+          "description": "HEQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'timestamp:Desc'.",
           "type": "string",
         },
       },
@@ -1055,18 +1193,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HRQL query fields. Examples: profile, requestType, status, contactEmail, registrationDate. Prefix families: label.<key>, metadata.<key>. Invalid names return a Horizon 500 that lists the usable columns.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "query": {
+          "description": "HRQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'registrationDate:Desc'.",
           "type": "string",
         },
       },
@@ -1079,50 +1220,61 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "campaign_name": {
+          "description": "Name of the discovery campaign (must match the session).",
           "type": "string",
         },
         "certificate": {
+          "description": "PEM-encoded certificate string.",
           "type": "string",
         },
         "hostnames": {
+          "description": "DNS hostnames of the host (e.g. ["web01.example.com"]).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "ip": {
+          "description": "IP address of the host where the certificate was discovered.",
           "type": "string",
         },
         "operating_systems": {
+          "description": "OS detected on the host (localscan only).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "paths": {
+          "description": "File paths where cert was found (localscan only).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
           "type": "string",
         },
         "sources": {
+          "description": "Discovery source identifiers (e.g. ["netscan"]).",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "tls_ports": {
+          "description": "TLS ports serving the cert (e.g. [{"port": 443, "version": "TLSv1.3"}]).",
           "items": {
             "additionalProperties": {},
             "properties": {
               "port": {
-                "type": "number",
+                "maximum": 9007199254740991,
+                "minimum": -9007199254740991,
+                "type": "integer",
               },
               "version": {
                 "type": "string",
@@ -1136,6 +1288,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "usages": {
+          "description": "Service bindings (localscan only).",
           "items": {
             "type": "string",
           },
@@ -1154,13 +1307,17 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "timeout": {
           "default": 10,
-          "type": "number",
+          "description": "Connection timeout in seconds (default 10).",
+          "exclusiveMinimum": 0,
+          "maximum": 9007199254740991,
+          "type": "integer",
         },
         "uri": {
+          "description": "Target endpoint. Examples: https://www.example.com, ldaps://dc01.corp.local:636, 192.168.1.1:8443, mail.example.com:993",
           "type": "string",
         },
       },
@@ -1173,12 +1330,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expected_name": {
+          "description": "Must exactly match name as a flush safeguard.",
           "type": "string",
         },
         "name": {
+          "description": "Campaign name to flush.",
           "type": "string",
         },
       },
@@ -1192,9 +1351,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_id": {
+          "description": "Certificate ID.",
           "type": "string",
         },
       },
@@ -1207,9 +1367,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact dashboard name.",
           "type": "string",
         },
       },
@@ -1222,9 +1383,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact datasource name.",
           "type": "string",
         },
       },
@@ -1237,9 +1399,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact campaign name.",
           "type": "string",
         },
       },
@@ -1252,9 +1415,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "event_id": {
+          "description": "The discovery event ID.",
           "type": "string",
         },
       },
@@ -1267,17 +1431,24 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_chars": {
           "default": 20000,
-          "type": "number",
+          "description": "Maximum number of content characters to return in this window (1-50000, default 20000).",
+          "exclusiveMinimum": 0,
+          "maximum": 50000,
+          "type": "integer",
         },
         "offset": {
           "default": 0,
-          "type": "number",
+          "description": "Character offset into the page content to start from. Use next_offset from a prior truncated response to continue.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "page_id": {
+          "description": "Exact page_id returned by search_docs or search_api_docs.",
           "type": "string",
         },
       },
@@ -1290,9 +1461,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "event_id": {
+          "description": "Event ID.",
           "type": "string",
         },
       },
@@ -1312,9 +1484,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact profile name.",
           "type": "string",
         },
       },
@@ -1327,9 +1500,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "request_id": {
+          "description": "Request ID.",
           "type": "string",
         },
       },
@@ -1342,18 +1516,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_id": {
+          "description": "For renew/revoke/update/recover/migrate - the existing certificate ID.",
           "type": "string",
         },
         "module": {
+          "description": "Profile module (webra, est, scep, acme, etc.).",
           "type": "string",
         },
         "profile": {
+          "description": "Profile name. Required for enroll to get profile-specific template.",
           "type": "string",
         },
         "workflow": {
+          "description": "Workflow type: enroll, renew, revoke, update, recover, migrate, import.",
           "type": "string",
         },
       },
@@ -1366,9 +1544,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact saved query name.",
           "type": "string",
         },
       },
@@ -1381,9 +1560,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Exact trigger name.",
           "type": "string",
         },
       },
@@ -1396,16 +1576,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "credential_type": {
+          "description": "Filter by type: "password" (login/password), "raw" (API token), or "x509" (client certificate).",
           "type": "string",
         },
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on credential name.",
           "type": "string",
         },
       },
@@ -1415,9 +1600,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "dashboard_type": {
+          "description": "Filter by type - "certificate" or "request".",
           "enum": [
             "certificate",
             "request",
@@ -1426,9 +1612,13 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on dashboard name.",
           "type": "string",
         },
       },
@@ -1438,16 +1628,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "ds_type": {
+          "description": "Filter by datasource type: "dns", "ldap", or "rest".",
           "type": "string",
         },
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on datasource name.",
           "type": "string",
         },
       },
@@ -1457,13 +1652,17 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on campaign name.",
           "type": "string",
         },
       },
@@ -1473,16 +1672,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum number of profiles to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "module": {
+          "description": "Filter by module type (webra, acme, scep, est, monitored).",
           "type": "string",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on profile name.",
           "type": "string",
         },
       },
@@ -1492,17 +1696,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "expired": {
           "default": false,
+          "description": "Include expired reports (default false).",
           "type": "boolean",
         },
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "report_name": {
+          "description": "Exact report name to filter on (server-side).",
           "type": "string",
         },
       },
@@ -1512,16 +1721,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on query name.",
           "type": "string",
         },
         "query_type": {
+          "description": "Filter by HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".",
           "enum": [
             "hcql",
             "hrql",
@@ -1538,16 +1752,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_items": {
           "default": 50,
-          "type": "number",
+          "description": "Maximum items to return (default 50).",
+          "exclusiveMinimum": 0,
+          "maximum": 100,
+          "type": "integer",
         },
         "name_contains": {
+          "description": "Case-insensitive substring filter on trigger name.",
           "type": "string",
         },
         "trigger_type": {
+          "description": "Filter by type: "rest", "email", "webhook", "akv", "aws", etc.",
           "type": "string",
         },
       },
@@ -1557,20 +1776,28 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_chars": {
           "default": 20000,
-          "type": "number",
+          "description": "Maximum number of content characters to return in this window (1-50000, default 20000).",
+          "exclusiveMinimum": 0,
+          "maximum": 50000,
+          "type": "integer",
         },
         "offset": {
           "default": 0,
-          "type": "number",
+          "description": "Character offset into the content to start from. Use next_offset from a prior truncated response to continue.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "section": {
+          "description": "Optional section slug within the topic (only some topics are split into sections).",
           "type": "string",
         },
         "topic": {
+          "description": "Knowledge topic slug, e.g. server-rules, query-languages, tool-selection. This is the segment after horizon://knowledge/.",
           "type": "string",
         },
       },
@@ -1583,16 +1810,18 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "data": {
           "additionalProperties": {},
+          "description": "Event data object - contents depend on the event type.",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "session_id": {
+          "description": "Session ID obtained from start_discovery_feed_session.",
           "type": "string",
         },
       },
@@ -1606,12 +1835,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "chart_id": {
+          "description": "Unique chart identifier (the "i" field) to remove.",
           "type": "string",
         },
         "dashboard_name": {
+          "description": "Name of the dashboard containing the chart.",
           "type": "string",
         },
       },
@@ -1625,16 +1856,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_results": {
           "default": 5,
-          "type": "number",
+          "description": "Maximum number of results to return (1-10).",
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer",
         },
         "query": {
+          "description": "What Horizon API reference page you need.",
           "type": "string",
         },
         "version": {
+          "description": "Optional explicit Horizon API docs version. Only set this when the user explicitly asks for one.",
           "type": "string",
         },
       },
@@ -1647,9 +1883,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
+          "description": "Custom field list (overrides preset).",
           "items": {
             "type": "string",
           },
@@ -1657,14 +1894,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "page_index": {
           "default": 0,
-          "type": "number",
+          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "page_size": {
           "default": 25,
-          "type": "number",
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
         },
         "preset": {
           "default": "compact",
+          "description": "Preset field set (overridden by fields if provided).",
           "enum": [
             "compact",
             "diagnostic",
@@ -1673,13 +1917,16 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "query": {
+          "description": "HCQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'notAfter' or 'notAfter:Desc'. Strongly recommended when paginating.",
           "type": "string",
         },
         "with_count": {
           "default": true,
+          "description": "Include total matching count in response so has_more/next_page_index are reliable. Default true.",
           "type": "boolean",
         },
       },
@@ -1692,28 +1939,38 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "enable_analytics": {
           "default": true,
+          "description": "Enable analytics on the search (default true).",
           "type": "boolean",
         },
         "page_index": {
           "default": 0,
-          "type": "number",
+          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "page_size": {
           "default": 25,
-          "type": "number",
+          "description": "Results per page, max 100 (default 25).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
         },
         "query": {
+          "description": "HDQL query string.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort specification, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
           "type": "string",
         },
         "with_count": {
           "default": true,
+          "description": "Include total matching count in response so has_more/next_page_index are reliable. Default true.",
           "type": "boolean",
         },
       },
@@ -1726,19 +1983,25 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "max_results": {
           "default": 5,
-          "type": "number",
+          "description": "Maximum number of results to return (1-10).",
+          "maximum": 10,
+          "minimum": 1,
+          "type": "integer",
         },
         "product": {
+          "description": "Optional product filter. Supported values: horizon, adcs-connector, horizon-cli, horizon-issuer, winhorizon, horizon-ansible, terraform-provider-horizon.",
           "type": "string",
         },
         "query": {
+          "description": "What documentation you need to find.",
           "type": "string",
         },
         "version": {
+          "description": "Optional explicit docs version. Only set this when the user explicitly requests a specific version.",
           "type": "string",
         },
       },
@@ -1751,24 +2014,33 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "page_index": {
           "default": 0,
-          "type": "number",
+          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "page_size": {
           "default": 25,
-          "type": "number",
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
         },
         "query": {
+          "description": "HEQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'timestamp:Desc'. Strongly recommended when paginating.",
           "type": "string",
         },
         "with_count": {
           "default": true,
+          "description": "Include total matching count in response so has_more/next_page_index are reliable. Default true.",
           "type": "boolean",
         },
       },
@@ -1781,9 +2053,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
+          "description": "Custom field list (overrides preset).",
           "items": {
             "type": "string",
           },
@@ -1791,14 +2064,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "page_index": {
           "default": 0,
-          "type": "number",
+          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "page_size": {
           "default": 25,
-          "type": "number",
+          "description": "Results per page (max 100).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
         },
         "preset": {
           "default": "compact",
+          "description": "Preset field set (overridden by fields if provided).",
           "enum": [
             "compact",
             "diagnostic",
@@ -1807,13 +2087,16 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "query": {
+          "description": "HRQL query expression.",
           "type": "string",
         },
         "sorted_by": {
+          "description": "Sort field, e.g. 'registrationDate:Desc'. Strongly recommended when paginating.",
           "type": "string",
         },
         "with_count": {
           "default": true,
+          "description": "Include total matching count in response so has_more/next_page_index are reliable. Default true.",
           "type": "boolean",
         },
       },
@@ -1826,12 +2109,13 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "dictionary": {
           "additionalProperties": {
             "type": "string",
           },
+          "description": "Key-value pairs available as variables during evaluation.",
           "propertyNames": {
             "type": "string",
           },
@@ -1839,6 +2123,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "mode": {
           "default": "computation_rule",
+          "description": "Expression type - "computation_rule" or "template_string".",
           "enum": [
             "computation_rule",
             "template_string",
@@ -1846,6 +2131,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "rule": {
+          "description": "The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.",
           "type": "string",
         },
       },
@@ -1859,16 +2145,18 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "context": {
           "additionalProperties": {},
+          "description": "Optional initial context dictionary.",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "flow": {
+          "description": "Ordered list of flow entries.",
           "items": {
             "properties": {
               "datasource": {
@@ -1906,9 +2194,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "Name of the existing trigger to simulate.",
           "type": "string",
         },
       },
@@ -1921,9 +2210,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "campaign_name": {
+          "description": "Name of the discovery campaign to feed into.",
           "type": "string",
         },
       },
@@ -1936,35 +2226,63 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "certificate_id": {
+          "description": "Certificate ID (required for renew, revoke, update, recover, migrate). Use search_certificates to find it.",
           "type": "string",
         },
         "data": {
           "additionalProperties": {},
+          "description": "Additional workflow-specific fields merged into the payload.
+For revoke: {"revocationReason": "keycompromise"}.
+For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.
+For dry run validation: {"dryRun": true}.
+For requester comment: {"requesterComment": "reason for request"}.",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "module": {
+          "description": "Profile module type (webra, est, scep, acme, crmp, etc.).",
           "type": "string",
         },
         "password": {
+          "description": "PKCS#12 password for centralized key generation. When
+provided, Horizon generates the key pair server-side and returns
+the PKCS#12 in the response (base64). Also retrievable via
+get_request. May be auto-generated by profile password policy -
+check get_request_template.",
           "type": "string",
         },
         "profile": {
+          "description": "Certificate profile name.",
           "type": "string",
         },
         "template": {
           "additionalProperties": {},
+          "description": "Certificate request template object. Structure:
+- subject: list of DN elements, each as
+  {"element": "cn.1", "type": "CN", "value": "server.example.com"}
+- sans: list of SAN entries - values MUST be arrays:
+  {"type": "DNSNAME", "value": ["server.example.com", "alias.example.com"]}
+  Valid types: DNSNAME, RFC822NAME, URI, IPADDRESS, OTHERNAME,
+  DIRECTORYNAME, REGISTEREDID
+- labels: [{"label": "environment", "value": "production"}]
+- contactEmail: {"value": "admin@example.com"}
+- owner: {"value": "admin-principal"}
+- team: {"value": "infra-team"}
+- keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.
+- csr: PEM-encoded CSR (for decentralized key generation)
+- extensions: optional certificate extensions",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "workflow": {
+          "description": "Workflow type: enroll, renew, revoke, update, recover, migrate, import.",
           "type": "string",
         },
       },
@@ -1979,9 +2297,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
           "items": {
             "properties": {
               "key": {
@@ -2004,36 +2323,46 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "authentication_type": {
+          "description": "(REST) Auth type.",
           "type": "string",
         },
         "base_dn": {
+          "description": "(LDAP) Base DN TemplateString.",
           "type": "string",
         },
         "context": {
           "additionalProperties": {
             "type": "string",
           },
+          "description": "Key-value pairs to resolve TemplateString variables. Example: {"hostname": "web01.corp.local"}.",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "credentials": {
+          "description": "(LDAP/REST) Credentials name.",
           "type": "string",
         },
         "ds_type": {
+          "description": "Datasource type: "dns", "ldap", or "rest".",
           "type": "string",
         },
         "expected_http_codes": {
+          "description": "(REST) Success HTTP codes.",
           "items": {
-            "type": "number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
           },
           "type": "array",
         },
         "filter": {
+          "description": "(LDAP) Search filter TemplateString.",
           "type": "string",
         },
         "headers": {
+          "description": "(REST) HTTP headers.",
           "items": {
             "properties": {
               "name": {
@@ -2052,45 +2381,62 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "host": {
+          "description": "(DNS) DNS server IP.",
           "type": "string",
         },
         "hostname": {
+          "description": "(LDAP) LDAP server URL.",
           "type": "string",
         },
         "limit": {
-          "type": "number",
+          "description": "(LDAP) Max results.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "lookup": {
+          "description": "(DNS) Hostname to look up.",
           "type": "string",
         },
         "method": {
+          "description": "(REST) HTTP method.",
           "type": "string",
         },
         "name": {
+          "description": "Datasource name (for identification).",
           "type": "string",
         },
         "payload": {
+          "description": "(REST) Request body TemplateString.",
           "type": "string",
         },
         "payload_type": {
+          "description": "(REST) Payload format.",
           "type": "string",
         },
         "port": {
-          "type": "number",
+          "description": "(DNS/LDAP) Port number.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "record_types": {
+          "description": "(DNS) Record types to query.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "secure": {
+          "description": "(LDAP) Use LDAPS.",
           "type": "boolean",
         },
         "timeout": {
+          "description": "Timeout in duration format.",
           "type": "string",
         },
         "url": {
+          "description": "(REST) Endpoint URL TemplateString.",
           "type": "string",
         },
       },
@@ -2104,16 +2450,24 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "natural_language": {
+          "description": "Plain-English description of what to search for.
+Examples:
+- "expired RSA certificates from team-alpha"
+- "pending enrollment requests for the ACME profile"
+- "audit events in the last 24 hours"
+- "discovery scans on port 443"",
           "type": "string",
         },
         "target_type": {
+          "description": "Force a specific query type (hcql, hrql, heql, hdql). If omitted the type is auto-detected from the input.",
           "type": "string",
         },
         "validate": {
           "default": true,
+          "description": "Whether to validate the query against Horizon (default true). Set to false for offline usage.",
           "type": "boolean",
         },
       },
@@ -2126,9 +2480,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "charts": {
+          "description": "New charts list (replaces existing).",
           "items": {
             "additionalProperties": {},
             "propertyNames": {
@@ -2139,15 +2494,18 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "description": {
+          "description": "New description.",
           "type": "string",
         },
         "name": {
+          "description": "Dashboard name to update.",
           "type": "string",
         },
       },
@@ -2160,74 +2518,102 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "chart_id": {
+          "description": "Unique chart identifier (the "i" field).",
           "type": "string",
         },
         "chart_type": {
+          "description": "Chart type - area, donut, heatmap, bar-horizontal, line, metric, pie, polar, pyramid, radar, table, treemap, or bar-vertical.",
           "type": "string",
         },
         "clear_fields": {
+          "description": "Chart field names to explicitly set to null.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "colors": {
+          "description": "List of hex color codes, e.g. ["#A6ADF7", "#4D54A2"].",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "dashboard_name": {
+          "description": "Name of the dashboard containing the chart.",
           "type": "string",
         },
         "description": {
+          "description": "New chart description.",
           "type": "string",
         },
         "direction": {
+          "description": "Visual rendering direction - "asc" or "desc".",
           "type": "string",
         },
         "fields": {
+          "description": "New list of aggregation/group-by fields.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "h": {
-          "type": "number",
+          "description": "Grid row span.",
+          "maximum": 9007199254740991,
+          "minimum": 1,
+          "type": "integer",
         },
         "having": {
           "additionalProperties": {},
+          "description": "Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.",
           "propertyNames": {
             "type": "string",
           },
           "type": "object",
         },
         "limit": {
-          "type": "number",
+          "description": "Max buckets returned (>= 0).",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
         "local_query": {
+          "description": "New HQL query string for chart data.",
           "type": "string",
         },
         "logarithmic": {
+          "description": "Enable logarithmic scale on value axis (API field: "log").",
           "type": "boolean",
         },
         "sort_order": {
+          "description": "Data sort - "Asc", "Desc", "KeyAsc", or "KeyDesc".",
           "type": "string",
         },
         "title": {
+          "description": "New chart title.",
           "type": "string",
         },
         "w": {
-          "type": "number",
+          "description": "Grid column span (1-12).",
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer",
         },
         "x": {
-          "type": "number",
+          "description": "Grid x position (0-11).",
+          "maximum": 11,
+          "minimum": 0,
+          "type": "integer",
         },
         "y": {
-          "type": "number",
+          "description": "Grid y position.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
         },
       },
       "required": [
@@ -2240,9 +2626,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "attributes": {
+          "description": "Attributes to return. Each: {key, multi, selected}.",
           "items": {
             "properties": {
               "key": {
@@ -2265,27 +2652,34 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "authentication_type": {
+          "description": "(REST) New auth type.",
           "type": "string",
         },
         "base_dn": {
+          "description": "(LDAP) New base DN TemplateString.",
           "type": "string",
         },
         "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "credentials": {
+          "description": "(LDAP/REST) New credentials name.",
           "type": "string",
         },
         "description": {
+          "description": "New description.",
           "type": "string",
         },
         "disable_hostname_validation": {
+          "description": "(LDAP) New hostname validation flag.",
           "type": "boolean",
         },
         "display_name": {
+          "description": "Localized display names, e.g. [{lang: 'en', value: 'My DS'}].",
           "items": {
             "properties": {
               "lang": {
@@ -2304,18 +2698,24 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "expected_http_codes": {
+          "description": "(REST) New success HTTP codes.",
           "items": {
-            "type": "number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
           },
           "type": "array",
         },
         "filter": {
+          "description": "(LDAP) New search filter TemplateString.",
           "type": "string",
         },
         "follow_referrals": {
+          "description": "(LDAP) New referral traversal flag.",
           "type": "boolean",
         },
         "headers": {
+          "description": "(REST) New HTTP headers.",
           "items": {
             "properties": {
               "name": {
@@ -2334,48 +2734,66 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "array",
         },
         "host": {
+          "description": "(DNS) New DNS server IP.",
           "type": "string",
         },
         "hostname": {
+          "description": "(LDAP) New LDAP server URL.",
           "type": "string",
         },
         "limit": {
-          "type": "number",
+          "description": "(LDAP) New result limit.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "lookup": {
+          "description": "(DNS) New lookup TemplateString.",
           "type": "string",
         },
         "method": {
+          "description": "(REST) New HTTP method.",
           "type": "string",
         },
         "name": {
+          "description": "Datasource name to update (cannot be changed).",
           "type": "string",
         },
         "payload": {
+          "description": "(REST) New request body TemplateString.",
           "type": "string",
         },
         "payload_type": {
+          "description": "(REST) New payload format hint.",
           "type": "string",
         },
         "port": {
-          "type": "number",
+          "description": "(DNS/LDAP) New port number.",
+          "maximum": 9007199254740991,
+          "minimum": -9007199254740991,
+          "type": "integer",
         },
         "proxy": {
+          "description": "(LDAP/REST) New proxy name.",
           "type": "string",
         },
         "record_types": {
+          "description": "(DNS) New record type filter.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "secure": {
+          "description": "(LDAP) New secure flag.",
           "type": "boolean",
         },
         "timeout": {
+          "description": "New timeout in duration format.",
           "type": "string",
         },
         "url": {
+          "description": "(REST) New endpoint URL TemplateString.",
           "type": "string",
         },
       },
@@ -2388,10 +2806,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "authorization_levels": {
           "additionalProperties": {},
+          "description": "New access control configuration.",
           "properties": {
             "feed": {
               "additionalProperties": {},
@@ -2447,44 +2866,56 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "object",
         },
         "clear_fields": {
+          "description": "Top-level field names to explicitly set to null.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "description": {
+          "description": "New description.",
           "type": "string",
         },
         "enabled": {
+          "description": "Whether the campaign is active.",
           "type": "boolean",
         },
         "event_on_failure": {
+          "description": "Whether to generate events on failures.",
           "type": "boolean",
         },
         "event_on_success": {
+          "description": "Whether to generate events on success.",
           "type": "boolean",
         },
         "event_on_warning": {
+          "description": "Whether to generate events on warnings.",
           "type": "boolean",
         },
         "grading_policies": {
+          "description": "New list of grading policy names.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "hosts": {
+          "description": "New list of hosts/IP ranges.",
           "items": {
             "type": "string",
           },
           "type": "array",
         },
         "name": {
+          "description": "Campaign name to update.",
           "type": "string",
         },
         "ports": {
+          "description": "New list of ports.",
           "items": {
-            "type": "number",
+            "maximum": 9007199254740991,
+            "minimum": -9007199254740991,
+            "type": "integer",
           },
           "type": "array",
         },
@@ -2498,18 +2929,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "description": {
+          "description": "Optional human-readable description.",
           "type": "string",
         },
         "name": {
+          "description": "Unique query name (acts as the upsert key).",
           "type": "string",
         },
         "query": {
+          "description": "The HQL query string.",
           "type": "string",
         },
         "query_type": {
+          "description": "HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".",
           "enum": [
             "hcql",
             "hrql",
@@ -2531,9 +2966,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query": {
+          "description": "HCQL query to validate.",
           "type": "string",
         },
       },
@@ -2546,9 +2982,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query": {
+          "description": "HDQL query to validate.",
           "type": "string",
         },
       },
@@ -2561,9 +2998,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query": {
+          "description": "HEQL query to validate.",
           "type": "string",
         },
       },
@@ -2576,9 +3014,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "dialect": {
+          "description": "Query dialect: hcql (certificates), hrql (requests), heql (events), hdql (discovery events).",
           "enum": [
             "hcql",
             "hrql",
@@ -2588,6 +3027,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "query": {
+          "description": "Query expression to validate.",
           "type": "string",
         },
       },
@@ -2601,9 +3041,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
   },
   {
     "inputSchema": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query": {
+          "description": "HRQL query to validate.",
           "type": "string",
         },
       },

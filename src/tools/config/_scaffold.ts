@@ -23,7 +23,7 @@
  * All contracts here are derived from the source-grounded audit under
  * `docs/audit/<object>.contract.json` + `<object>.schema.json`.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { HorizonError } from '../../client/errors.js';

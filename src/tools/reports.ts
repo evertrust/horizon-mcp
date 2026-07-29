@@ -10,7 +10,7 @@
  *   - CSV downloads use /reports/{uuid} (NO /api/v1 prefix).
  *   - API management (list / delete) uses /api/v1/reports/.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';

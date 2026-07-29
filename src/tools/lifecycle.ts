@@ -12,7 +12,7 @@
  *
  * Implementation is split per concern under ./lifecycle/.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 
 import type { HorizonClient } from '../client/http.js';
 import { registerCertificateTools } from './lifecycle/certificates.js';

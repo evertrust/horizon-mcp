@@ -14,7 +14,7 @@
  * preserved. Cannot be deleted while referenced by a certificate profile
  * (InvalidReferenceException).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

@@ -2,7 +2,7 @@
  * test_datasource tool: live test of a datasource definition against a
  * context dictionary without persisting anything.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

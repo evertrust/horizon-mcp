@@ -19,7 +19,7 @@
  * + a free-form `config` record, merge them into the body, run assertConfigBody,
  * then POST (create) / GET-strip-merge-PUT on the collection root (update).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

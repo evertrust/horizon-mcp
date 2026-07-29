@@ -10,7 +10,7 @@
  * param); the wrapper does GET-merge so omitted fields are preserved. `_id` is
  * RESPONSE-ONLY and is stripped before the PUT.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';

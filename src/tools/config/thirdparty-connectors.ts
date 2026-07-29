@@ -22,7 +22,7 @@
  * Subtype rules enforced client-side (rest delegated to Horizon):
  *   - netscaler additionally requires `timeout` and `maxStoredCertificatePerHolder`.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { HorizonError } from '../../client/errors.js';

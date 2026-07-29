@@ -14,7 +14,7 @@
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
  * Strip server-populated fields (_id, scim) before PUT.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
