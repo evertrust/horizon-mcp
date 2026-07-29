@@ -85,7 +85,7 @@ The client can also send OAuth 2.0 client credentials. The MCP uses these creden
 
 The MCP does not forward the OAuth client headers to Horizon. The MCP does not expose these headers to MCP tools.
 
-The MCP removes them from parsed and raw request headers. It uses them only in the session credential fingerprint.
+The MCP removes them from parsed and raw request headers. It uses them only in the credential fingerprint.
 
 Configure the OAuth client to allow the `client_credentials` grant. Configure the required resource, audience, or scopes in your identity provider.
 
@@ -119,7 +119,7 @@ If the client omits the OAuth headers, the MCP forwards the JWT. The MCP cannot 
 
 ### API-key forwarding
 
-Send `X-API-ID` and `X-API-KEY` on each MCP HTTP request. The MCP binds the session to the credential fingerprint.
+Send `X-API-ID` and `X-API-KEY` on each MCP HTTP request. Every request is authenticated on its own; there is no session to establish first.
 
 The MCP forwards both headers to Horizon.
 
@@ -146,6 +146,18 @@ The MCP forwards the URL-encoded PEM certificate. Horizon validates the certific
 Alternatively, a trusted ingress can forward the certificate. The MCP identifies the ingress by its direct TCP peer IP address or CIDR.
 
 The MCP does not use `X-Forwarded-For` for this check.
+
+## MCP OAuth authorization is not supported
+
+The MCP specification defines an optional OAuth flow in which the client obtains a token for the MCP server itself and
+sends it in an `Authorization: Bearer` header. This server does not implement it. `Authorization`, `Proxy-Authorization`,
+and `Cookie` are rejected with a 400, and the error names `HORIZON_HTTP_AUTH_METHODS` so the cause is clear.
+
+Use one of the Horizon-native methods above instead. They give you per-user identity in Horizon, which is what
+ownership, team membership, and the audit trail depend on.
+
+If your client only speaks MCP OAuth, it cannot use this server over HTTP today. The reasoning, and what would have to
+change in Horizon first, is recorded in [ADR 0001](adr/0001-mcp-authorization.md).
 
 ## Transport security
 

@@ -79,9 +79,9 @@ docker run --rm --name horizon-mcp \
   horizon-mcp
 ```
 
-The server validates the `Host` header of both probes. Readiness means that the listener can accept sessions.
+The server validates the `Host` header of both probes. Readiness means that the listener can accept requests.
 
-Horizon validates caller credentials during MCP session initialization:
+Horizon validates each caller's credentials on their first request, and again whenever the cached result expires:
 
 ```bash
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
@@ -95,7 +95,7 @@ For remote hosting, complete these steps:
 - Terminate TLS at a trusted edge. Alternatively, configure the MCP inbound mTLS listener.
 - Store secrets in the orchestrator secret store. Do not store them in the image or repository.
 - Enable only the authentication methods that the deployment requires.
-- Run one replica. Alternatively, configure session affinity with `Mcp-Session-Id`.
+- Run as many replicas as you need. The server keeps no session state, so no session affinity is required.
 - Send probes with a `Host` value from `HORIZON_PUBLIC_URL` or `HORIZON_TRUSTED_HOSTS`.
 
 See the HTTP environment-variable table in the [README](../README.md#streamable-http-horizon_transporthttp) and remote examples in [client setup](client-setup.md).

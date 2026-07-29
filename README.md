@@ -58,6 +58,8 @@ Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-re
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
 - API credentials or a client certificate for that instance
+- An MCP client that speaks protocol revision **2026-07-28**. Version 3.0.0 serves that revision only.
+  Check [docs/client-setup.md](docs/client-setup.md#client-compatibility) before upgrading, and stay on 2.x if your client is older.
 
 ## Install
 
@@ -133,31 +135,28 @@ If you do not configure a credential, the server stops during startup.
 
 These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are ignored.
 
-| Var                              | Default     | Notes                                                                                                                                                                     |
-| -------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `HORIZON_TRANSPORT`              | `stdio`     | `stdio` \| `http`                                                                                                                                                         |
-| `HORIZON_HTTP_HOST`              | `127.0.0.1` | Bind address; `0.0.0.0` only behind a trusted edge.                                                                                                                       |
-| `HORIZON_HTTP_PORT`              | `8080`      | Bind port.                                                                                                                                                                |
-| `HORIZON_HTTP_PATH`              | `/mcp`      | Endpoint path; absolute, no query or fragment; trailing slash normalized.                                                                                                 |
-| `HORIZON_PUBLIC_URL`             | (unset)     | Public origin/base URL clients reach the server at; the endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                                     |
-| `HORIZON_TRUSTED_HOSTS`          | derived     | Comma list of allowed `Host` values; derived from `HORIZON_PUBLIC_URL` or, on a loopback bind, the loopback hosts. A non-loopback bind with neither set refuses to start. |
-| `HORIZON_TRUSTED_ORIGINS`        | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                                         |
-| `HORIZON_HTTP_AUTH_METHODS`      | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                                  |
-| `HORIZON_SESSION_IDLE_TTL`       | `300`       | Seconds.                                                                                                                                                                  |
-| `HORIZON_SESSION_ABS_TTL`        | `3600`      | Seconds.                                                                                                                                                                  |
-| `HORIZON_MAX_SESSIONS`           | `8`         | Max concurrent sessions (hard ceiling `64`). Budget about 22 MiB of V8 heap per fully registered session, plus roughly 365 MiB process baseline.                          |
-| `HORIZON_MAX_INFLIGHT_TOOLCALLS` | `8`         | Per-session in-flight tool calls.                                                                                                                                         |
-| `HORIZON_MAX_BODY_BYTES`         | `1048576`   | Max request body bytes (1 MiB).                                                                                                                                           |
-| `HORIZON_SSE_MAX_DURATION`       | `3600`      | Max SSE stream lifetime, seconds.                                                                                                                                         |
-| `HORIZON_RATE_LIMIT_RPS`         | `20`        | Per-session limit, counted per JSON-RPC message per second; `0` disables.                                                                                                 |
-| `HORIZON_INIT_RATE_LIMIT`        | `5`         | Pre-session `initialize` attempts per second (global cap and per remote address); `0` disables.                                                                           |
-| `HORIZON_IP_RATE_LIMIT`          | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-session limits; `0` disables.                                                       |
+| Var                               | Default     | Notes                                                                                                                                                                     |
+| --------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `HORIZON_TRANSPORT`               | `stdio`     | `stdio` \| `http`                                                                                                                                                         |
+| `HORIZON_HTTP_HOST`               | `127.0.0.1` | Bind address; `0.0.0.0` only behind a trusted edge.                                                                                                                       |
+| `HORIZON_HTTP_PORT`               | `8080`      | Bind port.                                                                                                                                                                |
+| `HORIZON_HTTP_PATH`               | `/mcp`      | Endpoint path; absolute, no query or fragment; trailing slash normalized.                                                                                                 |
+| `HORIZON_PUBLIC_URL`              | (unset)     | Public origin/base URL clients reach the server at; the endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                                     |
+| `HORIZON_TRUSTED_HOSTS`           | derived     | Comma list of allowed `Host` values; derived from `HORIZON_PUBLIC_URL` or, on a loopback bind, the loopback hosts. A non-loopback bind with neither set refuses to start. |
+| `HORIZON_TRUSTED_ORIGINS`         | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                                         |
+| `HORIZON_HTTP_AUTH_METHODS`       | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                                  |
+| `HORIZON_MAX_CONCURRENT_REQUESTS` | `32`        | Max requests served at once across all callers (hard ceiling `256`). This is the setting that bounds memory.                                                              |
+| `HORIZON_MAX_INFLIGHT_TOOLCALLS`  | `8`         | Max requests served at once for a single caller, so one busy client cannot consume the whole budget above.                                                                |
+| `HORIZON_CREDENTIAL_CACHE_MAX`    | `64`        | How many validated caller credentials to keep in memory (hard ceiling `512`).                                                                                             |
+| `HORIZON_CREDENTIAL_CACHE_TTL`    | `300`       | Seconds before a cached credential is revalidated against Horizon (`30` to `3600`). Lower it if you need revoked credentials to stop working sooner.                      |
+| `HORIZON_MAX_BODY_BYTES`          | `1048576`   | Max request body bytes (1 MiB).                                                                                                                                           |
+| `HORIZON_SSE_MAX_DURATION`        | `3600`      | Seconds a single response may stay open before the server closes it. This is what bounds a long-lived notification stream.                                                |
+| `HORIZON_RATE_LIMIT_RPS`          | `20`        | Per-caller limit, counted per JSON-RPC message per second; `0` disables.                                                                                                  |
+| `HORIZON_IP_RATE_LIMIT`           | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-caller limits; `0` disables.                                                        |
 
-Use the session limit to calculate the necessary memory. Do not use only the request throughput.
-
-The default limit of eight sessions requires a container with at least 1 GiB of memory. Test the load before you increase this limit.
-
-The server rejects values greater than 64. Higher values can exceed the normal Node.js heap limit.
+Size memory from `HORIZON_MAX_CONCURRENT_REQUESTS`, not from request throughput. The server builds one short-lived
+tool registry per request, costing roughly 1.3 MiB each, on top of a process baseline of about 365 MiB. The default
+of 32 concurrent requests fits comfortably in a 1 GiB container. Test under load before raising it.
 
 Inbound mTLS settings (when `mtls` is included in `HORIZON_HTTP_AUTH_METHODS`):
 
@@ -193,8 +192,9 @@ These variables are read by the test suite only and never by the server itself:
   The client communicates through standard input and standard output. The client environment supplies an API key or an mTLS credential.
 - **streamable HTTP** (`HORIZON_TRANSPORT=http`) - Use this transport for a hosted server. Deploy one MCP instance for each Horizon instance.
   The server always reads the Horizon URL from `HORIZON_URL`. A client cannot supply the Horizon URL.
-  One endpoint serves multiple isolated client sessions. The endpoint supports `POST`, `GET`, `DELETE`, and Server-Sent Events (SSE).
-  Use one replica when possible. If you use multiple replicas, route each `Mcp-Session-Id` value to the same replica.
+  One endpoint serves every client. The endpoint accepts `POST` only; each request carries its own credential and is
+  served independently, so there is no session to keep. Scale to as many replicas as you need behind an ordinary load
+  balancer, with no session affinity.
 
 See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP configuration and [Authentication methods](#authentication-methods) for how callers are identified in HTTP mode.
 

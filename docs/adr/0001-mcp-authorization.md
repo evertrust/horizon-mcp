@@ -46,7 +46,7 @@ Three findings, each independently disqualifying.
 
 **1. Bearer authentication does not produce a Horizon identity.** The SDK's
 `requireBearerAuth` authenticates a caller and populates `AuthInfo`. It does not
-decide *which Horizon principal* that caller acts as. `buildSessionAuth`
+decide _which Horizon principal_ that caller acts as. `buildSessionAuth`
 (`src/http/credentials.ts:324`) can only construct an upstream client from
 API-key, service-token, or certificate material, so a Bearer-only request has no
 usable `HorizonClient` at all. Bridging the gap with a shared service account
@@ -56,7 +56,7 @@ configuration mistake away from being live.
 
 **2. Reusing the service-account discovery path as an inbound token verifier is
 an SSRF vector.** `src/auth/service-account.ts` extracts `iss` from an
-*unverified* JWT and performs OIDC discovery against that URL. Today that is safe
+_unverified_ JWT and performs OIDC discovery against that URL. Today that is safe
 only because renewal happens after Horizon has already accepted the credential,
 so the issuer is implicitly trusted. An inbound MCP token has no such prior trust
 gate: an attacker would choose the issuer, and therefore the URL the server
@@ -92,21 +92,61 @@ below has to be decided rather than assumed.
 
 Each is irreversible once tokens are issued against it.
 
-| # | Contract | Why it cannot be deferred |
-|---|---|---|
-| 1 | **Canonical resource URI.** One function, used identically for the PRM `resource` field, the client's OAuth `resource` parameter, audience comparison, and `resource_metadata` derivation. Derived from `config.publicEndpoint` (`src/http/config.ts:28,305`), not the bare origin. HTTPS outside loopback; no userinfo, query, or fragment; lowercase scheme and host; preserve a non-root path and a non-default port; no trailing slash. | Changing it invalidates every already-issued token |
-| 2 | **Pinned authorization-server issuer**, discovered and validated at startup, entirely independent of Horizon service-account renewal. | Determines who can mint tokens |
-| 3 | **Scope taxonomy and the tool/resource authorization matrix.** Either one coarse `mcp` scope covering the whole enabled surface, or named read/write/domain scopes. Must state hierarchy expansion and whether unauthorized tools stay visible in `tools/list`. | Appears in PRM and in every challenge |
-| 4 | **Coexistence policy.** OAuth mutually exclusive with pass-through, on separate endpoints, or dual auth with an explicit identity binding. | Decides whether OAuth is bypassable |
-| 5 | **Principal key.** An HMAC of `(issuer, clientId, tenant, subject)`. Not the raw Bearer token, which rotates; not `sub` alone, which collides across issuers. | Rate limiting and audit both key on it |
-| 6 | **Bridge policy** from MCP principal to Horizon identity: token exchange, impersonation, or credential lookup. At minimum one deny-safe default. | Determines what a token actually authorizes |
-| 7 | **Audit model and token format/revocation posture**, including whether RFC 8705 certificate-bound tokens are supported. | Drives the PRM flags and the logging design |
+| #   | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                    | Why it cannot be deferred                          |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1   | **Canonical resource URI.** One function, used identically for the PRM `resource` field, the client's OAuth `resource` parameter, audience comparison, and `resource_metadata` derivation. Derived from `config.publicEndpoint` (`src/http/config.ts:28,305`), not the bare origin. HTTPS outside loopback; no userinfo, query, or fragment; lowercase scheme and host; preserve a non-root path and a non-default port; no trailing slash. | Changing it invalidates every already-issued token |
+| 2   | **Pinned authorization-server issuer**, discovered and validated at startup, entirely independent of Horizon service-account renewal.                                                                                                                                                                                                                                                                                                       | Determines who can mint tokens                     |
+| 3   | **Scope taxonomy and the tool/resource authorization matrix.** Either one coarse `mcp` scope covering the whole enabled surface, or named read/write/domain scopes. Must state hierarchy expansion and whether unauthorized tools stay visible in `tools/list`.                                                                                                                                                                             | Appears in PRM and in every challenge              |
+| 4   | **Coexistence policy.** OAuth mutually exclusive with pass-through, on separate endpoints, or dual auth with an explicit identity binding.                                                                                                                                                                                                                                                                                                  | Decides whether OAuth is bypassable                |
+| 5   | **Principal key.** An HMAC of `(issuer, clientId, tenant, subject)`. Not the raw Bearer token, which rotates; not `sub` alone, which collides across issuers.                                                                                                                                                                                                                                                                               | Rate limiting and audit both key on it             |
+| 6   | **Bridge policy** from MCP principal to Horizon identity: token exchange, impersonation, or credential lookup. At minimum one deny-safe default.                                                                                                                                                                                                                                                                                            | Determines what a token actually authorizes        |
+| 7   | **Audit model and token format/revocation posture**, including whether RFC 8705 certificate-bound tokens are supported.                                                                                                                                                                                                                                                                                                                     | Drives the PRM flags and the logging design        |
+
+### Contract 6 cannot be satisfied against Horizon 2.10
+
+Contract 6 is the one that blocks all the others, and it was investigated
+directly against the Horizon 2.10 source rather than left open. The conclusion is
+that **no bridge exists today**, and building one is a Horizon-side change, not
+an horizon-mcp change.
+
+Four findings, in the order they close off the options:
+
+1. **No token exchange.** RFC 8693 is an authorization-server feature and Horizon
+   is not an authorization server. There is no `token-exchange` grant to call.
+2. **No bearer authentication on the API.** Searching the authentication action
+   chain (`app/actions/security/`) for `Bearer`, `access_token`, or
+   `accessToken` returns nothing. Horizon accepts `X-API-ID`/`X-API-KEY`, HTTP
+   Basic, `X-API-SVA` plus `X-API-TOKEN`, a client certificate, or a session
+   cookie. An OIDC access token is not among them.
+3. **The federated JWT path does not carry a stable human identity.** A service
+   account with a `static_jwks` or `dynamic_jwks` trust config does accept an
+   externally issued JWT, but the identity it produces embeds a hash of the token
+   itself (`SecurityManagerActor.scala:591` builds the identifier from
+   `s"$serviceAccountName-${jwtHash.take(16)}"`). Every token refresh therefore
+   produces a _different_ Horizon principal. That is workable for machine
+   federation, where the token is long-lived and the identity is the service
+   account. It is unusable for a human, whose ownership, team membership, and
+   audit trail must survive a token refresh.
+4. **OIDC identity exists only inside a Play session.** `OpenIdAuthenticateAction`
+   is a browser redirect and PKCE flow whose output is a `PLAY_SESSION` cookie.
+   The cookie is a self-contained signed JWT with a 15-minute sliding lifetime,
+   no revocation, and no header-based equivalent. Minting one outside the browser
+   flow would require `play.http.secret.key`, which signs every session in the
+   deployment and would forge any identity including an administrator. Rejected.
+
+**What would unblock it.** A Horizon-side authentication action that accepts an
+OIDC access token on a Horizon-specific header, validates it against the existing
+`OidcIdentityProvider` JWKS configuration, and maps claims to an `Identity` using
+the same claim mapping the browser flow already uses. Identifiers would then match
+the browser flow exactly, so ownership and audit line up, and operators would
+configure nothing new. Until that exists, OAuth cannot be implemented here in a
+way that preserves per-user Horizon RBAC, and this ADR's decision stands.
 
 ### One coupling back into 3.0.0
 
 If contract 3 makes tool visibility vary by caller, the cache hints in
 `src/server-factory.ts` must change from `cacheScope: 'public'` to `'private'`.
-They are `public` today only because the exposed surface varies by *server*
+They are `public` today only because the exposed surface varies by _server_
 environment (`HORIZON_ENABLED_TOOLSETS`, `HORIZON_READ_ONLY`) and never by
 caller. That constraint is recorded as a comment at the call site.
 
@@ -146,7 +186,7 @@ startup never depends on them.
   `getOAuthProtectedResourceMetadataUrl`, not at the root.
 - A PRM document carrying `resource`, at least one `authorization_servers` entry,
   `scopes_supported` without `offline_access`, `bearer_methods_supported:
-  ["header"]`, and `resource_name`.
+["header"]`, and `resource_name`.
 - CORS changes: allow `Authorization` in preflight, expose `WWW-Authenticate`,
   let `OPTIONS` terminate before Bearer auth, and serve metadata unauthenticated.
 - Bearer verification **before** header scrubbing, then scrubbing `Authorization`

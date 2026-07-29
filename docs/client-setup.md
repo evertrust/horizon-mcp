@@ -2,6 +2,41 @@
 
 Configure your large language model (LLM) client to connect to Horizon MCP.
 
+## Client compatibility
+
+Horizon MCP 3.0.0 serves MCP protocol revision **2026-07-28** and nothing else. Revision 2026-07-28 removed the
+`initialize` handshake and protocol sessions, so a client built for an earlier revision cannot negotiate with it.
+
+| Server version | Protocol revision served | Works with                                  |
+| -------------- | ------------------------ | ------------------------------------------- |
+| 3.x            | `2026-07-28` only        | Clients updated for revision 2026-07-28     |
+| 2.x            | `2025-11-25` and earlier | Clients released before revision 2026-07-28 |
+
+Revision 2026-07-28 is recent, and clients adopt it on their own schedules. Check your client's release notes for the
+protocol revision it speaks. **If your client has not adopted it yet, stay on horizon-mcp 2.x.** Both lines talk to the
+same Horizon instance, so there is no rush to move.
+
+### Check your client before upgrading
+
+An older client fails at connection time with an "unsupported protocol version" error naming `2026-07-28`. That message
+is the symptom to look for. Nothing is broken on the Horizon side when this happens.
+
+To confirm a running HTTP deployment serves the revision you expect, ask it directly:
+
+```bash
+curl -s -X POST https://mcp.example.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2026-07-28' \
+  -H 'Mcp-Method: server/discover' \
+  -H 'X-API-ID: <id>' -H 'X-API-KEY: <key>' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities":{}}}}'
+```
+
+A healthy server returns its capabilities and instructions. A request naming any other revision is answered with an
+error listing the revisions the server does support.
+
 ## Trimming the tool surface (recommended)
 
 The full server registers 212 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
