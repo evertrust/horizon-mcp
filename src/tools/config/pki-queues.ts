@@ -107,6 +107,24 @@ const UPDATE_PKI_QUEUES_SCHEMA = z.object({
     ),
 });
 
+const CREATE_PKI_QUEUE_OPTS = {
+  description:
+    'Create a PKI queue used to throttle and bound concurrent PKI connector ' +
+    'operations.',
+  mandatoryFields: ['name', 'size'],
+  inputSchema: CREATE_PKI_QUEUES_SCHEMA,
+  buildPayload: (args) => buildPkiQueueBody(args),
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_PKI_QUEUE_OPTS = {
+  description: 'Update an existing PKI queue configuration.',
+  inputSchema: UPDATE_PKI_QUEUES_SCHEMA,
+  buildOverrides: (args) => {
+    const { name: _name, ...rest } = args;
+    return buildPkiQueueBody(rest);
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerPkiQueueTools(
   server: McpServer,
   client: HorizonClient,
@@ -116,23 +134,9 @@ export function registerPkiQueueTools(
     getDescription: 'Get a single PKI queue configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a PKI queue used to throttle and bound concurrent PKI connector ' +
-      'operations.',
-    mandatoryFields: ['name', 'size'],
-    inputSchema: CREATE_PKI_QUEUES_SCHEMA,
-    buildPayload: (args) => buildPkiQueueBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_PKI_QUEUE_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing PKI queue configuration.',
-    inputSchema: UPDATE_PKI_QUEUES_SCHEMA,
-    buildOverrides: (args) => {
-      const { name: _name, ...rest } = args;
-      return buildPkiQueueBody(rest);
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_PKI_QUEUE_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a PKI queue configuration.',

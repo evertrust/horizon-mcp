@@ -266,6 +266,33 @@ const UPDATE_SCHEDULED_TASKS_SCHEMA = z.object({
     ),
 });
 
+const CREATE_SCHEDULED_TASK_OPTS = {
+  description:
+    'Create a scheduled task (third-party connector run or a scheduled HQL ' +
+    'email report). Polymorphic: call describe_scheduled_task_schema first to ' +
+    'learn the required `config` fields for the chosen type/reportType.',
+  mandatoryFields: ['type', 'name', 'cron', 'enabled'],
+  inputSchema: CREATE_SCHEDULED_TASKS_SCHEMA,
+  buildPayload: (args: z.infer<typeof CREATE_SCHEDULED_TASKS_SCHEMA>) =>
+    buildScheduledTaskBody(args),
+};
+
+const UPDATE_SCHEDULED_TASK_OPTS = {
+  description:
+    'Update an existing scheduled task. The submitted subtype must match the ' +
+    'stored one (cannot convert thirdparty<->report or attachment<->link).',
+  inputSchema: UPDATE_SCHEDULED_TASKS_SCHEMA,
+  buildOverrides: (args: z.infer<typeof UPDATE_SCHEDULED_TASKS_SCHEMA>) =>
+    buildScheduledTaskBody({
+      type: args.type,
+      name: args.name,
+      cron: args.cron,
+      enabled: args.enabled,
+      report_type: args.report_type,
+      config: args.config,
+    }),
+};
+
 export function registerScheduledTaskTools(
   server: McpServer,
   client: HorizonClient,
@@ -285,31 +312,9 @@ export function registerScheduledTaskTools(
     getDescription: 'Get a single scheduled task by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a scheduled task (third-party connector run or a scheduled HQL ' +
-      'email report). Polymorphic: call describe_scheduled_task_schema first to ' +
-      'learn the required `config` fields for the chosen type/reportType.',
-    mandatoryFields: ['type', 'name', 'cron', 'enabled'],
-    inputSchema: CREATE_SCHEDULED_TASKS_SCHEMA,
-    buildPayload: (args) => buildScheduledTaskBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_SCHEDULED_TASK_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing scheduled task. The submitted subtype must match the ' +
-      'stored one (cannot convert thirdparty<->report or attachment<->link).',
-    inputSchema: UPDATE_SCHEDULED_TASKS_SCHEMA,
-    buildOverrides: (args) =>
-      buildScheduledTaskBody({
-        type: args.type,
-        name: args.name,
-        cron: args.cron,
-        enabled: args.enabled,
-        report_type: args.report_type,
-        config: args.config,
-      }),
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_SCHEDULED_TASK_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a scheduled task.',

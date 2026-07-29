@@ -205,6 +205,49 @@ const UPDATE_DCV_PROVISIONERS_SCHEMA = z.object({
     .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
 });
 
+const CREATE_DCV_PROVISIONER_OPTS = {
+  description:
+    'Create a DCV (Domain Control Validation) provisioner that writes DNS ' +
+    'challenge records to a DNS backend (cloudflare/powerdns/efficientip/' +
+    'azuredns/route53). Note: azuredns writes DNS validation records - it is ' +
+    'NOT Azure Key Vault certificate publishing (that is a third-party ' +
+    'connector, type akv). Required fields depend on type (see the type field ' +
+    'description).',
+  mandatoryFields: ['name', 'type', 'ttl', 'timeout'],
+  inputSchema: CREATE_DCV_PROVISIONERS_SCHEMA,
+  preValidate: (args: z.infer<typeof CREATE_DCV_PROVISIONERS_SCHEMA>) => {
+    const missing = missingForType(
+      args.type,
+      (f) => (args as Record<string, unknown>)[f] !== undefined,
+    );
+    if (missing.length > 0) {
+      return JSON.stringify({
+        error: `Missing mandatory field(s) for type=${args.type}: ${missing.join(', ')}. Ask the user for these - do not infer them.`,
+      });
+    }
+    return undefined;
+  },
+  buildPayload: (args: z.infer<typeof CREATE_DCV_PROVISIONERS_SCHEMA>) =>
+    buildBody(args as Record<string, unknown>),
+};
+
+const UPDATE_DCV_PROVISIONER_OPTS = {
+  description:
+    'Update an existing DCV provisioner. The submitted type must match the ' +
+    'stored one. Only supplied fields change (GET-merge full-replace).',
+  inputSchema: UPDATE_DCV_PROVISIONERS_SCHEMA,
+  buildOverrides: (args: z.infer<typeof UPDATE_DCV_PROVISIONERS_SCHEMA>) => {
+    const o: Record<string, unknown> = { type: args.type };
+    if (args.ttl !== undefined) o['ttl'] = args.ttl;
+    if (args.timeout !== undefined) o['timeout'] = args.timeout;
+    for (const k of OPTIONAL_KEYS) {
+      const v = (args as Record<string, unknown>)[k];
+      if (v !== undefined) o[k] = v;
+    }
+    return o;
+  },
+};
+
 export function registerDcvProvisionerTools(
   server: McpServer,
   client: HorizonClient,
@@ -217,47 +260,9 @@ export function registerDcvProvisionerTools(
     getDescription: 'Get a single DCV provisioner configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a DCV (Domain Control Validation) provisioner that writes DNS ' +
-      'challenge records to a DNS backend (cloudflare/powerdns/efficientip/' +
-      'azuredns/route53). Note: azuredns writes DNS validation records - it is ' +
-      'NOT Azure Key Vault certificate publishing (that is a third-party ' +
-      'connector, type akv). Required fields depend on type (see the type field ' +
-      'description).',
-    mandatoryFields: ['name', 'type', 'ttl', 'timeout'],
-    inputSchema: CREATE_DCV_PROVISIONERS_SCHEMA,
-    preValidate: (args) => {
-      const missing = missingForType(
-        args.type,
-        (f) => (args as Record<string, unknown>)[f] !== undefined,
-      );
-      if (missing.length > 0) {
-        return JSON.stringify({
-          error: `Missing mandatory field(s) for type=${args.type}: ${missing.join(', ')}. Ask the user for these - do not infer them.`,
-        });
-      }
-      return undefined;
-    },
-    buildPayload: (args) => buildBody(args as Record<string, unknown>),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_DCV_PROVISIONER_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing DCV provisioner. The submitted type must match the ' +
-      'stored one. Only supplied fields change (GET-merge full-replace).',
-    inputSchema: UPDATE_DCV_PROVISIONERS_SCHEMA,
-    buildOverrides: (args) => {
-      const o: Record<string, unknown> = { type: args.type };
-      if (args.ttl !== undefined) o['ttl'] = args.ttl;
-      if (args.timeout !== undefined) o['timeout'] = args.timeout;
-      for (const k of OPTIONAL_KEYS) {
-        const v = (args as Record<string, unknown>)[k];
-        if (v !== undefined) o[k] = v;
-      }
-      return o;
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_DCV_PROVISIONER_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a DCV provisioner configuration.',

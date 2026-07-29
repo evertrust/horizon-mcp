@@ -157,6 +157,24 @@ const UPDATE_EXECUTION_POLICIES_SCHEMA = z.object({
     ),
 });
 
+const CREATE_EXECUTION_POLICY_OPTS = {
+  description:
+    'Create an execution policy (time-window constraints that gate when ' +
+    'automation policies are allowed to run).',
+  mandatoryFields: ['name'],
+  inputSchema: CREATE_EXECUTION_POLICIES_SCHEMA,
+  buildPayload: (args) => buildExecutionPolicyBody(args),
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_EXECUTION_POLICY_OPTS = {
+  description: 'Update an existing execution policy configuration.',
+  inputSchema: UPDATE_EXECUTION_POLICIES_SCHEMA,
+  buildOverrides: (args) => {
+    const { name: _name, ...rest } = args;
+    return buildExecutionPolicyBody(rest);
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerExecutionPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -166,23 +184,9 @@ export function registerExecutionPolicyTools(
     getDescription: 'Get a single execution policy configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create an execution policy (time-window constraints that gate when ' +
-      'automation policies are allowed to run).',
-    mandatoryFields: ['name'],
-    inputSchema: CREATE_EXECUTION_POLICIES_SCHEMA,
-    buildPayload: (args) => buildExecutionPolicyBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_EXECUTION_POLICY_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing execution policy configuration.',
-    inputSchema: UPDATE_EXECUTION_POLICIES_SCHEMA,
-    buildOverrides: (args) => {
-      const { name: _name, ...rest } = args;
-      return buildExecutionPolicyBody(rest);
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_EXECUTION_POLICY_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete an execution policy configuration.',

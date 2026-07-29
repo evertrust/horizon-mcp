@@ -88,6 +88,39 @@ const UPDATE_ROLES_SCHEMA = z.object({
     ),
 });
 
+const CREATE_ROLE_OPTS = {
+  description:
+    'Create a security role. A role bundles permissions (and optional HPQL ' +
+    'filters) that are granted to its members.\n' +
+    'WARNING - PRIVILEGE GRANT: permissions control access. Use ONLY the exact ' +
+    'permission strings the user specified; never infer permissions or use ' +
+    'broad wildcards (e.g. "*:*:*"). If the user was not explicit, ask.',
+  mandatoryFields: ['name'],
+  inputSchema: CREATE_ROLES_SCHEMA,
+  buildPayload: ({ name, description, permissions }) => {
+    const body: Record<string, unknown> = { name };
+    if (description !== undefined) body['description'] = description;
+    if (permissions !== undefined) body['permissions'] = permissions;
+    return body;
+  },
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_ROLE_OPTS = {
+  description:
+    'Update an existing security role.\n' +
+    "WARNING - PRIVILEGE GRANT: update replaces the role's permissions. Use " +
+    'ONLY the exact permission strings the user specified; never infer them or ' +
+    'widen scope with wildcards. Note that omitting `permissions` preserves the ' +
+    'current set (GET-merge), while passing it REPLACES the whole set.',
+  inputSchema: UPDATE_ROLES_SCHEMA,
+  buildOverrides: ({ description, permissions }) => {
+    const o: Record<string, unknown> = {};
+    if (description !== undefined) o['description'] = description;
+    if (permissions !== undefined) o['permissions'] = permissions;
+    return o;
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerRoleTools(
   server: McpServer,
   client: HorizonClient,
@@ -97,38 +130,9 @@ export function registerRoleTools(
     getDescription: 'Get a single security role by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a security role. A role bundles permissions (and optional HPQL ' +
-      'filters) that are granted to its members.\n' +
-      'WARNING - PRIVILEGE GRANT: permissions control access. Use ONLY the exact ' +
-      'permission strings the user specified; never infer permissions or use ' +
-      'broad wildcards (e.g. "*:*:*"). If the user was not explicit, ask.',
-    mandatoryFields: ['name'],
-    inputSchema: CREATE_ROLES_SCHEMA,
-    buildPayload: ({ name, description, permissions }) => {
-      const body: Record<string, unknown> = { name };
-      if (description !== undefined) body['description'] = description;
-      if (permissions !== undefined) body['permissions'] = permissions;
-      return body;
-    },
-  });
+  registerCreateTool(server, client, SPEC, CREATE_ROLE_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing security role.\n' +
-      "WARNING - PRIVILEGE GRANT: update replaces the role's permissions. Use " +
-      'ONLY the exact permission strings the user specified; never infer them or ' +
-      'widen scope with wildcards. Note that omitting `permissions` preserves the ' +
-      'current set (GET-merge), while passing it REPLACES the whole set.',
-    inputSchema: UPDATE_ROLES_SCHEMA,
-    buildOverrides: ({ description, permissions }) => {
-      const o: Record<string, unknown> = {};
-      if (description !== undefined) o['description'] = description;
-      if (permissions !== undefined) o['permissions'] = permissions;
-      return o;
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_ROLE_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a security role.',

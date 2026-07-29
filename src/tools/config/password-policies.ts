@@ -133,6 +133,26 @@ const UPDATE_PASSWORD_POLICIES_SCHEMA = z.object({
     ),
 });
 
+const CREATE_PASSWORD_POLICY_OPTS = {
+  description:
+    'Create a password policy used for PKCS#12 passwords (certificate profile ' +
+    'cryptoPolicy), EST/SCEP enrollment passwords, and local identity-provider ' +
+    'passwords. At least one character class (min_up_char, min_lo_char, ' +
+    'min_di_char, or min_sp_char) must be supplied.',
+  mandatoryFields: ['name', 'min_char'],
+  inputSchema: CREATE_PASSWORD_POLICIES_SCHEMA,
+  buildPayload: (args) => buildPasswordPolicyBody(args),
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_PASSWORD_POLICY_OPTS = {
+  description: 'Update an existing password policy configuration.',
+  inputSchema: UPDATE_PASSWORD_POLICIES_SCHEMA,
+  buildOverrides: (args) => {
+    const { name: _name, ...rest } = args;
+    return buildPasswordPolicyBody(rest);
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerPasswordPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -142,25 +162,9 @@ export function registerPasswordPolicyTools(
     getDescription: 'Get a single password policy configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a password policy used for PKCS#12 passwords (certificate profile ' +
-      'cryptoPolicy), EST/SCEP enrollment passwords, and local identity-provider ' +
-      'passwords. At least one character class (min_up_char, min_lo_char, ' +
-      'min_di_char, or min_sp_char) must be supplied.',
-    mandatoryFields: ['name', 'min_char'],
-    inputSchema: CREATE_PASSWORD_POLICIES_SCHEMA,
-    buildPayload: (args) => buildPasswordPolicyBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_PASSWORD_POLICY_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing password policy configuration.',
-    inputSchema: UPDATE_PASSWORD_POLICIES_SCHEMA,
-    buildOverrides: (args) => {
-      const { name: _name, ...rest } = args;
-      return buildPasswordPolicyBody(rest);
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_PASSWORD_POLICY_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a password policy configuration.',

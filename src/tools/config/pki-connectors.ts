@@ -219,6 +219,48 @@ const UPDATE_PKI_CONNECTORS_SCHEMA = z.object({
     .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
 });
 
+const CREATE_PKI_CONNECTOR_OPTS = {
+  description:
+    'Create a PKI connector: the backend Horizon uses to ISSUE/revoke ' +
+    'certificates FROM an external CA. This is NOT publishing certs TO a ' +
+    'system (use a third-party connector) and NOT the inbound device ' +
+    'enrollment protocol (use a certificate profile). Polymorphic: the `type` discriminator ' +
+    'selects the subtype (stream, acmeenroll, awsacmpca, digicert, ejbca, ' +
+    'integrated, ...). Active Directory Certificate Services (ADCS / Microsoft ' +
+    'CA) is a PKI connector: use type "evtadcs" (EverTrust ADCS connector) or ' +
+    'legacy "msadcs" - NOT a WCCE forest mapping. Call ' +
+    'describe_pki_connector_schema for the chosen type first to learn the ' +
+    'exact required `config` fields - never guess.',
+  mandatoryFields: ['name', 'type'],
+  inputSchema: CREATE_PKI_CONNECTORS_SCHEMA,
+  buildPayload: ({
+    name,
+    type,
+    config,
+  }: z.infer<typeof CREATE_PKI_CONNECTORS_SCHEMA>) =>
+    mergeBody(name, type, config ?? {}),
+  nextSteps:
+    'A PKI connector is inert until a certificate profile issues through it. ' +
+    'Ask the user which certificate profile(s) should use it, then set each ' +
+    "profile's `pkiConnector` to this connector name via " +
+    'update_certificate_profile (config field "pkiConnector"). Do not infer ' +
+    'the profiles - ask the user.',
+};
+
+const UPDATE_PKI_CONNECTOR_OPTS = {
+  description:
+    'Update an existing PKI connector. The subtype (type) cannot change. ' +
+    'Full-replace: omitted optional fields revert to defaults, so pass the ' +
+    'complete `config` for the subtype (call describe_pki_connector_schema).',
+  inputSchema: UPDATE_PKI_CONNECTORS_SCHEMA,
+  buildOverrides: ({
+    name,
+    type,
+    config,
+  }: z.infer<typeof UPDATE_PKI_CONNECTORS_SCHEMA>) =>
+    mergeBody(name, type, config ?? {}),
+};
+
 export function registerPkiConnectorTools(
   server: McpServer,
   client: HorizonClient,
@@ -238,39 +280,9 @@ export function registerPkiConnectorTools(
     getDescription: 'Get a single PKI connector configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a PKI connector: the backend Horizon uses to ISSUE/revoke ' +
-      'certificates FROM an external CA. This is NOT publishing certs TO a ' +
-      'system (use a third-party connector) and NOT the inbound device ' +
-      'enrollment protocol (use a certificate profile). Polymorphic: the `type` discriminator ' +
-      'selects the subtype (stream, acmeenroll, awsacmpca, digicert, ejbca, ' +
-      'integrated, ...). Active Directory Certificate Services (ADCS / Microsoft ' +
-      'CA) is a PKI connector: use type "evtadcs" (EverTrust ADCS connector) or ' +
-      'legacy "msadcs" - NOT a WCCE forest mapping. Call ' +
-      'describe_pki_connector_schema for the chosen type first to learn the ' +
-      'exact required `config` fields - never guess.',
-    mandatoryFields: ['name', 'type'],
-    inputSchema: CREATE_PKI_CONNECTORS_SCHEMA,
-    buildPayload: ({ name, type, config }) =>
-      mergeBody(name, type, config ?? {}),
-    nextSteps:
-      'A PKI connector is inert until a certificate profile issues through it. ' +
-      'Ask the user which certificate profile(s) should use it, then set each ' +
-      "profile's `pkiConnector` to this connector name via " +
-      'update_certificate_profile (config field "pkiConnector"). Do not infer ' +
-      'the profiles - ask the user.',
-  });
+  registerCreateTool(server, client, SPEC, CREATE_PKI_CONNECTOR_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing PKI connector. The subtype (type) cannot change. ' +
-      'Full-replace: omitted optional fields revert to defaults, so pass the ' +
-      'complete `config` for the subtype (call describe_pki_connector_schema).',
-    inputSchema: UPDATE_PKI_CONNECTORS_SCHEMA,
-    buildOverrides: ({ name, type, config }) =>
-      mergeBody(name, type, config ?? {}),
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_PKI_CONNECTOR_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a PKI connector configuration.',
