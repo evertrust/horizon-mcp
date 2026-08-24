@@ -15,6 +15,7 @@ import {
   HorizonResponseValidationError,
   parseErrorResponse,
 } from './errors.js';
+import { composeWithTimeout } from './request-signal.js';
 import { withRetry } from './retry.js';
 
 const logger = getLogger('horizon_mcp.client');
@@ -313,7 +314,7 @@ export class HorizonClient {
       headers,
       body: formData,
       dispatcher: this._agent,
-      signal: AbortSignal.timeout(this._timeout),
+      signal: composeWithTimeout(this._timeout),
     } as UndiciRequestInit);
 
     const durationMs = Math.round(performance.now() - start);
@@ -373,7 +374,7 @@ export class HorizonClient {
         method: 'GET',
         headers,
         dispatcher: this._agent,
-        signal: AbortSignal.timeout(this._timeout),
+        signal: composeWithTimeout(this._timeout),
       });
       if (resp.status === 200) {
         const data = (await resp.json()) as Record<string, unknown>;
@@ -451,7 +452,7 @@ export class HorizonClient {
           method: 'GET',
           headers,
           dispatcher: this._agent,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         },
       );
     } catch (err) {
@@ -540,7 +541,7 @@ export class HorizonClient {
       method,
       headers,
       dispatcher: this._agent,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: composeWithTimeout(timeoutMs),
     };
     if (opts?.body) {
       fetchOpts.body = opts.body;
@@ -603,7 +604,7 @@ export class HorizonClient {
         headers['Csrf-Token'] = this._csrfToken;
       }
       fetchOpts.headers = headers;
-      fetchOpts.signal = AbortSignal.timeout(timeoutMs);
+      fetchOpts.signal = composeWithTimeout(timeoutMs);
       resp = await undiciFetch(fullUrl, fetchOpts);
       if (resp.status >= 400) {
         throw parseErrorResponse(resp.status, await resp.text());
@@ -691,7 +692,7 @@ export class HorizonClient {
       return withRetry(() =>
         undiciFetch(url, {
           ...fetchOpts,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         }),
       );
     }
@@ -706,7 +707,7 @@ export class HorizonClient {
       return withRetry(() =>
         undiciFetch(url, {
           ...fetchOpts,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         }),
       );
     }

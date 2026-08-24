@@ -13,6 +13,7 @@ import { createServer as createHttpsServer } from 'node:https';
 
 import { HorizonError } from '../client/errors.js';
 import { HorizonClient } from '../client/http.js';
+import { runWithRequestSignal } from '../client/request-signal.js';
 import { getLogger } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
@@ -439,41 +440,48 @@ export async function startHttpServer(
         // credentials still gets 401 before -32020: the MUST mismatch check
         // applies only when the server processes the body, and an
         // unauthenticated request never does.
-        const admitted = await admit(req, res);
-        if (!admitted) return;
-        // Credential validation awaits Horizon, so the socket may already be
-        // gone when admission completes.
-        if (res.closed || res.destroyed) {
-          admitted.release();
-          return;
-        }
-        release = admitted.release;
+        const controller = new AbortController();
+        res.once('close', () => {
+          if (!res.writableEnded) controller.abort();
+        });
 
-        // Scrub the captured secret headers from BOTH req.headers and
-        // req.rawHeaders before the SDK reads them: @hono/node-server rebuilds
-        // Web headers from the raw array.
-        scrubSensitiveHeaders(req, sensitive);
+        await runWithRequestSignal(controller.signal, async () => {
+          const admitted = await admit(req, res);
+          if (!admitted) return;
+          // Credential validation awaits Horizon, so the socket may already be
+          // gone when admission completes.
+          if (res.closed || res.destroyed) {
+            admitted.release();
+            return;
+          }
+          release = admitted.release;
 
-        // Absolute lifetime cap. res.setTimeout() is an inactivity timer that every
-        // SDK SSE keep-alive resets, so it can never bound a stream; this timer is
-        // armed once at admission and cleared only by the response actually ending.
-        const deadline = setTimeout(() => {
-          logger.warning(
-            `response exceeded ${settings.sseMaxDuration}s, closing it`,
+          // Scrub the captured secret headers from BOTH req.headers and
+          // req.rawHeaders before the SDK reads them: @hono/node-server rebuilds
+          // Web headers from the raw array.
+          scrubSensitiveHeaders(req, sensitive);
+
+          // Absolute lifetime cap. res.setTimeout() is an inactivity timer that every
+          // SDK SSE keep-alive resets, so it can never bound a stream; this timer is
+          // armed once at admission and cleared only by the response actually ending.
+          const deadline = setTimeout(() => {
+            logger.warning(
+              `response exceeded ${settings.sseMaxDuration}s, closing it`,
+            );
+            res.destroy();
+          }, settings.sseMaxDuration * 1000);
+          deadline.unref?.();
+          res.once('close', () => clearTimeout(deadline));
+          if (res.closed || res.destroyed) clearTimeout(deadline);
+
+          // The parsed body MUST be passed explicitly. express.json() has already
+          // consumed the stream, and toNodeHandler treats a function third
+          // argument (Express's `next`) as absent rather than as a body, so
+          // mounting this as bare middleware would hand the SDK an empty body.
+          await requestCredential.run(admitted.entry, () =>
+            nodeHandler(req, res, req.body),
           );
-          res.destroy();
-        }, settings.sseMaxDuration * 1000);
-        deadline.unref?.();
-        res.once('close', () => clearTimeout(deadline));
-        if (res.closed || res.destroyed) clearTimeout(deadline);
-
-        // The parsed body MUST be passed explicitly. express.json() has already
-        // consumed the stream, and toNodeHandler treats a function third
-        // argument (Express's `next`) as absent rather than as a body, so
-        // mounting this as bare middleware would hand the SDK an empty body.
-        await requestCredential.run(admitted.entry, () =>
-          nodeHandler(req, res, req.body),
-        );
+        });
       } catch (err) {
         logger.error(`Unhandled HTTP error: ${err}`);
         if (!res.headersSent) {

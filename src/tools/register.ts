@@ -9,6 +9,7 @@ import type {
 import type { z } from 'zod';
 
 import { HorizonError } from '../client/errors.js';
+import { runWithRequestSignal } from '../client/request-signal.js';
 import { buildToolDescription } from './guidance.js';
 
 type ToolExtra = ServerContext;
@@ -203,7 +204,11 @@ function wrapHandler(
 ): (...args: unknown[]) => Promise<CallToolResult> {
   return async (...args: unknown[]) => {
     try {
-      return await handler(...args);
+      const ctx = args.at(-1) as ServerContext | undefined;
+      const signal = ctx?.mcpReq.signal;
+      return await (signal
+        ? runWithRequestSignal(signal, () => handler(...args))
+        : handler(...args));
     } catch (err) {
       if (err instanceof HorizonError) return horizonErrorToToolResult(err);
       throw err;

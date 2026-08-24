@@ -158,6 +158,9 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_RATE_LIMIT_RPS`          | `20`        | Per-caller limit, counted per JSON-RPC message per second; `0` disables.                                                                                                  |
 | `HORIZON_IP_RATE_LIMIT`           | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-caller limits; `0` disables.                                                        |
 
+When an MCP client disconnects, the server cancels credential validation and any
+in-flight Horizon requests for that call.
+
 Size non-listen request memory from `HORIZON_MAX_CONCURRENT_REQUESTS`, not from request throughput. The server builds
 one short-lived tool registry per request, costing roughly 1.3 MiB each, on top of a process baseline of about 365 MiB.
 The default of 32 concurrent requests fits comfortably in a 1 GiB container. Listen streams have the separate global

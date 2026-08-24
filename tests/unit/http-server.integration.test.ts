@@ -48,6 +48,29 @@ function apiIdOf(init: unknown): string | undefined {
   return headers?.['X-API-ID'] ?? headers?.['x-api-id'];
 }
 
+function signalOf(init: unknown): AbortSignal | undefined {
+  return (init as { signal?: AbortSignal } | undefined)?.signal;
+}
+
+async function expectAbortedWithin(
+  signal: AbortSignal,
+  timeoutMs = 500,
+): Promise<void> {
+  if (signal.aborted) return;
+
+  await new Promise<void>((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+    const timeout = setTimeout(() => {
+      signal.removeEventListener('abort', onAbort);
+      reject(new Error(`upstream signal did not abort within ${timeoutMs}ms`));
+    }, timeoutMs);
+    signal.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 mockFetch.mockImplementation((url: unknown, init: unknown) => {
   const u = String(url);
   if (u.includes('/api/v1/security/csrf')) {
@@ -846,11 +869,13 @@ describe('HTTP server integration (api-key mode)', () => {
     const validationRelease = new Promise<void>((resolve) => {
       releaseValidation = resolve;
     });
+    let validationSignal: AbortSignal | undefined;
     mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
       if (
         String(url).includes('/api/v1/security/principals/self') &&
         apiIdOf(init) === firstCredential
       ) {
+        validationSignal = signalOf(init);
         markValidationStarted();
         await validationRelease;
       }
@@ -889,6 +914,8 @@ describe('HTTP server integration (api-key mode)', () => {
     try {
       await validationStarted;
       controller.abort();
+      expect(validationSignal).toBeDefined();
+      await expectAbortedWithin(validationSignal!);
       await new Promise((r) => setTimeout(r, 100));
       const responseB = await send(secondCredential, 'key-two');
       expect(responseB.status).toBe(200);
@@ -909,6 +936,91 @@ describe('HTTP server integration (api-key mode)', () => {
       await requestA;
       mockFetch.mockImplementation(original);
       writeSpy.mockRestore();
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('cancels an upstream tool call when the client disconnects', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_IP_RATE_LIMIT: '0',
+      HORIZON_RATE_LIMIT_RPS: '0',
+    });
+    const credential = 'disconnecting-tool-client';
+    const original = mockFetch.getMockImplementation()!;
+    const send = (
+      id: number,
+      method: 'tools/list' | 'tools/call',
+      signal?: AbortSignal,
+    ) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': credential,
+          'X-API-KEY': 'key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': method,
+          ...(method === 'tools/call' ? { 'Mcp-Name': 'whoami' } : {}),
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method,
+          params: {
+            ...(method === 'tools/call'
+              ? { name: 'whoami', arguments: {} }
+              : {}),
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+              'io.modelcontextprotocol/clientInfo': {
+                name: 'cancellation-test',
+                version: '1.0.0',
+              },
+            },
+          },
+        }),
+        signal,
+      });
+
+    const warm = await send(1, 'tools/list');
+    expect(warm.status).toBe(200);
+
+    let markToolCallStarted = () => {};
+    const toolCallStarted = new Promise<void>((resolve) => {
+      markToolCallStarted = resolve;
+    });
+    let releaseToolCall = () => {};
+    const toolCallRelease = new Promise<void>((resolve) => {
+      releaseToolCall = resolve;
+    });
+    let toolCallSignal: AbortSignal | undefined;
+    mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
+      if (
+        String(url).includes('/api/v1/security/principals/self') &&
+        apiIdOf(init) === credential
+      ) {
+        toolCallSignal = signalOf(init);
+        markToolCallStarted();
+        await toolCallRelease;
+      }
+      return original(url, init);
+    });
+
+    const controller = new AbortController();
+    const request = send(2, 'tools/call', controller.signal).catch(
+      () => undefined,
+    );
+    try {
+      await toolCallStarted;
+      controller.abort();
+      expect(toolCallSignal).toBeDefined();
+      await expectAbortedWithin(toolCallSignal!);
+    } finally {
+      releaseToolCall();
+      await request;
+      mockFetch.mockImplementation(original);
       await ctx.handle.close();
     }
   }, 30000);
