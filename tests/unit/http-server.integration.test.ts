@@ -549,6 +549,104 @@ describe('HTTP server integration (api-key mode)', () => {
     }
   }, 30000);
 
+  it('revalidates a cached credential after Horizon rejects it', async () => {
+    const ctx = await startApiKeyServer();
+    const original = mockFetch.getMockImplementation()!;
+    const credential = 'revoked-then-restored';
+    let rejectCredential = false;
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = async (
+      id: number,
+      method: 'tools/call' | 'tools/list',
+      params: Record<string, unknown> = {},
+      name?: string,
+    ) => {
+      const response = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': credential,
+          'X-API-KEY': 'key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': method,
+          ...(name === undefined ? {} : { 'Mcp-Name': name }),
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method,
+          params: {
+            ...params,
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+              'io.modelcontextprotocol/clientInfo': {
+                name: 'auth-rejection-test',
+                version: '1.0.0',
+              },
+            },
+          },
+        }),
+      });
+      return {
+        response,
+        body: (await response.json()) as {
+          error?: { code: number };
+          result?: {
+            isError?: boolean;
+            structuredContent?: { statusCode?: number };
+          };
+        },
+      };
+    };
+
+    mockFetch.mockImplementation((url: unknown, init: unknown) => {
+      if (rejectCredential && apiIdOf(init) === credential) {
+        return Promise.resolve(
+          fakeResponse(401, {
+            error: 'SecAuth001',
+            message: 'Unauthorized',
+          }),
+        );
+      }
+      return original(url, init);
+    });
+
+    try {
+      const warm = await send(1, 'tools/list');
+      expect(warm.response.status).toBe(200);
+      const afterWarm = probes();
+
+      rejectCredential = true;
+      const rejected = await send(
+        2,
+        'tools/call',
+        { name: 'whoami', arguments: {} },
+        'whoami',
+      );
+      expect(rejected.response.status).toBe(200);
+      expect(rejected.body.error).toBeUndefined();
+      expect(rejected.body.result?.isError).toBe(true);
+      expect(rejected.body.result?.structuredContent).toMatchObject({
+        statusCode: 401,
+      });
+      const afterReject = probes();
+      expect(afterReject).toBeGreaterThan(afterWarm);
+
+      rejectCredential = false;
+      const recovered = await send(3, 'tools/list');
+      expect(recovered.response.status).toBe(200);
+      expect(probes()).toBe(afterReject + 1);
+    } finally {
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 30000);
+
   it('rejects requests beyond the global concurrency cap', async () => {
     const ctx = await startApiKeyServer({
       HORIZON_MAX_CONCURRENT_REQUESTS: '1',

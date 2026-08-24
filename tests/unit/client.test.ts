@@ -249,6 +249,63 @@ describe('ClientReauth', () => {
     await client.close();
   });
 
+  it('notifies once when repeated requests end in auth rejection', async () => {
+    const auth = new MockReauthProvider();
+    const onAuthReject = vi.fn();
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+      onAuthReject,
+    });
+    (client as unknown as Record<string, boolean>)._initialized = true;
+    mockFetch.mockResolvedValue(
+      fakeResponse(401, {
+        error: 'SecAuth001',
+        message: 'Unauthorized',
+      }),
+    );
+
+    await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+      HorizonError,
+    );
+    await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+      HorizonError,
+    );
+
+    expect(onAuthReject).toHaveBeenCalledTimes(1);
+    await client.close();
+  });
+
+  it('preserves the HorizonError when the auth rejection hook throws', async () => {
+    const auth = new MockReauthProvider();
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+      onAuthReject: () => {
+        throw new Error('hook failed');
+      },
+    });
+    (client as unknown as Record<string, boolean>)._initialized = true;
+    mockFetch.mockResolvedValue(
+      fakeResponse(401, {
+        error: 'SecAuth001',
+        message: 'Unauthorized',
+      }),
+    );
+
+    await expect(client.get('/api/v1/cas')).rejects.toSatisfy(
+      (err: HorizonError) => {
+        expect(err).toBeInstanceOf(HorizonError);
+        expect(err.statusCode).toBe(401);
+        expect(err.message).toContain('Unauthorized');
+        return true;
+      },
+    );
+    await client.close();
+  });
+
   it('CSRF 403 uses CSRF path, not reauth path', async () => {
     const auth = new MockReauthProvider();
     const client = makeClient(auth);

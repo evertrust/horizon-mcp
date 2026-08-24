@@ -113,9 +113,11 @@ export class HorizonClient {
   private readonly _agent: Agent;
   private readonly _testedVersions: readonly string[];
   private readonly _warnVersions: readonly string[];
+  private readonly _onAuthReject?: () => void;
   private _csrfToken: string | undefined;
   private _initialized = false;
   private _initPromise: Promise<void> | null = null;
+  private _authRejectNoted = false;
 
   // Rate-limit state for the 401 -> re-auth path.
   private _lastReauthAt: number | null = null;
@@ -134,6 +136,7 @@ export class HorizonClient {
       verifySsl: boolean;
       testedVersions?: readonly string[];
       warnVersions?: readonly string[];
+      onAuthReject?: () => void;
     },
   ) {
     this._baseUrl = baseUrl.replace(/\/+$/, '');
@@ -142,6 +145,7 @@ export class HorizonClient {
     this.exportTimeout = options.exportTimeout;
     this._testedVersions = options.testedVersions ?? [];
     this._warnVersions = options.warnVersions ?? [];
+    this._onAuthReject = options.onAuthReject;
 
     // Build undici Agent with TLS connect options
     const authConnect = auth.getDispatcherOptions();
@@ -626,6 +630,7 @@ export class HorizonClient {
         );
         // Return the 401/403 to the caller for normal error handling.
         if (resp.status >= 400) {
+          this._noteAuthReject();
           throw parseErrorResponse(resp.status, await resp.text());
         }
         return resp;
@@ -656,10 +661,21 @@ export class HorizonClient {
     }
 
     if (resp.status >= 400) {
+      if (resp.status === 401 || resp.status === 403) this._noteAuthReject();
       throw parseErrorResponse(resp.status, await resp.text());
     }
 
     return resp;
+  }
+
+  private _noteAuthReject(): void {
+    if (this._authRejectNoted) return;
+    this._authRejectNoted = true;
+    try {
+      this._onAuthReject?.();
+    } catch {
+      // The upstream authentication error remains the surfaced failure.
+    }
   }
 
   private async _doRequest(

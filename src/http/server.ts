@@ -127,7 +127,12 @@ export async function startHttpServer(
         throw new CredentialError(400, 'credential material unavailable');
       }
       const built = buildSessionAuth(material, config, settings);
-      const client = new HorizonClient(settings.url, built.auth, clientOptions);
+      const client = new HorizonClient(settings.url, built.auth, {
+        ...clientOptions,
+        // The rejecting request keeps its lease, so retirement cannot close
+        // the client until that request releases it.
+        onAuthReject: () => void credentials.invalidate(fingerprint),
+      });
       try {
         await client.validateAuth();
         built.auth.markValidated();
