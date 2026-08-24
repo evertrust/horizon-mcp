@@ -13,7 +13,6 @@ import {
   extractCredential,
   peerMatchesProxy,
 } from '../../src/http/credentials.js';
-import { credentialFingerprint } from '../../src/http/fingerprint.js';
 import { loadSettings } from '../../src/settings.js';
 
 const PEM =
@@ -237,35 +236,29 @@ describe('extractCredential', () => {
 });
 
 describe('buildSessionAuth', () => {
-  it('service credentials build a forwarding provider and bind a fingerprint', () => {
+  it('service credentials build a forwarding provider', () => {
     const settings = loadSettings({});
-    const { auth, fingerprint } = buildSessionAuth(
+    const { auth } = buildSessionAuth(
       { kind: 'service', serviceAccount: 'ci', jwt: 'jwt' },
       cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
       settings,
     );
     expect(auth).toBeInstanceOf(ServiceAccountAuthProvider);
-    expect(fingerprint).toBe(
-      credentialFingerprint(JSON.stringify(['ci', 'jwt'])),
-    );
   });
 
-  it('api-key mode builds an ApiKeyAuthProvider with a credential fingerprint', () => {
+  it('api-key mode builds an ApiKeyAuthProvider', () => {
     const settings = loadSettings({});
-    const { auth, fingerprint } = buildSessionAuth(
+    const { auth } = buildSessionAuth(
       { kind: 'api-key', apiId: 'id', apiKey: 'secret' },
       cfg({ acceptedAuthMethods: HttpAuthMethod.ApiKey }),
       settings,
     );
     expect(auth).toBeInstanceOf(ApiKeyAuthProvider);
-    expect(fingerprint).toBe(
-      credentialFingerprint(JSON.stringify(['id', 'secret'])),
-    );
   });
 
-  it('mtls mode builds a CertForwardAuthProvider with a cert fingerprint', () => {
+  it('mtls mode builds a CertForwardAuthProvider', () => {
     const settings = loadSettings({});
-    const { auth, fingerprint } = buildSessionAuth(
+    const { auth } = buildSessionAuth(
       { kind: 'cert', pem: PEM },
       cfg({
         acceptedAuthMethods: HttpAuthMethod.Mtls,
@@ -277,11 +270,24 @@ describe('buildSessionAuth', () => {
       settings,
     );
     expect(auth).toBeInstanceOf(CertForwardAuthProvider);
-    expect(fingerprint).toBe(credentialFingerprint(PEM));
   });
 });
 
 describe('credentialFingerprintOf', () => {
+  it('distinguishes credential kinds with the same values', () => {
+    const apiKey = credentialFingerprintOf({
+      kind: 'api-key',
+      apiId: 'a',
+      apiKey: 'b',
+    });
+    const service = credentialFingerprintOf({
+      kind: 'service',
+      serviceAccount: 'a',
+      jwt: 'b',
+    });
+    expect(apiKey).not.toBe(service);
+  });
+
   it('cannot collide when API id/key boundaries contain colons', () => {
     const left = credentialFingerprintOf({
       kind: 'api-key',

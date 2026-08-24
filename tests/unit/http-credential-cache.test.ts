@@ -4,6 +4,7 @@ import {
   CredentialCache,
   type CredentialEntry,
 } from '../../src/http/credential-cache.js';
+import type { CredentialMaterial } from '../../src/http/credentials.js';
 
 interface Fake extends CredentialEntry {
   closed: () => number;
@@ -29,12 +30,19 @@ function fakeEntry(): Fake {
   };
 }
 
+function apiKeyMaterial(): CredentialMaterial {
+  return { kind: 'api-key', apiId: 'id', apiKey: 'secret' };
+}
+
 function makeCache(
   overrides: Partial<{
     max: number;
     ttlMs: number;
     now: () => number;
-    build: (fp: string) => Promise<CredentialEntry>;
+    build: (
+      fp: string,
+      material: CredentialMaterial,
+    ) => Promise<CredentialEntry>;
   }> = {},
 ) {
   const built = new Map<string, Fake>();
@@ -44,7 +52,7 @@ function makeCache(
     now: overrides.now,
     build:
       overrides.build ??
-      (async (fp: string) => {
+      (async (fp: string, _material: CredentialMaterial) => {
         const e = fakeEntry();
         built.set(fp, e);
         return e;
@@ -54,12 +62,23 @@ function makeCache(
 }
 
 describe('CredentialCache', () => {
+  it('passes the supplied material to the build winner', async () => {
+    const material = apiKeyMaterial();
+    const build = vi.fn(async () => fakeEntry() as CredentialEntry);
+    const { cache } = makeCache({ build });
+
+    const lease = await cache.get('fp1', material);
+
+    expect(build).toHaveBeenCalledWith('fp1', material);
+    lease.releaseLease();
+  });
+
   it('builds once and reuses the entry', async () => {
     const build = vi.fn(async () => fakeEntry() as CredentialEntry);
     const { cache } = makeCache({ build });
 
-    const a = await cache.get('fp1');
-    const b = await cache.get('fp1');
+    const a = await cache.get('fp1', apiKeyMaterial());
+    const b = await cache.get('fp1', apiKeyMaterial());
 
     expect(a.entry).toBe(b.entry);
     expect(build).toHaveBeenCalledTimes(1);
@@ -77,9 +96,9 @@ describe('CredentialCache', () => {
     const { cache } = makeCache({ build });
 
     const [a, b, c] = await Promise.all([
-      cache.get('fp1'),
-      cache.get('fp1'),
-      cache.get('fp1'),
+      cache.get('fp1', apiKeyMaterial()),
+      cache.get('fp1', apiKeyMaterial()),
+      cache.get('fp1', apiKeyMaterial()),
     ]);
 
     expect(calls).toBe(1);
@@ -99,9 +118,11 @@ describe('CredentialCache', () => {
     });
     const { cache } = makeCache({ build });
 
-    await expect(cache.get('fp1')).rejects.toThrow('horizon rejected');
+    await expect(cache.get('fp1', apiKeyMaterial())).rejects.toThrow(
+      'horizon rejected',
+    );
     // The failure must not be retained: the next call retries and succeeds.
-    const retry = cache.get('fp1');
+    const retry = cache.get('fp1', apiKeyMaterial());
     await expect(retry).resolves.toBeDefined();
     expect(build).toHaveBeenCalledTimes(2);
     const { releaseLease } = await retry;
@@ -110,8 +131,8 @@ describe('CredentialCache', () => {
 
   it('never lets two fingerprints share a client', async () => {
     const { cache } = makeCache();
-    const a = await cache.get('fp1');
-    const b = await cache.get('fp2');
+    const a = await cache.get('fp1', apiKeyMaterial());
+    const b = await cache.get('fp2', apiKeyMaterial());
     expect(a.entry.client).not.toBe(b.entry.client);
     a.releaseLease();
     b.releaseLease();
@@ -121,12 +142,12 @@ describe('CredentialCache', () => {
     let clock = 0;
     const { cache, built } = makeCache({ ttlMs: 100, now: () => clock });
 
-    const firstLease = await cache.get('fp1');
+    const firstLease = await cache.get('fp1', apiKeyMaterial());
     const first = built.get('fp1')!;
     firstLease.releaseLease();
 
     clock = 500;
-    const secondLease = await cache.get('fp1');
+    const secondLease = await cache.get('fp1', apiKeyMaterial());
 
     expect(first.closed()).toBe(1);
     expect(first.cleaned()).toBe(1);
@@ -149,19 +170,19 @@ describe('CredentialCache', () => {
     const releases: (() => void)[] = [];
 
     try {
-      const initial = await cache.get('fp1');
+      const initial = await cache.get('fp1', apiKeyMaterial());
       releases.push(initial.releaseLease);
       initial.releaseLease();
 
       clock = 200_000;
-      const hit = await cache.get('fp1');
+      const hit = await cache.get('fp1', apiKeyMaterial());
       releases.push(hit.releaseLease);
       expect(hit.entry).toBe(initial.entry);
       expect(build).toHaveBeenCalledTimes(1);
       hit.releaseLease();
 
       clock = 400_000;
-      const rebuilt = await cache.get('fp1');
+      const rebuilt = await cache.get('fp1', apiKeyMaterial());
       releases.push(rebuilt.releaseLease);
       expect(build).toHaveBeenCalledTimes(2);
       await vi.waitFor(() => expect(entries[0]!.closed()).toBe(1));
@@ -175,11 +196,11 @@ describe('CredentialCache', () => {
   it('evicts the least recently used entry when full', async () => {
     const { cache, built } = makeCache({ max: 2 });
 
-    const firstA = await cache.get('a');
-    const b = await cache.get('b');
-    const secondA = await cache.get('a'); // refreshes 'a', making 'b' the LRU
+    const firstA = await cache.get('a', apiKeyMaterial());
+    const b = await cache.get('b', apiKeyMaterial());
+    const secondA = await cache.get('a', apiKeyMaterial()); // refreshes 'a', making 'b' the LRU
     b.releaseLease();
-    const c = await cache.get('c');
+    const c = await cache.get('c', apiKeyMaterial());
 
     expect(built.get('b')!.closed()).toBe(1);
     expect(built.get('b')!.cleaned()).toBe(1);
@@ -193,10 +214,10 @@ describe('CredentialCache', () => {
     const build = vi.fn(async () => fakeEntry() as CredentialEntry);
     const { cache } = makeCache({ build });
 
-    const first = await cache.get('fp1');
+    const first = await cache.get('fp1', apiKeyMaterial());
     first.releaseLease();
     await cache.invalidate('fp1');
-    const second = await cache.get('fp1');
+    const second = await cache.get('fp1', apiKeyMaterial());
 
     expect(build).toHaveBeenCalledTimes(2);
     second.releaseLease();
@@ -206,9 +227,9 @@ describe('CredentialCache', () => {
     let clock = 0;
     const { cache, built } = makeCache({ ttlMs: 100, now: () => clock });
 
-    const old = await cache.get('old');
+    const old = await cache.get('old', apiKeyMaterial());
     clock = 60;
-    const fresh = await cache.get('fresh');
+    const fresh = await cache.get('fresh', apiKeyMaterial());
     clock = 120; // 'old' expired at 100, 'fresh' expires at 160
     old.releaseLease();
     fresh.releaseLease();
@@ -222,8 +243,8 @@ describe('CredentialCache', () => {
 
   it('close tears down every entry and refuses further gets', async () => {
     const { cache, built } = makeCache();
-    const a = await cache.get('a');
-    const b = await cache.get('b');
+    const a = await cache.get('a', apiKeyMaterial());
+    const b = await cache.get('b', apiKeyMaterial());
     a.releaseLease();
     b.releaseLease();
 
@@ -231,7 +252,7 @@ describe('CredentialCache', () => {
 
     expect(built.get('a')!.closed()).toBe(1);
     expect(built.get('b')!.cleaned()).toBe(1);
-    await expect(cache.get('c')).rejects.toThrow('closed');
+    await expect(cache.get('c', apiKeyMaterial())).rejects.toThrow('closed');
   });
 
   it('disposes a build that completes after close rather than leaking it', async () => {
@@ -244,7 +265,7 @@ describe('CredentialCache', () => {
       },
     });
 
-    const pending = cache.get('fp1');
+    const pending = cache.get('fp1', apiKeyMaterial());
     await new Promise((r) => setTimeout(r, 5));
     await cache.close();
     await expect(pending).rejects.toThrow('closed');
@@ -269,7 +290,7 @@ describe('CredentialCache', () => {
       }),
     } as never);
 
-    const lease = await cache.get('fp1');
+    const lease = await cache.get('fp1', apiKeyMaterial());
     lease.releaseLease();
     await expect(cache.close()).resolves.toBeUndefined();
     expect(onCleanupError).toHaveBeenCalledWith('fp1', expect.any(Error));
@@ -280,9 +301,9 @@ describe('CredentialCache', () => {
     const releases: (() => void)[] = [];
 
     try {
-      const { releaseLease } = await cache.get('leased');
+      const { releaseLease } = await cache.get('leased', apiKeyMaterial());
       releases.push(releaseLease);
-      const next = await cache.get('next');
+      const next = await cache.get('next', apiKeyMaterial());
       releases.push(next.releaseLease);
 
       expect(built.get('leased')!.closed()).toBe(0);
@@ -310,8 +331,8 @@ describe('CredentialCache', () => {
 
     try {
       const [first, second] = await Promise.all([
-        cache.get('shared'),
-        cache.get('shared'),
+        cache.get('shared', apiKeyMaterial()),
+        cache.get('shared', apiKeyMaterial()),
       ]);
       releases.push(first.releaseLease, second.releaseLease);
 
@@ -345,7 +366,7 @@ describe('CredentialCache', () => {
     let closing: Promise<void> | undefined;
 
     try {
-      const { releaseLease } = await cache.get('leased');
+      const { releaseLease } = await cache.get('leased', apiKeyMaterial());
       releases.push(releaseLease);
       closing = cache.close();
       const result = await Promise.race([

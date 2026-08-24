@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/base.js';
 import type { HorizonClient } from '../client/http.js';
+import type { CredentialMaterial } from './credentials.js';
 
 /**
  * One cached, already-validated upstream credential: the Horizon client every
@@ -20,7 +21,10 @@ export interface CredentialCacheOptions {
    */
   readonly ttlMs: number;
   /** Builds and validates a credential. Must reject if validation fails. */
-  readonly build: (fingerprint: string) => Promise<CredentialEntry>;
+  readonly build: (
+    fingerprint: string,
+    material: CredentialMaterial,
+  ) => Promise<CredentialEntry>;
   readonly now?: () => number;
   /** Reported when retired entry cleanup throws. Never rethrows. */
   readonly onCleanupError?: (fingerprint: string, err: unknown) => void;
@@ -84,7 +88,10 @@ export class CredentialCache {
    * increments the record reference count and must invoke its own idempotent
    * `releaseLease` when the request stops using the entry.
    */
-  async get(fingerprint: string): Promise<{
+  async get(
+    fingerprint: string,
+    material: CredentialMaterial,
+  ): Promise<{
     readonly entry: CredentialEntry;
     readonly releaseLease: () => void;
   }> {
@@ -106,7 +113,8 @@ export class CredentialCache {
       let pending = this.inflight.get(fingerprint);
       if (!pending) {
         pending = (async () => {
-          const entry = await this.opts.build(fingerprint);
+          // The fingerprint HMAC makes same-key waiters materially equivalent, so the build may use the winner's instance.
+          const entry = await this.opts.build(fingerprint, material);
           const record: CacheRecord = {
             entry,
             expiresAt: this.now() + this.opts.ttlMs,

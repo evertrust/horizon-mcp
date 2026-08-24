@@ -300,13 +300,14 @@ export function credentialFingerprintOf(
       // A structured tuple preserves the id/key boundary even when either
       // value contains a colon (unlike `${id}:${key}`).
       return credentialFingerprint(
-        JSON.stringify([material.apiId, material.apiKey]),
+        JSON.stringify([material.kind, material.apiId, material.apiKey]),
       );
     case 'service':
       return credentialFingerprint(
         JSON.stringify(
           material.oauth
             ? [
+                material.kind,
                 material.serviceAccount,
                 material.jwt,
                 material.oauth.clientId,
@@ -314,29 +315,26 @@ export function credentialFingerprintOf(
                 material.oauth.scope,
                 material.oauth.audience,
               ]
-            : [material.serviceAccount, material.jwt],
+            : [material.kind, material.serviceAccount, material.jwt],
         ),
       );
     case 'cert':
-      return credentialFingerprint(material.pem);
+      return credentialFingerprint(
+        JSON.stringify([material.kind, material.pem]),
+      );
   }
 }
 
-/**
- * Build the per-session AuthProvider and (for per-caller modes) the credential
- * fingerprint used to anti-hijack-bind the session.
- */
+/** Build the per-session AuthProvider. */
 export function buildSessionAuth(
   material: CredentialMaterial,
   config: HttpConfig,
   _settings: HorizonSettings,
-): { auth: AuthProvider; fingerprint?: string } {
-  const fingerprint = credentialFingerprintOf(material);
+): { auth: AuthProvider } {
   switch (material.kind) {
     case 'api-key':
       return {
         auth: new ApiKeyAuthProvider(material.apiId, material.apiKey),
-        fingerprint,
       };
     case 'service':
       return {
@@ -345,13 +343,11 @@ export function buildSessionAuth(
           material.jwt,
           material.oauth,
         ),
-        fingerprint,
       };
     case 'cert': {
       const forwardHeader = config.mtls?.forwardHeader ?? 'SSL_CLIENT_CERT';
       return {
         auth: new CertForwardAuthProvider(forwardHeader, material.pem),
-        fingerprint,
       };
     }
   }

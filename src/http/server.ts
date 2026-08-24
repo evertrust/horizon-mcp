@@ -121,11 +121,7 @@ export async function startHttpServer(
       logger.error(
         `credential cleanup failed for ${shortFingerprint(fingerprint)}: ${err}`,
       ),
-    build: async (fingerprint) => {
-      const material = pendingMaterial.get(fingerprint);
-      if (!material) {
-        throw new CredentialError(400, 'credential material unavailable');
-      }
+    build: async (fingerprint, material) => {
       const built = buildSessionAuth(material, config, settings);
       const client = new HorizonClient(settings.url, built.auth, {
         ...clientOptions,
@@ -146,11 +142,6 @@ export async function startHttpServer(
       return { client, auth: built.auth };
     },
   });
-
-  // Hands the extracted credential material to the cache's build function for
-  // the duration of one miss. Keyed by fingerprint so concurrent misses on
-  // different credentials never read each other's material.
-  const pendingMaterial = new Map<string, CredentialMaterial>();
 
   // -32600 (Invalid Request) for genuinely malformed requests; the
   // APP_ERROR_* codes above for server-side rejections. The id echoes the
@@ -295,8 +286,7 @@ export async function startHttpServer(
     }
 
     try {
-      pendingMaterial.set(fingerprint, material);
-      const leased = await credentials.get(fingerprint);
+      const leased = await credentials.get(fingerprint, material);
       releaseLease = leased.releaseLease;
       // A lease acquired after response closure cannot outlive admission.
       if (released) releaseLease();
@@ -320,8 +310,6 @@ export async function startHttpServer(
         APP_ERROR_CREDENTIAL,
       );
       return undefined;
-    } finally {
-      pendingMaterial.delete(fingerprint);
     }
   }
 
