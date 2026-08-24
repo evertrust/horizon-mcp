@@ -200,6 +200,56 @@ describe('HTTP server integration (api-key mode)', () => {
     }
   }, 20000);
 
+  it('answers 405 with Allow to an uncredentialed GET', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, { method: 'GET' }); // no credentials
+      expect(res.status).toBe(405);
+      expect(res.headers.get('allow')).toBe('POST');
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a modern-claim POST without the version header before touching credentials', async () => {
+    const ctx = await startApiKeyServer();
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      const before = probes();
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': 'nobody',
+          'X-API-KEY': 'nope', // bogus creds must NOT reach Horizon
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: number; data: any } };
+      expect(body.error.code).toBe(-32020);
+      expect(body.error.data.mismatch.header).toBe('(missing)');
+      expect(probes()).toBe(before);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
   it('rejects a mismatched Host with 421 (DNS-rebinding defence)', async () => {
     const ctx = await startApiKeyServer();
     try {
@@ -393,7 +443,14 @@ describe('HTTP server integration (authentication whitelist)', () => {
         },
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
       });
-      expect(res.status).toBeGreaterThanOrEqual(400);
+      expect(res.status).toBe(401);
+      const body = (await res.json()) as {
+        error: { code: number; message: string };
+      };
+      expect(body.error.code).toBe(-31003);
+      expect(body.error.message).toBe(
+        'service authentication is not accepted by this server',
+      );
     } finally {
       await ctx.handle.close();
     }

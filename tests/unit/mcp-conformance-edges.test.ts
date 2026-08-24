@@ -39,9 +39,8 @@ vi.mock('undici', () => ({
 
 const { createMcpHandler } = await import('@modelcontextprotocol/server');
 const { Client } = await import('@modelcontextprotocol/client');
-const { StdioClientTransport, getDefaultEnvironment } = await import(
-  '@modelcontextprotocol/client/stdio'
-);
+const { StdioClientTransport, getDefaultEnvironment } =
+  await import('@modelcontextprotocol/client/stdio');
 const { startHttpServer } = await import('../../src/http/server.js');
 const { buildHttpConfig } = await import('../../src/http/config.js');
 const { loadSettings } = await import('../../src/settings.js');
@@ -333,20 +332,32 @@ describe('header and envelope version asymmetry', () => {
     });
   }, 30000);
 
-  it('accepts a complete envelope without the version header', async () => {
-    await bothHarnesses(async (send) => {
-      const r = await send({
-        body: body('tools/list'),
-        headers: { 'Mcp-Method': 'tools/list' },
-      });
-      // The 2026-07-28 transport spec says a modern-only server MUST reject a
-      // request missing the MCP-Protocol-Version header (Server Validation),
-      // but SDK 2.0.0 accepts it when the body envelope is complete; this test
-      // pins the measured lenience so an SDK change in either direction is
-      // caught deliberately.
-      expect(r.status).toBe(200);
-      expect(r.json.result.tools.length).toBeGreaterThan(50);
+  it('accepts a complete envelope without the version header in-process', async () => {
+    const harness = harnesses.find((h) => h.name === 'in-process');
+    if (!harness) throw new Error('in-process harness not found');
+    const r = await harness.send({
+      body: body('tools/list'),
+      headers: { 'Mcp-Method': 'tools/list' },
     });
+    // The 2026-07-28 transport spec says a modern-only server MUST reject a
+    // request missing the MCP-Protocol-Version header (Server Validation),
+    // but SDK 2.0.0 accepts it when the body envelope is complete; this test
+    // pins the measured lenience so an SDK change in either direction is
+    // caught deliberately.
+    expect(r.status).toBe(200);
+    expect(r.json.result.tools.length).toBeGreaterThan(50);
+  }, 30000);
+
+  it('rejects a complete envelope without the version header in Express', async () => {
+    const harness = harnesses.find((h) => h.name === 'express');
+    if (!harness) throw new Error('express harness not found');
+    const r = await harness.send({
+      body: body('tools/list'),
+      headers: { 'Mcp-Method': 'tools/list' },
+    });
+    expect(r.status).toBe(400);
+    expect(r.json.error.code).toBe(-32020);
+    expect(r.json.error.data.mismatch.header).toBe('(missing)');
   }, 30000);
 });
 

@@ -326,18 +326,59 @@ export async function startHttpServer(
     next();
   };
 
+  const methodGate = (req: Request, res: Response, next: NextFunction) => {
+    if (req.method !== 'POST') {
+      // The 2025 session operations (GET SSE stream, DELETE teardown) are gone;
+      // the modern endpoint accepts POST only. Answered here so probes never
+      // reach body parsing or credential extraction, with the Allow header RFC
+      // 9110 requires on a 405.
+      res.setHeader('Allow', 'POST');
+      sendError(res, 405, null, 'method not allowed');
+      return;
+    }
+    next();
+  };
+
   const jsonParser = express.json({ limit: settings.maxBodyBytes });
 
-  // GET and DELETE were the 2025 session operations; `createMcpHandler`
-  // answers them with 405 itself, so the method is not routed here.
   app.all(
     config.path,
     ipLimiter,
     hostOriginGuard,
+    methodGate,
     jsonParser,
     async (req: Request, res: Response) => {
       let release: (() => void) | undefined;
       try {
+        // SDK 2.0.0 lenience compensation: a request that claims a modern
+        // protocol version in its _meta but omits the MCP-Protocol-Version
+        // header is accepted by the SDK, contra the transport spec's Server
+        // Validation. Reject it here. Requests making no modern claim fall
+        // through so `legacy: 'reject'` keeps answering -32022 with the
+        // supported-versions list.
+        const claim =
+          req.body?.params?._meta?.['io.modelcontextprotocol/protocolVersion'];
+        if (
+          typeof claim === 'string' &&
+          headerStr(req.headers['mcp-protocol-version']) === undefined
+        ) {
+          res.status(400).json({
+            jsonrpc: '2.0',
+            id: firstId(req.body),
+            error: {
+              code: -32020,
+              message:
+                'Bad Request: the body claims a protocol version but the required MCP-Protocol-Version header is absent',
+              data: { mismatch: { header: '(missing)' } },
+            },
+          });
+          return;
+        }
+
+        // Deliberately, a header-present-but-mismatched request with bad
+        // credentials still gets 401 before -32020: the MUST mismatch check
+        // applies only when the server processes the body, and an
+        // unauthenticated request never does.
         const admitted = await admit(req, res);
         if (!admitted) return;
         release = admitted.release;
