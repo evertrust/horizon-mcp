@@ -464,7 +464,12 @@ describe('HTTP server integration (api-key mode)', () => {
       HORIZON_MAX_CONCURRENT_REQUESTS: '1',
       HORIZON_IP_RATE_LIMIT: '0',
       HORIZON_RATE_LIMIT_RPS: '0',
+      HORIZON_SSE_MAX_DURATION: '2',
+      HORIZON_EXPORT_TIMEOUT: '1',
     });
+    const writeSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
     const firstCredential = 'disconnecting-client';
     const secondCredential = 'next-client';
     const original = mockFetch.getMockImplementation()!;
@@ -522,10 +527,23 @@ describe('HTTP server integration (api-key mode)', () => {
       await new Promise((r) => setTimeout(r, 100));
       const responseB = await send(secondCredential, 'key-two');
       expect(responseB.status).toBe(200);
+      releaseValidation();
+      await requestA;
+      await new Promise((r) => setTimeout(r, 2600));
+      const deadlineWarnings = writeSpy.mock.calls.filter(([chunk]) => {
+        const line = String(chunk);
+        return (
+          line.includes('"level":"WARNING"') &&
+          line.includes('"logger":"horizon_mcp.http"') &&
+          line.includes('response exceeded')
+        );
+      });
+      expect(deadlineWarnings).toHaveLength(0);
     } finally {
       releaseValidation();
       await requestA;
       mockFetch.mockImplementation(original);
+      writeSpy.mockRestore();
       await ctx.handle.close();
     }
   }, 30000);

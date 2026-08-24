@@ -395,6 +395,12 @@ export async function startHttpServer(
         // unauthenticated request never does.
         const admitted = await admit(req, res);
         if (!admitted) return;
+        // Credential validation awaits Horizon, so the socket may already be
+        // gone when admission completes.
+        if (res.closed || res.destroyed) {
+          admitted.release();
+          return;
+        }
         release = admitted.release;
 
         // Scrub the captured secret headers from BOTH req.headers and
@@ -413,6 +419,7 @@ export async function startHttpServer(
         }, settings.sseMaxDuration * 1000);
         deadline.unref?.();
         res.once('close', () => clearTimeout(deadline));
+        if (res.closed || res.destroyed) clearTimeout(deadline);
 
         // The parsed body MUST be passed explicitly. express.json() has already
         // consumed the stream, and toNodeHandler treats a function third

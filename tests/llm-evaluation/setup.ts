@@ -90,7 +90,7 @@ function createMockClient(): unknown {
     request: async () => new Response(),
     close: async () => {},
     fetchCsrfToken: async () => undefined,
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };
