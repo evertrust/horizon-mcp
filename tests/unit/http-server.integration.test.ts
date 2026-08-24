@@ -194,7 +194,9 @@ describe('HTTP server integration (api-key mode)', () => {
         body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
       });
       expect(res.status).toBe(401);
-      expect(res.headers.get('www-authenticate')).toContain('api-key');
+      expect(res.headers.get('www-authenticate')).toBe(
+        'Horizon methods="api-key"',
+      );
     } finally {
       await ctx.handle.close();
     }
@@ -234,7 +236,9 @@ describe('HTTP server integration (api-key mode)', () => {
         }),
       });
       expect(res.status).toBe(401);
-      expect(res.headers.get('www-authenticate')).toContain('api-key');
+      expect(res.headers.get('www-authenticate')).toBe(
+        'Horizon methods="api-key"',
+      );
     } finally {
       mockFetch.mockImplementation(original);
       await ctx.handle.close();
