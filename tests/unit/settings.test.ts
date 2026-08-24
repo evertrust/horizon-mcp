@@ -222,6 +222,7 @@ describe('loadSettings', () => {
       expect(s.maxListenStreamsGlobal).toBe(8);
       expect(s.credentialCacheMax).toBe(64);
       expect(s.credentialCacheTtl).toBe(300);
+      expect(s.validationRateLimit).toBe(5);
       expect(s.maxInflightToolcalls).toBe(8);
       expect(s.maxListenStreams).toBe(2);
       expect(s.maxBodyBytes).toBe(1048576);
@@ -358,13 +359,32 @@ describe('loadSettings', () => {
       ).toThrow();
     });
 
+    it('bounds the credential validation rate limit', () => {
+      expect(
+        loadSettings({ HORIZON_VALIDATION_RATE_LIMIT: '0' })
+          .validationRateLimit,
+      ).toBe(0);
+      expect(
+        loadSettings({ HORIZON_VALIDATION_RATE_LIMIT: '100' })
+          .validationRateLimit,
+      ).toBe(100);
+      expect(() =>
+        loadSettings({ HORIZON_VALIDATION_RATE_LIMIT: '-1' }),
+      ).toThrow();
+      expect(() =>
+        loadSettings({ HORIZON_VALIDATION_RATE_LIMIT: '101' }),
+      ).toThrow();
+    });
+
     it('allows 0 to disable the rate limits', () => {
       const s = loadSettings({
         HORIZON_RATE_LIMIT_RPS: '0',
         HORIZON_IP_RATE_LIMIT: '0',
+        HORIZON_VALIDATION_RATE_LIMIT: '0',
       });
       expect(s.rateLimitRps).toBe(0);
       expect(s.ipRateLimit).toBe(0);
+      expect(s.validationRateLimit).toBe(0);
     });
 
     it('rejects a non-numeric port', () => {

@@ -109,6 +109,67 @@ describe('CredentialCache', () => {
     c.releaseLease();
   });
 
+  it('invokes onBuildStart once for concurrent misses on one fingerprint', async () => {
+    const material = apiKeyMaterial();
+    const onBuildStart = vi.fn();
+    const build = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return fakeEntry() as CredentialEntry;
+    });
+    const cache = new CredentialCache({
+      max: 8,
+      ttlMs: 1000,
+      onBuildStart,
+      build,
+    });
+
+    const leases = await Promise.all(
+      Array.from({ length: 6 }, () =>
+        cache.get('shared', material, '127.0.0.1'),
+      ),
+    );
+
+    expect(onBuildStart).toHaveBeenCalledTimes(1);
+    expect(onBuildStart).toHaveBeenCalledWith('shared', material, '127.0.0.1');
+    expect(build).toHaveBeenCalledTimes(1);
+    for (const lease of leases) lease.releaseLease();
+    await cache.close();
+  });
+
+  it('shares onBuildStart rejection and permits a fresh build afterward', async () => {
+    const hookError = new Error('validation budget exhausted');
+    const onBuildStart = vi.fn(() => {
+      if (onBuildStart.mock.calls.length === 1) throw hookError;
+    });
+    const build = vi.fn(async () => fakeEntry() as CredentialEntry);
+    const cache = new CredentialCache({
+      max: 8,
+      ttlMs: 1000,
+      onBuildStart,
+      build,
+    });
+
+    const results = await Promise.allSettled(
+      Array.from({ length: 6 }, () =>
+        cache.get('shared', apiKeyMaterial(), '127.0.0.1'),
+      ),
+    );
+
+    for (const result of results) {
+      expect(result.status).toBe('rejected');
+      if (result.status === 'rejected') expect(result.reason).toBe(hookError);
+    }
+    expect(onBuildStart).toHaveBeenCalledTimes(1);
+    expect(build).not.toHaveBeenCalled();
+    expect(cache.size).toBe(0);
+
+    const retry = await cache.get('shared', apiKeyMaterial(), '127.0.0.1');
+    expect(onBuildStart).toHaveBeenCalledTimes(2);
+    expect(build).toHaveBeenCalledTimes(1);
+    retry.releaseLease();
+    await cache.close();
+  });
+
   it('never caches a failed build and retries next time', async () => {
     let attempt = 0;
     const build = vi.fn(async () => {

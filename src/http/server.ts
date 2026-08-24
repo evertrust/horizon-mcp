@@ -94,6 +94,11 @@ export async function startHttpServer(
   // Rate limiting is keyed by credential fingerprint now that there is no
   // session id to key on. HORIZON_IP_RATE_LIMIT=0 disables the coarse backstop.
   const credentialLimiter = new RateLimiter(settings.rateLimitRps);
+  const validationLimiter = new RateLimiter(
+    settings.validationRateLimit,
+    undefined,
+    { __global__: settings.validationRateLimit * 4 },
+  );
 
   const ipLimiter = rateLimit({
     windowMs: 1000,
@@ -117,6 +122,17 @@ export async function startHttpServer(
   const credentials = new CredentialCache({
     max: settings.credentialCacheMax,
     ttlMs: settings.credentialCacheTtl * 1000,
+    onBuildStart: (_fingerprint, _material, peer) => {
+      if (settings.validationRateLimit === 0) return;
+      if (
+        !validationLimiter.tryAcquireAll([
+          'ip:' + (peer ?? 'unknown'),
+          '__global__',
+        ])
+      ) {
+        throw new CredentialError(429, 'credential validation rate exceeded');
+      }
+    },
     onCleanupError: (fingerprint, err) =>
       logger.error(
         `credential cleanup failed for ${shortFingerprint(fingerprint)}: ${err}`,
@@ -170,7 +186,13 @@ export async function startHttpServer(
     id: JsonRpcId | undefined,
   ): void {
     if (err instanceof CredentialError) {
-      sendError(res, err.status, id, err.message, APP_ERROR_CREDENTIAL);
+      sendError(
+        res,
+        err.status,
+        id,
+        err.message,
+        err.status === 429 ? APP_ERROR_RATE_LIMITED : APP_ERROR_CREDENTIAL,
+      );
       return;
     }
     throw err;
@@ -286,7 +308,11 @@ export async function startHttpServer(
     }
 
     try {
-      const leased = await credentials.get(fingerprint, material);
+      const leased = await credentials.get(
+        fingerprint,
+        material,
+        req.socket.remoteAddress,
+      );
       releaseLease = leased.releaseLease;
       // A lease acquired after response closure cannot outlive admission.
       if (released) releaseLease();
@@ -530,6 +556,7 @@ export async function startHttpServer(
   const sweeper = setInterval(() => {
     void credentials.sweep();
     credentialLimiter.prune();
+    validationLimiter.prune();
   }, sweepIntervalMs);
   sweeper.unref?.();
 

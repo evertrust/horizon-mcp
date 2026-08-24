@@ -25,6 +25,11 @@ export interface CredentialCacheOptions {
     fingerprint: string,
     material: CredentialMaterial,
   ) => Promise<CredentialEntry>;
+  readonly onBuildStart?: (
+    fingerprint: string,
+    material: CredentialMaterial,
+    peer: string | undefined,
+  ) => void;
   readonly now?: () => number;
   /** Reported when retired entry cleanup throws. Never rethrows. */
   readonly onCleanupError?: (fingerprint: string, err: unknown) => void;
@@ -91,6 +96,7 @@ export class CredentialCache {
   async get(
     fingerprint: string,
     material: CredentialMaterial,
+    peer?: string,
   ): Promise<{
     readonly entry: CredentialEntry;
     readonly releaseLease: () => void;
@@ -114,6 +120,7 @@ export class CredentialCache {
       if (!pending) {
         pending = (async () => {
           // The fingerprint HMAC makes same-key waiters materially equivalent, so the build may use the winner's instance.
+          this.opts.onBuildStart?.(fingerprint, material, peer);
           const entry = await this.opts.build(fingerprint, material);
           const record: CacheRecord = {
             entry,

@@ -549,6 +549,117 @@ describe('HTTP server integration (api-key mode)', () => {
     }
   }, 30000);
 
+  it('limits concurrent validation of distinct credentials per peer', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_VALIDATION_RATE_LIMIT: '3',
+      HORIZON_RATE_LIMIT_RPS: '0',
+      HORIZON_IP_RATE_LIMIT: '0',
+    });
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = (index: number) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': `bogus-${index}`,
+          'X-API-KEY': `key-${index}`,
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: index,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+    try {
+      const before = probes();
+      const responses = await Promise.all(
+        Array.from({ length: 20 }, (_, index) => send(index + 1)),
+      );
+      const after = probes();
+      const probeCount = after - before;
+      const limited = responses.filter((response) => response.status === 429);
+
+      expect(probeCount).toBeLessThanOrEqual(3);
+      expect(limited).toHaveLength(20 - probeCount);
+      for (const response of limited) {
+        const body = (await response.json()) as { error: { code: number } };
+        expect(body.error.code).toBe(-31001);
+      }
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('charges one validation token for concurrent same-credential misses', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_VALIDATION_RATE_LIMIT: '1',
+      HORIZON_RATE_LIMIT_RPS: '0',
+      HORIZON_IP_RATE_LIMIT: '0',
+    });
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = (apiId: string, id: number) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': apiId,
+          'X-API-KEY': 'shared-key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+    try {
+      const before = probes();
+      const responses = await Promise.all(
+        Array.from({ length: 6 }, (_, index) =>
+          send('shared-fresh', index + 1),
+        ),
+      );
+
+      expect(probes() - before).toBe(1);
+      expect(responses.map((response) => response.status)).toEqual(
+        Array(6).fill(200),
+      );
+
+      const distinct = await send('distinct-fresh', 7);
+      expect(distinct.status).toBe(429);
+      const body = (await distinct.json()) as { error: { code: number } };
+      expect(body.error.code).toBe(-31001);
+      expect(probes() - before).toBe(1);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 30000);
+
   it('revalidates a cached credential after Horizon rejects it', async () => {
     const ctx = await startApiKeyServer();
     const original = mockFetch.getMockImplementation()!;
