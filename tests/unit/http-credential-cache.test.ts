@@ -167,6 +167,11 @@ describe('CredentialCache', () => {
       );
 
       for (const result of results) {
+        if (result.status === 'fulfilled') {
+          releases.push(result.value.releaseLease);
+        }
+      }
+      for (const result of results) {
         expect(result.status).toBe('rejected');
         if (result.status === 'rejected') expect(result.reason).toBe(hookError);
       }

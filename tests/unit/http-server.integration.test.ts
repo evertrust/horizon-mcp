@@ -555,6 +555,9 @@ describe('HTTP server integration (api-key mode)', () => {
       HORIZON_VALIDATION_RATE_LIMIT: '3',
       HORIZON_RATE_LIMIT_RPS: '0',
       HORIZON_IP_RATE_LIMIT: '0',
+    }).catch((err: unknown) => {
+      nowSpy.mockRestore();
+      throw err;
     });
     const probes = () =>
       mockFetch.mock.calls.filter((call) =>
@@ -616,6 +619,9 @@ describe('HTTP server integration (api-key mode)', () => {
       HORIZON_VALIDATION_RATE_LIMIT: '1',
       HORIZON_RATE_LIMIT_RPS: '0',
       HORIZON_IP_RATE_LIMIT: '0',
+    }).catch((err: unknown) => {
+      nowSpy.mockRestore();
+      throw err;
     });
     const probes = () =>
       mockFetch.mock.calls.filter((call) =>
