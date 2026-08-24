@@ -273,7 +273,11 @@ export async function startHttpServer(
       );
       return undefined;
     }
+    let releaseLease: (() => void) | undefined;
+    let released = false;
     const release = once(() => {
+      released = true;
+      releaseLease?.();
       releaseCredential();
       releaseGlobal();
     });
@@ -287,7 +291,11 @@ export async function startHttpServer(
 
     try {
       pendingMaterial.set(fingerprint, material);
-      const entry = await credentials.get(fingerprint);
+      const leased = await credentials.get(fingerprint);
+      releaseLease = leased.releaseLease;
+      // A lease acquired after response closure cannot outlive admission.
+      if (released) releaseLease();
+      const { entry } = leased;
       return { entry, release };
     } catch (err) {
       release();

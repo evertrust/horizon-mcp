@@ -61,8 +61,10 @@ describe('CredentialCache', () => {
     const a = await cache.get('fp1');
     const b = await cache.get('fp1');
 
-    expect(a).toBe(b);
+    expect(a.entry).toBe(b.entry);
     expect(build).toHaveBeenCalledTimes(1);
+    a.releaseLease();
+    b.releaseLease();
   });
 
   it('single-flights concurrent misses on the same fingerprint', async () => {
@@ -81,8 +83,11 @@ describe('CredentialCache', () => {
     ]);
 
     expect(calls).toBe(1);
-    expect(a).toBe(b);
-    expect(b).toBe(c);
+    expect(a.entry).toBe(b.entry);
+    expect(b.entry).toBe(c.entry);
+    a.releaseLease();
+    b.releaseLease();
+    c.releaseLease();
   });
 
   it('never caches a failed build and retries next time', async () => {
@@ -104,55 +109,67 @@ describe('CredentialCache', () => {
     const { cache } = makeCache();
     const a = await cache.get('fp1');
     const b = await cache.get('fp2');
-    expect(a.client).not.toBe(b.client);
+    expect(a.entry.client).not.toBe(b.entry.client);
+    a.releaseLease();
+    b.releaseLease();
   });
 
   it('closes client and auth when an entry expires', async () => {
     let clock = 0;
     const { cache, built } = makeCache({ ttlMs: 100, now: () => clock });
 
-    await cache.get('fp1');
+    const firstLease = await cache.get('fp1');
     const first = built.get('fp1')!;
+    firstLease.releaseLease();
 
     clock = 500;
-    await cache.get('fp1');
+    const secondLease = await cache.get('fp1');
 
     expect(first.closed()).toBe(1);
     expect(first.cleaned()).toBe(1);
+    secondLease.releaseLease();
   });
 
   it('evicts the least recently used entry when full', async () => {
     const { cache, built } = makeCache({ max: 2 });
 
-    await cache.get('a');
-    await cache.get('b');
-    await cache.get('a'); // refreshes 'a', making 'b' the LRU
-    await cache.get('c');
+    const firstA = await cache.get('a');
+    const b = await cache.get('b');
+    const secondA = await cache.get('a'); // refreshes 'a', making 'b' the LRU
+    b.releaseLease();
+    const c = await cache.get('c');
 
     expect(built.get('b')!.closed()).toBe(1);
     expect(built.get('b')!.cleaned()).toBe(1);
     expect(built.get('a')!.closed()).toBe(0);
+    firstA.releaseLease();
+    secondA.releaseLease();
+    c.releaseLease();
   });
 
   it('invalidate drops and closes an entry, forcing revalidation', async () => {
     const build = vi.fn(async () => fakeEntry() as CredentialEntry);
     const { cache } = makeCache({ build });
 
-    await cache.get('fp1');
+    const first = await cache.get('fp1');
+    first.releaseLease();
     await cache.invalidate('fp1');
-    await cache.get('fp1');
+    const second = await cache.get('fp1');
 
     expect(build).toHaveBeenCalledTimes(2);
+    second.releaseLease();
   });
 
   it('sweep closes only expired entries', async () => {
     let clock = 0;
     const { cache, built } = makeCache({ ttlMs: 100, now: () => clock });
 
-    await cache.get('old');
+    const old = await cache.get('old');
     clock = 60;
-    await cache.get('fresh');
+    const fresh = await cache.get('fresh');
     clock = 120; // 'old' expired at 100, 'fresh' expires at 160
+    old.releaseLease();
+    fresh.releaseLease();
 
     await cache.sweep();
 
@@ -163,8 +180,10 @@ describe('CredentialCache', () => {
 
   it('close tears down every entry and refuses further gets', async () => {
     const { cache, built } = makeCache();
-    await cache.get('a');
-    await cache.get('b');
+    const a = await cache.get('a');
+    const b = await cache.get('b');
+    a.releaseLease();
+    b.releaseLease();
 
     await cache.close();
 
@@ -208,8 +227,76 @@ describe('CredentialCache', () => {
       }),
     } as never);
 
-    await cache.get('fp1');
+    const lease = await cache.get('fp1');
+    lease.releaseLease();
     await expect(cache.close()).resolves.toBeUndefined();
     expect(onCleanupError).toHaveBeenCalledWith('fp1', expect.any(Error));
+  });
+
+  it('defers eviction disposal until the last lease is released', async () => {
+    const { cache, built } = makeCache({ max: 1 });
+
+    const { releaseLease } = await cache.get('leased');
+    const next = await cache.get('next');
+
+    expect(built.get('leased')!.closed()).toBe(0);
+
+    releaseLease();
+    await vi.waitFor(() => expect(built.get('leased')!.closed()).toBe(1));
+
+    releaseLease();
+    await Promise.resolve();
+    expect(built.get('leased')!.closed()).toBe(1);
+    next.releaseLease();
+  });
+
+  it('gives single-flight callers independent idempotent leases', async () => {
+    const entry = fakeEntry();
+    const build = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      return entry;
+    });
+    const { cache } = makeCache({ build });
+
+    const [first, second] = await Promise.all([
+      cache.get('shared'),
+      cache.get('shared'),
+    ]);
+
+    expect(build).toHaveBeenCalledTimes(1);
+    expect(first.entry).toBe(second.entry);
+    expect(first.releaseLease).not.toBe(second.releaseLease);
+
+    const retired = cache.invalidate('shared');
+    await Promise.resolve();
+    first.releaseLease();
+    await Promise.resolve();
+    expect(entry.closed()).toBe(0);
+
+    second.releaseLease();
+    await retired;
+    expect(entry.closed()).toBe(1);
+
+    first.releaseLease();
+    second.releaseLease();
+    await Promise.resolve();
+    expect(entry.closed()).toBe(1);
+  });
+
+  it('keeps close pending until an outstanding lease is released', async () => {
+    const { cache } = makeCache();
+    const { releaseLease } = await cache.get('leased');
+
+    const closing = cache.close();
+    const result = await Promise.race([
+      closing.then(() => 'closed' as const),
+      new Promise<'pending'>((resolve) =>
+        setTimeout(() => resolve('pending'), 100),
+      ),
+    ]);
+
+    expect(result).toBe('pending');
+    releaseLease();
+    await expect(closing).resolves.toBeUndefined();
   });
 });

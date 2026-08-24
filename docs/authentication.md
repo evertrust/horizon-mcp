@@ -70,6 +70,12 @@ Credential pairs must be complete. The MCP rejects these requests without a fall
 
 Every `401` response includes a `WWW-Authenticate` header. Its value is `Horizon methods="<accepted methods>"`, where the comma-separated list reflects `HORIZON_HTTP_AUTH_METHODS`. A caller can use this challenge to select a credential type without consulting the server configuration.
 
+### Credential cache lifecycle
+
+The HTTP server caches validated credentials by fingerprint. Each admitted request holds a lease on its cached Horizon client. TTL expiry, LRU eviction, invalidation, and shutdown remove a record from reuse immediately, but client closure and authentication cleanup wait until every request holding that record has released its lease. A later request never receives a retired record and revalidates a fresh one instead.
+
+Cache shutdown waits for outstanding leases. The HTTP server applies its configured graceful-shutdown timeout as the process-level bound.
+
 ### Service-account JWT renewal
 
 Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request.

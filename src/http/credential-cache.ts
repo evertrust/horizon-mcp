@@ -12,20 +12,25 @@ export interface CredentialEntry {
 }
 
 export interface CredentialCacheOptions {
-  /** Hard ceiling on live entries. Oldest-used is evicted first. */
+  /** Hard ceiling on reusable entries. Retired leases may outlive eviction. */
   readonly max: number;
   /** Entry lifetime in milliseconds. */
   readonly ttlMs: number;
   /** Builds and validates a credential. Must reject if validation fails. */
   readonly build: (fingerprint: string) => Promise<CredentialEntry>;
   readonly now?: () => number;
-  /** Reported when closing an evicted entry throws. Never rethrows. */
+  /** Reported when retired entry cleanup throws. Never rethrows. */
   readonly onCleanupError?: (fingerprint: string, err: unknown) => void;
 }
 
 interface CacheRecord {
   readonly entry: CredentialEntry;
   expiresAt: number;
+  refs: number;
+  retired: boolean;
+  disposeStarted: boolean;
+  retirement?: Promise<void>;
+  resolveRetirement?: () => void;
 }
 
 /**
@@ -38,20 +43,24 @@ interface CacheRecord {
  * credentials never share a `HorizonClient`.
  *
  * Guarantees, all of them load-bearing:
- *  - **Single-flight**: concurrent misses on one fingerprint build exactly once.
+ *  - **Single-flight build**: concurrent misses on one fingerprint build once,
+ *    then each caller receives an independent lease.
  *  - **No negative caching**: a failed or partially-initialized build is never
  *    retained, so a revoked credential cannot be cached as valid and a
  *    transient Horizon outage cannot pin a failure.
- *  - **Cleanup on every exit path**: expiry, eviction, replacement and shutdown
- *    all close the client and clean up the auth provider.
- *  - **Bounded**: LRU by last use, capped at `max`.
+ *  - **Lease-safe cleanup**: expiry, eviction, invalidation and shutdown remove
+ *    records immediately, then dispose exactly once after the last lease ends.
+ *  - **Bounded reusable set**: LRU by last use, capped at `max`; retired records
+ *    can remain alive only while existing leases still reference them.
  */
 export class CredentialCache {
   // Map iteration order is insertion order, and re-inserting on hit makes the
   // first key the least recently used.
   private readonly entries = new Map<string, CacheRecord>();
-  private readonly inflight = new Map<string, Promise<CredentialEntry>>();
+  private readonly inflight = new Map<string, Promise<CacheRecord>>();
+  private readonly retirements = new Set<Promise<void>>();
   private closed = false;
+  private closePromise: Promise<void> | undefined;
 
   constructor(private readonly opts: CredentialCacheOptions) {}
 
@@ -64,86 +73,110 @@ export class CredentialCache {
   }
 
   /**
-   * Return a validated credential for `fingerprint`, building it if needed.
-   * Concurrent callers with the same fingerprint share one build.
+   * Acquire a validated credential lease for `fingerprint`, building it if
+   * needed. Concurrent callers share only the build; every successful caller
+   * increments the record reference count and must invoke its own idempotent
+   * `releaseLease` when the request stops using the entry.
    */
-  async get(fingerprint: string): Promise<CredentialEntry> {
-    if (this.closed) throw new Error('credential cache is closed');
+  async get(fingerprint: string): Promise<{
+    readonly entry: CredentialEntry;
+    readonly releaseLease: () => void;
+  }> {
+    while (true) {
+      if (this.closed) throw new Error('credential cache is closed');
 
-    const hit = this.entries.get(fingerprint);
-    if (hit) {
-      if (hit.expiresAt > this.now()) {
-        // Refresh LRU position and extend the idle window.
-        this.entries.delete(fingerprint);
-        hit.expiresAt = this.now() + this.opts.ttlMs;
-        this.entries.set(fingerprint, hit);
-        return hit.entry;
+      const hit = this.entries.get(fingerprint);
+      if (hit) {
+        const now = this.now();
+        if (hit.expiresAt > now) {
+          // Map order defines LRU position; TTL is an idle window.
+          this.entries.delete(fingerprint);
+          hit.expiresAt = now + this.opts.ttlMs;
+          this.entries.set(fingerprint, hit);
+          return this.lease(fingerprint, hit);
+        }
+        void this.retire(fingerprint, hit);
       }
-      this.entries.delete(fingerprint);
-      void this.dispose(fingerprint, hit.entry);
-    }
 
-    const pending = this.inflight.get(fingerprint);
-    if (pending) return pending;
-
-    const build = (async () => {
-      const entry = await this.opts.build(fingerprint);
-      // A close() that landed mid-build must not leave a live client behind,
-      // and the entry must not be published into a closed cache.
-      if (this.closed) {
-        await this.dispose(fingerprint, entry);
-        throw new Error('credential cache is closed');
+      let pending = this.inflight.get(fingerprint);
+      if (!pending) {
+        pending = (async () => {
+          const entry = await this.opts.build(fingerprint);
+          const record: CacheRecord = {
+            entry,
+            expiresAt: this.now() + this.opts.ttlMs,
+            refs: 0,
+            retired: false,
+            disposeStarted: false,
+          };
+          // Closed caches cannot publish a completed in-flight build.
+          if (this.closed) {
+            await this.retire(fingerprint, record);
+            throw new Error('credential cache is closed');
+          }
+          this.evictIfNeeded();
+          this.entries.set(fingerprint, record);
+          return record;
+        })();
+        this.inflight.set(fingerprint, pending);
       }
-      this.evictIfNeeded();
-      this.entries.set(fingerprint, {
-        entry,
-        expiresAt: this.now() + this.opts.ttlMs,
-      });
-      return entry;
-    })();
 
-    this.inflight.set(fingerprint, build);
-    try {
-      return await build;
-    } finally {
-      // Always drop the in-flight marker, including on rejection, so a failure
-      // is never cached and the next request retries.
-      this.inflight.delete(fingerprint);
+      let record: CacheRecord;
+      try {
+        record = await pending;
+      } finally {
+        // Failed builds and settled single flights cannot be retained.
+        if (this.inflight.get(fingerprint) === pending) {
+          this.inflight.delete(fingerprint);
+        }
+      }
+
+      if (this.closed) throw new Error('credential cache is closed');
+      if (record.retired || this.entries.get(fingerprint) !== record) continue;
+      return this.lease(fingerprint, record);
     }
   }
 
   /**
-   * Drop an entry and close it. Called when Horizon rejects a cached credential
-   * (for example it was revoked upstream before its TTL expired), forcing the
-   * next request to revalidate.
+   * Retire an entry and wait for its last lease and disposal. Called when
+   * Horizon rejects a cached credential, forcing the next request to revalidate
+   * without disrupting requests that already hold the retired entry.
    */
   async invalidate(fingerprint: string): Promise<void> {
     const record = this.entries.get(fingerprint);
     if (!record) return;
-    this.entries.delete(fingerprint);
-    await this.dispose(fingerprint, record.entry);
+    await this.retire(fingerprint, record);
   }
 
-  /** Drop and close every expired entry. */
+  /** Retire expired entries and wait for their leases and disposal. */
   async sweep(): Promise<void> {
     const t = this.now();
-    const dead: [string, CredentialEntry][] = [];
+    const dead: [string, CacheRecord][] = [];
     for (const [key, record] of this.entries) {
-      if (record.expiresAt <= t) dead.push([key, record.entry]);
+      if (record.expiresAt <= t) dead.push([key, record]);
     }
-    for (const [key] of dead) this.entries.delete(key);
-    await Promise.all(dead.map(([key, entry]) => this.dispose(key, entry)));
+    await Promise.all(dead.map(([key, record]) => this.retire(key, record)));
   }
 
-  /** Close every entry. The cache refuses further gets afterwards. */
-  async close(): Promise<void> {
+  /**
+   * Refuse further gets, retire every reusable record, and wait for all builds,
+   * outstanding leases, and disposal work before resolving. This method has no
+   * internal timeout; `HttpServerHandle.close()` supplies the process-level
+   * shutdown bound.
+   */
+  close(): Promise<void> {
+    if (this.closePromise) return this.closePromise;
     this.closed = true;
     const all = [...this.entries.entries()];
-    this.entries.clear();
-    // Let in-flight builds settle so their clients get disposed rather than
-    // leaked; each one disposes itself on seeing `closed`.
-    await Promise.allSettled([...this.inflight.values()]);
-    await Promise.all(all.map(([key, r]) => this.dispose(key, r.entry)));
+    const retirements = all.map(([key, record]) => this.retire(key, record));
+    const builds = [...this.inflight.values()];
+    this.closePromise = (async () => {
+      // In-flight builds retire themselves when they observe the closed cache.
+      await Promise.allSettled(builds);
+      await Promise.all(retirements);
+      await Promise.all([...this.retirements]);
+    })();
+    return this.closePromise;
   }
 
   private evictIfNeeded(): void {
@@ -151,9 +184,52 @@ export class CredentialCache {
       const oldest = this.entries.keys().next();
       if (oldest.done) return;
       const record = this.entries.get(oldest.value)!;
-      this.entries.delete(oldest.value);
-      void this.dispose(oldest.value, record.entry);
+      void this.retire(oldest.value, record);
     }
+  }
+
+  private lease(
+    fingerprint: string,
+    record: CacheRecord,
+  ): { entry: CredentialEntry; releaseLease: () => void } {
+    record.refs += 1;
+    let released = false;
+    return {
+      entry: record.entry,
+      releaseLease: () => {
+        if (released) return;
+        released = true;
+        record.refs -= 1;
+        this.disposeIfReady(fingerprint, record);
+      },
+    };
+  }
+
+  private retire(fingerprint: string, record: CacheRecord): Promise<void> {
+    if (this.entries.get(fingerprint) === record) {
+      this.entries.delete(fingerprint);
+    }
+    if (!record.retired) {
+      record.retired = true;
+      record.retirement = new Promise<void>((resolve) => {
+        record.resolveRetirement = resolve;
+      });
+      this.retirements.add(record.retirement);
+      void record.retirement.then(() => {
+        this.retirements.delete(record.retirement!);
+      });
+    }
+    this.disposeIfReady(fingerprint, record);
+    return record.retirement!;
+  }
+
+  private disposeIfReady(fingerprint: string, record: CacheRecord): void {
+    if (!record.retired || record.refs !== 0 || record.disposeStarted) return;
+    record.disposeStarted = true;
+    void this.dispose(fingerprint, record.entry).then(
+      () => record.resolveRetirement?.(),
+      () => record.resolveRetirement?.(),
+    );
   }
 
   private async dispose(
