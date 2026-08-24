@@ -408,12 +408,21 @@ describe('HTTP server integration (api-key mode)', () => {
     const firstCredential = 'disconnecting-client';
     const secondCredential = 'next-client';
     const original = mockFetch.getMockImplementation()!;
+    let markValidationStarted = () => {};
+    const validationStarted = new Promise<void>((resolve) => {
+      markValidationStarted = resolve;
+    });
+    let releaseValidation = () => {};
+    const validationRelease = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
     mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
       if (
         String(url).includes('/api/v1/security/principals/self') &&
         apiIdOf(init) === firstCredential
       ) {
-        await new Promise((r) => setTimeout(r, 1500));
+        markValidationStarted();
+        await validationRelease;
       }
       return original(url, init);
     });
@@ -447,13 +456,14 @@ describe('HTTP server integration (api-key mode)', () => {
     const requestA = send(firstCredential, 'key-one', controller.signal).catch(
       () => undefined,
     );
-    const abortTimer = setTimeout(() => controller.abort(), 100);
     try {
-      await new Promise((r) => setTimeout(r, 300));
+      await validationStarted;
+      controller.abort();
+      await new Promise((r) => setTimeout(r, 100));
       const responseB = await send(secondCredential, 'key-two');
       expect(responseB.status).toBe(200);
     } finally {
-      clearTimeout(abortTimer);
+      releaseValidation();
       await requestA;
       mockFetch.mockImplementation(original);
       await ctx.handle.close();

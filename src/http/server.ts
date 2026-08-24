@@ -422,7 +422,6 @@ export async function startHttpServer(
             .status(500)
             .json(jsonRpcErrorBody(null, -32603, 'internal error'));
         }
-      } finally {
         release?.();
       }
     },
