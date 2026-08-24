@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { currentRequestSignal } from '../../src/client/request-signal.js';
 import {
   CredentialCache,
   type CredentialEntry,
@@ -107,6 +108,63 @@ describe('CredentialCache', () => {
     a.releaseLease();
     b.releaseLease();
     c.releaseLease();
+  });
+
+  it('aborts a shared build only after every waiter cancels', async () => {
+    let buildSignal: AbortSignal | undefined;
+    let markBuildStarted = () => {};
+    const buildStarted = new Promise<void>((resolve) => {
+      markBuildStarted = resolve;
+    });
+    let releaseBuild = () => {};
+    const buildRelease = new Promise<void>((resolve) => {
+      releaseBuild = resolve;
+    });
+    const { cache } = makeCache({
+      build: async () => {
+        buildSignal = currentRequestSignal();
+        markBuildStarted();
+        await buildRelease;
+        if (buildSignal?.aborted) throw buildSignal.reason;
+        return fakeEntry();
+      },
+    });
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    const firstReason = new Error('first waiter disconnected');
+    const secondReason = new Error('second waiter disconnected');
+    const first = cache.get(
+      'shared',
+      apiKeyMaterial(),
+      undefined,
+      firstController.signal,
+    );
+    const second = cache.get(
+      'shared',
+      apiKeyMaterial(),
+      undefined,
+      secondController.signal,
+    );
+
+    try {
+      await buildStarted;
+      expect(buildSignal).toBeDefined();
+
+      firstController.abort(firstReason);
+      await expect(first).rejects.toBe(firstReason);
+      expect(buildSignal!.aborted).toBe(false);
+
+      secondController.abort(secondReason);
+      await expect(second).rejects.toBe(secondReason);
+      expect(buildSignal!.aborted).toBe(true);
+    } finally {
+      releaseBuild();
+      const results = await Promise.allSettled([first, second]);
+      for (const result of results) {
+        if (result.status === 'fulfilled') result.value.releaseLease();
+      }
+      await cache.close();
+    }
   });
 
   it('invokes onBuildStart once for concurrent misses on one fingerprint', async () => {

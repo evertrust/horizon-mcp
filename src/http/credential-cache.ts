@@ -1,5 +1,6 @@
 import type { AuthProvider } from '../auth/base.js';
 import type { HorizonClient } from '../client/http.js';
+import { runWithRequestSignal } from '../client/request-signal.js';
 import type { CredentialMaterial } from './credentials.js';
 
 /**
@@ -45,6 +46,13 @@ interface CacheRecord {
   resolveRetirement?: () => void;
 }
 
+interface InflightRecord {
+  readonly controller: AbortController;
+  readonly promise: Promise<CacheRecord>;
+  waiters: number;
+  settled: boolean;
+}
+
 /**
  * Caches validated Horizon credentials across requests.
  *
@@ -72,7 +80,7 @@ export class CredentialCache {
   // Map iteration order is insertion order, and re-inserting on hit makes the
   // first key the least recently used.
   private readonly entries = new Map<string, CacheRecord>();
-  private readonly inflight = new Map<string, Promise<CacheRecord>>();
+  private readonly inflight = new Map<string, InflightRecord>();
   private readonly retirements = new Set<Promise<void>>();
   private closed = false;
   private closePromise: Promise<void> | undefined;
@@ -97,6 +105,7 @@ export class CredentialCache {
     fingerprint: string,
     material: CredentialMaterial,
     peer?: string,
+    signal?: AbortSignal,
   ): Promise<{
     readonly entry: CredentialEntry;
     readonly releaseLease: () => void;
@@ -118,7 +127,8 @@ export class CredentialCache {
 
       let pending = this.inflight.get(fingerprint);
       if (!pending) {
-        pending = (async () => {
+        const controller = new AbortController();
+        const promise = runWithRequestSignal(controller.signal, async () => {
           // The fingerprint HMAC makes same-key waiters materially equivalent, so the build may use the winner's instance.
           this.opts.onBuildStart?.(fingerprint, material, peer);
           const entry = await this.opts.build(fingerprint, material);
@@ -137,17 +147,49 @@ export class CredentialCache {
           this.evictIfNeeded();
           this.entries.set(fingerprint, record);
           return record;
-        })();
-        this.inflight.set(fingerprint, pending);
+        });
+        const inflight: InflightRecord = {
+          controller,
+          promise,
+          waiters: 0,
+          settled: false,
+        };
+        pending = inflight;
+        this.inflight.set(fingerprint, inflight);
+        const settle = () => {
+          inflight.settled = true;
+          if (this.inflight.get(fingerprint) === inflight) {
+            this.inflight.delete(fingerprint);
+          }
+        };
+        void promise.then(settle, settle);
       }
 
+      const shared = pending;
+      shared.waiters += 1;
       let record: CacheRecord;
+      let removeAbortListener: (() => void) | undefined;
       try {
-        record = await pending;
+        if (!signal) {
+          record = await shared.promise;
+        } else if (signal.aborted) {
+          throw signal.reason;
+        } else {
+          record = await new Promise<CacheRecord>((resolve, reject) => {
+            const onAbort = () => reject(signal.reason);
+            signal.addEventListener('abort', onAbort, { once: true });
+            removeAbortListener = () =>
+              signal.removeEventListener('abort', onAbort);
+            void shared.promise.then(resolve, reject);
+          });
+        }
       } finally {
-        // Failed builds and settled single flights cannot be retained.
-        if (this.inflight.get(fingerprint) === pending) {
-          this.inflight.delete(fingerprint);
+        removeAbortListener?.();
+        shared.waiters -= 1;
+        if (shared.waiters === 0 && !shared.settled) {
+          // No caller remains to observe a cancellation rejection.
+          void shared.promise.catch(() => undefined);
+          shared.controller.abort();
         }
       }
 
@@ -189,7 +231,7 @@ export class CredentialCache {
     this.closed = true;
     const all = [...this.entries.entries()];
     const retirements = all.map(([key, record]) => this.retire(key, record));
-    const builds = [...this.inflight.values()];
+    const builds = [...this.inflight.values()].map(({ promise }) => promise);
     this.closePromise = (async () => {
       // In-flight builds retire themselves when they observe the closed cache.
       await Promise.allSettled(builds);

@@ -21,6 +21,9 @@ vi.mock('undici', () => ({
 
 const { startHttpServer } = await import('../../src/http/server.js');
 const { buildHttpConfig } = await import('../../src/http/config.js');
+const { CredentialCache } = await import('../../src/http/credential-cache.js');
+const { currentRequestSignal } =
+  await import('../../src/client/request-signal.js');
 const { loadSettings } = await import('../../src/settings.js');
 const { Client } = await import('@modelcontextprotocol/client');
 const { StreamableHTTPClientTransport } =
@@ -936,6 +939,125 @@ describe('HTTP server integration (api-key mode)', () => {
       await requestA;
       mockFetch.mockImplementation(original);
       writeSpy.mockRestore();
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('keeps shared credential validation alive while another waiter remains', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_IP_RATE_LIMIT: '0',
+      HORIZON_RATE_LIMIT_RPS: '0',
+    });
+    const credential = 'shared-validation-client';
+    const original = mockFetch.getMockImplementation()!;
+    let markValidationStarted = () => {};
+    const validationStarted = new Promise<void>((resolve) => {
+      markValidationStarted = resolve;
+    });
+    let releaseValidation = () => {};
+    const validationRelease = new Promise<void>((resolve) => {
+      releaseValidation = resolve;
+    });
+    let validationSignal: AbortSignal | undefined;
+    let validationProbes = 0;
+    let markSecondWaiter = () => {};
+    const secondWaiter = new Promise<void>((resolve) => {
+      markSecondWaiter = resolve;
+    });
+    let cacheGets = 0;
+    let firstCallerSignal: AbortSignal | undefined;
+    const originalGet = CredentialCache.prototype.get;
+    const getSpy = vi
+      .spyOn(CredentialCache.prototype, 'get')
+      .mockImplementation(function (...args) {
+        const result = originalGet.apply(this, args);
+        const material = args[1];
+        if (material.kind === 'api-key' && material.apiId === credential) {
+          cacheGets += 1;
+          if (cacheGets === 1) firstCallerSignal = currentRequestSignal();
+          if (cacheGets === 2) markSecondWaiter();
+        }
+        return result;
+      });
+    mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
+      if (
+        String(url).includes('/api/v1/security/principals/self') &&
+        apiIdOf(init) === credential
+      ) {
+        validationProbes += 1;
+        validationSignal = signalOf(init);
+        markValidationStarted();
+        await new Promise<void>((resolve, reject) => {
+          const onAbort = () => reject(validationSignal!.reason);
+          if (validationSignal!.aborted) {
+            reject(validationSignal!.reason);
+            return;
+          }
+          validationSignal!.addEventListener('abort', onAbort, { once: true });
+          void validationRelease.then(() => {
+            validationSignal!.removeEventListener('abort', onAbort);
+            resolve();
+          });
+        });
+      }
+      return original(url, init);
+    });
+
+    const send = (id: number, signal: AbortSignal) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': credential,
+          'X-API-KEY': 'shared-key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+        signal,
+      });
+
+    const firstController = new AbortController();
+    const secondController = new AbortController();
+    const firstRequest = send(1, firstController.signal).catch(() => undefined);
+    let secondRequest: Promise<Response> | undefined;
+    try {
+      await validationStarted;
+      secondRequest = send(2, secondController.signal);
+      await secondWaiter;
+      firstController.abort();
+      await firstRequest;
+      expect(firstCallerSignal).toBeDefined();
+      await expectAbortedWithin(firstCallerSignal!);
+
+      expect(validationSignal).toBeDefined();
+      expect(validationSignal!.aborted).toBe(false);
+      releaseValidation();
+
+      const secondResponse = await secondRequest;
+      expect(secondResponse.status).toBe(200);
+      expect(validationProbes).toBe(1);
+    } finally {
+      releaseValidation();
+      firstController.abort();
+      secondController.abort();
+      await Promise.allSettled([
+        firstRequest,
+        ...(secondRequest ? [secondRequest] : []),
+      ]);
+      mockFetch.mockImplementation(original);
+      getSpy.mockRestore();
       await ctx.handle.close();
     }
   }, 30000);

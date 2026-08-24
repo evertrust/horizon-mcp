@@ -13,7 +13,10 @@ import { createServer as createHttpsServer } from 'node:https';
 
 import { HorizonError } from '../client/errors.js';
 import { HorizonClient } from '../client/http.js';
-import { runWithRequestSignal } from '../client/request-signal.js';
+import {
+  currentRequestSignal,
+  runWithRequestSignal,
+} from '../client/request-signal.js';
 import { getLogger } from '../logging.js';
 import { createSessionServer } from '../server-factory.js';
 import type { HorizonSettings } from '../settings.js';
@@ -313,6 +316,7 @@ export async function startHttpServer(
         fingerprint,
         material,
         req.socket.remoteAddress,
+        currentRequestSignal(),
       );
       releaseLease = leased.releaseLease;
       // A lease acquired after response closure cannot outlive admission.
