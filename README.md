@@ -145,8 +145,10 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_TRUSTED_HOSTS`           | derived     | Comma list of allowed `Host` values; derived from `HORIZON_PUBLIC_URL` or, on a loopback bind, the loopback hosts. A non-loopback bind with neither set refuses to start. |
 | `HORIZON_TRUSTED_ORIGINS`         | (unset)     | Comma list of allowed CORS origins; unset means any request carrying an `Origin` is rejected (non-browser MCP clients send none).                                         |
 | `HORIZON_HTTP_AUTH_METHODS`       | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`; multiple methods may be enabled.                                                                  |
-| `HORIZON_MAX_CONCURRENT_REQUESTS` | `32`        | Max requests served at once across all callers (hard ceiling `256`). This is the setting that bounds memory.                                                              |
-| `HORIZON_MAX_INFLIGHT_TOOLCALLS`  | `8`         | Max requests served at once for a single caller, so one busy client cannot consume the whole budget above.                                                                |
+| `HORIZON_MAX_CONCURRENT_REQUESTS` | `32`        | Max non-listen requests served at once across all callers (valid range `1` to `256`). This is the setting that bounds their memory.                                       |
+| `HORIZON_MAX_INFLIGHT_TOOLCALLS`  | `8`         | Max non-listen requests served at once for a single caller, so one busy client cannot consume the whole budget above.                                                     |
+| `HORIZON_MAX_LISTEN_STREAMS_GLOBAL` | `8`       | Max listen streams across all callers (valid range `1` to `64`). Listen streams use this dedicated pair and do not consume the request/tool-call concurrency budgets.     |
+| `HORIZON_MAX_LISTEN_STREAMS`      | `2`         | Max listen streams served at once for a single caller (valid range `1` to `16`), paired with the dedicated global listen budget above.                                    |
 | `HORIZON_CREDENTIAL_CACHE_MAX`    | `64`        | How many validated caller credentials to keep in memory (hard ceiling `512`).                                                                                             |
 | `HORIZON_CREDENTIAL_CACHE_TTL`    | `300`       | Seconds before a cached credential is revalidated against Horizon (`30` to `3600`). Lower it if you need revoked credentials to stop working sooner.                      |
 | `HORIZON_MAX_BODY_BYTES`          | `1048576`   | Max request body bytes (1 MiB).                                                                                                                                           |
@@ -155,9 +157,10 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_RATE_LIMIT_RPS`          | `20`        | Per-caller limit, counted per JSON-RPC message per second; `0` disables.                                                                                                  |
 | `HORIZON_IP_RATE_LIMIT`           | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-caller limits; `0` disables.                                                        |
 
-Size memory from `HORIZON_MAX_CONCURRENT_REQUESTS`, not from request throughput. The server builds one short-lived
-tool registry per request, costing roughly 1.3 MiB each, on top of a process baseline of about 365 MiB. The default
-of 32 concurrent requests fits comfortably in a 1 GiB container. Test under load before raising it.
+Size non-listen request memory from `HORIZON_MAX_CONCURRENT_REQUESTS`, not from request throughput. The server builds
+one short-lived tool registry per request, costing roughly 1.3 MiB each, on top of a process baseline of about 365 MiB.
+The default of 32 concurrent requests fits comfortably in a 1 GiB container. Listen streams have the separate global
+and per-caller limits above. Test under load before raising any concurrency limit.
 
 Inbound mTLS settings (when `mtls` is included in `HORIZON_HTTP_AUTH_METHODS`):
 

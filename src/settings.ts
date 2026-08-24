@@ -96,22 +96,24 @@ const settingsSchema = z.object({
   maxSessions: z.string().default(''),
   initRateLimit: z.string().default(''),
 
-  // Bounds simultaneous in-flight requests. Serving is now per-request: each
-  // one builds its own MCP server instance, so this is what caps peak heap.
-  // At the measured ~1.3 MiB marginal cost per instance the default is
-  // comfortable for a 1 GiB container.
+  // Bounds simultaneous in-flight non-listen requests. Serving is now
+  // per-request: each one builds its own MCP server instance, so this is what
+  // caps peak heap. At the measured ~1.3 MiB marginal cost per instance the
+  // default is comfortable for a 1 GiB container.
   maxConcurrentRequests: z.coerce
     .number()
     .int()
     .positive()
     .max(256)
     .default(32),
+  maxListenStreamsGlobal: z.coerce.number().int().min(1).max(64).default(8),
   // Validated Horizon credentials are cached across requests; without this
   // every request would re-validate against Horizon over the network.
   credentialCacheMax: z.coerce.number().int().positive().max(512).default(64),
   credentialCacheTtl: z.coerce.number().int().min(30).max(3600).default(300),
 
   maxInflightToolcalls: z.coerce.number().int().positive().default(8),
+  maxListenStreams: z.coerce.number().int().min(1).max(16).default(2),
   maxBodyBytes: z.coerce.number().int().positive().default(1048576),
   sseMaxDuration: z.coerce.number().int().min(1).max(86400).default(3600),
   sseKeepAlive: z.coerce.number().int().min(1).max(60).default(15),

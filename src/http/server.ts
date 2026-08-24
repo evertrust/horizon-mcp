@@ -101,11 +101,14 @@ export async function startHttpServer(
   });
 
   // Deleting the session layer removed the only bound on how many fully
-  // registered server instances can exist at once. These restore it.
+  // registered server instances can exist at once. These restore it. Listen
+  // streams use a separate semaphore pair and do not consume this budget.
   const globalConcurrency = new Semaphore(settings.maxConcurrentRequests);
   const perCredentialConcurrency = new KeyedSemaphore(
     settings.maxInflightToolcalls,
   );
+  const listenGlobal = new Semaphore(settings.maxListenStreamsGlobal);
+  const listenPerCredential = new KeyedSemaphore(settings.maxListenStreams);
 
   const credentials = new CredentialCache({
     max: settings.credentialCacheMax,
@@ -217,6 +220,11 @@ export async function startHttpServer(
     res: Response,
   ): Promise<{ entry: CredentialEntry; release: () => void } | undefined> {
     const id = firstId(req.body);
+    // The MCP SDK validates Mcp-Method against the request body later in the
+    // pipeline. A false listen header cannot smuggle a tool call into this
+    // budget; SDK-side validation rejects the mismatch with error -32020.
+    const isListen =
+      headerStr(req.headers['mcp-method']) === 'subscriptions/listen';
 
     let material: CredentialMaterial;
     try {
@@ -237,12 +245,19 @@ export async function startHttpServer(
       return undefined;
     }
 
-    const releaseGlobal = globalConcurrency.tryAcquire();
+    const selectedGlobalConcurrency = isListen
+      ? listenGlobal
+      : globalConcurrency;
+    const selectedPerCredentialConcurrency = isListen
+      ? listenPerCredential
+      : perCredentialConcurrency;
+    const releaseGlobal = selectedGlobalConcurrency.tryAcquire();
     if (!releaseGlobal) {
       sendError(res, 503, id, 'server at capacity', APP_ERROR_CAPACITY);
       return undefined;
     }
-    const releaseCredential = perCredentialConcurrency.tryAcquire(fingerprint);
+    const releaseCredential =
+      selectedPerCredentialConcurrency.tryAcquire(fingerprint);
     if (!releaseCredential) {
       releaseGlobal();
       sendError(

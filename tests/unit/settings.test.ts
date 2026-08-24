@@ -219,9 +219,11 @@ describe('loadSettings', () => {
       expect(s.httpAuthMethods).toBe(HttpAuthMethod.ApiKey);
       expect(s.httpAuthMode).toBe('');
       expect(s.maxConcurrentRequests).toBe(32);
+      expect(s.maxListenStreamsGlobal).toBe(8);
       expect(s.credentialCacheMax).toBe(64);
       expect(s.credentialCacheTtl).toBe(300);
       expect(s.maxInflightToolcalls).toBe(8);
+      expect(s.maxListenStreams).toBe(2);
       expect(s.maxBodyBytes).toBe(1048576);
       expect(s.sseMaxDuration).toBe(3600);
       expect(s.sseKeepAlive).toBe(15);
@@ -294,6 +296,36 @@ describe('loadSettings', () => {
     it('rejects a concurrency limit above the supported memory ceiling', () => {
       expect(() =>
         loadSettings({ HORIZON_MAX_CONCURRENT_REQUESTS: '257' }),
+      ).toThrow();
+    });
+
+    it('bounds the global listen stream concurrency limit', () => {
+      expect(
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS_GLOBAL: '1' })
+          .maxListenStreamsGlobal,
+      ).toBe(1);
+      expect(
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS_GLOBAL: '64' })
+          .maxListenStreamsGlobal,
+      ).toBe(64);
+      expect(() =>
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS_GLOBAL: '0' }),
+      ).toThrow();
+      expect(() =>
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS_GLOBAL: '65' }),
+      ).toThrow();
+    });
+
+    it('bounds the per-credential listen stream concurrency limit', () => {
+      expect(
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS: '1' }).maxListenStreams,
+      ).toBe(1);
+      expect(
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS: '16' }).maxListenStreams,
+      ).toBe(16);
+      expect(() => loadSettings({ HORIZON_MAX_LISTEN_STREAMS: '0' })).toThrow();
+      expect(() =>
+        loadSettings({ HORIZON_MAX_LISTEN_STREAMS: '17' }),
       ).toThrow();
     });
 

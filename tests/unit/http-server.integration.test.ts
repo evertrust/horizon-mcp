@@ -104,6 +104,37 @@ async function startApiKeyServer(
   return { base: `http://127.0.0.1:${handle.port}/mcp`, handle };
 }
 
+function openListenStream(
+  base: string,
+  signal: AbortSignal,
+  id: number,
+): Promise<Response> {
+  return fetch(base, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-API-ID': 'alice',
+      'X-API-KEY': 'k',
+      'MCP-Protocol-Version': '2026-07-28',
+      'Mcp-Method': 'subscriptions/listen',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method: 'subscriptions/listen',
+      params: {
+        notifications: { toolsListChanged: true },
+        _meta: {
+          'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+          'io.modelcontextprotocol/clientCapabilities': {},
+        },
+      },
+    }),
+    signal,
+  });
+}
+
 function makeClient(base: string, apiId?: string, apiKey?: string) {
   const headers: Record<string, string> = {};
   if (apiId) headers['X-API-ID'] = apiId;
@@ -693,10 +724,84 @@ describe('HTTP server integration (graceful shutdown)', () => {
   }, 20000);
 });
 
+describe('HTTP server integration (listen concurrency)', () => {
+  it('admits two listen streams per credential by default and rejects a third', async () => {
+    const ctx = await startApiKeyServer();
+    const controllers = [
+      new AbortController(),
+      new AbortController(),
+      new AbortController(),
+    ];
+    try {
+      const first = await openListenStream(ctx.base, controllers[0]!.signal, 1);
+      expect(first.status).toBe(200);
+      expect(first.headers.get('content-type')).toContain('text/event-stream');
+      expect(first.body).not.toBeNull();
+
+      const second = await openListenStream(
+        ctx.base,
+        controllers[1]!.signal,
+        2,
+      );
+      expect(second.status).toBe(200);
+      expect(second.headers.get('content-type')).toContain('text/event-stream');
+      expect(second.body).not.toBeNull();
+
+      const third = await openListenStream(ctx.base, controllers[2]!.signal, 3);
+      expect(third.status).toBe(429);
+    } finally {
+      controllers.forEach((controller) => controller.abort());
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('keeps tools/list available while a listen stream is open', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_MAX_CONCURRENT_REQUESTS: '1',
+      HORIZON_SSE_MAX_DURATION: '5',
+      HORIZON_EXPORT_TIMEOUT: '1',
+    });
+    const controller = new AbortController();
+    try {
+      const listen = await openListenStream(ctx.base, controller.signal, 1);
+      expect(listen.status).toBe(200);
+      expect(listen.headers.get('content-type')).toContain('text/event-stream');
+      expect(listen.body).not.toBeNull();
+
+      const tools = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': 'alice',
+          'X-API-KEY': 'k',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 2,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(tools.status).toBe(200);
+    } finally {
+      controller.abort();
+      await ctx.handle.close();
+    }
+  }, 20000);
+});
+
 describe('HTTP server integration (response lifetime cap)', () => {
   it('closes a subscriptions/listen stream at the absolute SSE deadline despite keep-alives', async () => {
-    // A listen stream holds a global and a per-credential concurrency permit
-    // for as long as it is open. The absolute cap must not be reset by writes.
+    // A listen stream holds dedicated global and per-credential permits for as
+    // long as it is open. The absolute cap must not be reset by writes.
     const ctx = await startApiKeyServer({
       HORIZON_SSE_MAX_DURATION: '3',
       HORIZON_SSE_KEEP_ALIVE: '1',
