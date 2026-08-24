@@ -72,7 +72,7 @@ Every `401` response includes a `WWW-Authenticate` header. Its value is `Horizon
 
 ### Credential cache lifecycle
 
-The HTTP server caches validated credentials by fingerprint. Each admitted request holds a lease on its cached Horizon client. The idle TTL is measured from the record's last use and resets on each cache hit. Idle TTL expiry, LRU eviction, invalidation, and shutdown remove a record from reuse immediately, but client closure and authentication cleanup wait until every request holding that record has released its lease. A later request never receives a retired record and revalidates a fresh one instead.
+The HTTP server caches validated credentials by fingerprint. Each admitted request holds a lease on its cached Horizon client. The TTL is absolute and counted from validation, so revoked credentials stop working within one TTL window. TTL expiry, LRU eviction, invalidation, and shutdown remove a record from reuse immediately, but client closure and authentication cleanup wait until every request holding that record has released its lease. A later request never receives a retired record and revalidates a fresh one instead.
 
 Cache shutdown waits for outstanding leases. The HTTP server applies its configured graceful-shutdown timeout as the process-level bound.
 

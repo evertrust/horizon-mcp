@@ -133,6 +133,45 @@ describe('CredentialCache', () => {
     secondLease.releaseLease();
   });
 
+  it('revalidates after the absolute TTL despite intervening hits', async () => {
+    let clock = 0;
+    const entries: Fake[] = [];
+    const build = vi.fn(async () => {
+      const entry = fakeEntry();
+      entries.push(entry);
+      return entry;
+    });
+    const { cache } = makeCache({
+      ttlMs: 300_000,
+      now: () => clock,
+      build,
+    });
+    const releases: (() => void)[] = [];
+
+    try {
+      const initial = await cache.get('fp1');
+      releases.push(initial.releaseLease);
+      initial.releaseLease();
+
+      clock = 200_000;
+      const hit = await cache.get('fp1');
+      releases.push(hit.releaseLease);
+      expect(hit.entry).toBe(initial.entry);
+      expect(build).toHaveBeenCalledTimes(1);
+      hit.releaseLease();
+
+      clock = 400_000;
+      const rebuilt = await cache.get('fp1');
+      releases.push(rebuilt.releaseLease);
+      expect(build).toHaveBeenCalledTimes(2);
+      await vi.waitFor(() => expect(entries[0]!.closed()).toBe(1));
+      expect(entries[0]!.cleaned()).toBe(1);
+    } finally {
+      for (const release of releases) release();
+      await cache.close();
+    }
+  });
+
   it('evicts the least recently used entry when full', async () => {
     const { cache, built } = makeCache({ max: 2 });
 

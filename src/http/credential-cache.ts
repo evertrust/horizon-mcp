@@ -14,7 +14,10 @@ export interface CredentialEntry {
 export interface CredentialCacheOptions {
   /** Hard ceiling on reusable entries. Retired leases may outlive eviction. */
   readonly max: number;
-  /** Entry lifetime in milliseconds. */
+  /**
+   * Absolute entry lifetime from validation. Cached credentials revalidate
+   * against Horizon at least every `ttlMs`, regardless of use frequency.
+   */
   readonly ttlMs: number;
   /** Builds and validates a credential. Must reject if validation fails. */
   readonly build: (fingerprint: string) => Promise<CredentialEntry>;
@@ -50,6 +53,9 @@ interface CacheRecord {
  *    transient Horizon outage cannot pin a failure.
  *  - **Lease-safe cleanup**: expiry, eviction, invalidation and shutdown remove
  *    records immediately, then dispose exactly once after the last lease ends.
+ *  - **Absolute validation TTL**: expiry is fixed when validation completes, so
+ *    credentials revalidate against Horizon at least every `ttlMs` regardless
+ *    of how often they are used.
  *  - **Bounded reusable set**: LRU by last use, capped at `max`; retired records
  *    can remain alive only while existing leases still reference them.
  */
@@ -89,9 +95,8 @@ export class CredentialCache {
       if (hit) {
         const now = this.now();
         if (hit.expiresAt > now) {
-          // Map order defines LRU position; TTL is an idle window.
+          // TTL is fixed at build time; hits update only the LRU position.
           this.entries.delete(fingerprint);
-          hit.expiresAt = now + this.opts.ttlMs;
           this.entries.set(fingerprint, hit);
           return this.lease(fingerprint, hit);
         }
