@@ -185,6 +185,62 @@ describe('HTTP server integration (api-key mode)', () => {
     }
   }, 20000);
 
+  it('includes WWW-Authenticate on a 401 for a request with no credential and no modern envelope claim', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toContain('api-key');
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('includes WWW-Authenticate on a 401 when Horizon rejects the credential during validation', async () => {
+    const ctx = await startApiKeyServer();
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: unknown, init: unknown) => {
+      if (
+        String(url).includes('/api/v1/security/principals/self') &&
+        apiIdOf(init) === 'rejected-by-horizon'
+      ) {
+        return Promise.resolve(fakeResponse(401, { message: 'unauthorized' }));
+      }
+      return original(url, init);
+    });
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-ID': 'rejected-by-horizon',
+          'X-API-KEY': 'whatever',
+          'MCP-Protocol-Version': '2026-07-28',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toContain('api-key');
+    } finally {
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
   it('answers 405 to GET and DELETE, the removed session operations', async () => {
     const ctx = await startApiKeyServer();
     try {

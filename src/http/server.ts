@@ -151,6 +151,12 @@ export async function startHttpServer(
     code = -32600,
   ): void {
     if (!res.headersSent) {
+      if (status === 401) {
+        res.setHeader(
+          'WWW-Authenticate',
+          `Horizon methods="${formatHttpAuthMethods(config.acceptedAuthMethods)}"`,
+        );
+      }
       res.status(status).json(jsonRpcErrorBody(id, code, message));
     }
   }
