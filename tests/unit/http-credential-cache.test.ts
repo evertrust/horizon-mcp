@@ -122,18 +122,27 @@ describe('CredentialCache', () => {
       onBuildStart,
       build,
     });
+    const releases: (() => void)[] = [];
 
-    const leases = await Promise.all(
-      Array.from({ length: 6 }, () =>
-        cache.get('shared', material, '127.0.0.1'),
-      ),
-    );
+    try {
+      const leases = await Promise.all(
+        Array.from({ length: 6 }, () =>
+          cache.get('shared', material, '127.0.0.1'),
+        ),
+      );
+      for (const lease of leases) releases.push(lease.releaseLease);
 
-    expect(onBuildStart).toHaveBeenCalledTimes(1);
-    expect(onBuildStart).toHaveBeenCalledWith('shared', material, '127.0.0.1');
-    expect(build).toHaveBeenCalledTimes(1);
-    for (const lease of leases) lease.releaseLease();
-    await cache.close();
+      expect(onBuildStart).toHaveBeenCalledTimes(1);
+      expect(onBuildStart).toHaveBeenCalledWith(
+        'shared',
+        material,
+        '127.0.0.1',
+      );
+      expect(build).toHaveBeenCalledTimes(1);
+    } finally {
+      for (const release of releases) release();
+      await cache.close();
+    }
   });
 
   it('shares onBuildStart rejection and permits a fresh build afterward', async () => {
@@ -148,26 +157,31 @@ describe('CredentialCache', () => {
       onBuildStart,
       build,
     });
+    const releases: (() => void)[] = [];
 
-    const results = await Promise.allSettled(
-      Array.from({ length: 6 }, () =>
-        cache.get('shared', apiKeyMaterial(), '127.0.0.1'),
-      ),
-    );
+    try {
+      const results = await Promise.allSettled(
+        Array.from({ length: 6 }, () =>
+          cache.get('shared', apiKeyMaterial(), '127.0.0.1'),
+        ),
+      );
 
-    for (const result of results) {
-      expect(result.status).toBe('rejected');
-      if (result.status === 'rejected') expect(result.reason).toBe(hookError);
+      for (const result of results) {
+        expect(result.status).toBe('rejected');
+        if (result.status === 'rejected') expect(result.reason).toBe(hookError);
+      }
+      expect(onBuildStart).toHaveBeenCalledTimes(1);
+      expect(build).not.toHaveBeenCalled();
+      expect(cache.size).toBe(0);
+
+      const retry = await cache.get('shared', apiKeyMaterial(), '127.0.0.1');
+      releases.push(retry.releaseLease);
+      expect(onBuildStart).toHaveBeenCalledTimes(2);
+      expect(build).toHaveBeenCalledTimes(1);
+    } finally {
+      for (const release of releases) release();
+      await cache.close();
     }
-    expect(onBuildStart).toHaveBeenCalledTimes(1);
-    expect(build).not.toHaveBeenCalled();
-    expect(cache.size).toBe(0);
-
-    const retry = await cache.get('shared', apiKeyMaterial(), '127.0.0.1');
-    expect(onBuildStart).toHaveBeenCalledTimes(2);
-    expect(build).toHaveBeenCalledTimes(1);
-    retry.releaseLease();
-    await cache.close();
   });
 
   it('never caches a failed build and retries next time', async () => {

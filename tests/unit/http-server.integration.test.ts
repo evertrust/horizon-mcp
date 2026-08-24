@@ -550,6 +550,7 @@ describe('HTTP server integration (api-key mode)', () => {
   }, 30000);
 
   it('limits concurrent validation of distinct credentials per peer', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
     const ctx = await startApiKeyServer({
       HORIZON_VALIDATION_RATE_LIMIT: '3',
       HORIZON_RATE_LIMIT_RPS: '0',
@@ -591,19 +592,26 @@ describe('HTTP server integration (api-key mode)', () => {
       const after = probes();
       const probeCount = after - before;
       const limited = responses.filter((response) => response.status === 429);
+      const succeeded = responses.filter((response) => response.status !== 429);
 
-      expect(probeCount).toBeLessThanOrEqual(3);
-      expect(limited).toHaveLength(20 - probeCount);
+      expect(probeCount).toBe(3);
+      expect(limited).toHaveLength(17);
+      expect(succeeded).toHaveLength(3);
+      expect(succeeded.map((response) => response.status)).toEqual(
+        Array(3).fill(200),
+      );
       for (const response of limited) {
         const body = (await response.json()) as { error: { code: number } };
         expect(body.error.code).toBe(-31001);
       }
     } finally {
+      nowSpy.mockRestore();
       await ctx.handle.close();
     }
   }, 30000);
 
   it('charges one validation token for concurrent same-credential misses', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
     const ctx = await startApiKeyServer({
       HORIZON_VALIDATION_RATE_LIMIT: '1',
       HORIZON_RATE_LIMIT_RPS: '0',
@@ -656,6 +664,7 @@ describe('HTTP server integration (api-key mode)', () => {
       expect(body.error.code).toBe(-31001);
       expect(probes() - before).toBe(1);
     } finally {
+      nowSpy.mockRestore();
       await ctx.handle.close();
     }
   }, 30000);
