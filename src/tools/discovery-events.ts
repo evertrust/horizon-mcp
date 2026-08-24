@@ -16,7 +16,6 @@ import { z } from 'zod';
 import type { HorizonClient } from '../client/http.js';
 import {
   CSV_EXPORT_OUTPUT_SCHEMA,
-  CSV_TIMEOUT,
   SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
   buildSearchPayload,
@@ -187,7 +186,7 @@ export function registerDiscoveryEventTools(
         `/api/v1/discovery/events/csv` +
         `?enableAnalytics=${String(enable_analytics).toLowerCase()}`;
       const csvText = await client.postText(path, payload, {
-        timeout: CSV_TIMEOUT,
+        timeout: client.exportTimeout,
       });
 
       const metadata = csvTruncationMetadata(csvText);

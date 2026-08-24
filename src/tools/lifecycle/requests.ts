@@ -19,7 +19,6 @@ import { HorizonError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import {
   CSV_EXPORT_OUTPUT_SCHEMA,
-  CSV_TIMEOUT,
   REQUEST_PRESETS,
   SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
@@ -549,7 +548,7 @@ export function registerRequestTools(
     async ({ query, fields, sorted_by }) => {
       const payload = buildExportPayload(query, fields, sorted_by);
       const csvText = await client.postText('/api/v1/requests/csv', payload, {
-        timeout: CSV_TIMEOUT,
+        timeout: client.exportTimeout,
       });
       const metadata = csvTruncationMetadata(csvText);
       const payloadOut = { csv: csvText, ...metadata };

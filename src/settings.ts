@@ -113,7 +113,8 @@ const settingsSchema = z.object({
 
   maxInflightToolcalls: z.coerce.number().int().positive().default(8),
   maxBodyBytes: z.coerce.number().int().positive().default(1048576),
-  sseMaxDuration: z.coerce.number().int().positive().default(3600),
+  sseMaxDuration: z.coerce.number().int().min(1).max(86400).default(3600),
+  sseKeepAlive: z.coerce.number().int().min(1).max(60).default(15),
   rateLimitRps: z.coerce.number().int().nonnegative().default(20),
   ipRateLimit: z.coerce.number().int().nonnegative().default(600),
 

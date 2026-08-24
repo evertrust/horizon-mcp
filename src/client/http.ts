@@ -108,6 +108,7 @@ export class HorizonClient {
   private readonly _baseUrl: string;
   private readonly _auth: AuthProvider;
   private readonly _timeout: number;
+  /** CSV export request budget in seconds, usable directly as the timeout request option. */
   readonly exportTimeout: number;
   private readonly _agent: Agent;
   private readonly _testedVersions: readonly string[];
@@ -138,7 +139,7 @@ export class HorizonClient {
     this._baseUrl = baseUrl.replace(/\/+$/, '');
     this._auth = auth;
     this._timeout = options.timeout * 1000;
-    this.exportTimeout = options.exportTimeout * 1000;
+    this.exportTimeout = options.exportTimeout;
     this._testedVersions = options.testedVersions ?? [];
     this._warnVersions = options.warnVersions ?? [];
 

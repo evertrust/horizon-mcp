@@ -195,6 +195,7 @@ export async function startHttpServer(
       });
     },
     {
+      keepAliveMs: settings.sseKeepAlive * 1000,
       // Modern-only: 2025-era requests are answered with the
       // unsupported-protocol-version error naming the revisions we serve.
       legacy: 'reject',
@@ -401,18 +402,17 @@ export async function startHttpServer(
         // Web headers from the raw array.
         scrubSensitiveHeaders(req, sensitive);
 
-        // Bound how long one response may stay open. This is the only lifetime
-        // cap on a `subscriptions/listen` stream, which holds both a global and
-        // a per-credential concurrency permit for as long as it is open; enough
-        // idle streams would otherwise pin the whole serving budget. It also
-        // backstops a slow tool call, whose upstream leg is already bounded by
-        // exportTimeout. Destroying the socket fires 'close', which releases.
-        res.setTimeout(settings.sseMaxDuration * 1000, () => {
+        // Absolute lifetime cap. res.setTimeout() is an inactivity timer that every
+        // SDK SSE keep-alive resets, so it can never bound a stream; this timer is
+        // armed once at admission and cleared only by the response actually ending.
+        const deadline = setTimeout(() => {
           logger.warning(
             `response exceeded ${settings.sseMaxDuration}s, closing it`,
           );
           res.destroy();
-        });
+        }, settings.sseMaxDuration * 1000);
+        deadline.unref?.();
+        res.once('close', () => clearTimeout(deadline));
 
         // The parsed body MUST be passed explicitly. express.json() has already
         // consumed the stream, and toNodeHandler treats a function third
@@ -471,7 +471,7 @@ export async function startHttpServer(
   // bounds the time to receive the WHOLE request, which would kill long-lived
   // `subscriptions/listen` streams (up to sseMaxDuration) and slow tool calls
   // (CSV exports up to exportTimeout); the response side is bounded by the
-  // res.setTimeout in the request handler instead.
+  // absolute deadline in the request handler instead.
   // keepAliveTimeout sits a few seconds over the Node default.
   httpServer.headersTimeout = 60_000;
   httpServer.requestTimeout = 0;

@@ -18,6 +18,28 @@ function build(env: Record<string, string | undefined>) {
 }
 
 describe('buildHttpConfig', () => {
+  describe('response budget', () => {
+    it('requires the SSE duration to exceed the export timeout', () => {
+      expect(() =>
+        build({
+          HORIZON_SSE_MAX_DURATION: '7',
+          HORIZON_EXPORT_TIMEOUT: '7',
+        }),
+      ).toThrow(
+        /HORIZON_SSE_MAX_DURATION.*HORIZON_EXPORT_TIMEOUT|HORIZON_EXPORT_TIMEOUT.*HORIZON_SSE_MAX_DURATION/,
+      );
+    });
+
+    it('accepts an SSE duration above the export timeout', () => {
+      expect(() =>
+        build({
+          HORIZON_SSE_MAX_DURATION: '8',
+          HORIZON_EXPORT_TIMEOUT: '7',
+        }),
+      ).not.toThrow();
+    });
+  });
+
   describe('host derivation', () => {
     it('derives loopback hosts for the bound port when nothing is set', () => {
       const cfg = build({});

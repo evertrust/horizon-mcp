@@ -314,6 +314,12 @@ export function buildHttpConfig(
         `Use HORIZON_RATE_LIMIT_RPS and HORIZON_IP_RATE_LIMIT instead.`,
     );
   }
+  if (settings.sseMaxDuration <= settings.exportTimeout) {
+    fail(
+      `HORIZON_SSE_MAX_DURATION must be greater than ` +
+        `HORIZON_EXPORT_TIMEOUT; leave headroom above the export budget.`,
+    );
+  }
   const acceptedAuthMethods = assertValidAuthMethodMask(
     settings.httpAuthMethods,
   );

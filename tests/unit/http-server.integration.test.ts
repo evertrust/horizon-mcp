@@ -676,12 +676,18 @@ describe('HTTP server integration (graceful shutdown)', () => {
 });
 
 describe('HTTP server integration (response lifetime cap)', () => {
-  it('closes a subscriptions/listen stream once HORIZON_SSE_MAX_DURATION elapses', async () => {
+  it('closes a subscriptions/listen stream at the absolute SSE deadline despite keep-alives', async () => {
     // A listen stream holds a global and a per-credential concurrency permit
-    // for as long as it is open. Without this cap, idle streams would pin the
-    // serving budget indefinitely.
-    const ctx = await startApiKeyServer({ HORIZON_SSE_MAX_DURATION: '2' });
+    // for as long as it is open. The absolute cap must not be reset by writes.
+    const ctx = await startApiKeyServer({
+      HORIZON_SSE_MAX_DURATION: '3',
+      HORIZON_SSE_KEEP_ALIVE: '1',
+      HORIZON_EXPORT_TIMEOUT: '1',
+    });
     try {
+      const openedAt = Date.now();
+      const controller = new AbortController();
+      const watchdog = setTimeout(() => controller.abort(), 8000);
       const res = await fetch(ctx.base, {
         method: 'POST',
         headers: {
@@ -704,31 +710,37 @@ describe('HTTP server integration (response lifetime cap)', () => {
             },
           },
         }),
+        signal: controller.signal,
       });
       expect(res.status).toBe(200);
       expect(res.headers.get('content-type')).toContain('text/event-stream');
 
-      // Drain until the server drops the socket. The read loop ending at all
-      // is the assertion: an uncapped stream would never end.
-      const started = Date.now();
       const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      const keepAliveArrivals: number[] = [];
+      let buffered = '';
       try {
         for (;;) {
-          const { done } = await reader.read();
+          const { done, value } = await reader.read();
           if (done) break;
+          buffered += decoder.decode(value, { stream: true });
+          const lines = buffered.split(/\r?\n/);
+          buffered = lines.pop() ?? '';
+          for (const line of lines) {
+            if (line.startsWith(':')) keepAliveArrivals.push(Date.now());
+          }
         }
       } catch {
         // A destroyed socket surfaces as a read error, which is also a close.
       }
-      const elapsed = Date.now() - started;
-      // Both bounds matter. The upper one proves the stream is capped at all;
-      // the lower one proves the cap is what closed it, rather than the stream
-      // ending on its own for some unrelated reason.
-      expect(elapsed).toBeGreaterThan(1500);
+      clearTimeout(watchdog);
+      const elapsed = Date.now() - openedAt;
+      expect(keepAliveArrivals.length).toBeGreaterThanOrEqual(2);
+      expect(elapsed).toBeGreaterThan(2500);
       expect(elapsed).toBeLessThan(8000);
       await reader.cancel().catch(() => undefined);
     } finally {
       await ctx.handle.close();
     }
-  }, 20000);
+  }, 12000);
 });

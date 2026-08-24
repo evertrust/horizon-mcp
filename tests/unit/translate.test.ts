@@ -397,7 +397,7 @@ describe('Tool invocation via MCP', () => {
       request: vi.fn(),
       close: vi.fn(),
       fetchCsrfToken: vi.fn(),
-      exportTimeout: 120000,
+      exportTimeout: 120,
       principalName: undefined,
       horizonVersion: undefined,
     };
@@ -601,7 +601,7 @@ describe('Oversized input guard', () => {
       request: vi.fn(),
       close: vi.fn(),
       fetchCsrfToken: vi.fn(),
-      exportTimeout: 120000,
+      exportTimeout: 120,
       principalName: undefined,
       horizonVersion: undefined,
     };

@@ -224,6 +224,7 @@ describe('loadSettings', () => {
       expect(s.maxInflightToolcalls).toBe(8);
       expect(s.maxBodyBytes).toBe(1048576);
       expect(s.sseMaxDuration).toBe(3600);
+      expect(s.sseKeepAlive).toBe(15);
       expect(s.rateLimitRps).toBe(20);
       expect(s.ipRateLimit).toBe(600);
       expect(s.httpTlsCert).toBe('');
@@ -294,6 +295,23 @@ describe('loadSettings', () => {
       expect(() =>
         loadSettings({ HORIZON_MAX_CONCURRENT_REQUESTS: '257' }),
       ).toThrow();
+    });
+
+    it('rejects an SSE duration that exceeds the supported timer ceiling', () => {
+      expect(() =>
+        loadSettings({ HORIZON_SSE_MAX_DURATION: '2147484' }),
+      ).toThrow();
+    });
+
+    it('bounds the SSE keep-alive interval', () => {
+      expect(loadSettings({ HORIZON_SSE_KEEP_ALIVE: '1' }).sseKeepAlive).toBe(
+        1,
+      );
+      expect(loadSettings({ HORIZON_SSE_KEEP_ALIVE: '60' }).sseKeepAlive).toBe(
+        60,
+      );
+      expect(() => loadSettings({ HORIZON_SSE_KEEP_ALIVE: '0' })).toThrow();
+      expect(() => loadSettings({ HORIZON_SSE_KEEP_ALIVE: '61' })).toThrow();
     });
 
     it('bounds the credential cache size and TTL', () => {

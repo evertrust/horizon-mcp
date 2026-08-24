@@ -49,7 +49,6 @@ export const encodePathSegment = (value: string): string =>
 
 const MAX_PAGE_SIZE = 100;
 const MAX_CSV_ROWS = 1000;
-const CSV_TIMEOUT = 120;
 
 // Field-level truncation limits (search results only)
 const MAX_STRING_LEN = 500;
@@ -422,12 +421,6 @@ export function buildExportPayload(
   if (sorted) payload['sortedBy'] = sorted;
   return payload;
 }
-
-// ---------------------------------------------------------------------------
-// CSV export helper
-// ---------------------------------------------------------------------------
-
-export { CSV_TIMEOUT };
 
 export function csvTruncationMetadata(csvText: string): {
   truncated: boolean;

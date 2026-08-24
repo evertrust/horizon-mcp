@@ -15,7 +15,6 @@ import type { HorizonClient } from '../../client/http.js';
 import {
   CERT_PRESETS,
   CSV_EXPORT_OUTPUT_SCHEMA,
-  CSV_TIMEOUT,
   SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
   buildSearchPayload,
@@ -227,7 +226,7 @@ export function registerCertificateTools(
       const csvText = await client.postText(
         '/api/v1/certificates/csv',
         payload,
-        { timeout: CSV_TIMEOUT },
+        { timeout: client.exportTimeout },
       );
       const metadata = csvTruncationMetadata(csvText);
       const payloadOut = { csv: csvText, ...metadata };
