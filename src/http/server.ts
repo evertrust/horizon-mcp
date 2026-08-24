@@ -44,6 +44,10 @@ export interface HttpServerHandle {
 export interface HttpServerOptions {
   /** Primarily injectable so shutdown behavior can be tested quickly. */
   closeTimeoutMs?: number;
+  /** Primarily injectable so request timeout behavior can be tested quickly. */
+  requestTimeoutMs?: number;
+  /** Primarily injectable so request timeout scans can be tested quickly. */
+  connectionsCheckingIntervalMs?: number;
 }
 
 // Application-defined JSON-RPC error codes. MCP 2026-07-28 says new
@@ -477,9 +481,17 @@ export async function startHttpServer(
 
   // -- Listener -------------------------------------------------------------
 
+  const connectionCheckingOptions =
+    options.connectionsCheckingIntervalMs === undefined
+      ? {}
+      : {
+          connectionsCheckingInterval: options.connectionsCheckingIntervalMs,
+        };
+
   const httpServer: Server = config.mtls?.listener
     ? createHttpsServer(
         {
+          ...connectionCheckingOptions,
           cert: readFileSync(config.mtls.listener.certPath),
           key: readFileSync(config.mtls.listener.keyPath),
           requestCert: true,
@@ -487,16 +499,14 @@ export async function startHttpServer(
         },
         app,
       )
-    : createHttpServer(app);
+    : createHttpServer(connectionCheckingOptions, app);
 
-  // Slowloris guard on request headers. requestTimeout is disabled because it
-  // bounds the time to receive the WHOLE request, which would kill long-lived
-  // `subscriptions/listen` streams (up to sseMaxDuration) and slow tool calls
-  // (CSV exports up to exportTimeout); the response side is bounded by the
-  // absolute deadline in the request handler instead.
+  // Request reception must be bounded independently of response lifetime. Node
+  // requires headersTimeout <= requestTimeout; completed SSE requests are
+  // bounded on the response side by the absolute deadline in the handler.
   // keepAliveTimeout sits a few seconds over the Node default.
-  httpServer.headersTimeout = 60_000;
-  httpServer.requestTimeout = 0;
+  httpServer.requestTimeout = options.requestTimeoutMs ?? 60_000;
+  httpServer.headersTimeout = Math.min(60_000, httpServer.requestTimeout);
   httpServer.keepAliveTimeout = 10_000;
 
   await new Promise<void>((resolve, reject) => {

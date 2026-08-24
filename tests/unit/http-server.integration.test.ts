@@ -85,7 +85,11 @@ interface ServerCtx {
 
 async function startApiKeyServer(
   overrides: Record<string, string> = {},
-  serverOptions: { closeTimeoutMs?: number } = {},
+  serverOptions: {
+    closeTimeoutMs?: number;
+    requestTimeoutMs?: number;
+    connectionsCheckingIntervalMs?: number;
+  } = {},
 ): Promise<ServerCtx> {
   const port = await freePort();
   const env = {
@@ -134,6 +138,112 @@ function openListenStream(
     signal,
   });
 }
+
+describe('HTTP server integration (request reception timeout)', () => {
+  const env = {
+    HORIZON_SSE_MAX_DURATION: '5',
+    HORIZON_EXPORT_TIMEOUT: '1',
+  };
+  const serverOptions = {
+    requestTimeoutMs: 200,
+    connectionsCheckingIntervalMs: 50,
+  };
+
+  it('closes a trickled request body within the receive deadline', async () => {
+    const ctx = await startApiKeyServer(env, serverOptions);
+    const socket = connect(ctx.handle.port, '127.0.0.1');
+    let trickle: ReturnType<typeof setInterval> | undefined;
+    try {
+      await new Promise<void>((resolve, reject) => {
+        socket.once('connect', resolve);
+        socket.once('error', reject);
+      });
+      socket.on('error', () => undefined);
+      socket.write(
+        [
+          'POST /mcp HTTP/1.1',
+          `Host: 127.0.0.1:${ctx.handle.port}`,
+          'Content-Type: application/json',
+          'Content-Length: 64',
+          '',
+          '',
+        ].join('\r\n'),
+      );
+
+      const body = '{"jsonrpc":"2.0","id":1,"method":"tools/list"}';
+      let bodyIndex = 0;
+      const firstBodyAt = Date.now();
+      socket.write(body[bodyIndex++]!);
+      trickle = setInterval(() => {
+        if (!socket.destroyed) {
+          socket.write(body[bodyIndex++ % body.length]!);
+        }
+      }, 100);
+
+      // With requestTimeout disabled, neither event fires and the watchdog wins.
+      const elapsed = await new Promise<number>((resolve, reject) => {
+        const closed = () => {
+          clearTimeout(watchdog);
+          socket.off('close', closed);
+          socket.off('end', closed);
+          resolve(Date.now() - firstBodyAt);
+        };
+        const watchdog = setTimeout(() => {
+          socket.off('close', closed);
+          socket.off('end', closed);
+          reject(new Error('socket remained open past the receive deadline'));
+        }, 1500);
+        socket.once('close', closed);
+        socket.once('end', closed);
+      });
+
+      expect(elapsed).toBeLessThan(1500);
+    } finally {
+      if (trickle) clearInterval(trickle);
+      socket.destroy();
+      await ctx.handle.close();
+    }
+  }, 10000);
+
+  it('keeps a fully received subscriptions/listen response open', async () => {
+    const ctx = await startApiKeyServer(env, serverOptions);
+    const controller = new AbortController();
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+    let reading: Promise<void> | undefined;
+    let streamEnded = false;
+    try {
+      const response = await openListenStream(ctx.base, controller.signal, 1);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain(
+        'text/event-stream',
+      );
+      expect(response.body).not.toBeNull();
+
+      reader = response.body!.getReader();
+      reading = (async () => {
+        try {
+          for (;;) {
+            const { done } = await reader!.read();
+            if (done) {
+              streamEnded = true;
+              return;
+            }
+          }
+        } catch {
+          streamEnded = true;
+        }
+      })();
+
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      expect(streamEnded).toBe(false);
+    } finally {
+      controller.abort();
+      await reader?.cancel().catch(() => undefined);
+      await reading?.catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 10000);
+});
 
 function makeClient(base: string, apiId?: string, apiKey?: string) {
   const headers: Record<string, string> = {};
