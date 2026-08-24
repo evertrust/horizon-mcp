@@ -101,8 +101,11 @@ describe('CredentialCache', () => {
 
     await expect(cache.get('fp1')).rejects.toThrow('horizon rejected');
     // The failure must not be retained: the next call retries and succeeds.
-    await expect(cache.get('fp1')).resolves.toBeDefined();
+    const retry = cache.get('fp1');
+    await expect(retry).resolves.toBeDefined();
     expect(build).toHaveBeenCalledTimes(2);
+    const { releaseLease } = await retry;
+    releaseLease();
   });
 
   it('never lets two fingerprints share a client', async () => {
@@ -235,19 +238,26 @@ describe('CredentialCache', () => {
 
   it('defers eviction disposal until the last lease is released', async () => {
     const { cache, built } = makeCache({ max: 1 });
+    const releases: (() => void)[] = [];
 
-    const { releaseLease } = await cache.get('leased');
-    const next = await cache.get('next');
+    try {
+      const { releaseLease } = await cache.get('leased');
+      releases.push(releaseLease);
+      const next = await cache.get('next');
+      releases.push(next.releaseLease);
 
-    expect(built.get('leased')!.closed()).toBe(0);
+      expect(built.get('leased')!.closed()).toBe(0);
 
-    releaseLease();
-    await vi.waitFor(() => expect(built.get('leased')!.closed()).toBe(1));
+      releaseLease();
+      await vi.waitFor(() => expect(built.get('leased')!.closed()).toBe(1));
 
-    releaseLease();
-    await Promise.resolve();
-    expect(built.get('leased')!.closed()).toBe(1);
-    next.releaseLease();
+      releaseLease();
+      await Promise.resolve();
+      expect(built.get('leased')!.closed()).toBe(1);
+    } finally {
+      for (const release of releases) release();
+      await cache.close();
+    }
   });
 
   it('gives single-flight callers independent idempotent leases', async () => {
@@ -257,46 +267,65 @@ describe('CredentialCache', () => {
       return entry;
     });
     const { cache } = makeCache({ build });
+    const releases: (() => void)[] = [];
 
-    const [first, second] = await Promise.all([
-      cache.get('shared'),
-      cache.get('shared'),
-    ]);
+    try {
+      const [first, second] = await Promise.all([
+        cache.get('shared'),
+        cache.get('shared'),
+      ]);
+      releases.push(first.releaseLease, second.releaseLease);
 
-    expect(build).toHaveBeenCalledTimes(1);
-    expect(first.entry).toBe(second.entry);
-    expect(first.releaseLease).not.toBe(second.releaseLease);
+      expect(build).toHaveBeenCalledTimes(1);
+      expect(first.entry).toBe(second.entry);
+      expect(first.releaseLease).not.toBe(second.releaseLease);
 
-    const retired = cache.invalidate('shared');
-    await Promise.resolve();
-    first.releaseLease();
-    await Promise.resolve();
-    expect(entry.closed()).toBe(0);
+      const retired = cache.invalidate('shared');
+      await Promise.resolve();
+      first.releaseLease();
+      await Promise.resolve();
+      expect(entry.closed()).toBe(0);
 
-    second.releaseLease();
-    await retired;
-    expect(entry.closed()).toBe(1);
+      second.releaseLease();
+      await retired;
+      expect(entry.closed()).toBe(1);
 
-    first.releaseLease();
-    second.releaseLease();
-    await Promise.resolve();
-    expect(entry.closed()).toBe(1);
+      first.releaseLease();
+      second.releaseLease();
+      await Promise.resolve();
+      expect(entry.closed()).toBe(1);
+    } finally {
+      for (const release of releases) release();
+      await cache.close();
+    }
   });
 
   it('keeps close pending until an outstanding lease is released', async () => {
     const { cache } = makeCache();
-    const { releaseLease } = await cache.get('leased');
+    const releases: (() => void)[] = [];
+    let closing: Promise<void> | undefined;
 
-    const closing = cache.close();
-    const result = await Promise.race([
-      closing.then(() => 'closed' as const),
-      new Promise<'pending'>((resolve) =>
-        setTimeout(() => resolve('pending'), 100),
-      ),
-    ]);
+    try {
+      const { releaseLease } = await cache.get('leased');
+      releases.push(releaseLease);
+      closing = cache.close();
+      const result = await Promise.race([
+        closing.then(() => 'closed' as const),
+        new Promise<'pending'>((resolve) =>
+          setTimeout(() => resolve('pending'), 100),
+        ),
+      ]);
 
-    expect(result).toBe('pending');
-    releaseLease();
-    await expect(closing).resolves.toBeUndefined();
+      expect(result).toBe('pending');
+    } finally {
+      for (const release of releases) release();
+      const settled = await Promise.race([
+        (closing ?? cache.close()).then(() => 'closed' as const),
+        new Promise<'timed out'>((resolve) =>
+          setTimeout(() => resolve('timed out'), 500),
+        ),
+      ]);
+      expect(settled).toBe('closed');
+    }
   });
 });
