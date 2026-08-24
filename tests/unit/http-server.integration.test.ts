@@ -1,4 +1,4 @@
-import { createServer } from 'node:http';
+import { createServer, request as httpRequest } from 'node:http';
 import { connect } from 'node:net';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -195,6 +195,43 @@ describe('HTTP server integration (api-key mode)', () => {
         });
         expect(res.status).toBe(405);
       }
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a mismatched Host with 421 (DNS-rebinding defence)', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const body = await new Promise<string>((resolve, reject) => {
+        const req = httpRequest(
+          {
+            hostname: '127.0.0.1',
+            port: ctx.handle.port,
+            path: '/mcp',
+            method: 'POST',
+            headers: {
+              Host: 'evil.example.com',
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/event-stream',
+              'X-API-ID': 'alice',
+              'X-API-KEY': 'k',
+              'Content-Length': '2',
+            },
+          },
+          (res) => {
+            expect(res.statusCode).toBe(421);
+            const chunks: Buffer[] = [];
+            res.on('data', (c) => chunks.push(c as Buffer));
+            res.on('end', () =>
+              resolve(Buffer.concat(chunks).toString('utf8')),
+            );
+          },
+        );
+        req.on('error', reject);
+        req.end('{}');
+      });
+      expect(body).toMatch(/host/i);
     } finally {
       await ctx.handle.close();
     }

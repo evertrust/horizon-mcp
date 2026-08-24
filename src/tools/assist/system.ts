@@ -23,6 +23,9 @@ const WHOAMI_CONFIG = {
     teams: z.array(z.string()).nullish(),
     roles: z.array(z.unknown()).nullish(),
     permissions: z.unknown().nullish(),
+    // Injected by HorizonClient from the undocumented whoami field; extra
+    // Horizon keys still need to survive output validation.
+    _horizonVersion: z.string().nullish(),
   },
 };
 
