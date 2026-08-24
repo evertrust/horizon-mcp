@@ -247,10 +247,17 @@ export async function startHttpServer(
       );
       return undefined;
     }
-    const release = () => {
+    const release = once(() => {
       releaseCredential();
       releaseGlobal();
-    };
+    });
+    res.once('close', release);
+    res.once('finish', release);
+    if (res.destroyed) {
+      // The socket died between routing and admission.
+      release();
+      return undefined;
+    }
 
     try {
       pendingMaterial.set(fingerprint, material);
@@ -387,11 +394,6 @@ export async function startHttpServer(
         // req.rawHeaders before the SDK reads them: @hono/node-server rebuilds
         // Web headers from the raw array.
         scrubSensitiveHeaders(req, sensitive);
-
-        const done = once(release);
-        res.on('close', done);
-        res.on('finish', done);
-        release = undefined;
 
         // Bound how long one response may stay open. This is the only lifetime
         // cap on a `subscriptions/listen` stream, which holds both a global and

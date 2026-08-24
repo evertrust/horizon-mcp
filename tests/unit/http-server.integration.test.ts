@@ -398,6 +398,67 @@ describe('HTTP server integration (api-key mode)', () => {
       await ctx.handle.close();
     }
   }, 30000);
+
+  it('releases concurrency permits when a client disconnects during credential validation', async () => {
+    const ctx = await startApiKeyServer({
+      HORIZON_MAX_CONCURRENT_REQUESTS: '1',
+      HORIZON_IP_RATE_LIMIT: '0',
+      HORIZON_RATE_LIMIT_RPS: '0',
+    });
+    const firstCredential = 'disconnecting-client';
+    const secondCredential = 'next-client';
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation(async (url: unknown, init: unknown) => {
+      if (
+        String(url).includes('/api/v1/security/principals/self') &&
+        apiIdOf(init) === firstCredential
+      ) {
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      return original(url, init);
+    });
+
+    const send = (apiId: string, apiKey: string, signal?: AbortSignal) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': apiId,
+          'X-API-KEY': apiKey,
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+        signal,
+      });
+
+    const controller = new AbortController();
+    const requestA = send(firstCredential, 'key-one', controller.signal).catch(
+      () => undefined,
+    );
+    const abortTimer = setTimeout(() => controller.abort(), 100);
+    try {
+      await new Promise((r) => setTimeout(r, 300));
+      const responseB = await send(secondCredential, 'key-two');
+      expect(responseB.status).toBe(200);
+    } finally {
+      clearTimeout(abortTimer);
+      await requestA;
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 30000);
 });
 
 describe('HTTP server integration (authentication whitelist)', () => {
