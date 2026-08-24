@@ -167,6 +167,134 @@ describe('CredentialCache', () => {
     }
   });
 
+  it('starts a fresh build for a caller arriving after the last waiter cancels', async () => {
+    let calls = 0;
+    let markFirstBuildStarted = () => {};
+    const firstBuildStarted = new Promise<void>((resolve) => {
+      markFirstBuildStarted = resolve;
+    });
+    let releaseFirstBuild = () => {};
+    const firstBuildRelease = new Promise<void>((resolve) => {
+      releaseFirstBuild = resolve;
+    });
+    let markSecondBuildStarted = () => {};
+    const secondBuildStarted = new Promise<void>((resolve) => {
+      markSecondBuildStarted = resolve;
+    });
+    let releaseSecondBuild = () => {};
+    const secondBuildRelease = new Promise<void>((resolve) => {
+      releaseSecondBuild = resolve;
+    });
+    const build = vi.fn(async () => {
+      calls += 1;
+      const buildSignal = currentRequestSignal();
+      if (calls === 1) {
+        markFirstBuildStarted();
+        await firstBuildRelease;
+      } else {
+        markSecondBuildStarted();
+        await secondBuildRelease;
+      }
+      if (buildSignal?.aborted) throw buildSignal.reason;
+      return fakeEntry() as CredentialEntry;
+    });
+    const { cache } = makeCache({ build });
+    const controller = new AbortController();
+    const reason = new Error('caller disconnected');
+    const releases: (() => void)[] = [];
+    const first = cache.get(
+      'shared',
+      apiKeyMaterial(),
+      undefined,
+      controller.signal,
+    );
+    let second: ReturnType<typeof cache.get> | undefined;
+
+    try {
+      await firstBuildStarted;
+      controller.abort(reason);
+      await expect(first).rejects.toBe(reason);
+
+      second = cache.get('shared', apiKeyMaterial());
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(build).toHaveBeenCalledTimes(2);
+      await secondBuildStarted;
+
+      releaseSecondBuild();
+      const lease = await second;
+      releases.push(lease.releaseLease);
+      expect(lease.entry).toBeDefined();
+      lease.releaseLease();
+
+      releaseFirstBuild();
+    } finally {
+      releaseFirstBuild();
+      releaseSecondBuild();
+      const results = await Promise.allSettled([
+        first,
+        ...(second ? [second] : []),
+      ]);
+      for (const result of results) {
+        if (result.status === 'fulfilled') result.value.releaseLease();
+      }
+      for (const release of releases) release();
+      await cache.close();
+    }
+  });
+
+  it('keeps close pending until an orphaned build settles', async () => {
+    let markBuildStarted = () => {};
+    const buildStarted = new Promise<void>((resolve) => {
+      markBuildStarted = resolve;
+    });
+    let releaseBuild = () => {};
+    const buildRelease = new Promise<void>((resolve) => {
+      releaseBuild = resolve;
+    });
+    const { cache } = makeCache({
+      build: async () => {
+        const buildSignal = currentRequestSignal();
+        markBuildStarted();
+        await buildRelease;
+        if (buildSignal?.aborted) throw buildSignal.reason;
+        return fakeEntry();
+      },
+    });
+    const controller = new AbortController();
+    const reason = new Error('caller disconnected');
+    const pending = cache.get(
+      'shared',
+      apiKeyMaterial(),
+      undefined,
+      controller.signal,
+    );
+    let closing: Promise<void> | undefined;
+
+    try {
+      await buildStarted;
+      controller.abort(reason);
+      await expect(pending).rejects.toBe(reason);
+
+      closing = cache.close();
+      let closed = false;
+      void closing.then(() => {
+        closed = true;
+      });
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(closed).toBe(false);
+
+      releaseBuild();
+      await expect(closing).resolves.toBeUndefined();
+    } finally {
+      releaseBuild();
+      const result = await Promise.allSettled([pending]);
+      if (result[0]?.status === 'fulfilled') result[0].value.releaseLease();
+      await (closing ?? cache.close());
+    }
+  });
+
   it('invokes onBuildStart once for concurrent misses on one fingerprint', async () => {
     const material = apiKeyMaterial();
     const onBuildStart = vi.fn();

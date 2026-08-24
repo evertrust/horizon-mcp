@@ -81,6 +81,7 @@ export class CredentialCache {
   // first key the least recently used.
   private readonly entries = new Map<string, CacheRecord>();
   private readonly inflight = new Map<string, InflightRecord>();
+  private readonly orphans = new Set<Promise<CacheRecord>>();
   private readonly retirements = new Set<Promise<void>>();
   private closed = false;
   private closePromise: Promise<void> | undefined;
@@ -126,6 +127,19 @@ export class CredentialCache {
       }
 
       let pending = this.inflight.get(fingerprint);
+      if (pending?.controller.signal.aborted) {
+        const orphan = pending;
+        if (this.inflight.get(fingerprint) === orphan) {
+          this.inflight.delete(fingerprint);
+        }
+        if (!this.orphans.has(orphan.promise)) {
+          this.orphans.add(orphan.promise);
+          void orphan.promise
+            .catch(() => undefined)
+            .then(() => this.orphans.delete(orphan.promise));
+        }
+        pending = undefined;
+      }
       if (!pending) {
         const controller = new AbortController();
         const promise = runWithRequestSignal(controller.signal, async () => {
@@ -187,8 +201,16 @@ export class CredentialCache {
         removeAbortListener?.();
         shared.waiters -= 1;
         if (shared.waiters === 0 && !shared.settled) {
+          if (this.inflight.get(fingerprint) === shared) {
+            this.inflight.delete(fingerprint);
+          }
+          if (!this.orphans.has(shared.promise)) {
+            this.orphans.add(shared.promise);
+            void shared.promise
+              .catch(() => undefined)
+              .then(() => this.orphans.delete(shared.promise));
+          }
           // No caller remains to observe a cancellation rejection.
-          void shared.promise.catch(() => undefined);
           shared.controller.abort();
         }
       }
@@ -231,7 +253,10 @@ export class CredentialCache {
     this.closed = true;
     const all = [...this.entries.entries()];
     const retirements = all.map(([key, record]) => this.retire(key, record));
-    const builds = [...this.inflight.values()].map(({ promise }) => promise);
+    const builds = [
+      ...[...this.inflight.values()].map(({ promise }) => promise),
+      ...this.orphans,
+    ];
     this.closePromise = (async () => {
       // In-flight builds retire themselves when they observe the closed cache.
       await Promise.allSettled(builds);
