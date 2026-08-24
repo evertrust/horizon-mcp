@@ -258,23 +258,26 @@ describe('ClientReauth', () => {
       verifySsl: false,
       onAuthReject,
     });
-    (client as unknown as Record<string, boolean>)._initialized = true;
-    mockFetch.mockResolvedValue(
-      fakeResponse(401, {
-        error: 'SecAuth001',
-        message: 'Unauthorized',
-      }),
-    );
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(
+        fakeResponse(401, {
+          error: 'SecAuth001',
+          message: 'Unauthorized',
+        }),
+      );
 
-    await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
-      HorizonError,
-    );
-    await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
-      HorizonError,
-    );
+      await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+        HorizonError,
+      );
+      await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+        HorizonError,
+      );
 
-    expect(onAuthReject).toHaveBeenCalledTimes(1);
-    await client.close();
+      expect(onAuthReject).toHaveBeenCalledTimes(1);
+    } finally {
+      await client.close();
+    }
   });
 
   it('preserves the HorizonError when the auth rejection hook throws', async () => {
@@ -287,23 +290,26 @@ describe('ClientReauth', () => {
         throw new Error('hook failed');
       },
     });
-    (client as unknown as Record<string, boolean>)._initialized = true;
-    mockFetch.mockResolvedValue(
-      fakeResponse(401, {
-        error: 'SecAuth001',
-        message: 'Unauthorized',
-      }),
-    );
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(
+        fakeResponse(401, {
+          error: 'SecAuth001',
+          message: 'Unauthorized',
+        }),
+      );
 
-    await expect(client.get('/api/v1/cas')).rejects.toSatisfy(
-      (err: HorizonError) => {
-        expect(err).toBeInstanceOf(HorizonError);
-        expect(err.statusCode).toBe(401);
-        expect(err.message).toContain('Unauthorized');
-        return true;
-      },
-    );
-    await client.close();
+      await expect(client.get('/api/v1/cas')).rejects.toSatisfy(
+        (err: HorizonError) => {
+          expect(err).toBeInstanceOf(HorizonError);
+          expect(err.statusCode).toBe(401);
+          expect(err.message).toContain('Unauthorized');
+          return true;
+        },
+      );
+    } finally {
+      await client.close();
+    }
   });
 
   it('CSRF 403 uses CSRF path, not reauth path', async () => {
