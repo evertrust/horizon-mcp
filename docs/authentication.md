@@ -68,6 +68,8 @@ Credential pairs must be complete. The MCP rejects these requests without a fall
 - A request with a credential type that is not in the whitelist.
 - A request with more than one complete credential type.
 
+Every `401` response includes a `WWW-Authenticate` header. Its value is `Horizon methods="<accepted methods>"`, where the comma-separated list reflects `HORIZON_HTTP_AUTH_METHODS`. A caller can use this challenge to select a credential type without consulting the server configuration.
+
 ### Service-account JWT renewal
 
 Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request.

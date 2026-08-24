@@ -37,6 +37,8 @@ curl -s -X POST https://mcp.example.com/mcp \
 A healthy server returns its capabilities and instructions. A request naming any other revision is answered with an
 error listing the revisions the server does support.
 
+The MCP endpoint accepts `POST` only for protocol requests. Other protocol request methods receive a `405` response with an `Allow: POST` header. If the body sets `params._meta["io.modelcontextprotocol/protocolVersion"]` to a string but omits the `MCP-Protocol-Version` header, the server returns `400` with JSON-RPC error code `-32020`. The error says that the body claims a protocol version but the required header is absent. The curl example includes the required header and uses the same revision in both places.
+
 ## Trimming the tool surface (recommended)
 
 The full server registers 212 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
