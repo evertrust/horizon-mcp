@@ -1810,6 +1810,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "description": "For renew/revoke/update/recover/migrate - the existing certificate ID.",
           "type": "string",
         },
+        "include_terms_of_service": {
+          "description": "Include the Terms of Service content the requester must accept. Sent as the termsOfService query parameter, never in the POST body.",
+          "type": "boolean",
+        },
         "module": {
           "description": "Profile module (webra, est, scep, acme, etc.).",
           "type": "string",
@@ -2478,6 +2482,32 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "search_requests",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "certificate_id": {
+          "description": "24-hex Horizon certificate ID.",
+          "pattern": "^[a-fA-F0-9]{24}$",
+          "type": "string",
+        },
+        "certificate_pem": {
+          "description": "PEM-encoded certificate to update.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "enabled": {
+          "description": "Whether to enable automatic renewal.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "enabled",
+      ],
+      "type": "object",
+    },
+    "name": "set_certificate_auto_renew",
   },
   {
     "inputSchema": {

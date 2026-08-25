@@ -32,7 +32,9 @@ import { registerTool } from '../register.js';
 
 const GET_REQUEST_TEMPLATE_CONFIG = {
   description:
-    'Get the request template showing which fields are required/editable.\n\n Ref: horizon://knowledge/workflows.' +
+    'Get the request template showing which fields are required/editable. For ' +
+    'a WebRA update, inspect template.autoRenew before changing per-certificate ' +
+    'automatic renewal.\n\n Ref: horizon://knowledge/workflows.' +
     'MUST be called before submit_request. The template response tells you:\n' +
     '- Which subject fields exist and whether they are editable or computed\n' +
     '- Which SAN types are allowed\n' +
@@ -64,6 +66,13 @@ const GET_REQUEST_TEMPLATE_CONFIG = {
       .describe(
         'For renew/revoke/update/recover/migrate - the existing certificate ID.',
       ),
+    include_terms_of_service: z
+      .boolean()
+      .optional()
+      .describe(
+        'Include the Terms of Service content the requester must accept. Sent ' +
+          'as the termsOfService query parameter, never in the POST body.',
+      ),
   }),
 };
 
@@ -84,7 +93,9 @@ const SUBMIT_REQUEST_CONFIG = {
     'privilegewithdrawn, aacompromise, unspecified). ' +
     'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
     'EST/SCEP enroll returns the challenge password in the response. ' +
-    'Full workflow + examples: horizon://knowledge/workflows.',
+    'For a WebRA update, template.autoRenew is the generic path for changing ' +
+    'per-certificate automatic renewal. Full workflow + examples: ' +
+    'horizon://knowledge/workflows.',
   // submit_request can run revoke workflows, so mark it destructive even
   // though the name-prefix classifier treats it as an additive mutation.
   annotations: { destructiveHint: true },
@@ -318,16 +329,22 @@ export function registerRequestTools(
     server,
     'get_request_template',
     GET_REQUEST_TEMPLATE_CONFIG,
-    async ({ workflow, module, profile, certificate_id }) => {
+    async ({
+      workflow,
+      module,
+      profile,
+      certificate_id,
+      include_terms_of_service,
+    }) => {
       const params: Record<string, string> = { workflow };
       if (module) params['module'] = module;
       if (profile) params['profile'] = profile;
       if (certificate_id) params['certificateId'] = certificate_id;
+      const path = include_terms_of_service
+        ? '/api/v1/requests/template?termsOfService=true'
+        : '/api/v1/requests/template';
 
-      const result = await client.post<Record<string, unknown>>(
-        '/api/v1/requests/template',
-        params,
-      );
+      const result = await client.post<Record<string, unknown>>(path, params);
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

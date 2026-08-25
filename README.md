@@ -22,7 +22,7 @@ The server does not preload these resources. The server also cannot guarantee th
 
 ## Features
 
-- **221 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **222 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 18 core topic URIs and 4 curated playbooks.
   The server also generates section URIs from H2 headings in the longest guides.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. A whitelist can enable multiple methods.
@@ -332,7 +332,7 @@ See [docs/authentication.md](docs/authentication.md) for the full step-by-step g
 
 ## Tool catalog overview
 
-The 221 tools are in 12 domains. Each tool has explicit usage guidance for smaller models.
+The 222 tools are in 12 domains. Each tool has explicit usage guidance for smaller models.
 
 The table at the top of this README gives the tool counts. The [tool reference](docs/tools-reference.md) gives safety tiers and descriptions.
 
@@ -556,7 +556,7 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Installation](docs/installation.md)               | Install methods and troubleshooting                                 |
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md)          | All 221 tools by domain with safety tiers                           |
+| [Tool reference](docs/tools-reference.md)          | All 222 tools by domain with safety tiers                           |
 | [Knowledge resources](docs/knowledge-resources.md) | 18 core URIs, 4 curated playbooks, generated section resources      |
 | [Development](docs/development.md)                 | Dev setup, tests, linting                                           |
 

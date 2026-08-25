@@ -1,6 +1,6 @@
 # Tool reference
 
-221 tools across 12 domains (incl. 129 Configuration CRUD tools). Safety tiers:
+222 tools across 12 domains (incl. 129 Configuration CRUD tools). Safety tiers:
 
 - **read-only** - no side effects
 - **mutating-safe** - creates or modifies data without being classified as destructive; it may still be non-idempotent and must not be retried blindly
@@ -47,33 +47,34 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 | `get_doc_page`    | read-only | Fetch the indexed content for a page returned by a docs-search tool (windowed via `max_chars`/`offset`) |
 | `read_knowledge`  | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support      |
 
-## Lifecycle (23 tools)
+## Lifecycle (24 tools)
 
-| Tool                      | Safety               | Description                                                                                                                                 |
-| ------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search_certificates`     | read-only            | Search via HCQL with presets and pagination                                                                                                 |
-| `export_certificates_csv` | read-only            | Export certificates to CSV (max 1000 rows)                                                                                                  |
-| `get_certificate`         | read-only            | Get full certificate details by ID                                                                                                          |
-| `download_certificate`    | read-only            | Download PEM certificate content; use `get_request` on the enrollment request for PKCS#12 retrieval                                         |
-| `aggregate_certificates`  | read-only            | Aggregate certificate counts by field                                                                                                       |
-| `search_requests`         | read-only            | Search requests via HRQL                                                                                                                    |
-| `export_requests_csv`     | read-only            | Export requests to CSV                                                                                                                      |
-| `get_request`             | read-only            | Get request details by ID                                                                                                                   |
-| `aggregate_requests`      | read-only            | Aggregate request counts by field                                                                                                           |
-| `search_events`           | read-only            | Search audit events via HEQL                                                                                                                |
-| `get_event`               | read-only            | Get audit event details by ID                                                                                                               |
-| `export_events_csv`       | read-only            | Export audit events to a compact CSV via paged search (max 1000 rows, default core columns + optional `detail.*` fields)                    |
-| `get_request_template`    | read-only            | Get request template for a workflow                                                                                                         |
-| `submit_request`          | mutating-destructive | Submit a lifecycle request (enroll, renew, revoke, ...); classified destructive because it can revoke or otherwise change certificate state |
-| `approve_request`         | mutating-safe        | Approve a pending request                                                                                                                   |
-| `deny_request`            | mutating-destructive | Deny a pending request                                                                                                                      |
-| `cancel_request`          | mutating-destructive | Cancel a pending request                                                                                                                    |
-| `list_dcv_policy_status`  | read-only            | List DCV policy lifecycle status                                                                                                            |
-| `get_dcv_policy_status`   | read-only            | Get full DCV policy and domain status                                                                                                       |
-| `run_dcv_policy`          | mutating-safe        | Start DCV for every eligible policy domain                                                                                                  |
-| `run_dcv_domain`          | mutating-safe        | Start DCV for one policy domain                                                                                                             |
-| `cancel_dcv_run`          | mutating-destructive | Cancel the whole active DCV policy run                                                                                                      |
-| `list_dcv_events`         | read-only            | List policy or domain DCV lifecycle events                                                                                                  |
+| Tool                         | Safety               | Description                                                                                                                                 |
+| ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_certificates`        | read-only            | Search via HCQL with presets and pagination                                                                                                 |
+| `export_certificates_csv`    | read-only            | Export certificates to CSV (max 1000 rows)                                                                                                  |
+| `get_certificate`            | read-only            | Get full certificate details by ID                                                                                                          |
+| `download_certificate`       | read-only            | Download PEM certificate content; use `get_request` on the enrollment request for PKCS#12 retrieval                                         |
+| `aggregate_certificates`     | read-only            | Aggregate certificate counts by field                                                                                                       |
+| `set_certificate_auto_renew` | mutating-safe        | Set WebRA automatic renewal for one certificate when its profile allows edits                                                               |
+| `search_requests`            | read-only            | Search requests via HRQL                                                                                                                    |
+| `export_requests_csv`        | read-only            | Export requests to CSV                                                                                                                      |
+| `get_request`                | read-only            | Get request details by ID                                                                                                                   |
+| `aggregate_requests`         | read-only            | Aggregate request counts by field                                                                                                           |
+| `search_events`              | read-only            | Search audit events via HEQL                                                                                                                |
+| `get_event`                  | read-only            | Get audit event details by ID                                                                                                               |
+| `export_events_csv`          | read-only            | Export audit events to a compact CSV via paged search (max 1000 rows, default core columns + optional `detail.*` fields)                    |
+| `get_request_template`       | read-only            | Get request template for a workflow                                                                                                         |
+| `submit_request`             | mutating-destructive | Submit a lifecycle request (enroll, renew, revoke, ...); classified destructive because it can revoke or otherwise change certificate state |
+| `approve_request`            | mutating-safe        | Approve a pending request                                                                                                                   |
+| `deny_request`               | mutating-destructive | Deny a pending request                                                                                                                      |
+| `cancel_request`             | mutating-destructive | Cancel a pending request                                                                                                                    |
+| `list_dcv_policy_status`     | read-only            | List DCV policy lifecycle status                                                                                                            |
+| `get_dcv_policy_status`      | read-only            | Get full DCV policy and domain status                                                                                                       |
+| `run_dcv_policy`             | mutating-safe        | Start DCV for every eligible policy domain                                                                                                  |
+| `run_dcv_domain`             | mutating-safe        | Start DCV for one policy domain                                                                                                             |
+| `cancel_dcv_run`             | mutating-destructive | Cancel the whole active DCV policy run                                                                                                      |
+| `list_dcv_events`            | read-only            | List policy or domain DCV lifecycle events                                                                                                  |
 
 ## Dashboards (12 tools)
 

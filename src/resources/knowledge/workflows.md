@@ -37,6 +37,32 @@ Each workflow supports up to four sub-actions:
 
 ---
 
+## WebRA Update Template: `autoRenew`
+
+For a WebRA `update` workflow, the request template can include the
+per-certificate `autoRenew` element:
+
+```json
+{
+  "autoRenew": {
+    "value": true
+  }
+}
+```
+
+Call `get_request_template` for `workflow: "update"` and `module: "webra"`
+before submitting the generic request. Submit the value in
+`template.autoRenew`; Horizon accepts the change only when the profile's
+`autoRenewalPolicy.editable` is `true`. The dedicated
+`set_certificate_auto_renew` tool submits this exact update request for one
+certificate.
+
+This is WebRA per-certificate automatic renewal, not the trust-chain
+automation-policy renewal in `automation.md`. The trust-chain automation policy
+governs chain operations and does not set `template.autoRenew`.
+
+---
+
 ## AuthorizationLevels = WHO (28 Fields)
 
 The `authorizationLevels` object on a profile contains **28 fields**, each

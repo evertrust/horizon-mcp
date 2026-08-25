@@ -62,6 +62,8 @@ const MODULES = [
   'monitored',
 ] as const;
 
+const TERMS_OF_SERVICE_MODULES = ['webra', 'scep', 'est'] as const;
+
 const SUBTYPES = [
   'AcmeProfile',
   'AcmeExternalProfile',
@@ -103,7 +105,7 @@ const MANDATORY_INPUT_FIELDS = [
   'crypto_policy',
 ] as const;
 
-/** Union of every top-level property key across all 11 subtypes (53 keys). */
+/** Union of every top-level property key across all 11 subtypes (54 keys). */
 const KNOWN_KEYS = [
   'acmeUrl',
   'authorizationLevels',
@@ -152,6 +154,7 @@ const KNOWN_KEYS = [
   'selfPermissions',
   'thirdPartyConnector',
   'thirdPartyDiscoverySync',
+  'termsOfService',
   'timeout',
   'tlsAlpn01Port',
   'triggers',
@@ -161,6 +164,54 @@ const KNOWN_KEYS = [
 ] as const;
 
 const objectRecord = z.record(z.string(), z.unknown());
+
+const AUTO_RENEWAL_POLICY_SCHEMA = z
+  .object({
+    default: z
+      .boolean()
+      .describe('Default auto-renew value for new certificates.'),
+    editable: z
+      .boolean()
+      .describe('Whether a certificate auto-renew value can be changed.'),
+  })
+  .describe(
+    'WebRA auto-renewal policy. Server-side transitions: adding the policy ' +
+      'where none existed bulk-sets existing certificates to the new default; ' +
+      "removing it disables auto-renew on all the profile's certificates; " +
+      'changing an existing policy does not bulk-rewrite existing flags.',
+  );
+
+function assertTypedAutoRenewalPolicy(
+  config: Record<string, unknown> | undefined,
+): void {
+  if (config?.['autoRenewalPolicy'] !== undefined) {
+    throw new Error(
+      'Pass autoRenewalPolicy through the typed auto_renewal_policy field, not config.',
+    );
+  }
+}
+
+function assertTypedTermsOfService(
+  config: Record<string, unknown> | undefined,
+): void {
+  if (config?.['termsOfService'] !== undefined) {
+    throw new Error(
+      'Pass termsOfService through the typed terms_of_service field, not config.',
+    );
+  }
+}
+
+function assertTermsOfServiceModule(body: Record<string, unknown>): void {
+  const module = body['module'] as (typeof TERMS_OF_SERVICE_MODULES)[number];
+  if (
+    body['termsOfService'] !== undefined &&
+    !TERMS_OF_SERVICE_MODULES.includes(module)
+  ) {
+    throw new Error(
+      'terms_of_service is accepted only for profile modules: webra, scep, est.',
+    );
+  }
+}
 
 /**
  * Merge the typed mandatory params (snake_case -> camelCase) and the free-form
@@ -174,8 +225,12 @@ function buildProfileBody(args: {
   requests_policy?: Record<string, unknown>;
   self_permissions?: Record<string, unknown>;
   crypto_policy?: Record<string, unknown>;
+  auto_renewal_policy?: { default: boolean; editable: boolean };
+  terms_of_service?: string;
   config?: Record<string, unknown>;
 }): Record<string, unknown> {
+  assertTypedAutoRenewalPolicy(args.config);
+  assertTypedTermsOfService(args.config);
   const body: Record<string, unknown> = { ...(args.config ?? {}) };
   if (args.module !== undefined) body['module'] = args.module;
   if (args.name !== undefined) body['name'] = args.name;
@@ -188,6 +243,10 @@ function buildProfileBody(args: {
     body['selfPermissions'] = args.self_permissions;
   if (args.crypto_policy !== undefined)
     body['cryptoPolicy'] = args.crypto_policy;
+  if (args.auto_renewal_policy !== undefined)
+    body['autoRenewalPolicy'] = args.auto_renewal_policy;
+  if (args.terms_of_service !== undefined)
+    body['termsOfService'] = args.terms_of_service;
   return body;
 }
 
@@ -197,6 +256,7 @@ function assertProfileBody(body: Record<string, unknown>): void {
     knownKeys: KNOWN_KEYS,
     enums: { module: MODULES },
   });
+  assertTermsOfServiceModule(body);
 }
 
 /**
@@ -238,13 +298,25 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
   crypto_policy: objectRecord.describe(
     'Crypto policy object (key types, escrow, P12 handling).',
   ),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  terms_of_service: z
+    .string()
+    .optional()
+    .describe(
+      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+        'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+        'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+        'delete_terms_of_service; deletion fails while a profile references the object.',
+    ),
   config: objectRecord
     .optional()
     .describe(
       'All other subtype-specific top-level fields (e.g. pkiConnector, ca, ' +
         'mode, scepRA, caps, authorizationMode, certificateTemplate, ' +
         'displayName, triggers, gradingPolicies). Keys must be the exact ' +
-        'camelCase API names from describe_certificate_profile_schema.',
+        'camelCase API names from describe_certificate_profile_schema. Pass ' +
+        'autoRenewalPolicy through auto_renewal_policy and termsOfService through ' +
+        'terms_of_service, not config.',
     ),
 });
 
@@ -259,11 +331,23 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .optional()
     .describe('CertificateProfileSelfPermissions object.'),
   crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  terms_of_service: z
+    .string()
+    .optional()
+    .describe(
+      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+        'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+        'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+        'delete_terms_of_service; deletion fails while a profile references the object.',
+    ),
   config: objectRecord
     .optional()
     .describe(
       'Other subtype-specific top-level fields to override (exact camelCase ' +
-        'API names from describe_certificate_profile_schema). module is immutable.',
+        'API names from describe_certificate_profile_schema). Pass ' +
+        'autoRenewalPolicy through auto_renewal_policy and termsOfService through ' +
+        'terms_of_service, not config. module is immutable.',
     ),
   clear_fields: z
     .array(z.string())
@@ -327,6 +411,7 @@ export function registerCertificateProfileTools(
       assertProfileUpdateBody(body);
       return body;
     },
+    validateMergedBody: assertTermsOfServiceModule,
   });
 
   registerDeleteTool(server, client, SPEC, {

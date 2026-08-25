@@ -12,6 +12,7 @@ import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+import { HorizonError } from '../../src/client/errors.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
@@ -319,6 +320,29 @@ describe('Lifecycle tools', () => {
 
   beforeEach(() => {
     resetMocks(mockClient);
+  });
+
+  describe('get_request_template', () => {
+    it('sends include_terms_of_service in the query string, not the POST body', async () => {
+      await client.callTool({
+        name: 'get_request_template',
+        arguments: {
+          workflow: 'enroll',
+          profile: 'webra-enrollment',
+          module: 'webra',
+          include_terms_of_service: true,
+        },
+      });
+
+      const [url, body] = mockClient.post.mock.calls[0]!;
+      expect(url).toBe('/api/v1/requests/template?termsOfService=true');
+      expect(body).toEqual({
+        workflow: 'enroll',
+        profile: 'webra-enrollment',
+        module: 'webra',
+      });
+      expect(body).not.toHaveProperty('termsOfService');
+    });
   });
 
   describe('search_certificates', () => {
@@ -682,6 +706,120 @@ describe('Lifecycle tools', () => {
       const tpl = payload['template'] as Record<string, unknown>;
       expect(tpl['keyType']).toBe('rsa-3072');
       expect(payload['extra']).toBe('field');
+    });
+  });
+
+  describe('set_certificate_auto_renew', () => {
+    it('submits an update request for a certificate ID', async () => {
+      mockClient.post.mockResolvedValueOnce({ id: 'req-auto-renew-id' });
+
+      await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/submit', {
+        module: 'webra',
+        workflow: 'update',
+        certificateId: '0123456789abcdef01234567',
+        template: { autoRenew: { value: true } },
+      });
+    });
+
+    it('submits an update request for a certificate PEM', async () => {
+      mockClient.post.mockResolvedValueOnce({ id: 'req-auto-renew-pem' });
+      const certificatePem =
+        '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+
+      await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: { certificate_pem: certificatePem, enabled: false },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/submit', {
+        module: 'webra',
+        workflow: 'update',
+        certificatePem,
+        template: { autoRenew: { value: false } },
+      });
+    });
+
+    it('rejects a missing certificate selector before calling Horizon', async () => {
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: { enabled: true },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'exactly one of certificate_id or certificate_pem',
+      );
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('rejects both certificate selectors before calling Horizon', async () => {
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          certificate_pem:
+            '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'exactly one of certificate_id or certificate_pem',
+      );
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('returns a clear error when the profile policy is not editable', async () => {
+      mockClient.post.mockRejectedValueOnce(
+        new HorizonError(403, { message: 'auto-renew is not editable' }),
+      );
+
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect(parseToolResult(result)['error']).toContain(
+        'autoRenewalPolicy.editable is true',
+      );
+    });
+
+    it('preserves standard Horizon errors that are unrelated to editability', async () => {
+      mockClient.post.mockRejectedValueOnce(
+        new HorizonError(403, {
+          errorCode: 'LIC-004',
+          message: 'Expired License',
+        }),
+      );
+
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'Horizon API error 403 [LIC-004]. Expired License',
+      );
+      expect((result as ToolResult).content[0]!.text).not.toContain(
+        'autoRenewalPolicy.editable is true',
+      );
     });
   });
 

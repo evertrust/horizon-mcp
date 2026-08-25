@@ -1,9 +1,10 @@
 /**
  * Lifecycle tools: certificates, requests, events, aggregation (barrel module).
  *
- * 23 MCP tools covering the full Horizon certificate lifecycle:
+ * 24 MCP tools covering the full Horizon certificate lifecycle:
  *   - Certificate search (2): search_certificates, export_certificates_csv
- *   - Certificate operations (2): get_certificate, download_certificate
+ *   - Certificate operations (3): get_certificate, download_certificate,
+ *     set_certificate_auto_renew
  *   - Request management (8): get_request_template, submit_request,
  *     approve_request, deny_request, cancel_request, search_requests,
  *     get_request, export_requests_csv
