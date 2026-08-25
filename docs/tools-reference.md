@@ -1,6 +1,6 @@
 # Tool reference
 
-218 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
+221 tools across 12 domains (incl. 129 Configuration CRUD tools). Safety tiers:
 
 - **read-only** - no side effects
 - **mutating-safe** - creates or modifies data without being classified as destructive; it may still be non-idempotent and must not be retried blindly
@@ -161,7 +161,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 
 ---
 
-## Configuration (126 tools)
+## Configuration (129 tools)
 
 Source-grounded CRUD over Horizon configuration objects (see `docs/audit/` for
 the per-object contracts). Every family has read tools (`list_*`, `get_*`);
@@ -222,14 +222,14 @@ and renews domain validation on a schedule.
 | DCV providers (digicert/gs_mssl)                                    | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
 
-### Configuration: Identity & access (READ-ONLY, 4 tools)
+### Configuration: Identity & access (7 tools)
 
-Deliberately read-only: this identity/access surface is inspectable but never
-mutable via the MCP server.
+Identity providers remain read-only. Service accounts support CRUD for callers
+with `access-management:service-account:*`; list and get support audit access.
 
 | Object                                         | Tools                                             | Safety                     |
 | ---------------------------------------------- | ------------------------------------------------- | -------------------------- |
-| Service accounts (incl. 2.10 JWKS trustConfig) | `list_service_accounts` `get_service_account`     | read-only (no write tools) |
+| Service accounts (incl. 2.10 JWKS trustConfig) | `list/get/create/update/delete_service_account`   | read-only + mutating       |
 | Identity providers (OIDC group-claim / JIT)    | `list_identity_providers` `get_identity_provider` | read-only (no write tools) |
 
 ### Complete configuration tool index
@@ -364,5 +364,8 @@ annotations returned by MCP `tools/list`.
 | `delete_dcv_policy`                    | mutating-destructive | Delete a DCV policy                                     |
 | `list_service_accounts`                | read-only            | List service accounts                                   |
 | `get_service_account`                  | read-only            | Get a service account                                   |
+| `create_service_account`               | mutating-safe        | Create a service account                                |
+| `update_service_account`               | mutating-safe        | Update a service account                                |
+| `delete_service_account`               | mutating-destructive | Delete a service account                                |
 | `list_identity_providers`              | read-only            | List identity providers                                 |
 | `get_identity_provider`                | read-only            | Get an identity provider                                |

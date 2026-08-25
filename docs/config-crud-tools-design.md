@@ -5,7 +5,7 @@
 **Status:** Implemented and shipped; retained as a historical design record
 
 > [!IMPORTANT]
-> This document records the approved implementation plan and its source-grounding method. It is not the current user-facing contract. The delivered surface intentionally differs where Horizon exposes no write API or where mutation was excluded: grading policies/rulesets, service accounts, and identity providers are read-only; system configuration is update-only; archives have no update operation. See [tools-reference.md](tools-reference.md) for the complete current tool list and runtime safety tiers.
+> This document records the approved implementation plan and its source-grounding method. It is not the current user-facing contract. The delivered surface intentionally differs where Horizon exposes no write API or where mutation was excluded: grading policies/rulesets and identity providers are read-only; system configuration is update-only; archives have no update operation. See [tools-reference.md](tools-reference.md) for the complete current tool list and runtime safety tiers.
 
 ## Goal
 
@@ -22,6 +22,7 @@ independently verified before any tool is generated.
 ### Original planned scope (not the delivered contract)
 
 Certificate & PKI:
+
 - Certificate profile (`/api/v1/certificate/profiles`)
 - Certificate authority (`/api/v1/cas`)
 - Certificate label (`/api/v1/certificate/labels`)
@@ -31,11 +32,13 @@ Certificate & PKI:
 - PKI queue (`/api/v1/pki/queues`)
 
 RBAC (kept per user decision):
+
 - Role (`/api/v1/security/roles`)
 - Team (`/api/v1/security/teams`)
 - Password policy (`/api/v1/security/passwordpolicies`)
 
 Automation & integrations:
+
 - Automation policy (`/api/v1/automation/policies`)
 - Execution policy (`/api/v1/automation/executions`)
 - Third-party connector (`/api/v1/thirdparty/connectors`)
@@ -43,12 +46,14 @@ Automation & integrations:
 - WCCE forest mapping (`/api/v1/wcce/forests`)
 
 System & operations:
+
 - Storage (`/api/v1/system/storages`)
 - System configuration (`/api/v1/system/configuration`) - singleton, PUT-only
 - Scheduled task (`/api/v1/scheduler/tasks`)
 - Archive (`/api/v1/archives`)
 
 Gap-fill:
+
 - Triggers (`/api/v1/triggers`) - today only `create_rest_notification` +
   `delete_trigger` + `simulate_trigger` exist; add generic create/update and any
   missing read coverage as the audit reveals.
@@ -59,6 +64,7 @@ exploration and are treated as a **draft** to be verified by the audit phase.
 ### Explicitly excluded from the original plan
 
 Identity & access surface under `/api/v1/security/*`:
+
 - Identity providers, local identities, service accounts, tenants, SCIM
   profiles, principal infos, credentials.
 
@@ -83,6 +89,7 @@ A single dedicated workflow runs four phases, pipelined per object so each
 object flows independently through audit -> build -> test.
 
 ### Planned phase 1 - AUDIT (gitnexus + Scala source)
+
 For each in-scope object, locate the Play controller, route, request body case
 class / JSON `Reads`/`Format`, enums, and validation. Emit a structured
 **contract**:
@@ -99,6 +106,7 @@ exactly. A completeness critic checks that no object, verb, or mandatory field
 was dropped. Contracts that fail verification are re-audited.
 
 ### Planned phase 2 - BUILD
+
 One agent per object writes `src/tools/config/<object>.ts` (its own file, so
 parallel writes never conflict) plus a unit test file, consuming **only** the
 verified contract. Shared CRUD wiring lives in `src/tools/config/_scaffold.ts`.
@@ -122,12 +130,14 @@ Profile coverage spans **all** profile/enrollment-config CRUD endpoints the
 audit enumerates from `openapi/paths`, not just managed/monitored.
 
 ### Planned phase 3 - REVIEW + PIPELINE
+
 `code-reviewer` per file (bugs, security, maintainability). Then a single serial
 wiring step registers every family in `src/index.ts` and
 `tests/e2e/setup.ts:registerAllTools`. Then `lint` + `typecheck` + unit tests to
 green.
 
 ### Planned phase 4 - QA (live instance)
+
 E2E tests per object run against live QA with `.env.local` sourced. Full
 create -> read-back/assert -> update -> assert -> delete -> assert-gone, with
 guaranteed teardown. Per user decision, this is destructive for all object types
@@ -194,6 +204,7 @@ configuration) use GET -> PUT-identical -> GET. All test objects are named
 The plan and the audit workflow were peer-reviewed by Codex. Accepted changes:
 
 Audit phase (applied to the audit workflow):
+
 - Use a single bundled, self-contained OpenAPI JSON (`redocly bundle`, internal
   `#/components` refs, 142 paths / ~759 schemas) as the primary deterministic
   source instead of hand-navigating 1050 files.
@@ -214,6 +225,7 @@ Audit phase (applied to the audit workflow):
   (`docs/audit/<obj>.schema.json`) for the build to embed.
 
 Build phase (to apply in phase 2):
+
 - Complex objects expose the subtype discriminator + known mandatory fields as
   REQUIRED typed params and validate the body via discriminated `oneOf`, not a
   free-form body param (so the model still cannot guess mandatory fields).
@@ -227,6 +239,7 @@ Build phase (to apply in phase 2):
   missing mandatory fields.
 
 QA phase (to apply in phase 4 - re-confirm before running):
+
 - Codex flagged as CRITICAL that destructive create/update/delete on a SHARED
   QA instance is unsafe for singleton/global objects (CAs, storage, system
   configuration, password policies, scheduled tasks, triggers) because unique

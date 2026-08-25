@@ -25,6 +25,14 @@ const SENSITIVE_FIELDS = new Set([
 const SPECIFIC_REMEDIATION: Record<string, string> = {
   'HQL-001':
     'Invalid query syntax. Use validate_hcql/hrql/heql to check your query.',
+  'LIC-004':
+    'License expired. Renew the Horizon license, then retry the operation.',
+  'SERV-ACC-003':
+    'Already exists: use update_service_account for the service account instead.',
+  'SERV-ACC-004':
+    'Not found: use list_service_accounts to see available service accounts.',
+  'SERV-ACC-005':
+    'This configuration-defined service account is read-only and cannot be changed or deleted.',
   SecAuth001:
     'Authentication failed. Check credentials - ' +
     'HORIZON_API_ID/HORIZON_API_KEY for API key auth, ' +
@@ -33,13 +41,15 @@ const SPECIFIC_REMEDIATION: Record<string, string> = {
     'Insufficient permissions. Check role assignments for the authenticated principal.',
 };
 
-// Error code suffix -> remediation hint
-const SUFFIX_REMEDIATION: Record<string, string> = {
-  '003': 'Not found. Use the corresponding list_* tool to see available items.',
-  '004': 'Already exists. Use the corresponding update_* tool instead.',
-  '005': 'Referenced by other objects. Remove references first, then retry.',
-  '002':
-    'Validation failed. Check the error details for specific field issues.',
+// Remediation depends on an error-code family, never just a numeric suffix.
+const FAMILY_REMEDIATION: Record<string, Record<string, string>> = {
+  CRT: {
+    '003':
+      'Not found. Use the corresponding list_* tool to see available items.',
+  },
+  PRF: {
+    '004': 'Already exists. Use the corresponding update_* tool instead.',
+  },
 };
 
 export class HorizonError extends Error {
@@ -134,8 +144,10 @@ export function redactValue(s: string): string {
 function resolveRemediation(errorCode: string | undefined): string | undefined {
   if (!errorCode) return undefined;
   if (errorCode in SPECIFIC_REMEDIATION) return SPECIFIC_REMEDIATION[errorCode];
-  const suffix = errorCode.includes('-') ? errorCode.split('-').pop()! : '';
-  return SUFFIX_REMEDIATION[suffix];
+  const parts = errorCode.split('-');
+  const suffix = parts.pop();
+  const family = parts.join('-');
+  return suffix && family ? FAMILY_REMEDIATION[family]?.[suffix] : undefined;
 }
 
 export function parseErrorResponse(
