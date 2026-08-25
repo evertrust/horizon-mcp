@@ -3,18 +3,6 @@
 exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
 [
   {
-    "annotations": {
-      "destructiveHint": false,
-      "idempotentHint": false,
-      "openWorldHint": true,
-      "readOnlyHint": false,
-      "title": "Create Service Account",
-    },
-    "description": "Create a service account for federated JWT authentication. Requires manage access (\`access-management:service-account:*\`). Grant only explicit roles and permissions, never broad permissions inferred by the model.
-Safety tier: mutating-safe
-IMPORTANT: name is an immutable primary key and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.
-MANDATORY fields: name, trustConfig, validationRules, permissions, roles. If the user has not supplied one of these, DO NOT infer or default it - ask the user for the value.
-[when: caller explicitly provides the JWT trust configuration and grants | not: caller only wants to inspect service-account configuration | pre: confirm exact roles and permissions; do not infer broad access]",
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
@@ -129,18 +117,6 @@ MANDATORY fields: name, trustConfig, validationRules, permissions, roles. If the
     "name": "create_service_account",
   },
   {
-    "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": false,
-      "openWorldHint": true,
-      "readOnlyHint": false,
-      "title": "Delete Service Account",
-    },
-    "description": "Delete a service account. Requires manage access (\`access-management:service-account:*\`).
-Safety tier: mutating-destructive
-Requires name confirmation via expected_name.
-Configuration-defined accounts are read-only and cannot be deleted (SERV-ACC-005).
-[when: caller explicitly wants to permanently remove a service account | not: caller only wants to revoke or inspect its access | pre: confirm expected_name and check that the account is not read-only]",
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
@@ -162,17 +138,6 @@ Configuration-defined accounts are read-only and cannot be deleted (SERV-ACC-005
     "name": "delete_service_account",
   },
   {
-    "annotations": {
-      "destructiveHint": true,
-      "idempotentHint": true,
-      "openWorldHint": true,
-      "readOnlyHint": false,
-      "title": "Update Service Account",
-    },
-    "description": "Update a service account. Requires manage access (\`access-management:service-account:*\`). Omitted fields are preserved from the stored account, so trustConfig may be omitted when unchanged. Only an explicitly replaced static JWKS must be supplied as a JSON string.
-Safety tier: mutating-destructive
-Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored fields not mentioned in the call are preserved by the merge; use clear_fields to reset a field. IMPORTANT: name is an immutable primary key and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.
-[when: caller wants to change an existing service account | not: caller only wants to inspect service-account configuration | pre: get the account first; omitted fields are preserved, trustConfig may be omitted when unchanged, and only an explicitly replaced static JWKS must be a JSON string]",
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {

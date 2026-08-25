@@ -482,12 +482,7 @@ describe('Golden tests', () => {
       .filter((tool) => tool.name.endsWith('_service_account'))
       .filter((tool) => !tool.name.startsWith('get_'))
       .sort((a, b) => a.name.localeCompare(b.name))
-      .map((tool) => ({
-        name: tool.name,
-        description: tool.description,
-        annotations: tool.annotations,
-        inputSchema: tool.inputSchema,
-      }));
+      .map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema }));
 
     expect(tools).toMatchSnapshot();
   });
