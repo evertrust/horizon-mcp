@@ -41,6 +41,100 @@ const optionalCsvListSchema = z
     return items.length > 0 ? items : undefined;
   });
 
+export type OAuthAuthMethod = 'client_secret_basic' | 'client_secret_post';
+
+export interface OAuthIssuerSettings {
+  readonly tokenUrl: string;
+  readonly authMethod: OAuthAuthMethod;
+}
+
+export type OAuthIssuerMap = Readonly<Record<string, OAuthIssuerSettings>>;
+
+const MAX_OAUTH_ISSUERS_LENGTH = 65_536;
+const OAUTH_AUTH_METHODS: ReadonlySet<string> = new Set([
+  'client_secret_basic',
+  'client_secret_post',
+]);
+
+function isAbsoluteHttpsUrl(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  try {
+    return new URL(value).protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function parseOAuthIssuerEntry(
+  issuer: string,
+  rawEntry: unknown,
+): OAuthIssuerSettings {
+  if (!isAbsoluteHttpsUrl(issuer)) {
+    throw new Error(
+      `HORIZON_OAUTH_ISSUERS issuer "${issuer}" must be an absolute HTTPS URL`,
+    );
+  }
+  if (!rawEntry || typeof rawEntry !== 'object' || Array.isArray(rawEntry)) {
+    throw new Error(
+      `HORIZON_OAUTH_ISSUERS issuer "${issuer}" must map to an object`,
+    );
+  }
+  const entry = rawEntry as Record<string, unknown>;
+  if (!isAbsoluteHttpsUrl(entry['tokenUrl'])) {
+    throw new Error(
+      `HORIZON_OAUTH_ISSUERS issuer "${issuer}" has tokenUrl that must be an absolute HTTPS URL`,
+    );
+  }
+  if (!OAUTH_AUTH_METHODS.has(String(entry['authMethod']))) {
+    throw new Error(
+      `HORIZON_OAUTH_ISSUERS issuer "${issuer}" has unsupported authMethod "${String(entry['authMethod'])}"; expected client_secret_basic or client_secret_post`,
+    );
+  }
+  const extraKey = Object.keys(entry).find(
+    (key) => key !== 'tokenUrl' && key !== 'authMethod',
+  );
+  if (extraKey !== undefined) {
+    throw new Error(
+      `HORIZON_OAUTH_ISSUERS issuer "${issuer}" has unsupported key "${extraKey}"`,
+    );
+  }
+  return Object.freeze({
+    tokenUrl: entry['tokenUrl'],
+    authMethod: entry['authMethod'] as OAuthAuthMethod,
+  });
+}
+
+function parseOAuthIssuers(raw: string): OAuthIssuerMap {
+  let value: unknown;
+  try {
+    value = JSON.parse(raw) as unknown;
+  } catch {
+    throw new Error('HORIZON_OAUTH_ISSUERS must be valid JSON');
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error(
+      'HORIZON_OAUTH_ISSUERS must be a JSON object keyed by issuer URL',
+    );
+  }
+
+  const issuers: Record<string, OAuthIssuerSettings> = {};
+  for (const [issuer, entry] of Object.entries(value)) {
+    issuers[issuer] = parseOAuthIssuerEntry(issuer, entry);
+  }
+  return Object.freeze(issuers);
+}
+
+const oauthIssuersSchema = z
+  .string()
+  .max(
+    MAX_OAUTH_ISSUERS_LENGTH,
+    'HORIZON_OAUTH_ISSUERS must not exceed 65,536 characters',
+  )
+  .optional()
+  .transform((value) =>
+    value === undefined ? undefined : parseOAuthIssuers(value),
+  );
+
 const settingsSchema = z
   .object({
     url: z.string().default('https://localhost'),
@@ -52,6 +146,7 @@ const settingsSchema = z
     oauthClientSecret: z.string().max(4096).default(''),
     oauthScope: z.string().max(2048).default(''),
     oauthAudience: z.string().max(2048).default(''),
+    oauthIssuers: oauthIssuersSchema,
     authMode: z.string().default(''), // deprecated - log warning if set
     clientCert: z.string().default(''),
     clientKey: z.string().default(''),

@@ -124,6 +124,9 @@ export function createAuthProvider(settings: HorizonSettings): AuthProvider {
             ...(settings.oauthAudience
               ? { audience: settings.oauthAudience }
               : {}),
+            ...(settings.oauthIssuers !== undefined
+              ? { issuers: settings.oauthIssuers }
+              : {}),
           }
         : undefined,
     );

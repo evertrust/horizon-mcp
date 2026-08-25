@@ -246,6 +246,33 @@ describe('buildSessionAuth', () => {
     expect(auth).toBeInstanceOf(ServiceAccountAuthProvider);
   });
 
+  it('passes the operator issuer allowlist to HTTP renewal providers', () => {
+    const oauthIssuers = {
+      'https://issuer.example.com': {
+        tokenUrl: 'https://issuer.example.com/token',
+        authMethod: 'client_secret_post' as const,
+      },
+    };
+    const settings = {
+      ...loadSettings({ HORIZON_TRANSPORT: 'http' }),
+      oauthIssuers,
+    };
+    const { auth } = buildSessionAuth(
+      {
+        kind: 'service',
+        serviceAccount: 'ci',
+        jwt: 'jwt',
+        oauth: { clientId: 'client', clientSecret: 'secret' },
+      },
+      cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
+      settings,
+    );
+
+    expect(
+      (auth as unknown as { _oauth: { issuers: unknown } })._oauth.issuers,
+    ).toBe(oauthIssuers);
+  });
+
   it('api-key mode builds an ApiKeyAuthProvider', () => {
     const settings = loadSettings({ HORIZON_TRANSPORT: 'http' });
     const { auth } = buildSessionAuth(

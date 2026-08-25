@@ -54,15 +54,17 @@ would silently grant that account's privileges to every accepted subject. Being
 "off by default" does not make an unsafe option safe; it makes it a
 configuration mistake away from being live.
 
-**2. Reusing the service-account discovery path as an inbound token verifier is
-an SSRF vector.** `src/auth/service-account.ts` extracts `iss` from an
-_unverified_ JWT and performs OIDC discovery against that URL. Today that is safe
-only because renewal happens after Horizon has already accepted the credential,
-so the issuer is implicitly trusted. An inbound MCP token has no such prior trust
-gate: an attacker would choose the issuer, and therefore the URL the server
-fetches. Any future verifier must use a **pinned, independently validated**
-authorization-server issuer and must never derive discovery targets from
-untrusted token content.
+**2. Reusing the service-account discovery fallback as an inbound token verifier
+is an SSRF vector.** Service-account renewal supports an operator-pinned
+`HORIZON_OAUTH_ISSUERS` map. When that variable is absent, the compatibility
+fallback in `src/auth/service-account.ts` extracts `iss` from a JWT and performs
+OIDC discovery against that URL. The fallback runs only after Horizon accepts
+the credential, so the issuer has passed that trust gate, but it remains the
+lower-assurance mode. An inbound MCP token has no such prior trust gate: an
+attacker would choose the issuer, and therefore the URL the server fetches. Any
+future verifier must use a **pinned, independently validated** authorization
+server issuer and must never derive discovery targets from untrusted token
+content.
 
 **3. OAuth alongside pass-through is bypassable.** If the endpoint advertises
 itself as an OAuth protected resource while `api-key`, `service`, and `mtls`

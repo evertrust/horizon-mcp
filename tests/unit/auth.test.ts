@@ -303,6 +303,12 @@ describe('createAuthProvider (factory)', () => {
     });
 
     it('passes the complete OAuth renewal tuple to the provider', () => {
+      const oauthIssuers = {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_basic' as const,
+        },
+      };
       const provider = createAuthProvider(
         makeSettings({
           serviceAccount: 'automation',
@@ -311,6 +317,7 @@ describe('createAuthProvider (factory)', () => {
           oauthClientSecret: 'secret',
           oauthScope: 'horizon.read',
           oauthAudience: 'horizon-api',
+          oauthIssuers,
         }),
       ) as ServiceAccountAuthProvider;
 
@@ -320,6 +327,7 @@ describe('createAuthProvider (factory)', () => {
         clientSecret: 'secret',
         scope: 'horizon.read',
         audience: 'horizon-api',
+        issuers: oauthIssuers,
       });
     });
   });

@@ -1,3 +1,4 @@
+import type { OAuthIssuerMap } from '../settings.js';
 import { AuthProvider } from './base.js';
 
 export interface ServiceAccountOAuthOptions {
@@ -5,6 +6,7 @@ export interface ServiceAccountOAuthOptions {
   readonly clientSecret: string;
   readonly scope?: string;
   readonly audience?: string;
+  readonly issuers?: OAuthIssuerMap;
   readonly refreshSkewSeconds?: number;
   readonly requestTimeoutMs?: number;
   readonly fetcher?: typeof fetch;
@@ -93,6 +95,7 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     issuer: string;
     tokenEndpoint: string;
     authMethod: 'client_secret_basic' | 'client_secret_post';
+    exactIssuerMatch: boolean;
   } | null = null;
   private _refreshPromise: Promise<void> | null = null;
 
@@ -154,6 +157,25 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     if (this._discovery) return this._discovery;
 
     const claims = decodeClaims(this._jwt);
+    const configuredIssuers = this._oauth?.issuers;
+    if (configuredIssuers) {
+      const configured = configuredIssuers[claims.iss];
+      if (!configured) {
+        const names = Object.keys(configuredIssuers).sort().join(', ');
+        throw new Error(
+          `OAuth renewal refused: JWT issuer "${claims.iss}" is not listed in ` +
+            `HORIZON_OAUTH_ISSUERS. Configured issuers: ${names || '(none)'}`,
+        );
+      }
+      this._discovery = {
+        issuer: claims.iss,
+        tokenEndpoint: configured.tokenUrl,
+        authMethod: configured.authMethod,
+        exactIssuerMatch: true,
+      };
+      return this._discovery;
+    }
+
     const issuer = secureUrl(claims.iss, 'JWT issuer');
     const issuerValue = issuer.toString().replace(/\/$/, '');
     const discoveryUrl = `${issuerValue}/.well-known/openid-configuration`;
@@ -198,6 +220,7 @@ export class ServiceAccountAuthProvider extends AuthProvider {
       issuer: issuerValue,
       tokenEndpoint: endpoint.toString(),
       authMethod,
+      exactIssuerMatch: false,
     };
     return this._discovery;
   }
@@ -242,7 +265,10 @@ export class ServiceAccountAuthProvider extends AuthProvider {
       throw new Error('OAuth token response is missing access_token');
     }
     const renewed = decodeClaims(accessToken);
-    if (renewed.iss.replace(/\/$/, '') !== discovery.issuer) {
+    const renewedIssuer = discovery.exactIssuerMatch
+      ? renewed.iss
+      : renewed.iss.replace(/\/$/, '');
+    if (renewedIssuer !== discovery.issuer) {
       throw new Error('renewed JWT issuer differs from the original issuer');
     }
     this._jwt = accessToken;

@@ -13,6 +13,82 @@ function loadSettings(env: Record<string, string | undefined>) {
 }
 
 describe('loadSettings', () => {
+  describe('OAuth issuer allowlist validation', () => {
+    it('parses a valid issuer map', () => {
+      const oauthIssuers = {
+        'https://issuer.example.com/tenant': {
+          tokenUrl: 'https://oauth.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+        'https://login.example.com': {
+          tokenUrl: 'https://login.example.com/oauth/token',
+          authMethod: 'client_secret_post',
+        },
+      };
+
+      expect(
+        loadSettings({ HORIZON_OAUTH_ISSUERS: JSON.stringify(oauthIssuers) })
+          .oauthIssuers,
+      ).toEqual(oauthIssuers);
+    });
+
+    it.each([
+      {
+        name: 'issuer key',
+        offendingKey: 'http://issuer.example.com',
+        value: {
+          'http://issuer.example.com': {
+            tokenUrl: 'https://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+      },
+      {
+        name: 'token URL',
+        offendingKey: 'https://issuer.example.com',
+        value: {
+          'https://issuer.example.com': {
+            tokenUrl: 'http://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+      },
+    ])(
+      'rejects a non-HTTPS $name and names the offending key',
+      ({ offendingKey, value }) => {
+        expect(() =>
+          loadSettings({ HORIZON_OAUTH_ISSUERS: JSON.stringify(value) }),
+        ).toThrow(offendingKey);
+      },
+    );
+
+    it('rejects an unknown auth method and names the offending key', () => {
+      const issuer = 'https://issuer.example.com';
+      expect(() =>
+        loadSettings({
+          HORIZON_OAUTH_ISSUERS: JSON.stringify({
+            [issuer]: {
+              tokenUrl: 'https://issuer.example.com/token',
+              authMethod: 'private_key_jwt',
+            },
+          }),
+        }),
+      ).toThrow(issuer);
+    });
+
+    it('rejects malformed JSON with the environment variable named', () => {
+      expect(() =>
+        loadSettings({ HORIZON_OAUTH_ISSUERS: '{not-json' }),
+      ).toThrow('HORIZON_OAUTH_ISSUERS');
+    });
+
+    it('bounds the issuer map environment value', () => {
+      expect(() =>
+        loadSettings({ HORIZON_OAUTH_ISSUERS: 'x'.repeat(65_537) }),
+      ).toThrow('HORIZON_OAUTH_ISSUERS');
+    });
+  });
+
   describe('stdio authentication validation', () => {
     const partialCases = [
       {

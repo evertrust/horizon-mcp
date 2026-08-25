@@ -62,12 +62,15 @@ HORIZON_OAUTH_CLIENT_ID=oauth-client
 HORIZON_OAUTH_CLIENT_SECRET=oauth-secret
 HORIZON_OAUTH_SCOPE=horizon.read       # optional, provider-specific
 HORIZON_OAUTH_AUDIENCE=horizon-api     # optional, provider-specific
+HORIZON_OAUTH_ISSUERS='{"https://issuer.example.com":{"tokenUrl":"https://issuer.example.com/oauth/token","authMethod":"client_secret_basic"}}'
 ```
 
 Client ID and secret must be set together. Scope and audience are accepted
-only with that complete pair. The MCP discovers the token endpoint from the
-validated initial JWT's issuer and renews tokens using the same rules described
-under [Service-account JWT renewal](#service-account-jwt-renewal).
+only with that complete pair. `HORIZON_OAUTH_ISSUERS` is operator configuration
+shared by stdio and HTTP renewal. It pins each allowed JWT issuer to a token URL
+and client authentication method. See
+[Service-account JWT renewal](#service-account-jwt-renewal) for the pinned and
+fallback modes.
 
 ## HTTP authentication whitelist
 
@@ -133,11 +136,42 @@ The MCP does not forward the OAuth client headers to Horizon. The MCP does not e
 
 The MCP removes them from parsed and raw request headers. It uses them only in the credential fingerprint.
 
+The issuer allowlist is process-level operator configuration. There is no HTTP
+header for an issuer map, token URL, or authentication method. A caller cannot
+override `HORIZON_OAUTH_ISSUERS`.
+
 Configure the OAuth client to allow the `client_credentials` grant. Configure the required resource, audience, or scopes in your identity provider.
 
-A JWT does not contain a standard renewal URL. The MCP reads the `iss` claim from the initial JWT.
+A JWT does not contain a standard renewal URL. Operators should configure the
+higher-assurance pinned mode at startup:
 
-It then gets the `token_endpoint` from the issuer's OpenID Connect discovery document.
+```bash
+HORIZON_OAUTH_ISSUERS='{
+  "https://issuer.example.com": {
+    "tokenUrl": "https://issuer.example.com/oauth/token",
+    "authMethod": "client_secret_basic"
+  }
+}'
+```
+
+The value is a JSON map from the exact JWT `iss` value to `tokenUrl` and
+`authMethod`. Issuer keys and token URLs must be absolute HTTPS URLs. The only
+accepted methods are `client_secret_basic` and `client_secret_post`. The value
+is limited to 65,536 characters and malformed entries stop startup with an
+error naming the offending issuer key.
+
+With the allowlist configured, the validated initial JWT's `iss` must exactly
+match a map key. Otherwise renewal is refused and the error names the configured
+issuers. The MCP sends credentials only to the mapped `tokenUrl`, using only the
+mapped authentication method. It does not perform discovery in this mode.
+
+When `HORIZON_OAUTH_ISSUERS` is unset, the existing lower-assurance fallback
+remains available for compatibility. After Horizon validates the initial JWT,
+the MCP reads its `iss` claim, requests the issuer's OpenID Connect discovery
+document, verifies the discovery issuer, and uses its `token_endpoint`. The
+issuer and token endpoint must use HTTPS, the endpoint must have the same origin
+as the issuer, and redirects are refused. This mode derives a network target
+from a token claim and should be used only where operator pinning is unavailable.
 
 The renewal sequence is as follows:
 
@@ -145,17 +179,16 @@ The renewal sequence is as follows:
 2. The MCP forwards the initial `X-API-TOKEN` to Horizon without a change.
 3. Horizon validates the initial JWT.
 4. After validation, the MCP trusts the JWT `iss` and `exp` claims.
-5. The MCP reads the issuer's HTTPS `/.well-known/openid-configuration` document. It does not follow redirects.
-6. The MCP verifies the issuer in the discovery response.
-7. The MCP selects `client_secret_basic` or `client_secret_post`. The discovery document must list the selected method.
-8. The MCP requests a token 60 seconds before expiry. It also requests a token after Horizon rejects authentication.
-9. The request contains `grant_type=client_credentials`. It also contains the configured scope or audience.
-10. The MCP uses the returned `access_token` as the new `X-API-TOKEN`.
-11. Concurrent refresh requests use one shared renewal request.
+5. In pinned mode, the MCP requires an exact allowlist match and selects the mapped token URL and authentication method. In fallback mode, it performs the constrained discovery described above.
+6. The MCP requests a token 60 seconds before expiry. It also requests a token after Horizon rejects authentication.
+7. The request contains `grant_type=client_credentials`. It also contains the configured scope or audience.
+8. The MCP verifies that the renewed JWT's `iss` matches the initial issuer before using the token.
+9. The MCP uses the returned `access_token` as the new `X-API-TOKEN`.
+10. Concurrent refresh requests use one shared renewal request.
 
-The issuer and token endpoint must use HTTPS. The token endpoint must have the same origin as the issuer.
-
-These requirements reduce the risk of server-side request forgery (SSRF). Entra ID and Okta deployments usually support this flow.
+Operator pinning removes the token-controlled discovery request and is the
+recommended SSRF control. Entra ID and Okta deployments usually support this
+flow.
 
 Google Workspace service accounts usually use JWT bearer assertions or domain-wide delegation. These flows are different from the `client_credentials` flow.
 
@@ -239,6 +272,7 @@ Use an HTTPS `HORIZON_PUBLIC_URL` behind a TLS termination point. Alternatively,
 | `HORIZON_SERVICE_ACCOUNT` / `HORIZON_API_TOKEN`           | Stdio service       |                     | Environment-owned service-account name and initial JWT   |
 | `HORIZON_OAUTH_CLIENT_ID` / `HORIZON_OAUTH_CLIENT_SECRET` | Stdio renewal       |                     | OAuth client credentials for JWT renewal                 |
 | `HORIZON_OAUTH_SCOPE` / `HORIZON_OAUTH_AUDIENCE`          | Provider-specific   |                     | Optional OAuth renewal parameters                        |
+| `HORIZON_OAUTH_ISSUERS`                                   | Recommended renewal |                     | Operator-pinned issuer, token URL, and auth-method map   |
 | `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential           |
 | `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle               |
 | `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                        |
