@@ -358,6 +358,20 @@ describe('loadSettings', () => {
       expect(settings.apiId).toBe('settings-test');
       expect(settings.url).toBe('https://localhost');
     });
+
+    it('parses configured tested versions as a trimmed comma list', () => {
+      const settings = loadSettings({
+        HORIZON_TESTED_VERSIONS: '2.10, 2.11, ,',
+      });
+
+      expect(settings.testedVersions).toEqual(['2.10', '2.11']);
+    });
+
+    it('parses configured warning versions as a comma list', () => {
+      const settings = loadSettings({ HORIZON_WARN_VERSIONS: '2.9' });
+
+      expect(settings.warnVersions).toEqual(['2.9']);
+    });
   });
 
   describe('SCREAMING_SNAKE_CASE to camelCase conversion', () => {

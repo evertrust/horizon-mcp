@@ -17,15 +17,16 @@ const httpAuthMethodsSchema = z
   .transform(parseHttpAuthMethods);
 
 // Comma-separated env list -> trimmed, non-empty string array.
-const csvListSchema = z
-  .string()
-  .default('')
-  .transform((v) =>
-    v
-      .split(',')
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0),
-  );
+const csvListSchema = (defaultValue = '') =>
+  z
+    .string()
+    .default(defaultValue)
+    .transform((v) =>
+      v
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0),
+    );
 
 // Optional comma list: undefined when the env var is absent (or empties out),
 // otherwise a trimmed non-empty string array. Undefined means "no filter".
@@ -160,8 +161,8 @@ const settingsSchema = z
     timeout: z.coerce.number().int().positive().default(30),
     exportTimeout: z.coerce.number().int().positive().default(120),
     logLevel: z.string().default('INFO'),
-    testedVersions: z.array(z.string()).default(['2.10']),
-    warnVersions: z.array(z.string()).default(['2.8', '2.9']),
+    testedVersions: csvListSchema('2.10'),
+    warnVersions: csvListSchema('2.8,2.9'),
 
     // -- Toolset gating -----------------------------------------------------
     // `enabledToolsets` (HORIZON_ENABLED_TOOLSETS) selects which tool domains to
@@ -182,8 +183,8 @@ const settingsSchema = z
     httpPort: z.coerce.number().int().positive().default(8080),
     httpPath: z.string().default('/mcp'),
     publicUrl: z.string().default(''),
-    trustedHosts: csvListSchema,
-    trustedOrigins: csvListSchema,
+    trustedHosts: csvListSchema(),
+    trustedOrigins: csvListSchema(),
     httpAuthMethods: httpAuthMethodsSchema,
     // Removed in favour of the plural whitelist. Kept in the parsed shape so
     // HTTP startup can fail with an actionable migration error instead of
