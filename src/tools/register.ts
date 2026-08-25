@@ -1,5 +1,7 @@
+import { isInputRequiredResult } from '@modelcontextprotocol/server';
 import type {
   CallToolResult,
+  InputRequiredResult,
   McpServer,
   ServerContext,
   StandardSchemaWithJSON,
@@ -23,7 +25,10 @@ type ToolConfigBase = {
   _meta?: Record<string, unknown>;
 };
 
-type ToolResult = CallToolResult | Promise<CallToolResult>;
+type ToolResult =
+  | CallToolResult
+  | InputRequiredResult
+  | Promise<CallToolResult | InputRequiredResult>;
 
 export interface RegisterToolOptions {
   /**
@@ -201,14 +206,16 @@ function horizonErrorToToolResult(err: HorizonError): CallToolResult {
 
 function wrapHandler(
   handler: (...args: unknown[]) => ToolResult,
-): (...args: unknown[]) => Promise<CallToolResult> {
+): (...args: unknown[]) => Promise<CallToolResult | InputRequiredResult> {
   return async (...args: unknown[]) => {
     try {
       const ctx = args.at(-1) as ServerContext | undefined;
       const signal = ctx?.mcpReq.signal;
-      return await (signal
+      const result = await (signal
         ? runWithRequestSignal(signal, () => handler(...args))
         : handler(...args));
+      if (isInputRequiredResult(result)) return result;
+      return result;
     } catch (err) {
       if (err instanceof HorizonError) return horizonErrorToToolResult(err);
       throw err;
@@ -305,7 +312,9 @@ export function registerTool(
 
   const handler = wrapErrors
     ? wrapHandler(cb as (...args: unknown[]) => ToolResult)
-    : (cb as (...args: unknown[]) => Promise<CallToolResult>);
+    : (cb as (
+        ...args: unknown[]
+      ) => Promise<CallToolResult | InputRequiredResult>);
 
   const sdkConfig: Record<string, unknown> = {
     ...config,

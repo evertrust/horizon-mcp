@@ -30,6 +30,20 @@ const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
 const REAUTH_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const REAUTH_MAX_INTERVAL_MS = 30 * 60 * 1000;
 
+function positiveSeconds(
+  name: string,
+  value: number | undefined,
+  fallback: number,
+): number {
+  if (value === undefined) return fallback;
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(
+      `Invalid ${name}: expected a positive finite number, received ${value}`,
+    );
+  }
+  return value;
+}
+
 // Connection-error cause codes we know how to classify.
 const CONNECTION_CAUSE_CODES = new Set([
   'ECONNREFUSED',
@@ -105,6 +119,15 @@ export interface MultipartPart {
   data: Buffer | string;
 }
 
+export interface HorizonClientOptions {
+  timeout?: number;
+  exportTimeout?: number;
+  verifySsl: boolean;
+  testedVersions?: readonly string[];
+  warnVersions?: readonly string[];
+  onAuthReject?: () => void;
+}
+
 export class HorizonClient {
   private readonly _baseUrl: string;
   private readonly _auth: AuthProvider;
@@ -131,19 +154,16 @@ export class HorizonClient {
   constructor(
     baseUrl: string,
     auth: AuthProvider,
-    options: {
-      timeout: number;
-      exportTimeout: number;
-      verifySsl: boolean;
-      testedVersions?: readonly string[];
-      warnVersions?: readonly string[];
-      onAuthReject?: () => void;
-    },
+    options: HorizonClientOptions,
   ) {
     this._baseUrl = baseUrl.replace(/\/+$/, '');
     this._auth = auth;
-    this._timeout = options.timeout * 1000;
-    this.exportTimeout = options.exportTimeout;
+    this._timeout = positiveSeconds('timeout', options.timeout, 30) * 1000;
+    this.exportTimeout = positiveSeconds(
+      'exportTimeout',
+      options.exportTimeout,
+      120,
+    );
     this._testedVersions = options.testedVersions ?? [];
     this._warnVersions = options.warnVersions ?? [];
     this._onAuthReject = options.onAuthReject;

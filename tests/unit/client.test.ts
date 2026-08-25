@@ -88,7 +88,86 @@ describe('BaseAuthDefaults', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Client retry behavior
+// 2. Client option validation
+// ---------------------------------------------------------------------------
+
+describe('ClientOptions', () => {
+  const auth = new ApiKeyAuthProvider('id', 'key');
+
+  it.each([
+    ['NaN', Number.NaN],
+    ['0', 0],
+    ['-1', -1],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('rejects timeout %s', (_label, timeout) => {
+    expect(
+      () =>
+        new HorizonClient('https://horizon.test', auth, {
+          timeout,
+          exportTimeout: 120,
+          verifySsl: true,
+        }),
+    ).toThrow(
+      `Invalid timeout: expected a positive finite number, received ${timeout}`,
+    );
+  });
+
+  it('rejects exportTimeout NaN', () => {
+    expect(
+      () =>
+        new HorizonClient('https://horizon.test', auth, {
+          timeout: 30,
+          exportTimeout: Number.NaN,
+          verifySsl: true,
+        }),
+    ).toThrow(
+      'Invalid exportTimeout: expected a positive finite number, received NaN',
+    );
+  });
+
+  it('defaults timeout to 30 seconds and exportTimeout to 120 seconds', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const client = new HorizonClient('https://horizon.test', auth, {
+      verifySsl: true,
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(fakeResponse(200, []));
+
+      await client.get('/api/v1/cas');
+
+      expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+      expect(client.exportTimeout).toBe(120);
+    } finally {
+      timeoutSpy.mockRestore();
+      await client.close();
+    }
+  });
+
+  it('keeps explicit valid timeout values', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 45,
+      exportTimeout: 200,
+      verifySsl: true,
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(fakeResponse(200, []));
+
+      await client.get('/api/v1/cas');
+
+      expect(timeoutSpy).toHaveBeenCalledWith(45_000);
+      expect(client.exportTimeout).toBe(200);
+    } finally {
+      timeoutSpy.mockRestore();
+      await client.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Client retry behavior
 // ---------------------------------------------------------------------------
 
 describe('ClientRetry', () => {
@@ -153,7 +232,7 @@ describe('ClientRetry', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Client re-auth behavior
+// 4. Client re-auth behavior
 // ---------------------------------------------------------------------------
 
 /** Auth provider that tracks markAuthFailed and refreshIfNeeded calls. */
@@ -339,7 +418,7 @@ describe('ClientReauth', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Optional Zod response validation
+// 5. Optional Zod response validation
 // ---------------------------------------------------------------------------
 
 describe('ClientSchemaValidation', () => {
@@ -376,7 +455,7 @@ describe('ClientSchemaValidation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Insecure TLS warning
+// 6. Insecure TLS warning
 // ---------------------------------------------------------------------------
 
 describe('ClientTlsWarning', () => {
@@ -428,7 +507,7 @@ describe('ClientTlsWarning', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Multipart success-path body parsing
+// 7. Multipart success-path body parsing
 // ---------------------------------------------------------------------------
 
 describe('ClientMultipart', () => {
