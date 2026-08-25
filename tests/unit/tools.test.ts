@@ -886,8 +886,9 @@ describe('Lifecycle tools', () => {
       const r = result as ToolResult;
       const parsed = JSON.parse(r.content[0]!.text);
 
-      expect(parsed.error).toBeDefined();
-      expect(parsed.error).toContain('pending');
+      expect(parsed.error).toBe(
+        "Request status 'approved' cannot be approved. Only pending requests can be approved.",
+      );
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
@@ -936,6 +937,24 @@ describe('Lifecycle tools', () => {
       expect(parsed.error).toContain('Permission denied');
       expect(mockClient.post).not.toHaveBeenCalled();
     });
+
+    it('describes an invalid state with the denied participle', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        status: 'completed',
+        permissions: { approve: true, cancel: true },
+      });
+
+      const result = await client.callTool({
+        name: 'deny_request',
+        arguments: { request_id: 'req-002' },
+      });
+
+      expect(parseToolResult(result)['error']).toBe(
+        "Request status 'completed' cannot be denied. Only pending or in_progress requests can be denied.",
+      );
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
   });
 
   describe('cancel_request', () => {
@@ -980,6 +999,24 @@ describe('Lifecycle tools', () => {
 
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('describes an invalid state with the cancelled participle', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        status: 'completed',
+        permissions: { approve: true, cancel: true },
+      });
+
+      const result = await client.callTool({
+        name: 'cancel_request',
+        arguments: { request_id: 'req-003' },
+      });
+
+      expect(parseToolResult(result)['error']).toBe(
+        "Request status 'completed' cannot be cancelled. Only pending or in_progress requests can be cancelled.",
+      );
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });

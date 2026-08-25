@@ -250,9 +250,15 @@ export async function getStripMergePut(
 // Request action preflight
 // ---------------------------------------------------------------------------
 
+const REQUEST_ACTION_PARTICIPLES = {
+  approve: 'approved',
+  deny: 'denied',
+  cancel: 'cancelled',
+} as const;
+
 export async function preflightRequestAction(
   client: HorizonClient,
-  action: string,
+  action: keyof typeof REQUEST_ACTION_PARTICIPLES,
   requestId: string,
   permissionKey: string,
 ): Promise<Record<string, unknown>> {
@@ -288,10 +294,11 @@ export async function preflightRequestAction(
   const acceptedStatuses =
     action === 'approve' ? ['pending'] : ['pending', 'in_progress'];
   if (!acceptedStatuses.includes(status)) {
+    const participle = REQUEST_ACTION_PARTICIPLES[action];
     return {
       error:
-        `Request status '${status}' cannot be ${action}d. ` +
-        `Only ${acceptedStatuses.join(' or ')} requests can be ${action}d.`,
+        `Request status '${status}' cannot be ${participle}. ` +
+        `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
       request_id: requestId,
       request_status: status,
     };

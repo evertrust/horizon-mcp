@@ -11,6 +11,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PKIConnectorType } from '../../src/models/enums.js';
 import { registerPkiConnectorTools } from '../../src/tools/config/pki-connectors.js';
 
 function createMockClient() {
@@ -88,6 +89,9 @@ describe('describe_pki_connector_schema', () => {
     });
     const out = parse(res);
     expect(out['object']).toBe('pki_connector');
+    expect(new Set(Object.values(PKIConnectorType))).toEqual(
+      new Set(out['subtypes'] as string[]),
+    );
     expect(out['discriminatorField']).toBe('type');
     expect(out['subtypes']).toContain('stream');
     expect(out['subtypes']).toContain('integrated');
