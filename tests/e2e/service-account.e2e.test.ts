@@ -114,17 +114,11 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
       expect(Array.isArray(result['results'])).toBe(true);
     });
 
-    it('lists service accounts when the management tool is present', async () => {
+    it('lists service accounts through the management tool', async () => {
       const tools = await client.listTools();
-      const hasListTool = tools.tools.some(
-        (tool) => tool.name === 'list_service_accounts',
+      expect(tools.tools.map((tool) => tool.name)).toContain(
+        'list_service_accounts',
       );
-      if (!hasListTool) {
-        console.log(
-          'SKIP: list_service_accounts is not registered on this branch',
-        );
-        return;
-      }
 
       const result = await callTool('list_service_accounts');
       expect(result['kind']).toBe('service_account');

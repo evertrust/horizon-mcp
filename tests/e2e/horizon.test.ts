@@ -158,7 +158,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
     });
 
     describe('set_certificate_auto_renew', () => {
-      it('submits a no-change WebRA auto-renew update for an editable certificate', async () => {
+      it('submits a no-change WebRA auto-renew update for an editable certificate', async (ctx) => {
         const search = await callTool('search_certificates', {
           query: 'module equals "webra"',
           fields: ['_id', 'profile', 'autoRenew'],
@@ -179,7 +179,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           console.log(
             'SKIP: No WebRA certificate with an autoRenew flag found',
           );
-          return;
+          ctx.skip();
         }
 
         const profileName = certificate['profile'] as string;
@@ -193,14 +193,15 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           console.log(
             'SKIP: WebRA certificate profile does not allow auto-renew edits',
           );
-          return;
+          ctx.skip();
         }
 
         const result = await callTool('set_certificate_auto_renew', {
           certificate_id: certificate['_id'],
           enabled: certificate['autoRenew'],
         });
-        expect(result).toBeDefined();
+        expect(typeof result['id']).toBe('string');
+        expect(typeof result['status']).toBe('string');
       });
     });
 
