@@ -46,6 +46,33 @@ These fields appear on every managed profile regardless of protocol module:
 
 ---
 
+## WebRA Auto-Renewal Policy
+
+WebRA profiles can set `autoRenewalPolicy` to control the initial auto-renew
+flag on their certificates:
+
+```json
+{
+  "autoRenewalPolicy": {
+    "default": true,
+    "editable": true
+  }
+}
+```
+
+`default` is the auto-renew value for new certificates. `editable` determines
+whether a certificate's auto-renew value can be changed through the WebRA
+`update` workflow. The server-side transitions are important: adding the policy
+where none existed bulk-sets existing certificates to the new `default`;
+removing it disables auto-renew on all the profile's certificates; changing an
+existing policy does not bulk-rewrite existing certificate flags.
+
+This is WebRA per-certificate automatic renewal. It is not the trust-chain
+automation-policy renewal described in `automation.md`; that older automation
+controls trust-chain operations rather than this certificate flag.
+
+---
+
 ## Certificate Template Structure
 
 The `certificateTemplate` object defines the _defaults_ for certificates

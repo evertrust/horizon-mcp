@@ -133,7 +133,7 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
       'caller wants to submit a lifecycle request and template fields are known',
     doNotUseWhen: 'the request template has not been inspected yet',
     beforeCall:
-      'call get_request_template first; ask user for any missing mandatory fields',
+      'call get_request_template first; for WebRA update inspect template.autoRenew',
   },
   approve_request: {
     useWhen: 'caller wants to approve a pending request and the id is known',

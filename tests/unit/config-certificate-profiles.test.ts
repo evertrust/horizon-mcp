@@ -119,6 +119,38 @@ describe('describe_certificate_profile_schema', () => {
 });
 
 describe('create_certificate_profile (typed mandatory + config mapping)', () => {
+  it('maps typed auto_renewal_policy to the Horizon payload', async () => {
+    const { client, mc } = await setup();
+    await client.callTool({
+      name: 'create_certificate_profile',
+      arguments: mandatoryArgs({
+        auto_renewal_policy: { default: true, editable: false },
+      }),
+    });
+
+    const body = mc.post.mock.calls[0]![1] as Record<string, unknown>;
+    expect(body['autoRenewalPolicy']).toEqual({
+      default: true,
+      editable: false,
+    });
+  });
+
+  it('rejects autoRenewalPolicy in config in favor of the typed field', async () => {
+    const { client, mc } = await setup();
+    const result = await client.callTool({
+      name: 'create_certificate_profile',
+      arguments: mandatoryArgs({
+        config: { autoRenewalPolicy: { default: true, editable: true } },
+      }),
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(
+      (result as { content: Array<{ text: string }> }).content[0]!.text,
+    ).toContain('auto_renewal_policy');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
   let client: Client;
   let mc: MockClient;
   beforeEach(async () => {
@@ -187,6 +219,28 @@ describe('create_certificate_profile (typed mandatory + config mapping)', () => 
 });
 
 describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', () => {
+  it('maps typed auto_renewal_policy to the Horizon payload', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      module: 'webra',
+      name: 'cp1',
+      enabled: true,
+    });
+    await client.callTool({
+      name: 'update_certificate_profile',
+      arguments: {
+        name: 'cp1',
+        auto_renewal_policy: { default: false, editable: true },
+      },
+    });
+
+    const body = mc.put.mock.calls[0]![1] as Record<string, unknown>;
+    expect(body['autoRenewalPolicy']).toEqual({
+      default: false,
+      editable: true,
+    });
+  });
+
   it('GETs the item, strips _id + tenant, merges overrides, PUTs the collection', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({

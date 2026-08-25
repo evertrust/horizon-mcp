@@ -2111,6 +2111,32 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "certificate_id": {
+          "description": "24-hex Horizon certificate ID.",
+          "pattern": "^[a-fA-F0-9]{24}$",
+          "type": "string",
+        },
+        "certificate_pem": {
+          "description": "PEM-encoded certificate to update.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "enabled": {
+          "description": "Whether to enable automatic renewal.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "enabled",
+      ],
+      "type": "object",
+    },
+    "name": "set_certificate_auto_renew",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "dictionary": {
           "additionalProperties": {
             "type": "string",

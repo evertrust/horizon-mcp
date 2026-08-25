@@ -162,6 +162,32 @@ const KNOWN_KEYS = [
 
 const objectRecord = z.record(z.string(), z.unknown());
 
+const AUTO_RENEWAL_POLICY_SCHEMA = z
+  .object({
+    default: z
+      .boolean()
+      .describe('Default auto-renew value for new certificates.'),
+    editable: z
+      .boolean()
+      .describe('Whether a certificate auto-renew value can be changed.'),
+  })
+  .describe(
+    'WebRA auto-renewal policy. Server-side transitions: adding the policy ' +
+      'where none existed bulk-sets existing certificates to the new default; ' +
+      "removing it disables auto-renew on all the profile's certificates; " +
+      'changing an existing policy does not bulk-rewrite existing flags.',
+  );
+
+function assertTypedAutoRenewalPolicy(
+  config: Record<string, unknown> | undefined,
+): void {
+  if (config?.['autoRenewalPolicy'] !== undefined) {
+    throw new Error(
+      'Pass autoRenewalPolicy through the typed auto_renewal_policy field, not config.',
+    );
+  }
+}
+
 /**
  * Merge the typed mandatory params (snake_case -> camelCase) and the free-form
  * `config` record into a single body, then assert mandatory/known/enum rules.
@@ -174,8 +200,10 @@ function buildProfileBody(args: {
   requests_policy?: Record<string, unknown>;
   self_permissions?: Record<string, unknown>;
   crypto_policy?: Record<string, unknown>;
+  auto_renewal_policy?: { default: boolean; editable: boolean };
   config?: Record<string, unknown>;
 }): Record<string, unknown> {
+  assertTypedAutoRenewalPolicy(args.config);
   const body: Record<string, unknown> = { ...(args.config ?? {}) };
   if (args.module !== undefined) body['module'] = args.module;
   if (args.name !== undefined) body['name'] = args.name;
@@ -188,6 +216,8 @@ function buildProfileBody(args: {
     body['selfPermissions'] = args.self_permissions;
   if (args.crypto_policy !== undefined)
     body['cryptoPolicy'] = args.crypto_policy;
+  if (args.auto_renewal_policy !== undefined)
+    body['autoRenewalPolicy'] = args.auto_renewal_policy;
   return body;
 }
 
@@ -238,13 +268,15 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
   crypto_policy: objectRecord.describe(
     'Crypto policy object (key types, escrow, P12 handling).',
   ),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
   config: objectRecord
     .optional()
     .describe(
       'All other subtype-specific top-level fields (e.g. pkiConnector, ca, ' +
         'mode, scepRA, caps, authorizationMode, certificateTemplate, ' +
         'displayName, triggers, gradingPolicies). Keys must be the exact ' +
-        'camelCase API names from describe_certificate_profile_schema.',
+        'camelCase API names from describe_certificate_profile_schema. Pass ' +
+        'autoRenewalPolicy through auto_renewal_policy, not config.',
     ),
 });
 
@@ -259,11 +291,13 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .optional()
     .describe('CertificateProfileSelfPermissions object.'),
   crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
   config: objectRecord
     .optional()
     .describe(
       'Other subtype-specific top-level fields to override (exact camelCase ' +
-        'API names from describe_certificate_profile_schema). module is immutable.',
+        'API names from describe_certificate_profile_schema). Pass ' +
+        'autoRenewalPolicy through auto_renewal_policy, not config. module is immutable.',
     ),
   clear_fields: z
     .array(z.string())

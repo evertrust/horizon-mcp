@@ -32,7 +32,9 @@ import { registerTool } from '../register.js';
 
 const GET_REQUEST_TEMPLATE_CONFIG = {
   description:
-    'Get the request template showing which fields are required/editable.\n\n Ref: horizon://knowledge/workflows.' +
+    'Get the request template showing which fields are required/editable. For ' +
+    'a WebRA update, inspect template.autoRenew before changing per-certificate ' +
+    'automatic renewal.\n\n Ref: horizon://knowledge/workflows.' +
     'MUST be called before submit_request. The template response tells you:\n' +
     '- Which subject fields exist and whether they are editable or computed\n' +
     '- Which SAN types are allowed\n' +
@@ -84,7 +86,9 @@ const SUBMIT_REQUEST_CONFIG = {
     'privilegewithdrawn, aacompromise, unspecified). ' +
     'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
     'EST/SCEP enroll returns the challenge password in the response. ' +
-    'Full workflow + examples: horizon://knowledge/workflows.',
+    'For a WebRA update, template.autoRenew is the generic path for changing ' +
+    'per-certificate automatic renewal. Full workflow + examples: ' +
+    'horizon://knowledge/workflows.',
   // submit_request can run revoke workflows, so mark it destructive even
   // though the name-prefix classifier treats it as an additive mutation.
   annotations: { destructiveHint: true },
