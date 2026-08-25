@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - Bun 1.x or later (recommended), or Node.js 24.10 or later.
-- An Evertrust Horizon instance. The maintainers test version 2.8 and expect compatibility with versions 2.7 and 2.9.
+- An Evertrust Horizon instance. The maintainers test version 2.10 and expect compatibility with versions 2.8 and 2.9.
 - API credentials or a client certificate with the necessary permissions.
 
 ## Install methods

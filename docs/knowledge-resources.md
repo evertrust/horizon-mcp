@@ -1,10 +1,10 @@
 # Knowledge resources
 
-The server exposes a generated knowledge catalog at `horizon://knowledge/*`:
+The server exposes 111 registered knowledge resources at `horizon://knowledge/*`:
 
 - 18 core resource URIs backed by the main Horizon knowledge guides
 - 4 curated playbooks for smaller-model usability and integration recipes
-- generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
+- 89 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
 
 MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
 

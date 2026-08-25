@@ -14,7 +14,7 @@ The server is for PKI engineers, platform teams, and security operators. They ca
 
 ## Why knowledge-first?
 
-Horizon MCP provides tools and domain information. It includes **18 core knowledge URIs**, **4 integration playbooks**, and generated resources for long operational guides.
+Horizon MCP provides tools and domain information. It includes **111 knowledge URIs**: **18 core knowledge guides**, **4 integration playbooks**, and **89 generated section resources**.
 
 These resources explain Horizon concepts and help clients select tools. Clients can read the resources before they select a tool or create a payload.
 
@@ -23,8 +23,7 @@ The server does not preload these resources. The server also cannot guarantee th
 ## Features
 
 - **222 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 18 core topic URIs and 4 curated playbooks.
-  The server also generates section URIs from H2 headings in the longest guides.
+- **Knowledge catalog**: 111 registered topic URIs: 18 core guides, 4 curated playbooks, and 89 generated section resources.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. A whitelist can enable multiple methods.
 - **Service JWT renewal**: The MCP can use OAuth `client_credentials` to fetch and renew a caller's short-lived JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
@@ -56,7 +55,7 @@ Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-re
 ## Prerequisites
 
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
-- An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
+- An Evertrust Horizon instance (tested on 2.10, expected to work on 2.8 and 2.9)
 - API credentials or a client certificate for that instance
 - An MCP client that speaks protocol revision **2026-07-28**. Version 3.0.0 serves that revision only.
   Check [docs/client-setup.md](docs/client-setup.md#client-compatibility) before upgrading, and stay on 2.x if your client is older.
@@ -125,8 +124,8 @@ If you do not configure a credential, the server stops during startup.
 | `HORIZON_TIMEOUT`                 | No              | `30`                | HTTP request timeout in seconds for standard API calls.                                                                                                                                                                                                                                            |
 | `HORIZON_EXPORT_TIMEOUT`          | No              | `120`               | Timeout in seconds for CSV exports and other long-running endpoints.                                                                                                                                                                                                                               |
 | `HORIZON_LOG_LEVEL`               | No              | `INFO`              | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                                                                                                                                                                                                        |
-| `HORIZON_TESTED_VERSIONS`         | No              | `2.8`               | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                      |
-| `HORIZON_WARN_VERSIONS`           | No              | `2.7,2.9`           | Comma-separated list of versions that are likely to work but emit a warning.                                                                                                                                                                                                                       |
+| `HORIZON_TESTED_VERSIONS`         | No              | `2.10`              | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                      |
+| `HORIZON_WARN_VERSIONS`           | No              | `2.8,2.9`           | Comma-separated list of versions that are likely to work but emit a warning.                                                                                                                                                                                                                       |
 | `HORIZON_ENABLED_TOOLSETS`        | No              | (all)               | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. Unset registers every toolset; an unknown name fails startup. |
 | `HORIZON_READ_ONLY`               | No              | `false`             | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup.                                                                                                                                                                |
 | `HORIZON_AUTH_MODE`               | DEPRECATED      |                     | No longer required. Kept readable for backward compatibility; setting it logs a warning.                                                                                                                                                                                                           |
@@ -501,15 +500,14 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 
 | Horizon version | Status                                                                                                          |
 | --------------- | --------------------------------------------------------------------------------------------------------------- |
-| 2.8.5+          | Tested (full feature set including Base64/Raw computation rules)                                                |
-| 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                                                             |
-| 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
+| 2.10            | Tested (full Horizon 2.10 feature coverage)                                                                     |
+| 2.8             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
 | 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
-| 2.10            | Point-in-time QA E2E run completed on 2026-07-02; not yet in the default `HORIZON_TESTED_VERSIONS` support list |
+| All other versions | Untested; proceed with caution                                                                                |
 
-The operator can configure the version lists. By default, the server identifies only version 2.8 as tested.
+The operator can configure the version lists. By default, the server identifies only version 2.10 as tested.
 
-The server identifies versions 2.7 and 2.9 as warning versions. The version 2.10 result applies only to the specified QA snapshot.
+The server identifies versions 2.8 and 2.9 as warning versions.
 
 ## What is not supported
 
@@ -557,7 +555,7 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
 | [Tool reference](docs/tools-reference.md)          | All 222 tools by domain with safety tiers                           |
-| [Knowledge resources](docs/knowledge-resources.md) | 18 core URIs, 4 curated playbooks, generated section resources      |
+| [Knowledge resources](docs/knowledge-resources.md) | 111 registered URIs: 18 core guides, 4 playbooks, 89 sections       |
 | [Development](docs/development.md)                 | Dev setup, tests, linting                                           |
 
 ## License

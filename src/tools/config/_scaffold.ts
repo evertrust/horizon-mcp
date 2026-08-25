@@ -392,9 +392,10 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     `update_${spec.noun}`,
     {
       description:
-        `${opts.description}\nSafety tier: mutating-safe\n` +
-        `Update is GET -> strip server fields -> merge -> PUT (full-replace: omitted ` +
-        `optional fields are reset). ${immutableNote(spec)}${refFooter(spec)}`,
+        `${opts.description}\nSafety tier: mutating-destructive\n` +
+        `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
+        `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
+        `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
       inputSchema: opts.inputSchema,
       // Config update is a full-replace PUT that can reset omitted fields and
       // overwrite permissions, so it is destructive despite the update_ prefix

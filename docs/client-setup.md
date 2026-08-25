@@ -41,7 +41,7 @@ The MCP endpoint accepts `POST` only for protocol requests. Other protocol reque
 
 ## Trimming the tool surface (recommended)
 
-The full server registers 222 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
+The full server registers exactly 222 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
 
 If you do not need all domains, use these environment variables to reduce the tool set:
 

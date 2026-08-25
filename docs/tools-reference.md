@@ -168,7 +168,8 @@ Source-grounded CRUD over Horizon configuration objects (see `docs/audit/` for
 the per-object contracts). Every family has read tools (`list_*`, `get_*`);
 mutating families add `create_*`/`update_*`/`delete_*`. Mandatory fields are
 required parameters; `delete_*` needs an `expected_<id>` echo; update is
-GET-strip-merge-PUT (omitted optional fields preserved). Polymorphic objects add
+GET-strip-merge-PUT: stored fields not mentioned in the call are preserved by the
+merge, and `clear_fields` resets a field. Polymorphic objects add
 a `describe_<obj>_schema` read tool that must be called before create/update.
 
 ### Configuration: Certificate & PKI (31 tools)
@@ -366,7 +367,7 @@ annotations returned by MCP `tools/list`.
 | `list_service_accounts`                | read-only            | List service accounts                                   |
 | `get_service_account`                  | read-only            | Get a service account                                   |
 | `create_service_account`               | mutating-safe        | Create a service account                                |
-| `update_service_account`               | mutating-safe        | Update a service account                                |
+| `update_service_account`               | mutating-destructive | Update a service account                                |
 | `delete_service_account`               | mutating-destructive | Delete a service account                                |
 | `list_identity_providers`              | read-only            | List identity providers                                 |
 | `get_identity_provider`                | read-only            | Get an identity provider                                |

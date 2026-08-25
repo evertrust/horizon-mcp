@@ -15,6 +15,8 @@ describe('loadSettings', () => {
       expect(settings.timeout).toBe(30);
       expect(settings.exportTimeout).toBe(120);
       expect(settings.logLevel).toBe('INFO');
+      expect(settings.testedVersions).toEqual(['2.10']);
+      expect(settings.warnVersions).toEqual(['2.8', '2.9']);
       expect(settings.clientCert).toBe('');
       expect(settings.clientKey).toBe('');
       expect(settings.clientKeyPassword).toBe('');
