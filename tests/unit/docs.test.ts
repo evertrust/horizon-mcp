@@ -188,7 +188,11 @@ describe('Documentation tools', () => {
     });
 
     const results = result['results'] as Array<Record<string, unknown>>;
-    expect(results[0]?.['page_id']).toBe('horizon-ansible:1.5.1:index');
+    // The collection version tracks the upstream docs snapshot; pin the page,
+    // not the release.
+    expect(results[0]?.['page_id']).toMatch(
+      /^horizon-ansible:\d+\.\d+\.\d+:index$/,
+    );
     expect(result['hint']).toBe(
       'Call get_doc_page with one of the returned page_id values.',
     );
