@@ -133,6 +133,35 @@ describe('create_ca (mandatory + snake_case -> camelCase mapping)', () => {
     expect(parse(res)['status']).toBe('created');
   });
 
+  it('maps X.509 client-auth identity mappings to the Horizon payload', async () => {
+    await client.callTool({
+      name: 'create_ca',
+      arguments: {
+        name: 'mapped-ca',
+        certificate: 'pem',
+        trusted_for_client_authentication: true,
+        trusted_for_server_authentication: false,
+        outdated_revocation_status_policy: 'unknown',
+        public: true,
+        identifier_mapping: '{{certificate.san.uri.1}}',
+        name_mapping: '{{certificate.subject.o.1}}',
+        email_mapping: '{{certificate.san.rfc822name.1}}',
+      },
+    });
+
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/cas', {
+      name: 'mapped-ca',
+      certificate: 'pem',
+      trustedForClientAuthentication: true,
+      trustedForServerAuthentication: false,
+      outdatedRevocationStatusPolicy: 'unknown',
+      public: true,
+      identifierMapping: '{{certificate.san.uri.1}}',
+      nameMapping: '{{certificate.subject.o.1}}',
+      emailMapping: '{{certificate.san.rfc822name.1}}',
+    });
+  });
+
   it('rejects a missing mandatory field (certificate) and does NOT POST', async () => {
     const res = await client.callTool({
       name: 'create_ca',

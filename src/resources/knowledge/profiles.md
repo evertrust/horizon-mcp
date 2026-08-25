@@ -73,6 +73,30 @@ controls trust-chain operations rather than this certificate flag.
 
 ---
 
+## Terms of Service Mapping
+
+WebRA, SCEP, and EST profiles can reference a Terms of Service object with the
+top-level `termsOfService` field. Its value is the Terms of Service object's
+immutable `name`, not inline text:
+
+```json
+{
+  "termsOfService": "corporate-enrollment-terms"
+}
+```
+
+Create or update the referenced localized markdown content with
+`create_terms_of_service` and `update_terms_of_service` before assigning it to
+a profile. Use `get_request_template` with `include_terms_of_service: true` to
+retrieve the content a requester must accept. `delete_terms_of_service` is
+guarded and fails while any certificate profile still references the object.
+
+This mapping is available only for `webra`, `scep`, and `est`. It is distinct
+from ACME's `requireTermsOfService` boolean, which governs ACME account
+agreement and does not reference a Terms of Service object.
+
+---
+
 ## Certificate Template Structure
 
 The `certificateTemplate` object defines the _defaults_ for certificates

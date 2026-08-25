@@ -1522,6 +1522,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "description": "For renew/revoke/update/recover/migrate - the existing certificate ID.",
           "type": "string",
         },
+        "include_terms_of_service": {
+          "description": "Include the Terms of Service content the requester must accept. Sent as the termsOfService query parameter, never in the POST body.",
+          "type": "boolean",
+        },
         "module": {
           "description": "Profile module (webra, est, scep, acme, etc.).",
           "type": "string",

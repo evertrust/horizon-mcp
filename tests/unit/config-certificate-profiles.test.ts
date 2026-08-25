@@ -119,6 +119,43 @@ describe('describe_certificate_profile_schema', () => {
 });
 
 describe('create_certificate_profile (typed mandatory + config mapping)', () => {
+  it.each(['webra', 'scep', 'est'])(
+    'maps terms_of_service for the %s module',
+    async (module) => {
+      const { client, mc } = await setup();
+      await client.callTool({
+        name: 'create_certificate_profile',
+        arguments: mandatoryArgs({
+          module,
+          terms_of_service: 'corporate-terms',
+        }),
+      });
+
+      const body = mc.post.mock.calls[0]![1] as Record<string, unknown>;
+      expect(body['termsOfService']).toBe('corporate-terms');
+    },
+  );
+
+  it.each(['acme', 'monitored'])(
+    'rejects terms_of_service for the %s module before POST',
+    async (module) => {
+      const { client, mc } = await setup();
+      const result = await client.callTool({
+        name: 'create_certificate_profile',
+        arguments: mandatoryArgs({
+          module,
+          terms_of_service: 'corporate-terms',
+        }),
+      });
+
+      expect(isError(result)).toBe(true);
+      expect(
+        (result as { content: Array<{ text: string }> }).content[0]!.text,
+      ).toContain('webra, scep, est');
+      expect(mc.post).not.toHaveBeenCalled();
+    },
+  );
+
   it('maps typed auto_renewal_policy to the Horizon payload', async () => {
     const { client, mc } = await setup();
     await client.callTool({
@@ -219,6 +256,42 @@ describe('create_certificate_profile (typed mandatory + config mapping)', () => 
 });
 
 describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', () => {
+  it('maps terms_of_service after resolving the stored profile module', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      module: 'webra',
+      name: 'cp1',
+      enabled: true,
+    });
+    await client.callTool({
+      name: 'update_certificate_profile',
+      arguments: { name: 'cp1', terms_of_service: 'corporate-terms' },
+    });
+
+    const body = mc.put.mock.calls[0]![1] as Record<string, unknown>;
+    expect(body['termsOfService']).toBe('corporate-terms');
+  });
+
+  it('rejects terms_of_service for the stored module after GET and before PUT', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      module: 'monitored',
+      name: 'cp1',
+      enabled: true,
+    });
+    const result = await client.callTool({
+      name: 'update_certificate_profile',
+      arguments: { name: 'cp1', terms_of_service: 'corporate-terms' },
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(
+      (result as { content: Array<{ text: string }> }).content[0]!.text,
+    ).toContain('webra, scep, est');
+    expect(mc.get).toHaveBeenCalledWith('/api/v1/certificate/profiles/cp1');
+    expect(mc.put).not.toHaveBeenCalled();
+  });
+
   it('maps typed auto_renewal_policy to the Horizon payload', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({

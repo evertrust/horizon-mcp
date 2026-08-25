@@ -131,6 +131,7 @@ export async function getStripMergePutExplicit(
   overrides: Record<string, unknown>,
   clearFields?: string[],
   immutable?: { immutableKeys?: readonly string[]; idField?: string },
+  validateMergedBody?: (body: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
   const current = await client.get<Record<string, unknown>>(getPath);
   // The update is a full-replace seeded from this GET; bail if it is not a
@@ -175,6 +176,7 @@ export async function getStripMergePutExplicit(
   for (const [k, v] of Object.entries(overrides)) {
     if (v !== undefined) payload[k] = v;
   }
+  validateMergedBody?.(payload);
   return client.put<Record<string, unknown>>(putPath, payload);
 }
 
@@ -373,6 +375,7 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     inputSchema: S;
     buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
     preValidate?: (args: z.infer<S>) => string | undefined;
+    validateMergedBody?: (body: Record<string, unknown>) => void;
   },
 ): void {
   const idField = spec.idField ?? 'name';
@@ -426,6 +429,7 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
         overrides,
         clearFields,
         { immutableKeys: spec.immutableKeys, idField },
+        opts.validateMergedBody,
       );
       return text(
         buildMutateResponse({

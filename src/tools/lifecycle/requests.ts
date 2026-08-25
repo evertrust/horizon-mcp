@@ -66,6 +66,13 @@ const GET_REQUEST_TEMPLATE_CONFIG = {
       .describe(
         'For renew/revoke/update/recover/migrate - the existing certificate ID.',
       ),
+    include_terms_of_service: z
+      .boolean()
+      .optional()
+      .describe(
+        'Include the Terms of Service content the requester must accept. Sent ' +
+          'as the termsOfService query parameter, never in the POST body.',
+      ),
   }),
 };
 
@@ -320,16 +327,22 @@ export function registerRequestTools(
     server,
     'get_request_template',
     GET_REQUEST_TEMPLATE_CONFIG,
-    async ({ workflow, module, profile, certificate_id }) => {
+    async ({
+      workflow,
+      module,
+      profile,
+      certificate_id,
+      include_terms_of_service,
+    }) => {
       const params: Record<string, string> = { workflow };
       if (module) params['module'] = module;
       if (profile) params['profile'] = profile;
       if (certificate_id) params['certificateId'] = certificate_id;
+      const path = include_terms_of_service
+        ? '/api/v1/requests/template?termsOfService=true'
+        : '/api/v1/requests/template';
 
-      const result = await client.post<Record<string, unknown>>(
-        '/api/v1/requests/template',
-        params,
-      );
+      const result = await client.post<Record<string, unknown>>(path, params);
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

@@ -322,6 +322,29 @@ describe('Lifecycle tools', () => {
     resetMocks(mockClient);
   });
 
+  describe('get_request_template', () => {
+    it('sends include_terms_of_service in the query string, not the POST body', async () => {
+      await client.callTool({
+        name: 'get_request_template',
+        arguments: {
+          workflow: 'enroll',
+          profile: 'webra-enrollment',
+          module: 'webra',
+          include_terms_of_service: true,
+        },
+      });
+
+      const [url, body] = mockClient.post.mock.calls[0]!;
+      expect(url).toBe('/api/v1/requests/template?termsOfService=true');
+      expect(body).toEqual({
+        workflow: 'enroll',
+        profile: 'webra-enrollment',
+        module: 'webra',
+      });
+      expect(body).not.toHaveProperty('termsOfService');
+    });
+  });
+
   describe('search_certificates', () => {
     it('performs basic search', async () => {
       mockClient.post.mockResolvedValueOnce({

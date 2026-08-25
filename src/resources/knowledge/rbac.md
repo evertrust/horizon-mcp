@@ -305,6 +305,26 @@ levels (workflows knowledge).
 
 ---
 
+## X.509 Client-Authentication Identity Mapping
+
+When a client authenticates with an X.509 certificate, Horizon selects its
+trusted CA and evaluates that CA's TemplateString mappings:
+
+| CA field            | Default TemplateString             | Result                          |
+| ------------------- | ---------------------------------- | ------------------------------- |
+| `identifierMapping` | `{{certificate.dn}}`               | Required principal identifier   |
+| `nameMapping`       | `{{certificate.subject.cn.1}}`     | Optional principal display name |
+| `emailMapping`      | `{{certificate.san.rfc822name.1}}` | Optional principal email        |
+
+Set these fields through `create_ca` or `update_ca` using the corresponding
+snake_case inputs: `identifier_mapping`, `name_mapping`, and `email_mapping`.
+The `identifierMapping` is the required anchor: if it does not evaluate for a
+certificate, Horizon fails the entire client-auth identity computation. Name
+and email mappings may independently evaluate to no value without substituting
+an identifier.
+
+---
+
 ## Role Workflow Guidance
 
 When setting up access for a new use case, follow this workflow:

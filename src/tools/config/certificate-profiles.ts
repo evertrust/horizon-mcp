@@ -62,6 +62,8 @@ const MODULES = [
   'monitored',
 ] as const;
 
+const TERMS_OF_SERVICE_MODULES = ['webra', 'scep', 'est'] as const;
+
 const SUBTYPES = [
   'AcmeProfile',
   'AcmeExternalProfile',
@@ -152,6 +154,7 @@ const KNOWN_KEYS = [
   'selfPermissions',
   'thirdPartyConnector',
   'thirdPartyDiscoverySync',
+  'termsOfService',
   'timeout',
   'tlsAlpn01Port',
   'triggers',
@@ -188,6 +191,28 @@ function assertTypedAutoRenewalPolicy(
   }
 }
 
+function assertTypedTermsOfService(
+  config: Record<string, unknown> | undefined,
+): void {
+  if (config?.['termsOfService'] !== undefined) {
+    throw new Error(
+      'Pass termsOfService through the typed terms_of_service field, not config.',
+    );
+  }
+}
+
+function assertTermsOfServiceModule(body: Record<string, unknown>): void {
+  const module = body['module'] as (typeof TERMS_OF_SERVICE_MODULES)[number];
+  if (
+    body['termsOfService'] !== undefined &&
+    !TERMS_OF_SERVICE_MODULES.includes(module)
+  ) {
+    throw new Error(
+      'terms_of_service is accepted only for profile modules: webra, scep, est.',
+    );
+  }
+}
+
 /**
  * Merge the typed mandatory params (snake_case -> camelCase) and the free-form
  * `config` record into a single body, then assert mandatory/known/enum rules.
@@ -201,9 +226,11 @@ function buildProfileBody(args: {
   self_permissions?: Record<string, unknown>;
   crypto_policy?: Record<string, unknown>;
   auto_renewal_policy?: { default: boolean; editable: boolean };
+  terms_of_service?: string;
   config?: Record<string, unknown>;
 }): Record<string, unknown> {
   assertTypedAutoRenewalPolicy(args.config);
+  assertTypedTermsOfService(args.config);
   const body: Record<string, unknown> = { ...(args.config ?? {}) };
   if (args.module !== undefined) body['module'] = args.module;
   if (args.name !== undefined) body['name'] = args.name;
@@ -218,6 +245,8 @@ function buildProfileBody(args: {
     body['cryptoPolicy'] = args.crypto_policy;
   if (args.auto_renewal_policy !== undefined)
     body['autoRenewalPolicy'] = args.auto_renewal_policy;
+  if (args.terms_of_service !== undefined)
+    body['termsOfService'] = args.terms_of_service;
   return body;
 }
 
@@ -227,6 +256,7 @@ function assertProfileBody(body: Record<string, unknown>): void {
     knownKeys: KNOWN_KEYS,
     enums: { module: MODULES },
   });
+  assertTermsOfServiceModule(body);
 }
 
 /**
@@ -269,6 +299,15 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     'Crypto policy object (key types, escrow, P12 handling).',
   ),
   auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  terms_of_service: z
+    .string()
+    .optional()
+    .describe(
+      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+        'This is not ACME requireTermsOfService. Manage the referenced object ' +
+        'with create_terms_of_service/update_terms_of_service; deletion is ' +
+        'guarded while a profile references it.',
+    ),
   config: objectRecord
     .optional()
     .describe(
@@ -276,7 +315,8 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
         'mode, scepRA, caps, authorizationMode, certificateTemplate, ' +
         'displayName, triggers, gradingPolicies). Keys must be the exact ' +
         'camelCase API names from describe_certificate_profile_schema. Pass ' +
-        'autoRenewalPolicy through auto_renewal_policy, not config.',
+        'autoRenewalPolicy through auto_renewal_policy and termsOfService through ' +
+        'terms_of_service, not config.',
     ),
 });
 
@@ -292,12 +332,22 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .describe('CertificateProfileSelfPermissions object.'),
   crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
   auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  terms_of_service: z
+    .string()
+    .optional()
+    .describe(
+      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+        'This is not ACME requireTermsOfService. Manage the referenced object ' +
+        'with create_terms_of_service/update_terms_of_service; deletion is ' +
+        'guarded while a profile references it.',
+    ),
   config: objectRecord
     .optional()
     .describe(
       'Other subtype-specific top-level fields to override (exact camelCase ' +
         'API names from describe_certificate_profile_schema). Pass ' +
-        'autoRenewalPolicy through auto_renewal_policy, not config. module is immutable.',
+        'autoRenewalPolicy through auto_renewal_policy and termsOfService through ' +
+        'terms_of_service, not config. module is immutable.',
     ),
   clear_fields: z
     .array(z.string())
@@ -361,6 +411,7 @@ export function registerCertificateProfileTools(
       assertProfileUpdateBody(body);
       return body;
     },
+    validateMergedBody: assertTermsOfServiceModule,
   });
 
   registerDeleteTool(server, client, SPEC, {
