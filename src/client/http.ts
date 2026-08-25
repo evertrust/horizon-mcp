@@ -10,6 +10,14 @@ import type { ZodType } from 'zod';
 import type { AuthProvider } from '../auth/base.js';
 import { getLogger } from '../logging.js';
 import {
+  RETRYABLE_ENDPOINTS,
+  connectionCauseCode,
+  isConnectionError,
+  positiveSeconds,
+  readJsonBounded,
+  versionCompatibilityLog,
+} from './client-helpers.js';
+import {
   HorizonCsrfError,
   HorizonError,
   HorizonResponseValidationError,
@@ -20,85 +28,9 @@ import { withRetry } from './retry.js';
 
 const logger = getLogger('horizon_mcp.client');
 
-// PUT/DELETE endpoints verified as idempotent - initially empty
-const RETRYABLE_ENDPOINTS = new Set<string>();
-
-// Defense-in-depth cap on response bodies the client will parse.
-const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
-
 // Rate-limit boundaries for the auto re-auth path on 401/403.
 const REAUTH_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const REAUTH_MAX_INTERVAL_MS = 30 * 60 * 1000;
-
-function positiveSeconds(
-  name: string,
-  value: number | undefined,
-  fallback: number,
-): number {
-  if (value === undefined) return fallback;
-  if (!Number.isFinite(value) || value <= 0) {
-    throw new Error(
-      `Invalid ${name}: expected a positive finite number, received ${value}`,
-    );
-  }
-  return value;
-}
-
-// Connection-error cause codes we know how to classify.
-const CONNECTION_CAUSE_CODES = new Set([
-  'ECONNREFUSED',
-  'ENOTFOUND',
-  'ETIMEDOUT',
-  'ECONNRESET',
-  'EHOSTUNREACH',
-  'UND_ERR_CONNECT_TIMEOUT',
-]);
-
-/**
- * Read the `cause.code` chain commonly produced by undici/Node fetch
- * connection errors (the actual TCP/DNS failure is nested as `err.cause`).
- */
-function getCauseCode(err: unknown): string | undefined {
-  if (err && typeof err === 'object' && 'cause' in err) {
-    const cause = (err as { cause?: unknown }).cause;
-    if (cause && typeof cause === 'object' && 'code' in cause) {
-      return (cause as { code?: string }).code;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Bound JSON.parse to MAX_RESPONSE_BYTES. Throws HorizonError(0) if the
- * Content-Length header (or the buffered text) exceeds the limit.
- */
-async function readJsonBounded<T>(
-  resp: Response,
-  path: string,
-): Promise<T | Record<string, never>> {
-  const contentLength = resp.headers.get('content-length');
-  if (contentLength) {
-    const declared = Number.parseInt(contentLength, 10);
-    if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
-      throw new HorizonError(0, {
-        message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (Content-Length: ${declared})`,
-        remediation:
-          'Use a paginated endpoint or narrow the query to reduce payload size.',
-      });
-    }
-  }
-
-  const text = await resp.text();
-  if (text.length > MAX_RESPONSE_BYTES) {
-    throw new HorizonError(0, {
-      message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (received: ${text.length})`,
-      remediation:
-        'Use a paginated endpoint or narrow the query to reduce payload size.',
-    });
-  }
-  if (!text) return {} as Record<string, never>;
-  return JSON.parse(text) as T;
-}
 
 /**
  * Common per-request options accepted by the public verb helpers.
@@ -514,26 +446,14 @@ export class HorizonClient {
 
     // 4. Log version compatibility.
     if (this.horizonVersion) {
-      this._logVersionCompatibility(this.horizonVersion);
-    }
-  }
-
-  private _logVersionCompatibility(version: string): void {
-    // Extract major.minor from version string
-    const match = version.match(/^(\d+\.\d+)/);
-    if (!match) return;
-    const majorMinor = match[1]!;
-
-    if (this._testedVersions.includes(majorMinor)) {
-      logger.info(`Horizon version ${version} (tested - full compatibility)`);
-    } else if (this._warnVersions.includes(majorMinor)) {
-      logger.warning(
-        `Horizon version ${version} - partially tested, some features may not work as expected`,
+      const compatibility = versionCompatibilityLog(
+        this.horizonVersion,
+        this._testedVersions,
+        this._warnVersions,
       );
-    } else {
-      logger.warning(
-        `Horizon version ${version} - untested, proceed with caution`,
-      );
+      if (compatibility) {
+        logger[compatibility.level](compatibility.message);
+      }
     }
   }
 
@@ -574,14 +494,8 @@ export class HorizonClient {
     try {
       resp = await this._doRequest(method, fullUrl, fetchOpts, path);
     } catch (err) {
-      const causeCode = getCauseCode(err);
-      const isConnectionError =
-        (causeCode !== undefined && CONNECTION_CAUSE_CODES.has(causeCode)) ||
-        // Fallback when cause.code is unavailable (older runtimes / test mocks).
-        (causeCode === undefined &&
-          err instanceof TypeError &&
-          String(err).includes('fetch'));
-      if (isConnectionError) {
+      const causeCode = connectionCauseCode(err);
+      if (isConnectionError(err)) {
         throw new HorizonError(0, {
           message: `Connection to ${this._baseUrl} failed${
             causeCode ? ` (${causeCode})` : ''
