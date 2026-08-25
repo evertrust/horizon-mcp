@@ -273,20 +273,22 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     ),
 });
 
+const CERTIFICATE_PROFILE_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'module',
+  subtypes: SUBTYPES,
+  mandatoryFields: MANDATORY_INPUT_FIELDS,
+  jsonSchema: certificateProfileRequestSchema,
+  schemaVersion: '2020-12',
+  knowledgeRef: 'horizon://knowledge/certificate-profiles',
+};
+
 export function registerCertificateProfileTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'module',
-    subtypes: SUBTYPES,
-    mandatoryFields: MANDATORY_INPUT_FIELDS,
-    jsonSchema: certificateProfileRequestSchema,
-    schemaVersion: '2020-12',
-    knowledgeRef: 'horizon://knowledge/certificate-profiles',
-  });
+  registerDescribeSchemaTool(server, CERTIFICATE_PROFILE_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription:

@@ -293,19 +293,21 @@ const UPDATE_SCHEDULED_TASK_OPTS = {
     }),
 };
 
+const SCHEDULED_TASK_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['type', 'name', 'cron', 'enabled'],
+  jsonSchema: scheduledTaskRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerScheduledTaskTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['type', 'name', 'cron', 'enabled'],
-    jsonSchema: scheduledTaskRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, SCHEDULED_TASK_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription: 'List scheduled tasks.',

@@ -152,19 +152,21 @@ const CREATE_ARCHIVES_SCHEMA = z.object({
   config: configSchema.optional(),
 });
 
+const ARCHIVE_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['name', 'type', 'filename'],
+  jsonSchema: archiveRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerArchiveTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['name', 'type', 'filename'],
-    jsonSchema: archiveRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, ARCHIVE_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription: 'List archives.',

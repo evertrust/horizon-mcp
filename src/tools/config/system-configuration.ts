@@ -215,19 +215,21 @@ const UPDATE_SYSTEM_CONFIGURATION_SCHEMA = z.object({
     .describe('Top-level fields to explicitly null, e.g. ["archiveStorage"].'),
 });
 
+const SYSTEM_CONFIGURATION_DESCRIBE_INFO = {
+  noun: 'system_config',
+  label: 'System Configuration',
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['type'],
+  jsonSchema: systemConfigurationRequestSchema,
+  schemaVersion: '1',
+};
+
 export function registerSystemConfigTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: 'system_config',
-    label: 'System Configuration',
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['type'],
-    jsonSchema: systemConfigurationRequestSchema,
-    schemaVersion: '1',
-  });
+  registerDescribeSchemaTool(server, SYSTEM_CONFIGURATION_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription:

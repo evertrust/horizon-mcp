@@ -261,19 +261,21 @@ const UPDATE_PKI_CONNECTOR_OPTS = {
     mergeBody(name, type, config ?? {}),
 };
 
+const PKI_CONNECTOR_DESCRIBE_INFO = {
+  noun: 'pki_connector',
+  label: 'PKI connector',
+  discriminatorField: 'type',
+  subtypes: CONNECTOR_TYPES,
+  mandatoryFields: ['name', 'type'],
+  jsonSchema: pkiConnectorRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerPkiConnectorTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: 'pki_connector',
-    label: 'PKI connector',
-    discriminatorField: 'type',
-    subtypes: CONNECTOR_TYPES,
-    mandatoryFields: ['name', 'type'],
-    jsonSchema: pkiConnectorRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, PKI_CONNECTOR_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription: 'List PKI connector configurations.',

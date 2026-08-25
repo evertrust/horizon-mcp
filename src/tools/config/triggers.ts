@@ -129,19 +129,21 @@ const UPDATE_TRIGGERS_SCHEMA = z.object({
     .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
 });
 
+const TRIGGER_DESCRIBE_INFO = {
+  noun: 'trigger',
+  label: 'trigger',
+  discriminatorField: 'type',
+  subtypes: TRIGGER_TYPES,
+  mandatoryFields: ['name', 'type'],
+  jsonSchema: triggerRequestSchema,
+  schemaVersion: 'triggers.request.json',
+};
+
 export function registerTriggerCrudTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: 'trigger',
-    label: 'trigger',
-    discriminatorField: 'type',
-    subtypes: TRIGGER_TYPES,
-    mandatoryFields: ['name', 'type'],
-    jsonSchema: triggerRequestSchema,
-    schemaVersion: 'triggers.request.json',
-  });
+  registerDescribeSchemaTool(server, TRIGGER_DESCRIBE_INFO);
 
   registerCreateTool(server, client, SPEC, {
     description:
