@@ -91,6 +91,14 @@ export function body(
   };
 }
 
+export function bodyWithoutClientInfo(
+  method: string,
+  params: Record<string, unknown> = {},
+  metaOver: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return body(method, params, metaOver, false);
+}
+
 export function headers(method: string, name?: string): Record<string, string> {
   return {
     'MCP-Protocol-Version': V,
@@ -112,6 +120,10 @@ export interface SendInit {
   body?: unknown;
   contentType?: string | null;
   accept?: string;
+}
+
+export interface HarnessOptions {
+  defaultAccept?: string;
 }
 
 export interface Harness {
@@ -159,11 +171,15 @@ export async function parseResponse(
   return { status: res.status, headers: res.headers, text, json };
 }
 
-export function buildRequestInit(init: SendInit): RequestInit {
+export function buildRequestInit(
+  init: SendInit,
+  options: HarnessOptions = {},
+): RequestInit {
   const h: Record<string, string> = { ...(init.headers ?? {}) };
   if (init.contentType !== null)
     h['Content-Type'] = init.contentType ?? 'application/json';
-  if (init.accept) h.Accept = init.accept;
+  const accept = init.accept ?? options.defaultAccept;
+  if (accept) h.Accept = accept;
   const method = init.method ?? 'POST';
   return {
     method,
@@ -191,7 +207,7 @@ export async function freePort(): Promise<number> {
   });
 }
 
-export function inProcessHarness(): Harness {
+export function inProcessHarness(options: HarnessOptions = {}): Harness {
   const client = new HorizonClient(
     'https://horizon.test',
     new ApiKeyAuthProvider('alice', 'k'),
@@ -205,7 +221,7 @@ export function inProcessHarness(): Harness {
     name: 'in-process',
     async send(init) {
       const response = await handler.fetch(
-        new Request('http://test.local/mcp', buildRequestInit(init)),
+        new Request('http://test.local/mcp', buildRequestInit(init, options)),
       );
       return parseResponse(response, init.accept === 'text/event-stream');
     },
@@ -241,21 +257,26 @@ export async function startExpressServer(
   };
 }
 
-export async function expressHarness(): Promise<Harness> {
+export async function expressHarness(
+  options: HarnessOptions = {},
+): Promise<Harness> {
   const server = await startExpressServer();
   return {
     name: 'express',
     async send(init) {
       const response = await fetch(
         server.base,
-        buildRequestInit({
-          ...init,
-          headers: {
-            'X-API-ID': 'alice',
-            'X-API-KEY': 'k',
-            ...(init.headers ?? {}),
+        buildRequestInit(
+          {
+            ...init,
+            headers: {
+              'X-API-ID': 'alice',
+              'X-API-KEY': 'k',
+              ...(init.headers ?? {}),
+            },
           },
-        }),
+          options,
+        ),
       );
       return parseResponse(response, init.accept === 'text/event-stream');
     },
@@ -263,8 +284,10 @@ export async function expressHarness(): Promise<Harness> {
   };
 }
 
-export async function createHarnesses(): Promise<Harness[]> {
-  return [inProcessHarness(), await expressHarness()];
+export async function createHarnesses(
+  options: HarnessOptions = {},
+): Promise<Harness[]> {
+  return [inProcessHarness(options), await expressHarness(options)];
 }
 
 export async function bothHarnesses(
