@@ -7,10 +7,8 @@
  *                 submit_request, approve/deny/cancel_request
  *   Assist      - whoami, decode_x509, validate_hcql, describe_query_fields
  */
-import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
+import type { Client } from '@modelcontextprotocol/client';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
 
 import { HorizonError } from '../../src/client/errors.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
@@ -19,76 +17,12 @@ import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import { registerProfileTools } from '../../src/tools/profiles.js';
 import { registerTriggerTools } from '../../src/tools/triggers.js';
-
-// ---------------------------------------------------------------------------
-// Mock client factory
-// ---------------------------------------------------------------------------
-
-function createMockClient() {
-  return {
-    get: vi.fn().mockResolvedValue({}),
-    post: vi.fn().mockResolvedValue({}),
-    put: vi.fn().mockResolvedValue({}),
-    patch: vi.fn().mockResolvedValue({}),
-    delete: vi.fn().mockResolvedValue(null),
-    getBytes: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-    getText: vi.fn().mockResolvedValue(''),
-    postText: vi.fn().mockResolvedValue(''),
-    postMultipart: vi.fn().mockResolvedValue({}),
-    request: vi.fn().mockResolvedValue(new Response()),
-    close: vi.fn().mockResolvedValue(undefined),
-    fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120,
-    principalName: undefined,
-    horizonVersion: undefined,
-  };
-}
-
-type MockClient = ReturnType<typeof createMockClient>;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-interface ToolResult {
-  content: Array<{ type: string; text: string }>;
-  isError?: boolean;
-}
-
-function parseToolResult(result: unknown): Record<string, unknown> {
-  const r = result as ToolResult;
-  return JSON.parse(r.content[0]!.text) as Record<string, unknown>;
-}
-
-function resetMocks(mc: MockClient): void {
-  mc.get.mockReset().mockResolvedValue({});
-  mc.post.mockReset().mockResolvedValue({});
-  mc.put.mockReset().mockResolvedValue({});
-  mc.patch.mockReset().mockResolvedValue({});
-  mc.delete.mockReset().mockResolvedValue(null);
-  mc.getBytes.mockReset().mockResolvedValue(new ArrayBuffer(0));
-  mc.getText.mockReset().mockResolvedValue('');
-  mc.postText.mockReset().mockResolvedValue('');
-  mc.postMultipart.mockReset().mockResolvedValue({});
-  mc.request.mockReset().mockResolvedValue(new Response());
-}
-
-async function setupServerAndClient(
-  registerFn: (server: McpServer, client: MockClient) => void,
-): Promise<{ client: Client; mockClient: MockClient }> {
-  const server = new McpServer({ name: 'test', version: '0.0.0' });
-  const mc = createMockClient();
-  registerFn(server, mc);
-
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  const c = new Client({ name: 'test-client', version: '0.0.0' });
-  await Promise.all([
-    c.connect(clientTransport),
-    server.connect(serverTransport),
-  ]);
-  return { client: c, mockClient: mc };
-}
+import {
+  type MockClient,
+  parseToolResult,
+  resetMocks,
+  setupServerAndClient,
+} from './support/tool-harness.js';
 
 // ===========================================================================
 // 1. PROFILE TOOLS
@@ -99,9 +33,11 @@ describe('Profile tools', () => {
   let mockClient: MockClient;
 
   beforeAll(async () => {
-    const ctx = await setupServerAndClient((server, mc) => {
-      registerProfileTools(server, mc as any);
-    });
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerProfileTools(server, mc as any);
+      },
+    ]);
     client = ctx.client;
     mockClient = ctx.mockClient;
   });
@@ -215,9 +151,11 @@ describe('Trigger tools', () => {
   let mockClient: MockClient;
 
   beforeAll(async () => {
-    const ctx = await setupServerAndClient((server, mc) => {
-      registerTriggerTools(server, mc as any);
-    });
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerTriggerTools(server, mc as any);
+      },
+    ]);
     client = ctx.client;
     mockClient = ctx.mockClient;
   });
@@ -311,9 +249,11 @@ describe('Lifecycle tools', () => {
   let mockClient: MockClient;
 
   beforeAll(async () => {
-    const ctx = await setupServerAndClient((server, mc) => {
-      registerLifecycleTools(server, mc as any);
-    });
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerLifecycleTools(server, mc as any);
+      },
+    ]);
     client = ctx.client;
     mockClient = ctx.mockClient;
   });
@@ -1244,11 +1184,13 @@ describe('Assist tools', () => {
   let mockClient: MockClient;
 
   beforeAll(async () => {
-    const ctx = await setupServerAndClient((server, mc) => {
-      registerSystemTools(server, mc as any);
-      registerQueryTools(server, mc as any);
-      registerCryptoTools(server, mc as any);
-    });
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerSystemTools(server, mc as any);
+        registerQueryTools(server, mc as any);
+        registerCryptoTools(server, mc as any);
+      },
+    ]);
     client = ctx.client;
     mockClient = ctx.mockClient;
   });

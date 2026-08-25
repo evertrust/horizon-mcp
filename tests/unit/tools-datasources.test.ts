@@ -4,85 +4,27 @@
  * Coverage:
  *   8 tools: list, get, create (dns/ldap/rest), update, delete, test
  */
-import { Client } from '@modelcontextprotocol/client';
-import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
+import type { Client } from '@modelcontextprotocol/client';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { vi } from 'vitest';
 
 import { HorizonError } from '../../src/client/errors.js';
 import { registerDatasourceTools } from '../../src/tools/datasources.js';
-
-// ---------------------------------------------------------------------------
-// Mock client factory
-// ---------------------------------------------------------------------------
-
-function createMockClient() {
-  return {
-    get: vi.fn().mockResolvedValue({}),
-    post: vi.fn().mockResolvedValue({}),
-    put: vi.fn().mockResolvedValue({}),
-    patch: vi.fn().mockResolvedValue({}),
-    delete: vi.fn().mockResolvedValue(null),
-    getBytes: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
-    getText: vi.fn().mockResolvedValue(''),
-    postText: vi.fn().mockResolvedValue(''),
-    postMultipart: vi.fn().mockResolvedValue({}),
-    request: vi.fn().mockResolvedValue(new Response()),
-    close: vi.fn().mockResolvedValue(undefined),
-    fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120,
-    principalName: undefined,
-    horizonVersion: undefined,
-  };
-}
-
-type MockClient = ReturnType<typeof createMockClient>;
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function parseToolResult(result: unknown): Record<string, unknown> {
-  const r = result as { content: Array<{ type: string; text: string }> };
-  return JSON.parse(r.content[0]!.text) as Record<string, unknown>;
-}
-
-function resetMocks(mc: MockClient): void {
-  mc.get.mockReset().mockResolvedValue({});
-  mc.post.mockReset().mockResolvedValue({});
-  mc.put.mockReset().mockResolvedValue({});
-  mc.patch.mockReset().mockResolvedValue({});
-  mc.delete.mockReset().mockResolvedValue(null);
-  mc.getBytes.mockReset().mockResolvedValue(new ArrayBuffer(0));
-  mc.getText.mockReset().mockResolvedValue('');
-  mc.postText.mockReset().mockResolvedValue('');
-  mc.postMultipart.mockReset().mockResolvedValue({});
-  mc.request.mockReset().mockResolvedValue(new Response());
-}
-
-async function setupServerAndClient(): Promise<{
-  client: Client;
-  mockClient: MockClient;
-}> {
-  const server = new McpServer({ name: 'test', version: '0.0.0' });
-  const mc = createMockClient();
-  registerDatasourceTools(server, mc as any);
-
-  const [clientTransport, serverTransport] =
-    InMemoryTransport.createLinkedPair();
-  const c = new Client({ name: 'test-client', version: '0.0.0' });
-  await Promise.all([
-    c.connect(clientTransport),
-    server.connect(serverTransport),
-  ]);
-  return { client: c, mockClient: mc };
-}
+import {
+  type MockClient,
+  parseToolResult,
+  resetMocks,
+  setupServerAndClient,
+} from './support/tool-harness.js';
 
 let client: Client;
 let mockClient: MockClient;
 
 beforeAll(async () => {
-  const ctx = await setupServerAndClient();
+  const ctx = await setupServerAndClient([
+    (server, mockClient) => {
+      registerDatasourceTools(server, mockClient as any);
+    },
+  ]);
   client = ctx.client;
   mockClient = ctx.mockClient;
 });
