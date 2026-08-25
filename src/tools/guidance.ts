@@ -133,8 +133,9 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
   },
   update_service_account: {
     useWhen: 'caller wants to change an existing service account',
-    doNotUseWhen: 'caller has not supplied a complete replacement trustConfig',
-    beforeCall: 'get the account and require trustConfig.jwks as a JSON string',
+    doNotUseWhen: 'caller only wants to inspect service-account configuration',
+    beforeCall:
+      'get the account first; omitted fields are preserved, trustConfig may be omitted when unchanged, and only an explicitly replaced static JWKS must be a JSON string',
   },
   delete_service_account: {
     useWhen: 'caller explicitly wants to permanently remove a service account',

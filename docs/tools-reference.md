@@ -155,7 +155,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 
 ---
 
-## Configuration (126 tools)
+## Configuration (129 tools)
 
 Source-grounded CRUD over Horizon configuration objects (see `docs/audit/` for
 the per-object contracts). Every family has read tools (`list_*`, `get_*`);

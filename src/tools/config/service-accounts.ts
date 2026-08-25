@@ -213,8 +213,9 @@ export function registerServiceAccountTools(
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update a service account. Requires manage access ' +
-      '(`access-management:service-account:*`). GET static JWKS objects are ' +
-      'serialized before the merged PUT because the API expects a JSON string.',
+      '(`access-management:service-account:*`). Omitted fields are preserved ' +
+      'from the stored account, so trustConfig may be omitted when unchanged. ' +
+      'Only an explicitly replaced static JWKS must be supplied as a JSON string.',
     inputSchema: UPDATE_SERVICE_ACCOUNT_SCHEMA,
     buildOverrides: (args) => buildServiceAccountBody(args),
     normalizeCurrent: normalizeServiceAccountCurrent,

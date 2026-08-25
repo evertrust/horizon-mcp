@@ -38,7 +38,7 @@ Tool counts per domain:
 
 | Domain           | Tools | Highlights                                                                              |
 | ---------------- | ----: | --------------------------------------------------------------------------------------- |
-| Configuration    |   126 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
+| Configuration    |   129 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
 | Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
 | Lifecycle        |    17 | search/aggregate certs, requests, events, enroll, approve, revoke                       |
 | Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
