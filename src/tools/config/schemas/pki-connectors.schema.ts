@@ -3,7 +3,7 @@
  *
  * Source of truth: docs/audit/pki_connectors.schema.json (resolved from the
  * Scala case classes + bundled OpenAPI). Polymorphic union discriminated by the
- * lowercase 'type' field (21 subtypes). Surfaced verbatim through
+ * lowercase 'type' field (22 subtypes). Surfaced verbatim through
  * describe_pki_connector_schema so the model never guesses the per-subtype
  * structure.
  *
@@ -58,6 +58,9 @@ export const pkiConnectorRequestSchema = {
       $ref: '#/$defs/FCMSConnector',
     },
     {
+      $ref: '#/$defs/GCPConnector',
+    },
+    {
       $ref: '#/$defs/GSAtlasConnector',
     },
     {
@@ -88,6 +91,13 @@ export const pkiConnectorRequestSchema = {
       description: 'A finite duration string.',
       pattern:
         '^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$',
+      examples: ['5 seconds', '10s', '7 days'],
+    },
+    PositiveFiniteDuration: {
+      type: 'string',
+      description: 'A positive finite duration string.',
+      pattern:
+        '^(0*[1-9][0-9]*) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$',
       examples: ['5 seconds', '10s', '7 days'],
     },
     ConnectorName: {
@@ -412,7 +422,7 @@ export const pkiConnectorRequestSchema = {
           ],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
           default: '6s',
         },
         dnsChallengeProvider: {
@@ -539,7 +549,7 @@ export const pkiConnectorRequestSchema = {
           $ref: '#/$defs/FiniteDuration',
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         signingHash: {
           type: ['string', 'null'],
@@ -590,7 +600,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         authenticationCredentials: {
           type: 'string',
@@ -719,7 +729,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         skipApproval: {
           type: ['boolean', 'null'],
@@ -940,7 +950,7 @@ export const pkiConnectorRequestSchema = {
           ],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
           default: '5 seconds',
         },
         queue: {
@@ -1009,6 +1019,20 @@ export const pkiConnectorRequestSchema = {
         'deleteOnRevoke',
       ],
     },
+    GCPConnector: {
+      title: 'Google Cloud Platform',
+      type: 'object',
+      properties: {
+        name: {
+          $ref: '#/$defs/ConnectorName',
+        },
+        type: {
+          type: 'string',
+          enum: ['gcp'],
+        },
+      },
+      required: ['name', 'type'],
+    },
     GSAtlasConnector: {
       title: 'GlobalSign Atlas',
       type: 'object',
@@ -1031,7 +1055,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         authenticationCredentials: {
           type: 'string',
@@ -1089,7 +1113,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         timeout: {
           $ref: '#/$defs/FiniteDuration',
@@ -1271,7 +1295,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
       },
       required: [
@@ -1352,7 +1376,7 @@ export const pkiConnectorRequestSchema = {
           type: 'string',
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         validDays: {
           $ref: '#/$defs/FiniteDuration',

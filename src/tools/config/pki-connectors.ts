@@ -7,7 +7,7 @@
  * PKIConnectorType.scala.
  *
  * The request body is a polymorphic union discriminated by the lowercase 'type'
- * field (21 subtypes). Because the per-subtype shape is large and varies wildly,
+ * field (22 subtypes). Because the per-subtype shape is large and varies wildly,
  * create/update take the two common mandatory params (name + type) as typed Zod
  * fields plus a validated `config` object holding the subtype-specific keys. The
  * model is expected to call describe_pki_connector_schema first to learn the
@@ -20,6 +20,7 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
+import { HorizonError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import {
   type ConfigSpec,
@@ -59,6 +60,7 @@ const CONNECTOR_TYPES = [
   'idca',
   'integrated',
   'fcms',
+  'gcp',
   'gsatlas',
   'gsmssl',
   'otpki',
@@ -68,6 +70,22 @@ const CONNECTOR_TYPES = [
   'sectigo',
   'swisssign',
 ] as const;
+
+const ASYNC_CONNECTOR_TYPES = [
+  'digicert',
+  'acmeenroll',
+  'integrated',
+  'gsmssl',
+  'gsatlas',
+  'awsacmpca',
+  'certeurope',
+  'sectigo',
+  'nameshield',
+] as const;
+
+const ASYNC_CONNECTOR_TYPE_SET = new Set<string>(ASYNC_CONNECTOR_TYPES);
+const POSITIVE_FINITE_DURATION =
+  /^(0*[1-9][0-9]*) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$/;
 
 const SCHEMA_VERSION = 'pki_connectors.request.json';
 
@@ -200,7 +218,40 @@ function mergeBody(
     knownKeys: KNOWN_KEYS,
     enums: { type: CONNECTOR_TYPES },
   });
+  validateRetryInterval(type, config);
   return body;
+}
+
+function validateRetryInterval(
+  type: string,
+  config: Record<string, unknown>,
+): void {
+  const retryInterval = config['retryInterval'];
+  if (retryInterval === undefined) return;
+
+  if (!ASYNC_CONNECTOR_TYPE_SET.has(type)) {
+    throw new HorizonError(422, {
+      errorCode: 'PKI-CONNECTOR-RETRY-INTERVAL-TYPE',
+      message:
+        'retryInterval is supported only for asynchronous PKI connector types: ' +
+        `${ASYNC_CONNECTOR_TYPES.join(', ')}.`,
+      remediation:
+        'Remove retryInterval, or use it only with an asynchronous PKI connector.',
+    });
+  }
+
+  if (
+    typeof retryInterval !== 'string' ||
+    !POSITIVE_FINITE_DURATION.test(retryInterval)
+  ) {
+    throw new HorizonError(422, {
+      errorCode: 'PKI-CONNECTOR-RETRY-INTERVAL-FORMAT',
+      message:
+        'retryInterval must be a positive FiniteDuration string, for example "6 seconds".',
+      remediation:
+        'Use a positive integer with ms, seconds, minutes, hours, or days.',
+    });
+  }
 }
 
 const CREATE_PKI_CONNECTORS_SCHEMA = z.object({
