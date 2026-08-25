@@ -124,6 +124,24 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
     beforeCall:
       'use list_credentials if the notification needs an existing credential',
   },
+  create_service_account: {
+    useWhen:
+      'caller explicitly provides the JWT trust configuration and grants',
+    doNotUseWhen: 'caller only wants to inspect service-account configuration',
+    beforeCall:
+      'confirm exact roles and permissions; do not infer broad access',
+  },
+  update_service_account: {
+    useWhen: 'caller wants to change an existing service account',
+    doNotUseWhen: 'caller has not supplied a complete replacement trustConfig',
+    beforeCall: 'get the account and require trustConfig.jwks as a JSON string',
+  },
+  delete_service_account: {
+    useWhen: 'caller explicitly wants to permanently remove a service account',
+    doNotUseWhen: 'caller only wants to revoke or inspect its access',
+    beforeCall:
+      'confirm expected_name and check that the account is not read-only',
+  },
   simulate_trigger: {
     useWhen: 'caller wants to dry-run a trigger payload or REST notification',
     doNotUseWhen: 'caller wants to create/update/delete the trigger itself',

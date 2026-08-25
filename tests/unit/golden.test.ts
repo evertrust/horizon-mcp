@@ -23,6 +23,7 @@ import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerServiceAccountTools } from '../../src/tools/config/service-accounts.js';
 import { registerDashboardTools } from '../../src/tools/dashboards.js';
 import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
@@ -454,6 +455,27 @@ describe('Golden tests', () => {
       inputSchema: t.inputSchema,
     }));
     expect(schemas).toMatchSnapshot();
+  });
+
+  it('service-account mutation schemas match snapshot', async () => {
+    const server = new McpServer({
+      name: 'test-service-account-schemas',
+      version: '0.0.0',
+    });
+    registerServiceAccountTools(server, createMockClient() as never);
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    const serviceClient = new Client({
+      name: 'test-service-account-schemas-client',
+      version: '0.0.0',
+    });
+    await Promise.all([serviceClient.connect(ct), server.connect(st)]);
+    const tools = (await serviceClient.listTools()).tools
+      .filter((tool) => tool.name.endsWith('_service_account'))
+      .filter((tool) => !tool.name.startsWith('get_'))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema }));
+
+    expect(tools).toMatchSnapshot();
   });
 });
 

@@ -1,5 +1,262 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
+[
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "iatFutureRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "iatPastRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "identifierMapping": {
+          "description": "Template used to derive the authenticated principal identifier.",
+          "type": "string",
+        },
+        "jwtAllowedClockSkew": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "name": {
+          "description": "Service-account name. Immutable primary key.",
+          "type": "string",
+        },
+        "permissions": {
+          "description": "Permissions granted to principals authenticated by this account.",
+          "items": {
+            "properties": {
+              "filter": {
+                "description": "Optional HPQL filter applied to this permission.",
+                "type": "string",
+              },
+              "value": {
+                "description": "Horizon permission string.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "roles": {
+          "description": "Existing roles granted to successfully authenticated principals.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "trustConfig": {
+          "description": "JWT trust configuration, either an inline static JWKS or dynamic JWKS URL.",
+          "oneOf": [
+            {
+              "properties": {
+                "jwks": {
+                  "description": "JWKS JSON document, serialized as a string.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "static_jwks",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "jwks",
+              ],
+              "type": "object",
+            },
+            {
+              "properties": {
+                "proxy": {
+                  "description": "Name of an existing HTTP proxy configuration.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "dynamic_jwks",
+                  "type": "string",
+                },
+                "url": {
+                  "description": "Absolute HTTP(S) URL from which Horizon fetches the JWKS.",
+                  "format": "uri",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "url",
+              ],
+              "type": "object",
+            },
+          ],
+        },
+        "validationRules": {
+          "description": "Condition templates evaluated against incoming JWT claims.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "trustConfig",
+        "validationRules",
+        "permissions",
+        "roles",
+      ],
+      "type": "object",
+    },
+    "name": "create_service_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "service account name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_service_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "clear_fields": {
+          "description": "Top-level optional fields to null explicitly.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "iatFutureRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "iatPastRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "identifierMapping": {
+          "type": "string",
+        },
+        "jwtAllowedClockSkew": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "name": {
+          "description": "Service-account name to update (immutable key).",
+          "type": "string",
+        },
+        "permissions": {
+          "description": "Permissions granted to principals authenticated by this account.",
+          "items": {
+            "properties": {
+              "filter": {
+                "description": "Optional HPQL filter applied to this permission.",
+                "type": "string",
+              },
+              "value": {
+                "description": "Horizon permission string.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "roles": {
+          "description": "Existing roles granted to successfully authenticated principals.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "trustConfig": {
+          "description": "Complete replacement trust configuration. Required because GET returns static JWKS as an object while PUT requires its JSON string.",
+          "oneOf": [
+            {
+              "properties": {
+                "jwks": {
+                  "description": "JWKS JSON document, serialized as a string.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "static_jwks",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "jwks",
+              ],
+              "type": "object",
+            },
+            {
+              "properties": {
+                "proxy": {
+                  "description": "Name of an existing HTTP proxy configuration.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "dynamic_jwks",
+                  "type": "string",
+                },
+                "url": {
+                  "description": "Absolute HTTP(S) URL from which Horizon fetches the JWKS.",
+                  "format": "uri",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "url",
+              ],
+              "type": "object",
+            },
+          ],
+        },
+        "validationRules": {
+          "description": "Condition templates evaluated against incoming JWT claims.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "trustConfig",
+      ],
+      "type": "object",
+    },
+    "name": "update_service_account",
+  },
+]
+`;
+
 exports[`Golden tests > tool schemas match snapshot 1`] = `
 [
   {

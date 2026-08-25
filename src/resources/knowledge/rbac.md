@@ -53,7 +53,7 @@ role, or via wildcard implication.
 
 ---
 
-## Permission Catalog (36 Patterns)
+## Permission Catalog (37 Patterns)
 
 ### Certificate Permissions (9)
 
@@ -89,17 +89,30 @@ Scope = object name or `*`.
 | `configuration:grading:{scope}`     | Manage security grading policies and rulesets |
 | `configuration:passwords:{scope}`   | Manage password policies                      |
 
-### Security Permissions (5)
+### Security Permissions (6)
 
 Control the RBAC system itself. Scope = object name or `*`.
 
-| Permission Pattern             | Description                                      |
-| ------------------------------ | ------------------------------------------------ |
-| `security:roles:{scope}`       | Manage roles (create, update, delete, list)      |
-| `security:teams:{scope}`       | Manage teams                                     |
-| `security:principals:{scope}`  | Manage user principals (assign roles/teams)      |
-| `security:idps:{scope}`        | Manage identity provider configurations          |
-| `security:credentials:{scope}` | Manage stored credentials (keystores, passwords) |
+| Permission Pattern                    | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| `security:roles:{scope}`              | Manage roles (create, update, delete, list)      |
+| `security:teams:{scope}`              | Manage teams                                     |
+| `security:principals:{scope}`         | Manage user principals (assign roles/teams)      |
+| `security:idps:{scope}`               | Manage identity provider configurations          |
+| `security:credentials:{scope}`        | Manage stored credentials (keystores, passwords) |
+| `access-management:service-account:*` | Manage service accounts (create, update, delete) |
+
+### Service-account management
+
+Use `list_service_accounts` and `get_service_account` for audit access. Creating,
+updating, or deleting a service account requires
+`access-management:service-account:*` manage access.
+
+Service accounts authenticate workloads from an external JWT issuer. Grant only
+the roles and permissions explicitly required by the workload. For static JWKS,
+`trustConfig.jwks` is supplied as a JSON string when creating or updating an
+account. Horizon GET responses may represent that field as an object, so provide
+a complete replacement `trustConfig` for updates.
 
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign
