@@ -13,22 +13,22 @@ import { toUpdatePayload } from '../models/payloads.js';
 // ---------------------------------------------------------------------------
 
 /** Output shape returned by `buildSearchResponse`. */
-export const SEARCH_RESPONSE_OUTPUT_SCHEMA = {
+export const SEARCH_RESPONSE_OUTPUT_SCHEMA = z.object({
   results: z.array(z.record(z.string(), z.unknown())),
   page_index: z.number().int(),
   page_size: z.number().int(),
   total: z.number().nullable(),
   has_more: z.boolean(),
   next_page_index: z.number().int().nullable(),
-} as const;
+});
 
 /** Output shape returned by CSV exporters. */
-export const CSV_EXPORT_OUTPUT_SCHEMA = {
+export const CSV_EXPORT_OUTPUT_SCHEMA = z.object({
   csv: z.string(),
   truncated: z.boolean(),
   returned_rows: z.number().int(),
   max_rows: z.number().int(),
-} as const;
+});
 
 // ---------------------------------------------------------------------------
 // URL path encoding

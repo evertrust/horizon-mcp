@@ -69,4 +69,35 @@ describe('registerTool schema memoization', () => {
     expect(receivedValues).toEqual(['valid']);
     expect(inputSpy).toHaveBeenCalledTimes(1);
   });
+
+  it('memoizes output schema conversion across server instances', async () => {
+    const outputSchema = z.object({
+      normalized_value: z.string().describe('A normalized output value.'),
+    });
+    const outputSpy = vi.spyOn(outputSchema['~standard'].jsonSchema, 'output');
+
+    const register = (server: McpServer): void => {
+      registerTool(server, 'output_value', { outputSchema }, async () => ({
+        content: [{ type: 'text', text: 'value' }],
+        structuredContent: { normalized_value: 'value' },
+      }));
+    };
+
+    const firstServer = new McpServer({ name: 'first', version: '0.0.0' });
+    register(firstServer);
+    const firstClient = await connect(firstServer);
+    const firstTool = (await firstClient.listTools()).tools.find(
+      (tool) => tool.name === 'output_value',
+    );
+
+    const secondServer = new McpServer({ name: 'second', version: '0.0.0' });
+    register(secondServer);
+    const secondClient = await connect(secondServer);
+    const secondTool = (await secondClient.listTools()).tools.find(
+      (tool) => tool.name === 'output_value',
+    );
+
+    expect(secondTool?.outputSchema).toEqual(firstTool?.outputSchema);
+    expect(outputSpy).toHaveBeenCalledTimes(1);
+  });
 });

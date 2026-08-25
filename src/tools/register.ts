@@ -380,6 +380,12 @@ export function registerTool(
       config.inputSchema === undefined
         ? undefined
         : memoizeSchemaConversion(config.inputSchema as StandardSchemaWithJSON),
+    outputSchema:
+      config.outputSchema === undefined
+        ? undefined
+        : memoizeSchemaConversion(
+            config.outputSchema as StandardSchemaWithJSON,
+          ),
   };
 
   return server.registerTool(

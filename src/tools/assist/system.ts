@@ -5,6 +5,37 @@ import type { HorizonClient } from '../../client/http.js';
 import { encodePathSegment } from '../helpers.js';
 import { registerTool } from '../register.js';
 
+const WHOAMI_OUTPUT_SCHEMA = z.object({
+  identifier: z.string().nullish(),
+  name: z.string().nullish(),
+  team: z.string().nullish(),
+  teams: z.array(z.string()).nullish(),
+  roles: z.array(z.unknown()).nullish(),
+  permissions: z.unknown().nullish(),
+  // Injected by HorizonClient from the undocumented whoami field; extra
+  // Horizon keys still need to survive output validation.
+  _horizonVersion: z.string().nullish(),
+});
+
+const GET_LICENSE_INFO_OUTPUT_SCHEMA = z.object({
+  isValid: z.boolean().nullish(),
+  version: z.string().nullish(),
+  expiration: z.number().nullish(),
+  buildTime: z.number().nullish(),
+  count: z.number().nullish(),
+  dcvCount: z.number().nullish(),
+  // Horizon 2.10 returns module entitlements as objects ({ module, items });
+  // older instances returned bare module-name strings. Accept either.
+  modules: z
+    .array(z.union([z.string(), z.record(z.string(), z.unknown())]))
+    .nullish(),
+  libraries: z.array(z.record(z.string(), z.unknown())).nullish(),
+  releaseChannel: z.string().nullish(),
+  // Legacy / forward-compatible fields kept permissive.
+  expiry: z.string().nullish(),
+  features: z.record(z.string(), z.unknown()).nullish(),
+});
+
 const WHOAMI_CONFIG = {
   description:
     "Return the authenticated principal's identity and permissions. " +
@@ -16,17 +47,7 @@ const WHOAMI_CONFIG = {
   // raw response is piped straight into structuredContent, so every field
   // must accept null (.nullish() = nullable + optional) or the MCP output
   // validation rejects the whole whoami response before the client reads it.
-  outputSchema: {
-    identifier: z.string().nullish(),
-    name: z.string().nullish(),
-    team: z.string().nullish(),
-    teams: z.array(z.string()).nullish(),
-    roles: z.array(z.unknown()).nullish(),
-    permissions: z.unknown().nullish(),
-    // Injected by HorizonClient from the undocumented whoami field; extra
-    // Horizon keys still need to survive output validation.
-    _horizonVersion: z.string().nullish(),
-  },
+  outputSchema: WHOAMI_OUTPUT_SCHEMA,
 };
 
 const GET_LICENSE_INFO_CONFIG = {
@@ -36,24 +57,7 @@ const GET_LICENSE_INFO_CONFIG = {
   // may serialize absent fields as `null` (and the shape drifts across
   // versions), so every field is .nullish() to keep output validation from
   // rejecting an otherwise-valid response.
-  outputSchema: {
-    isValid: z.boolean().nullish(),
-    version: z.string().nullish(),
-    expiration: z.number().nullish(),
-    buildTime: z.number().nullish(),
-    count: z.number().nullish(),
-    dcvCount: z.number().nullish(),
-    // Horizon 2.10 returns module entitlements as objects ({ module, items });
-    // older instances returned bare module-name strings. Accept either.
-    modules: z
-      .array(z.union([z.string(), z.record(z.string(), z.unknown())]))
-      .nullish(),
-    libraries: z.array(z.record(z.string(), z.unknown())).nullish(),
-    releaseChannel: z.string().nullish(),
-    // Legacy / forward-compatible fields kept permissive.
-    expiry: z.string().nullish(),
-    features: z.record(z.string(), z.unknown()).nullish(),
-  },
+  outputSchema: GET_LICENSE_INFO_OUTPUT_SCHEMA,
 };
 
 const EXPLAIN_GRADING_POLICY_CONFIG = {
