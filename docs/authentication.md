@@ -45,7 +45,13 @@ HORIZON_API_TOKEN=initial-jwt
 
 Horizon validates the JWT signature against the JWKS configured for the
 service account, maps it to a Horizon principal, and applies that principal's
-RBAC. The MCP does not independently verify the JWT signature. It forwards the
+RBAC. A service account trusts one of two JWKS sources, chosen in its
+`trustConfig`: `static_jwks`, a key set embedded in the service-account
+definition, or `dynamic_jwks`, a key set Horizon fetches from a URL (optionally
+through a configured HTTP proxy) and refreshes itself. In both modes Horizon
+owns JWKS retrieval and signature verification; the MCP only forwards
+`X-API-SVA` and `X-API-TOKEN` and does not independently verify the JWT
+signature. It forwards the
 initial pair unchanged and does not trust the token-controlled `iss` or `exp`
 claims until Horizon accepts the token during lazy initialization.
 
@@ -155,12 +161,19 @@ Google Workspace service accounts usually use JWT bearer assertions or domain-wi
 
 The MCP does not support these Google Workspace flows.
 
-Issuer continuity is not identity continuity. The MCP checks that a renewed
-token has the same issuer as the initial token, but it does not require the
-same subject or other identity claims. Configure the OAuth client to issue
-tokens for the same Horizon service-account identity as the initial
-`HORIZON_API_TOKEN` or `X-API-TOKEN`. Otherwise rotation can change the Horizon
-principal, permissions, ownership, and audit identity used by later calls.
+Every token rotation changes the Horizon principal. Horizon derives the
+identity of a service-account caller as
+`<service-account name>-<first 16 hex characters of sha256(jwt)>`, followed by
+the value of the account's `identifierMapping` template when one is configured.
+The hash segment is always present and is computed over the presented token, so
+a renewed token yields a new identifier even when its issuer, subject and every
+other claim match the previous one; `identifierMapping` adds claim-derived
+context to the name but never removes the hash. Ownership, permissions granted
+to the identifier, and the audit identity recorded by Horizon therefore do not
+carry over across renewals. Grant permissions through the service account's
+roles and use team-based ownership for anything that must survive rotation. The
+MCP's issuer check on renewal only prevents a renewed token from coming from a
+different issuer; it does not preserve identity.
 
 If stdio omits the renewal tuple, or an HTTP caller omits the OAuth headers, the
 MCP forwards the JWT but cannot renew it.
