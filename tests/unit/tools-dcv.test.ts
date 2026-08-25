@@ -31,6 +31,47 @@ function parseResult(result: { content: unknown }) {
   return JSON.parse(content[0]!.text!) as unknown;
 }
 
+const FULL_POLICY_STATUS_FIXTURE = {
+  name: 'production-certificate-domains',
+  enabled: true,
+  renewalPeriod: '30 days',
+  executionTimeout: '15 minutes',
+  retryDelay: '5 minutes',
+  runnable: true,
+  status: 'running' as const,
+  startedAt: 1767225600000,
+  executionTimeoutAt: 1767226500000,
+  nextCheckAt: 1767225900000,
+  domainsStatus: {
+    error: null,
+    domains: [
+      {
+        domain: 'www.example.test',
+        isActive: true,
+        dcvStatus: 'validated' as const,
+        dcvExpiration: 1769817600000,
+        dcvMethod: 'dns_txt',
+        executionStatus: 'succeeded' as const,
+      },
+      {
+        domain: 'api.example.test',
+        isActive: true,
+        dcvStatus: 'not_validated' as const,
+        dcvExpiration: null,
+        dcvMethod: null,
+        executionStatus: 'error' as const,
+      },
+      {
+        domain: 'legacy.example.test',
+        isActive: false,
+        dcvStatus: 'expired' as const,
+        dcvExpiration: 1764547200000,
+        dcvMethod: 'dns_cname',
+      },
+    ],
+  },
+};
+
 describe('DCV lifecycle tools', () => {
   let client: Client;
   let mc: MockClient;
@@ -76,11 +117,11 @@ describe('DCV lifecycle tools', () => {
     expect(parseResult(result)).toEqual([]);
   });
 
-  it('gets the full status DTO for an encoded policy name', async () => {
+  it('gets policy status for an encoded policy name', async () => {
     mc.get.mockResolvedValueOnce({
       name: 'policy one',
       enabled: true,
-      renewalPeriod: 'P30D',
+      renewalPeriod: '30 days',
       executionTimeout: '5 minutes',
       retryDelay: '1 minute',
       runnable: true,
@@ -99,6 +140,20 @@ describe('DCV lifecycle tools', () => {
       name: 'policy one',
       domainsStatus: { domains: [] },
     });
+  });
+
+  it('returns a full Horizon policy status DTO through the output schema', async () => {
+    mc.get.mockResolvedValueOnce(FULL_POLICY_STATUS_FIXTURE);
+    const result = await client.callTool({
+      name: 'get_dcv_policy_status',
+      arguments: { name: 'production certificate domains' },
+    });
+
+    expect(mc.get).toHaveBeenCalledWith(
+      '/api/v1/dcv/lifecycle/policies/production%20certificate%20domains',
+    );
+    expect(result.isError).toBeUndefined();
+    expect(parseResult(result)).toEqual(FULL_POLICY_STATUS_FIXTURE);
   });
 
   it('posts policy, domain, and cancellation lifecycle actions to their exact routes', async () => {
@@ -161,8 +216,8 @@ describe('DCV lifecycle tools', () => {
     expect(mc.post).toHaveBeenCalledWith(
       '/api/v1/dcv/lifecycle/events/policy%20one/www.example.test',
       {
-        sortedBy: 'timestamp:Desc',
-        pageIndex: 2,
+        sortedBy: [{ element: 'timestamp', order: 'Desc' }],
+        pageIndex: 3,
         pageSize: 10,
         withCount: true,
       },

@@ -2,8 +2,13 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
-import { encodePathSegment } from './helpers.js';
+import { buildSortedBy, encodePathSegment, toApiPageIndex } from './helpers.js';
 import { registerTool } from './register.js';
+
+const RENEWAL_POLICY_SCHEMA = z.object({
+  cron: z.string(),
+  renewalPeriod: z.string(),
+});
 
 const POLICY_STATUS_SCHEMA = z.object({
   name: z.string(),
@@ -11,26 +16,30 @@ const POLICY_STATUS_SCHEMA = z.object({
   provisioner: z.string(),
   filter: z.string().nullable().optional(),
   enabled: z.boolean(),
-  renewalPolicy: z.unknown().nullable().optional(),
+  renewalPolicy: RENEWAL_POLICY_SCHEMA.nullable().optional(),
   runnable: z.boolean(),
 });
 
 const DOMAIN_STATUS_SCHEMA = z.object({
   domain: z.string(),
   isActive: z.boolean(),
-  dcvStatus: z.string(),
-  dcvExpiration: z.string().nullable().optional(),
+  dcvStatus: z
+    .enum(['not_validated', 'validated', 'expired'])
+    .nullable()
+    .optional(),
+  dcvExpiration: z.number().int().nullable().optional(),
   dcvMethod: z.string().nullable().optional(),
   executionStatus: z
     .enum([
       'initialized',
       'succeeded',
       'left_over',
-      'unexpected_error',
+      'error',
       'get_challenge_error',
       'challenge_publication_error',
       'dcv_validation_error',
     ])
+    .nullable()
     .optional(),
 });
 
@@ -38,13 +47,13 @@ const DCV_POLICY_STATUS_SCHEMA = z.object({
   name: z.string(),
   enabled: z.boolean(),
   renewalPeriod: z.string().nullable().optional(),
-  executionTimeout: z.string().nullable().optional(),
-  retryDelay: z.string().nullable().optional(),
+  executionTimeout: z.string(),
+  retryDelay: z.string(),
   runnable: z.boolean(),
   status: z.enum(['scheduled', 'disabled', 'running', 'queued', 'enabled']),
-  startedAt: z.string().nullable().optional(),
-  executionTimeoutAt: z.string().nullable().optional(),
-  nextCheckAt: z.string().nullable().optional(),
+  startedAt: z.number().int().nullable().optional(),
+  executionTimeoutAt: z.number().int().nullable().optional(),
+  nextCheckAt: z.number().int().nullable().optional(),
   domainsStatus: z.object({
     error: z.string().nullable().optional(),
     domains: z.array(DOMAIN_STATUS_SCHEMA),
@@ -58,15 +67,15 @@ const DCV_EVENT_SCHEMA = z.object({
   policy: z.string(),
   attempt: z.number().int().optional(),
   lastError: z.string().nullable().optional(),
-  msg: z.string().nullable().optional(),
-  removeAt: z.string().nullable().optional(),
+  msg: z.string().optional(),
+  removeAt: z.string(),
 });
 
 const DCV_EVENTS_RESPONSE_SCHEMA = z.object({
   results: z.array(DCV_EVENT_SCHEMA),
   pageIndex: z.number().int(),
   pageSize: z.number().int(),
-  count: z.number().int().optional(),
+  count: z.number().int().nullable().optional(),
   hasMore: z.boolean(),
 });
 
@@ -222,8 +231,11 @@ export function registerDcvLifecycleTools(
         ? `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}/${encodePathSegment(domain)}`
         : `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}`;
       const body: Record<string, unknown> = {};
-      if (sorted_by !== undefined) body['sortedBy'] = sorted_by;
-      if (page_index !== undefined) body['pageIndex'] = page_index;
+      const sortedBy = buildSortedBy(sorted_by);
+      if (sortedBy !== undefined) body['sortedBy'] = sortedBy;
+      if (page_index !== undefined) {
+        body['pageIndex'] = toApiPageIndex(page_index);
+      }
       if (page_size !== undefined) body['pageSize'] = page_size;
       if (with_count !== undefined) body['withCount'] = with_count;
       return textResult(await client.post(path, body));

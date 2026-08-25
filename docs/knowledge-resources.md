@@ -4,7 +4,7 @@ The server exposes a generated knowledge catalog at `horizon://knowledge/*`:
 
 - 18 core resource URIs backed by the main Horizon knowledge guides
 - 4 curated playbooks for smaller-model usability and integration recipes
-- generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `validation-rules`, `rest-notifications`)
+- generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
 
 MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
 
@@ -42,11 +42,12 @@ For clients with weak or missing MCP resource support, the same content is reach
 
 ## Generated section resources
 
-For the six longest guides, the server also registers section-level URIs derived from the H2 headings. Examples:
+For the seven longest guides, the server also registers section-level URIs derived from the H2 headings. Examples:
 
 - `horizon://knowledge/query-languages/ownership-patterns-hcql`
 - `horizon://knowledge/datasources/rest-datasource`
 - `horizon://knowledge/discovery-workflows/3-net-import-netimport`
 - `horizon://knowledge/integrations/mdm-integrations-intune-jamf`
+- `horizon://knowledge/dcv/event-stream`
 - `horizon://knowledge/validation-rules/complete-workflow-recipes`
 - `horizon://knowledge/rest-notifications/real-world-examples`
