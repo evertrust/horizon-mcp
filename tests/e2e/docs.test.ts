@@ -134,9 +134,15 @@ describe.skipIf(!E2E_CONFIGURED)('Documentation tools E2E', () => {
       max_results: 3,
     });
 
-    expect(result['resolved_product_version']).toBe('1.5.1');
+    // horizon-ansible is a latest-indexed product; derive the version from the
+    // catalog so the assertion survives documentation refreshes.
+    const ansibleVersion =
+      getLatestIndexedVersion('horizon-ansible') ?? '2.0.0';
+    expect(result['resolved_product_version']).toBe(ansibleVersion);
     const results = result['results'] as Array<Record<string, unknown>>;
-    expect(results[0]?.['page_id']).toBe('horizon-ansible:1.5.1:index');
+    expect(results[0]?.['page_id']).toBe(
+      `horizon-ansible:${ansibleVersion}:index`,
+    );
   });
 
   it('search_docs and get_doc_page expose cleaned Terraform provider content', async () => {

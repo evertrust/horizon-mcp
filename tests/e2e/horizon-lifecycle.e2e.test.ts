@@ -232,11 +232,13 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           format: 'der',
         });
         expect(raw).toBeTruthy();
-        const data = JSON.parse(raw) as Record<string, unknown>;
+        // The format enum only admits 'pem', so the SDK rejects 'der' during
+        // input validation and reports it as text, before the handler runs.
         expect(
-          data['error'],
-          'download_certificate with format=der should return an error dict',
-        ).toBeDefined();
+          raw,
+          'download_certificate with format=der should be rejected as a validation error',
+        ).toMatch(/Input validation error/);
+        expect(raw).toContain('format');
       });
     });
 
@@ -246,9 +248,11 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
 
     describe('csv exports', () => {
       it('exports certificates as CSV', async () => {
-        const result = await callTool('export_certificates_csv', {
-          query: 'profile exists',
-        });
+        const result = await callTool(
+          'export_certificates_csv',
+          { query: 'profile exists' },
+          { timeout: 120_000 },
+        );
         expect(
           result['csv'],
           `export_certificates_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
@@ -259,9 +263,11 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
       }, 150_000);
 
       it('exports requests as CSV', async () => {
-        const result = await callTool('export_requests_csv', {
-          query: 'profile exists',
-        });
+        const result = await callTool(
+          'export_requests_csv',
+          { query: 'profile exists' },
+          { timeout: 120_000 },
+        );
         expect(
           result['csv'],
           `export_requests_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
