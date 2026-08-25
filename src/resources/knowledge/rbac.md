@@ -111,8 +111,8 @@ updating, or deleting a service account requires
 Service accounts authenticate workloads from an external JWT issuer. Grant only
 the roles and permissions explicitly required by the workload. For static JWKS,
 `trustConfig.jwks` is supplied as a JSON string when creating or updating an
-account. Horizon GET responses may represent that field as an object, so provide
-the update tool re-serializes it during its GET-merge-PUT cycle.
+account. Horizon GET responses may represent that field as an object, so the
+update tool re-serializes it during its GET-merge-PUT cycle.
 
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign

@@ -392,7 +392,7 @@ This configuration keeps the JWT and OAuth client secret out of the file:
 ```toml
 [mcp_servers.horizon]
 url = "https://horizon.example.com/mcp"
-env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_SERVICE_JWT", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
+env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_API_TOKEN", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
 ```
 
 For `api-key`, Codex supports `http_headers` and `env_http_headers`. Use `env_http_headers` to keep the secret out of `config.toml`:

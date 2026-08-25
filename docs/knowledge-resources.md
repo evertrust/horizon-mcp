@@ -16,7 +16,7 @@ For clients with weak or missing MCP resource support, the same content is reach
 | Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, 30+ built-in functions, datasource chaining                                                 |
 | Workflows                 | `horizon://knowledge/workflows`                 | 7 lifecycle workflows, authorization levels, request policies                                                |
 | Query Languages           | `horizon://knowledge/query-languages`           | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples                                                      |
-| RBAC                      | `horizon://knowledge/rbac`                      | Permission format, 36-pattern catalog, role guidance                                                         |
+| RBAC                      | `horizon://knowledge/rbac`                      | Permission format, 37-pattern catalog, role guidance                                                         |
 | Architecture              | `horizon://knowledge/architecture`              | Object model, module types, dependency order                                                                 |
 | Dictionary Matrix         | `horizon://knowledge/dictionary-matrix`         | Certificate field dictionary and matrix reference                                                            |
 | Datasources               | `horizon://knowledge/datasources`               | DNS, LDAP, REST datasource config, multi-lookup patterns, end-to-end recipes                                 |

@@ -39,7 +39,7 @@ Tool counts per domain:
 | ---------------- | ----: | --------------------------------------------------------------------------------------- |
 | Configuration    |   129 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
 | Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
-| Lifecycle        |    23 | search/aggregate certs, requests, events, enrollment, DCV runs                          |
+| Lifecycle        |    24 | search/aggregate certs, requests, events, enrollment, DCV runs                          |
 | Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
 | Datasources      |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run                         |
 | Discovery        |     6 | campaign CRUD and flush                                                                 |
@@ -164,6 +164,17 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_SSE_KEEP_ALIVE`            | `15`        | Seconds between SSE keep-alive comments (`1` to `60`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `HORIZON_RATE_LIMIT_RPS`            | `20`        | Per-caller limit, counted per JSON-RPC message per second; `0` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `HORIZON_IP_RATE_LIMIT`             | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-caller limits; `0` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+The singular `HORIZON_HTTP_AUTH_MODE` setting was removed in 3.0.0. Use the plural `HORIZON_HTTP_AUTH_METHODS` whitelist instead.
+
+#### Removed in 3.0.0
+
+| Removed variable           | Replacement                                          |
+| -------------------------- | ---------------------------------------------------- |
+| `HORIZON_SESSION_IDLE_TTL` | `HORIZON_CREDENTIAL_CACHE_TTL`                       |
+| `HORIZON_SESSION_ABS_TTL`  | `HORIZON_CREDENTIAL_CACHE_TTL`                       |
+| `HORIZON_MAX_SESSIONS`     | `HORIZON_MAX_CONCURRENT_REQUESTS`                    |
+| `HORIZON_INIT_RATE_LIMIT`  | `HORIZON_RATE_LIMIT_RPS` and `HORIZON_IP_RATE_LIMIT` |
 
 Under Node, when an MCP client disconnects, the server cancels credential validation and any
 in-flight Horizon requests for that call.
@@ -509,12 +520,12 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 
 ## Compatibility
 
-| Horizon version | Status                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------- |
-| 2.10            | Tested (full Horizon 2.10 feature coverage)                                                                     |
-| 2.8             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
-| 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                                                                   |
-| All other versions | Untested; proceed with caution                                                                                |
+| Horizon version    | Status                                        |
+| ------------------ | --------------------------------------------- |
+| 2.10               | Tested (full Horizon 2.10 feature coverage)   |
+| 2.8                | Expected to work (in `HORIZON_WARN_VERSIONS`) |
+| 2.9                | Expected to work (in `HORIZON_WARN_VERSIONS`) |
+| All other versions | Untested; proceed with caution                |
 
 The operator can configure the version lists. By default, the server identifies only version 2.10 as tested.
 
