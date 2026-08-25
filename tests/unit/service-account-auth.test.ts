@@ -142,7 +142,7 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
       .mockResolvedValue(response(200, { access_token: renewed }));
     const provider = new ServiceAccountAuthProvider(
       'ci',
-      jwt({ iss: issuer, exp: now + 1 }),
+      jwt({ iss: issuer, exp: now - 1 }),
       {
         clientId: 'client',
         clientSecret: 'secret',
