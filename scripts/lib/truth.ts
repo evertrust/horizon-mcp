@@ -30,6 +30,9 @@ const CLIENT_METHOD_NAMES = new Set([
 
 export const SOURCE_ONLY_ALLOWED_PATHS = new Set<string>([
   '/api/v1/crypto/detect',
+  // DCV policy status listing: routed in Horizon (conf/routes) but absent from
+  // the published OpenAPI; the DCV lifecycle tools were derived from the source.
+  '/api/v1/dcv/lifecycle/policies',
   '/api/v1/events/csv',
   '/api/v1/rfc5280/crl',
   '/api/v1/rfc3161',
