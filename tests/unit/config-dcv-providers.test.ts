@@ -122,6 +122,48 @@ describe('create_dcv_provider', () => {
     expect(isError(res)).toBe(true);
     expect(mc.post).not.toHaveBeenCalled();
   });
+
+  it('POSTs the gs_mssl subtype fields', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'gs' });
+    await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
+        timeout: '30 seconds',
+        profile: 'managed-ssl',
+        defaultEmail: 'dcv@example.test',
+        defaultPhone: '+33102030405',
+      },
+    });
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/dcv/providers', {
+      name: 'gs',
+      type: 'gs_mssl',
+      endpoint: 'https://system.globalsign.com',
+      credentials: 'gs-creds',
+      timeout: '30 seconds',
+      profile: 'managed-ssl',
+      defaultEmail: 'dcv@example.test',
+      defaultPhone: '+33102030405',
+    });
+  });
+
+  it('requires gs_mssl profile and default contact fields', async () => {
+    const res = await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
+        timeout: '30 seconds',
+      },
+    });
+    expect(isError(res)).toBe(true);
+    expect(mc.post).not.toHaveBeenCalled();
+  });
 });
 
 describe('update_dcv_provider (GET-merge-PUT on collection)', () => {

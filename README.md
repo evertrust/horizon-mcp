@@ -14,7 +14,7 @@ The server is for PKI engineers, platform teams, and security operators. They ca
 
 ## Why knowledge-first?
 
-Horizon MCP provides tools and domain information. It includes **17 core knowledge URIs**, **4 integration playbooks**, and generated resources for long operational guides.
+Horizon MCP provides tools and domain information. It includes **18 core knowledge URIs**, **4 integration playbooks**, and generated resources for long operational guides.
 
 These resources explain Horizon concepts and help clients select tools. Clients can read the resources before they select a tool or create a payload.
 
@@ -22,8 +22,8 @@ The server does not preload these resources. The server also cannot guarantee th
 
 ## Features
 
-- **212 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 17 core topic URIs and 4 curated playbooks.
+- **218 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **Knowledge catalog**: 18 core topic URIs and 4 curated playbooks.
   The server also generates section URIs from H2 headings in the longest guides.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. A whitelist can enable multiple methods.
 - **Service JWT renewal**: The MCP can use OAuth `client_credentials` to fetch and renew a caller's short-lived JWT.
@@ -40,7 +40,7 @@ Tool counts per domain:
 | ---------------- | ----: | --------------------------------------------------------------------------------------- |
 | Configuration    |   126 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
 | Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
-| Lifecycle        |    17 | search/aggregate certs, requests, events, enroll, approve, revoke                       |
+| Lifecycle        |    23 | search/aggregate certs, requests, events, enrollment, DCV runs                          |
 | Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
 | Datasources      |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run                         |
 | Discovery        |     6 | campaign CRUD and flush                                                                 |
@@ -332,7 +332,7 @@ See [docs/authentication.md](docs/authentication.md) for the full step-by-step g
 
 ## Tool catalog overview
 
-The 212 tools are in 12 domains. Each tool has explicit usage guidance for smaller models.
+The 218 tools are in 12 domains. Each tool has explicit usage guidance for smaller models.
 
 The table at the top of this README gives the tool counts. The [tool reference](docs/tools-reference.md) gives safety tiers and descriptions.
 
@@ -556,8 +556,8 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Installation](docs/installation.md)               | Install methods and troubleshooting                                 |
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md)          | All 212 tools by domain with safety tiers                           |
-| [Knowledge resources](docs/knowledge-resources.md) | 17 core URIs, 4 curated playbooks, generated section resources      |
+| [Tool reference](docs/tools-reference.md)          | All 218 tools by domain with safety tiers                           |
+| [Knowledge resources](docs/knowledge-resources.md) | 18 core URIs, 4 curated playbooks, generated section resources      |
 | [Development](docs/development.md)                 | Dev setup, tests, linting                                           |
 
 ## License

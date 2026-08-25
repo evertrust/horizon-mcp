@@ -147,6 +147,40 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
     useWhen: 'caller wants to cancel a pending request and the id is known',
     doNotUseWhen: 'the request id is unknown or caller is only inspecting',
   },
+  list_dcv_policy_status: {
+    useWhen:
+      'caller wants an overview of DCV policy readiness or current state',
+    doNotUseWhen: 'caller needs domains, timing, or errors for one policy',
+  },
+  get_dcv_policy_status: {
+    useWhen: "caller needs one policy's domain status, schedule, or run errors",
+    doNotUseWhen: 'caller only needs the available policy list',
+  },
+  run_dcv_policy: {
+    useWhen:
+      'caller explicitly wants to start DCV for every eligible policy domain',
+    doNotUseWhen: 'caller wants a single domain or is only inspecting status',
+    beforeCall: 'confirm the policy is intended and inspect its status first',
+  },
+  run_dcv_domain: {
+    useWhen: 'caller explicitly wants to start DCV for one named policy domain',
+    doNotUseWhen:
+      'caller intends a full policy run or is only inspecting status',
+    beforeCall:
+      'confirm the policy and domain, then inspect policy status first',
+  },
+  cancel_dcv_run: {
+    useWhen: 'caller explicitly wants to stop an active DCV policy run',
+    doNotUseWhen:
+      'caller wants to stop only one domain or merely inspect status',
+    beforeCall:
+      'confirm this cancels the whole policy run, including its domains',
+  },
+  list_dcv_events: {
+    useWhen:
+      'caller needs DCV run history, failures, retries, or retention timing',
+    doNotUseWhen: 'caller needs the current policy or domain status instead',
+  },
 };
 
 function getGuidance(name: string): ToolGuidance | undefined {

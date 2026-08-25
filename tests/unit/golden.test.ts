@@ -117,7 +117,7 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (17)
+  // lifecycle.ts (23)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -135,6 +135,12 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'export_events_csv',
   'aggregate_certificates',
   'aggregate_requests',
+  'list_dcv_policy_status',
+  'get_dcv_policy_status',
+  'run_dcv_policy',
+  'run_dcv_domain',
+  'cancel_dcv_run',
+  'list_dcv_events',
   // profiles.ts (2)
   'list_profiles',
   'get_profile',
@@ -221,6 +227,7 @@ const KNOWLEDGE_FILES: string[] = [
   'system_admin.md',
   'discovery_workflows.md',
   'datasources.md',
+  'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
 ];
@@ -262,9 +269,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 86 tools', async () => {
+  it('registers exactly 92 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(86);
+    expect(result.tools.length).toBe(92);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -977,8 +984,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 86 tools', () => {
-    expect(toolNames.size).toBe(86);
+  it('registers exactly 92 tools', () => {
+    expect(toolNames.size).toBe(92);
   });
 
   it('excludes admin tools', () => {

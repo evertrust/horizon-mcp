@@ -90,6 +90,7 @@ describe('createSessionServer toolset gating', () => {
 
     // One representative tool per toolset name.
     expect(names).toContain('search_certificates'); // lifecycle
+    expect(names).toContain('list_dcv_policy_status'); // lifecycle
     expect(names).toContain('list_profiles'); // profiles
     expect(names).toContain('list_dashboards'); // dashboards
     expect(names).toContain('list_discovery_campaigns'); // discovery
@@ -135,11 +136,14 @@ describe('createSessionServer toolset gating', () => {
     expect(names).toContain('whoami');
     expect(names).toContain('read_knowledge');
     expect(names).toContain('get_certificate');
+    expect(names).toContain('list_dcv_policy_status');
 
     // Mutating tools are stripped.
     expect(names).not.toContain('create_certificate_profile');
     expect(names).not.toContain('delete_ca');
     expect(names).not.toContain('update_trigger');
     expect(names).not.toContain('submit_request');
+    expect(names).not.toContain('run_dcv_policy');
+    expect(names).not.toContain('cancel_dcv_run');
   });
 });
