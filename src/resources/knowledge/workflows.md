@@ -175,6 +175,23 @@ Two-step process: the requester submits a request, then a separate approver
 approves it. The requester must meet `enrollRequest` access level; the
 approver must meet `enrollApprove` access level.
 
+### Asynchronous Enrollment Flow
+
+Some PKI connectors submit enrollment to an external CA that does not return
+the certificate immediately. Horizon records the request as `in_progress`
+while it waits and retries the external CA according to the connector's
+`retryInterval`.
+
+```
+Caller -> submit_request -> in_progress request -> external CA polling -> certificate issued
+                                            -> deny_request or cancel_request
+```
+
+Use `search_requests` to find requests with status `in_progress`, then
+`get_request` to inspect the full record. Poll rather than submitting another
+request. `approve_request` is only valid for `pending` requests; `deny_request`
+and `cancel_request` accept both `pending` and `in_progress` requests.
+
 ### API-Specific Actions
 
 The `*Api` fields (e.g., `enrollApi`, `revokeApi`, `renewApi`, `recoverApi`)

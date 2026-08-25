@@ -162,9 +162,9 @@ const APPROVE_REQUEST_CONFIG = {
 
 const DENY_REQUEST_CONFIG = {
   description:
-    'Deny a pending certificate lifecycle request.\n\n' +
+    'Deny a pending or in-progress certificate lifecycle request.\n\n' +
     'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
-    'Only pending requests can be denied. Permissions are checked automatically.\n\n' +
+    'Pending and in_progress requests can be denied. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the denial. The workflow\n' +
     'type is determined automatically from the request.\n' +
     'If permission is denied, returns an error - do NOT retry.',
@@ -175,9 +175,9 @@ const DENY_REQUEST_CONFIG = {
 
 const CANCEL_REQUEST_CONFIG = {
   description:
-    'Cancel a pending certificate lifecycle request.\n\n' +
+    'Cancel a pending or in-progress certificate lifecycle request.\n\n' +
     'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
-    'Only pending requests can be cancelled. Permissions are checked automatically.\n\n' +
+    'Pending and in_progress requests can be cancelled. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the cancellation. The workflow\n' +
     'type is determined automatically from the request.\n' +
     'If permission is denied, returns an error - do NOT retry.',
@@ -193,6 +193,7 @@ const SEARCH_REQUESTS_CONFIG = {
     'equals, before, after, contains, in, and/or/not. ' +
     'Full reference: horizon://knowledge/query-languages. ' +
     'Presets: compact (default), diagnostic, compliance. ' +
+    'Status can be in_progress while asynchronous enrollment waits for an external CA. ' +
     'Results are field-truncated; use get_request for the full record. ' +
     'Pagination: page_index is 0-based; use next_page_index from the previous ' +
     'response; stop when has_more is false. Pass sorted_by for stable order.',
@@ -242,6 +243,7 @@ const GET_REQUEST_CONFIG = {
     'Get full details of a certificate lifecycle request by ID.\n\n' +
     'Returns complete untruncated data including all workflow fields,\n' +
     'certificate details, requester/approver info, and audit trail.\n\n' +
+    'An asynchronous enrollment can remain in_progress while Horizon waits for the external CA.\n\n' +
     'PKCS#12 / PFX: For centralized enrollment requests (server-side key\n' +
     'generation), the response contains the PKCS#12 bundle with the\n' +
     'certificate and private key. Look for the pkcs12 or keyStore\n' +

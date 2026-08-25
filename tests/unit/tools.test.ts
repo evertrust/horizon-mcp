@@ -846,6 +846,71 @@ describe('Lifecycle tools', () => {
     });
   });
 
+  describe.each([
+    {
+      name: 'approve_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/approve',
+      allowed: true,
+    },
+    {
+      name: 'approve_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/approve',
+      allowed: false,
+    },
+    {
+      name: 'deny_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/deny',
+      allowed: true,
+    },
+    {
+      name: 'deny_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/deny',
+      allowed: true,
+    },
+    {
+      name: 'cancel_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/cancel',
+      allowed: true,
+    },
+    {
+      name: 'cancel_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/cancel',
+      allowed: true,
+    },
+  ])('$name request state $status', ({ name, status, endpoint, allowed }) => {
+    it(`${allowed ? 'allows' : 'blocks'} the action`, async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        status,
+        permissions: { approve: true, cancel: true },
+      });
+      mockClient.post.mockResolvedValueOnce({ status: 'handled' });
+
+      const result = await client.callTool({
+        name,
+        arguments: { request_id: 'async-request' },
+      });
+
+      if (!allowed) {
+        expect(String(parseToolResult(result)['error'])).toContain('pending');
+        expect(mockClient.post).not.toHaveBeenCalled();
+        return;
+      }
+
+      expect(mockClient.post).toHaveBeenCalledWith(endpoint, {
+        id: 'async-request',
+        workflow: 'enroll',
+      });
+      expect(parseToolResult(result)['status']).toBe('handled');
+    });
+  });
+
   // ==========================================================================
   // Cross-tool pagination contract
   //

@@ -3,7 +3,7 @@
  *
  * Source of truth: docs/audit/pki_connectors.schema.json (resolved from the
  * Scala case classes + bundled OpenAPI). Polymorphic union discriminated by the
- * lowercase 'type' field (21 subtypes). Surfaced verbatim through
+ * lowercase 'type' field (22 subtypes). Surfaced verbatim through
  * describe_pki_connector_schema so the model never guesses the per-subtype
  * structure.
  *
@@ -58,6 +58,9 @@ export const pkiConnectorRequestSchema = {
       $ref: '#/$defs/FCMSConnector',
     },
     {
+      $ref: '#/$defs/GCPConnector',
+    },
+    {
       $ref: '#/$defs/GSAtlasConnector',
     },
     {
@@ -88,6 +91,13 @@ export const pkiConnectorRequestSchema = {
       description: 'A finite duration string.',
       pattern:
         '^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$',
+      examples: ['5 seconds', '10s', '7 days'],
+    },
+    PositiveFiniteDuration: {
+      type: 'string',
+      description: 'A positive finite duration string.',
+      pattern:
+        '^(0*[1-9][0-9]*) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$',
       examples: ['5 seconds', '10s', '7 days'],
     },
     ConnectorName: {
@@ -412,7 +422,7 @@ export const pkiConnectorRequestSchema = {
           ],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
           default: '6s',
         },
         dnsChallengeProvider: {
@@ -539,7 +549,7 @@ export const pkiConnectorRequestSchema = {
           $ref: '#/$defs/FiniteDuration',
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         signingHash: {
           type: ['string', 'null'],
@@ -590,7 +600,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         authenticationCredentials: {
           type: 'string',
@@ -719,7 +729,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         skipApproval: {
           type: ['boolean', 'null'],
@@ -940,7 +950,7 @@ export const pkiConnectorRequestSchema = {
           ],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
           default: '5 seconds',
         },
         queue: {
@@ -1009,6 +1019,96 @@ export const pkiConnectorRequestSchema = {
         'deleteOnRevoke',
       ],
     },
+    GCPConnector: {
+      title: 'GCP Certificate Authority Service',
+      type: 'object',
+      properties: {
+        name: {
+          $ref: '#/$defs/ConnectorName',
+        },
+        type: {
+          type: 'string',
+          enum: ['gcp'],
+        },
+        projectId: {
+          type: 'string',
+          description:
+            'Identifier of the Google Cloud project hosting the CA pool',
+          example: 'my-issuing-project',
+        },
+        location: {
+          type: 'string',
+          description: 'Google Cloud location (region) of the CA pool',
+          example: 'europe-west1',
+        },
+        caPool: {
+          type: 'string',
+          description:
+            'Identifier of the CA pool to issue from. The pool auto-selects an enabled certificate authority.',
+          example: 'my-ca-pool',
+        },
+        certificateLifetime: {
+          $ref: '#/$defs/FiniteDuration',
+          description:
+            'Validity applied to every certificate issued through this connector.',
+          example: '90 days',
+        },
+        credentials: {
+          type: 'string',
+          example: 'myGcpServiceAccountKey',
+          description:
+            'Name of the `raw` [credentials](#tag/security.credentials) holding the Google service account key (JSON). If not defined, Application Default Credentials are used (environment variable or workload identity).',
+        },
+        impersonation: {
+          type: 'object',
+          description:
+            'When set, the resolved credentials impersonate the target service account.',
+          properties: {
+            target: {
+              type: 'string',
+              description: 'Email of the service account to impersonate.',
+              example: 'issuer@my-issuing-project.iam.gserviceaccount.com',
+            },
+            lifetime: {
+              $ref: '#/$defs/FiniteDuration',
+              example: '1 hour',
+            },
+          },
+          required: ['target', 'lifetime'],
+        },
+        certificateTemplate: {
+          type: 'string',
+          description:
+            'Certificate template governing issuance policy. Accepts the template short name or its full resource path.',
+          example: 'my-template',
+        },
+        endpoint: {
+          type: 'string',
+          description:
+            'Overrides the default Certificate Authority Service address and port (`privateca.googleapis.com:443`). If not set, the default service URL is used.',
+          example: 'privateca.myapi.com',
+        },
+        timeout: {
+          $ref: '#/$defs/FiniteDuration',
+          example: '5 seconds',
+        },
+        proxy: {
+          type: 'string',
+          description: 'Name of the proxy to use to connect to the GCP Api',
+        },
+        queue: {
+          type: ['string', 'null'],
+        },
+      },
+      required: [
+        'name',
+        'type',
+        'projectId',
+        'location',
+        'caPool',
+        'certificateLifetime',
+      ],
+    },
     GSAtlasConnector: {
       title: 'GlobalSign Atlas',
       type: 'object',
@@ -1031,7 +1131,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         authenticationCredentials: {
           type: 'string',
@@ -1089,7 +1189,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         timeout: {
           $ref: '#/$defs/FiniteDuration',
@@ -1271,7 +1371,7 @@ export const pkiConnectorRequestSchema = {
           type: ['string', 'null'],
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
       },
       required: [
@@ -1352,7 +1452,7 @@ export const pkiConnectorRequestSchema = {
           type: 'string',
         },
         retryInterval: {
-          $ref: '#/$defs/FiniteDuration',
+          $ref: '#/$defs/PositiveFiniteDuration',
         },
         validDays: {
           $ref: '#/$defs/FiniteDuration',
