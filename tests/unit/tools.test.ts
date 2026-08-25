@@ -773,6 +773,31 @@ describe('Lifecycle tools', () => {
         'autoRenewalPolicy.editable is true',
       );
     });
+
+    it('preserves standard Horizon errors that are unrelated to editability', async () => {
+      mockClient.post.mockRejectedValueOnce(
+        new HorizonError(403, {
+          errorCode: 'LIC-004',
+          message: 'Expired License',
+        }),
+      );
+
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'Horizon API error 403 [LIC-004]. Expired License',
+      );
+      expect((result as ToolResult).content[0]!.text).not.toContain(
+        'autoRenewalPolicy.editable is true',
+      );
+    });
   });
 
   describe('approve_request', () => {

@@ -1,6 +1,6 @@
 # Tool reference
 
-212 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
+213 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
 
 - **read-only** - no side effects
 - **mutating-safe** - creates or modifies data without being classified as destructive; it may still be non-idempotent and must not be retried blindly

@@ -192,6 +192,16 @@ const SET_CERTIFICATE_AUTO_RENEW_CONFIG = {
   inputSchema: SET_CERTIFICATE_AUTO_RENEW_SCHEMA,
 };
 
+const AUTO_RENEW_NOT_EDITABLE_MESSAGE =
+  /\bauto[- ]?renew\b.*\b(?:is )?not editable\b/i;
+
+function isAutoRenewNotEditableError(error: HorizonError): boolean {
+  return (
+    AUTO_RENEW_NOT_EDITABLE_MESSAGE.test(error.message) ||
+    AUTO_RENEW_NOT_EDITABLE_MESSAGE.test(error.detail ?? '')
+  );
+}
+
 function autoRenewNotEditableResult(error: HorizonError) {
   return {
     isError: true as const,
@@ -411,7 +421,7 @@ export function registerCertificateTools(
           content: [{ type: 'text' as const, text: JSON.stringify(result) }],
         };
       } catch (error) {
-        if (error instanceof HorizonError)
+        if (error instanceof HorizonError && isAutoRenewNotEditableError(error))
           return autoRenewNotEditableResult(error);
         throw error;
       }
