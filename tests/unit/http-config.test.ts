@@ -283,6 +283,21 @@ describe('buildHttpConfig', () => {
       ).toThrow(/header/i);
     });
 
+    it.each([
+      'X-OAUTH-CLIENT-ID',
+      'X-OAUTH-CLIENT-SECRET',
+      'X-OAUTH-SCOPE',
+      'X-OAUTH-AUDIENCE',
+      'Proxy-Authorization',
+    ])('rejects reserved inbound certificate header %s', (header) => {
+      expect(() =>
+        mtls({
+          HORIZON_INBOUND_CERT_HEADER: header,
+          HORIZON_TRUSTED_PROXY: '10.0.0.0/8',
+        }),
+      ).toThrow(new RegExp(`HORIZON_INBOUND_CERT_HEADER.*${header}`, 'i'));
+    });
+
     it('rejects an invalid header token', () => {
       expect(() =>
         mtls({

@@ -48,6 +48,11 @@ const FORBIDDEN_HEADERS: ReadonlySet<string> = new Set([
   'x-api-key',
   'x-api-sva',
   'x-api-token',
+  'x-oauth-client-id',
+  'x-oauth-client-secret',
+  'x-oauth-scope',
+  'x-oauth-audience',
+  'proxy-authorization',
   'csrf-token',
 ]);
 

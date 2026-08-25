@@ -188,6 +188,29 @@ describe('extractCredential', () => {
       expect(m.kind).toBe('cert');
     });
 
+    it('extracts a cert from a non-reserved configured header', () => {
+      const customHeaderCfg = cfg({
+        acceptedAuthMethods: HttpAuthMethod.Mtls,
+        mtls: {
+          forwardHeader: 'SSL_CLIENT_CERT',
+          inbound: {
+            header: 'x-trusted-client-cert',
+            trustedProxy: '10.0.0.0/8',
+          },
+        },
+      });
+
+      const credential = extractCredential(
+        req(
+          { 'x-trusted-client-cert': encodeURIComponent(PEM) },
+          { remoteAddress: '10.0.0.9' },
+        ),
+        customHeaderCfg,
+      );
+
+      expect(credential.kind).toBe('cert');
+    });
+
     it('rejects the inbound cert from an untrusted peer', () => {
       expect(() =>
         extractCredential(
