@@ -105,9 +105,7 @@ const CREATE_SERVICE_ACCOUNT_SCHEMA = z.object({
 
 const UPDATE_SERVICE_ACCOUNT_SCHEMA = z.object({
   name: nameSchema.describe('Service-account name to update (immutable key).'),
-  trustConfig: trustConfigSchema.describe(
-    'Complete replacement trust configuration. Required because GET returns static JWKS as an object while PUT requires its JSON string.',
-  ),
+  trustConfig: trustConfigSchema.optional(),
   validationRules: validationRulesSchema.optional(),
   permissions: permissionsSchema.optional(),
   roles: rolesSchema.optional(),
@@ -122,7 +120,7 @@ const UPDATE_SERVICE_ACCOUNT_SCHEMA = z.object({
 });
 
 type ServiceAccountFields = {
-  readonly trustConfig: z.infer<typeof trustConfigSchema>;
+  readonly trustConfig?: z.infer<typeof trustConfigSchema>;
   readonly validationRules?: string[];
   readonly permissions?: z.infer<typeof permissionsSchema>;
   readonly roles?: string[];
@@ -142,7 +140,8 @@ function buildServiceAccountBody({
   jwtAllowedClockSkew,
   identifierMapping,
 }: ServiceAccountFields): Record<string, unknown> {
-  const body: Record<string, unknown> = { trustConfig };
+  const body: Record<string, unknown> = {};
+  if (trustConfig !== undefined) body['trustConfig'] = trustConfig;
   if (validationRules !== undefined) body['validationRules'] = validationRules;
   if (permissions !== undefined) body['permissions'] = permissions;
   if (roles !== undefined) body['roles'] = roles;
@@ -156,6 +155,27 @@ function buildServiceAccountBody({
   if (identifierMapping !== undefined)
     body['identifierMapping'] = identifierMapping;
   return body;
+}
+
+function normalizeServiceAccountCurrent(
+  current: Record<string, unknown>,
+): Record<string, unknown> {
+  const trustConfig = current['trustConfig'];
+  if (
+    trustConfig === null ||
+    typeof trustConfig !== 'object' ||
+    Array.isArray(trustConfig)
+  ) {
+    return current;
+  }
+  const config = trustConfig as Record<string, unknown>;
+  if (config['type'] !== 'static_jwks' || typeof config['jwks'] !== 'object') {
+    return current;
+  }
+  return {
+    ...current,
+    trustConfig: { ...config, jwks: JSON.stringify(config['jwks']) },
+  };
 }
 
 export function registerServiceAccountTools(
@@ -193,10 +213,11 @@ export function registerServiceAccountTools(
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update a service account. Requires manage access ' +
-      '(`access-management:service-account:*`). A complete trustConfig is required ' +
-      'because GET returns static JWKS as an object but PUT requires a JSON string.',
+      '(`access-management:service-account:*`). GET static JWKS objects are ' +
+      'serialized before the merged PUT because the API expects a JSON string.',
     inputSchema: UPDATE_SERVICE_ACCOUNT_SCHEMA,
     buildOverrides: (args) => buildServiceAccountBody(args),
+    normalizeCurrent: normalizeServiceAccountCurrent,
   });
 
   registerDeleteTool(server, client, SPEC, {

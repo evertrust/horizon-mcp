@@ -130,7 +130,7 @@ describe('create_service_account', () => {
 });
 
 describe('update_service_account', () => {
-  it('PUTs the collection and requires static JWKS as a JSON string', async () => {
+  it('PUTs the collection and re-stringifies static JWKS from the GET response', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({
       _id: 'internal-id',
@@ -141,10 +141,12 @@ describe('update_service_account', () => {
       permissions: [{ value: 'lifecycle:*:*:enroll' }],
       roles: ['operator'],
     });
-    const trustConfig = staticTrustConfig('{"keys":[{"kid":"new"}]}');
     await client.callTool({
       name: 'update_service_account',
-      arguments: { name: 'ci-runner', trustConfig },
+      arguments: {
+        name: 'ci-runner',
+        validationRules: ['{{aud}} equals "horizon"'],
+      },
     });
 
     expect(mc.get).toHaveBeenCalledWith(
@@ -152,8 +154,8 @@ describe('update_service_account', () => {
     );
     expect(mc.put).toHaveBeenCalledWith('/api/v1/security/service-accounts', {
       name: 'ci-runner',
-      trustConfig,
-      validationRules: ['{{iss}} equals "https://issuer.example"'],
+      trustConfig: staticTrustConfig('{"keys":[{"kid":"old"}]}'),
+      validationRules: ['{{aud}} equals "horizon"'],
       permissions: [{ value: 'lifecycle:*:*:enroll' }],
       roles: ['operator'],
     });

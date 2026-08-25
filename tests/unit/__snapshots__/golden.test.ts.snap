@@ -195,7 +195,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
           "type": "array",
         },
         "trustConfig": {
-          "description": "Complete replacement trust configuration. Required because GET returns static JWKS as an object while PUT requires its JSON string.",
+          "description": "JWT trust configuration, either an inline static JWKS or dynamic JWKS URL.",
           "oneOf": [
             {
               "properties": {
@@ -248,7 +248,6 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
       },
       "required": [
         "name",
-        "trustConfig",
       ],
       "type": "object",
     },
