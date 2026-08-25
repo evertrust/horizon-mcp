@@ -65,6 +65,35 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
     expect(fetcher).not.toHaveBeenCalled();
   });
 
+  it.each(['toString', 'constructor', '__proto__'])(
+    'refuses renewal from prototype-named issuer %s',
+    async (issuer) => {
+      const token = jwt({
+        iss: issuer,
+        exp: Math.floor(Date.now() / 1000) - 1,
+      });
+      const fetcher = vi.fn<typeof fetch>();
+      const provider = new ServiceAccountAuthProvider('ci', token, {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          'https://issuer.example.com': {
+            tokenUrl: 'https://oauth.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+      });
+      provider.markValidated();
+
+      await expect(provider.refreshIfNeeded()).rejects.toThrow(
+        `OAuth renewal refused: JWT issuer "${issuer}" is not listed in ` +
+          'HORIZON_OAUTH_ISSUERS. Configured issuers: https://issuer.example.com',
+      );
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
   it('uses the pinned token URL with client_secret_basic', async () => {
     const now = Math.floor(Date.now() / 1000);
     const issuer = 'https://issuer.example.com/tenant/';

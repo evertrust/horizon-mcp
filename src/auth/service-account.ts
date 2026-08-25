@@ -159,7 +159,9 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     const claims = decodeClaims(this._jwt);
     const configuredIssuers = this._oauth?.issuers;
     if (configuredIssuers) {
-      const configured = configuredIssuers[claims.iss];
+      const configured = Object.hasOwn(configuredIssuers, claims.iss)
+        ? configuredIssuers[claims.iss]
+        : undefined;
       if (!configured) {
         const names = Object.keys(configuredIssuers).sort().join(', ');
         throw new Error(

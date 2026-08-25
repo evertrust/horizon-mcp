@@ -62,6 +62,21 @@ describe('loadSettings', () => {
       },
     );
 
+    it('rejects __proto__ as an issuer key', () => {
+      expect(() =>
+        loadSettings({
+          HORIZON_OAUTH_ISSUERS: JSON.stringify({
+            ['__proto__']: {
+              tokenUrl: 'https://oauth.example.com/token',
+              authMethod: 'client_secret_basic',
+            },
+          }),
+        }),
+      ).toThrow(
+        'HORIZON_OAUTH_ISSUERS issuer "__proto__" must be an absolute HTTPS URL',
+      );
+    });
+
     it('rejects an unknown auth method and names the offending key', () => {
       const issuer = 'https://issuer.example.com';
       expect(() =>
