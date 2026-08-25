@@ -101,7 +101,7 @@ export interface SessionServerOptions {
 /**
  * Throw with the valid list if any requested toolset name is unknown. Called at
  * startup so a misconfigured `HORIZON_ENABLED_TOOLSETS` refuses to start (in HTTP
- * mode session servers are built per request, so per-session validation would be
+ * mode servers are built per request, so per-request validation would be
  * too late).
  */
 export function assertToolsetsValid(enabled?: readonly string[]): void {
@@ -128,8 +128,8 @@ function resolveToolsets(enabled?: readonly string[]): string[] {
 /**
  * Build a fully-wired McpServer bound to a single HorizonClient: knowledge
  * resources plus the selected tool domains. Transport-agnostic - stdio builds
- * one at startup, HTTP builds one per session so each session's tools close over
- * that session's client (no shared client state across sessions).
+ * one at startup, HTTP builds one per request so each request's tools close over
+ * that request's client (no shared client state across requests).
  */
 export function createSessionServer(
   client: HorizonClient,

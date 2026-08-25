@@ -5,14 +5,11 @@ interface JsonRpcMessage {
   id?: unknown;
 }
 
-/** Normalize a parsed JSON-RPC body (object, batch array, or empty) to a list. */
-export function messagesOf(body: unknown): JsonRpcMessage[] {
+function messagesOf(body: unknown): JsonRpcMessage[] {
   if (Array.isArray(body)) return body as JsonRpcMessage[];
   if (body === null || body === undefined) return [];
   return [body as JsonRpcMessage];
 }
-
-/** The method names present in the body (skips entries without a method). */
 
 /** The id of the first message, or null. */
 export function firstId(body: unknown): JsonRpcId {

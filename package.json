@@ -1,6 +1,6 @@
 {
   "name": "@evertrust/horizon-mcp",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "MCP server for Evertrust Horizon certificate lifecycle management",
   "type": "module",
   "repository": {
@@ -20,11 +20,12 @@
     "node": ">=24.10"
   },
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "bun src/index.ts",
     "build": "tsup",
     "build:binary": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp",
     "build:binaries": "bun run build && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-x64 --target=bun-linux-x64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-linux-arm64 --target=bun-linux-arm64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-x64 --target=bun-darwin-x64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-darwin-arm64 --target=bun-darwin-arm64 && bun build --compile dist/index.js --outfile dist/horizon-mcp-windows-x64.exe --target=bun-windows-x64",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts --reporter=verbose",
     "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon.test.ts -t \"exports events as CSV\" --reporter=verbose",
     "test:scenarios": "vitest run --config vitest.config.llm.ts --reporter=verbose",
@@ -47,8 +48,7 @@
     "undici": "8.7.0",
     "zod": "4.3.6",
     "@modelcontextprotocol/server": "2.0.0",
-    "@modelcontextprotocol/node": "2.0.0",
-    "@modelcontextprotocol/client": "2.0.0"
+    "@modelcontextprotocol/node": "2.0.0"
   },
   "overrides": {
     "@hono/node-server": "^1.19.14",
@@ -71,6 +71,8 @@
     "@trivago/prettier-plugin-sort-imports": "6.0.2",
     "@types/express": "^5",
     "@types/node": "25.5.2",
+    "@modelcontextprotocol/client": "2.0.0",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "10.1.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.4.0",

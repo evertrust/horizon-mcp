@@ -9,10 +9,9 @@ const FINGERPRINT_KEY = randomBytes(32);
 const SHORT_LEN = 12;
 
 /**
- * Keyed fingerprint of a credential's canonical bytes (HMAC-SHA-256). The
- * caller supplies the canonical form: `apiId + ':' + apiKey` for API keys, the
- * certificate's canonical PEM/DER for mTLS. Returns a 64-char hex digest. The
- * raw credential is never recoverable from the fingerprint.
+ * Keyed fingerprint of a kind-tagged JSON credential tuple (HMAC-SHA-256).
+ * Returns a 64-char hex digest. The raw credential is never recoverable from
+ * the fingerprint.
  */
 export function credentialFingerprint(canonical: string): string {
   return createHmac('sha256', FINGERPRINT_KEY).update(canonical).digest('hex');

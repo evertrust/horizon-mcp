@@ -147,13 +147,17 @@ HORIZON_TRUSTED_PROXY=10.0.0.0/24
 HORIZON_FORWARD_CERT_HEADER=SSL_CLIENT_CERT
 ```
 
-The MCP listener requests a certificate with `requestCert: true` and `rejectUnauthorized: false`. This configuration proves possession but does not validate the certificate authority.
+The MCP listener requests a certificate with `requestCert: true` and `rejectUnauthorized: false`. This is by design: the HTTP listener proves possession of the client key, but does not validate the certificate authority.
 
 The MCP forwards the URL-encoded PEM certificate. Horizon validates the certificate chain, revocation status, and identity.
 
 Alternatively, a trusted ingress can forward the certificate. The MCP identifies the ingress by its direct TCP peer IP address or CIDR.
 
 The MCP does not use `X-Forwarded-For` for this check.
+
+### Readiness
+
+`/readyz` reports process readiness only. In HTTP mode the server holds no Horizon credential of its own, so it cannot probe Horizon on an operator's behalf.
 
 ## MCP OAuth authorization is not supported
 

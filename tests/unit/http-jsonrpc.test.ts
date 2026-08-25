@@ -1,21 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  firstId,
-  jsonRpcErrorBody,
-  messagesOf,
-} from '../../src/http/jsonrpc.js';
+import { firstId, jsonRpcErrorBody } from '../../src/http/jsonrpc.js';
 
-describe('messagesOf', () => {
-  it('wraps a single object', () => {
-    expect(messagesOf({ method: 'x' })).toEqual([{ method: 'x' }]);
+describe('firstId input normalization', () => {
+  it('reads an id from a single object', () => {
+    expect(firstId({ id: 7, method: 'x' })).toBe(7);
   });
-  it('passes an array through', () => {
-    expect(messagesOf([{ method: 'a' }, { method: 'b' }])).toHaveLength(2);
+  it('reads the first id in a batch', () => {
+    expect(
+      firstId([
+        { id: 'a', method: 'a' },
+        { id: 'b', method: 'b' },
+      ]),
+    ).toBe('a');
   });
-  it('treats null/undefined as empty', () => {
-    expect(messagesOf(undefined)).toEqual([]);
-    expect(messagesOf(null)).toEqual([]);
+  it('treats null and undefined as empty', () => {
+    expect(firstId(undefined)).toBeNull();
+    expect(firstId(null)).toBeNull();
   });
 });
 

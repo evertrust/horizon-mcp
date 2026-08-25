@@ -5,9 +5,10 @@ TypeScript MCP server for Evertrust Horizon - certificate lifecycle management, 
 ## Quick Reference
 
 ```bash
-bun run dev          # Start dev server (tsx)
+bun run dev          # Start dev server (Bun)
 bun run build        # Production build (tsup)
 bun run test         # Unit tests (vitest)
+bun run test:coverage # Unit tests with V8 coverage thresholds
 bun run test:e2e     # E2E tests against live Horizon QA
 bun run test:llm     # LLM evaluation tests
 bun run lint         # ESLint + tsc --noEmit
@@ -73,6 +74,7 @@ src/
       translate.ts      # Field translation utilities
 tests/
   unit/                 # Vitest unit tests (80%+ coverage threshold)
+    support/            # Shared test harnesses
   e2e/                  # E2E tests against live Horizon QA instance
   llm-evaluation/       # LLM-in-the-loop eval scenarios
 ```

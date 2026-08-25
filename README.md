@@ -452,6 +452,7 @@ More granular scripts:
 | `bun run dev`           | Start the server with `tsx` (no build step).          |
 | `bun run build`         | Production build via `tsup`.                          |
 | `bun run test`          | Unit tests with Vitest.                               |
+| `bun run test:coverage` | Unit tests with V8 coverage thresholds.               |
 | `bun run test:e2e`      | E2E tests against a live Horizon instance.            |
 | `bun run test:llm`      | Deterministic tool-selection scenarios (no LLM call). |
 | `bun run test:llm:live` | Real Claude-in-the-loop MCP usability tests.          |
