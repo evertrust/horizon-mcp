@@ -9,7 +9,7 @@
  *   HORIZON_E2E_URL, HORIZON_E2E_API_ID, HORIZON_E2E_API_KEY
  *
  * Ported from all 6 Python E2E files:
- *   - test_lifecycle.py  (17 lifecycle tools)
+ *   - test_lifecycle.py  (18 lifecycle tools)
  *   - test_profiles.py   (2 profile tools)
  *   - test_dashboards.py (12 dashboard/saved-query tools)
  *   - test_reports.py    (3 report tools)
@@ -154,6 +154,53 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           expect(typeof certData).toBe('object');
           expect(certData['_id']).toBe(certId);
         }
+      });
+    });
+
+    describe('set_certificate_auto_renew', () => {
+      it('submits a no-change WebRA auto-renew update for an editable certificate', async () => {
+        const search = await callTool('search_certificates', {
+          query: 'module equals "webra"',
+          fields: ['_id', 'profile', 'autoRenew'],
+          page_size: 25,
+        });
+        const certificates = (search['results'] ?? []) as Record<
+          string,
+          unknown
+        >[];
+        const certificate = certificates.find(
+          (item) =>
+            typeof item['_id'] === 'string' &&
+            /^[a-fA-F0-9]{24}$/.test(item['_id']) &&
+            typeof item['profile'] === 'string' &&
+            typeof item['autoRenew'] === 'boolean',
+        );
+        if (!certificate) {
+          console.log(
+            'SKIP: No WebRA certificate with an autoRenew flag found',
+          );
+          return;
+        }
+
+        const profileName = certificate['profile'] as string;
+        const profile = await getHorizonClient().get<Record<string, unknown>>(
+          `/api/v1/certificate/profiles/${encodeURIComponent(profileName)}`,
+        );
+        const policy = profile['autoRenewalPolicy'] as
+          | Record<string, unknown>
+          | undefined;
+        if (policy?.['editable'] !== true) {
+          console.log(
+            'SKIP: WebRA certificate profile does not allow auto-renew edits',
+          );
+          return;
+        }
+
+        const result = await callTool('set_certificate_auto_renew', {
+          certificate_id: certificate['_id'],
+          enabled: certificate['autoRenew'],
+        });
+        expect(result).toBeDefined();
       });
     });
 

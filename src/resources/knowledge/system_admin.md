@@ -181,7 +181,7 @@ confirmed in the Horizon source code -- it is NOT a mistake.
 
 ## System Configuration
 
-System configuration manages global platform settings. There are three
+System configuration manages global platform settings. There are four
 configuration entry types defined by `SystemConfigurationEntryType`:
 
 | Type                      | Description                                   |
@@ -189,6 +189,47 @@ configuration entry types defined by `SystemConfigurationEntryType`:
 | `license`                 | License key and activation status             |
 | `internal_monitor`        | Internal monitoring and health check settings |
 | `interface_customization` | UI branding, theme, and display settings      |
+| `storage`                 | Global storage backend assignments            |
+
+### Announcements
+
+The `interface_customization` entry's `announcements` array displays messages
+to every Horizon user. Each item has a severity `level` of `info`, `warning`,
+or `danger`, and a non-empty localized `content` array:
+
+```json
+{
+  "type": "interface_customization",
+  "announcements": [
+    {
+      "level": "warning",
+      "content": [
+        { "lang": "en", "value": "Scheduled maintenance on Saturday." },
+        { "lang": "fr", "value": "Maintenance planifiée samedi." }
+      ]
+    }
+  ]
+}
+```
+
+Horizon uses full-replace semantics for this array. There is no
+per-announcement delete operation: read the entry, remove or revise the desired
+items in the complete array, then update the entry.
+
+### Storage Backends and Global Wiring
+
+Create S3-compatible storage backends with `create_storage`. The S3 fields are
+`bucket`, `timeout`, `forcePathStyle`, `checksumMode`, and `partBufferSize`,
+with optional `credentials`, `roleArn`, `region`, `proxy`, `endpoint`, and
+`description`. `forcePathStyle` supports S3-compatible endpoints that require
+path-style addressing; `checksumMode` controls S3 checksum behavior;
+`partBufferSize` is the multipart upload buffer and must be below 2 GB;
+`roleArn` selects an AWS role to assume.
+
+The global `storage` system configuration entry wires a named storage backend
+through `archiveStorage` for archive files and `magicLinkReportStorage` for
+magic-link reports. Omit either reference to fall back to the built-in GridFS
+storage, subject to the deployment's allowed storage types.
 
 ### System Configuration API
 

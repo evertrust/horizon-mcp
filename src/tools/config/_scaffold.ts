@@ -131,6 +131,10 @@ export async function getStripMergePutExplicit(
   overrides: Record<string, unknown>,
   clearFields?: string[],
   immutable?: { immutableKeys?: readonly string[]; idField?: string },
+  normalizeCurrent?: (
+    current: Record<string, unknown>,
+  ) => Record<string, unknown>,
+  validateMergedBody?: (body: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
   const current = await client.get<Record<string, unknown>>(getPath);
   // The update is a full-replace seeded from this GET; bail if it is not a
@@ -166,15 +170,17 @@ export async function getStripMergePutExplicit(
         'Remove these fields - they are fixed at creation. Recreate the object to change them.',
     });
   }
+  const normalizedCurrent = normalizeCurrent?.(current) ?? current;
   const strip = new Set(stripFields);
   const payload: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(current)) {
+  for (const [k, v] of Object.entries(normalizedCurrent)) {
     if (!strip.has(k)) payload[k] = v;
   }
   for (const f of clearFields ?? []) payload[f] = null;
   for (const [k, v] of Object.entries(overrides)) {
     if (v !== undefined) payload[k] = v;
   }
+  validateMergedBody?.(payload);
   return client.put<Record<string, unknown>>(putPath, payload);
 }
 
@@ -373,6 +379,11 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     inputSchema: S;
     buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
     preValidate?: (args: z.infer<S>) => string | undefined;
+    /** Normalizes a GET-only representation before the merged PUT. */
+    normalizeCurrent?: (
+      current: Record<string, unknown>,
+    ) => Record<string, unknown>;
+    validateMergedBody?: (body: Record<string, unknown>) => void;
   },
 ): void {
   const idField = spec.idField ?? 'name';
@@ -381,9 +392,10 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     `update_${spec.noun}`,
     {
       description:
-        `${opts.description}\nSafety tier: mutating-safe\n` +
-        `Update is GET -> strip server fields -> merge -> PUT (full-replace: omitted ` +
-        `optional fields are reset). ${immutableNote(spec)}${refFooter(spec)}`,
+        `${opts.description}\nSafety tier: mutating-destructive\n` +
+        `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
+        `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
+        `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
       inputSchema: opts.inputSchema,
       // Config update is a full-replace PUT that can reset omitted fields and
       // overwrite permissions, so it is destructive despite the update_ prefix
@@ -426,6 +438,8 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
         overrides,
         clearFields,
         { immutableKeys: spec.immutableKeys, idField },
+        opts.normalizeCurrent,
+        opts.validateMergedBody,
       );
       return text(
         buildMutateResponse({

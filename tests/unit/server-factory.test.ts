@@ -53,6 +53,7 @@ describe('createSessionServer', () => {
       // Config CRUD tools (the suite omitted from golden's registerAllTools).
       expect(names).toContain('create_certificate_profile');
       expect(names).toContain('list_service_accounts');
+      expect(names).toContain('create_service_account');
 
       // The full surface is large; guard against a domain silently dropping.
       expect(tools.length).toBeGreaterThan(150);
@@ -90,6 +91,7 @@ describe('createSessionServer toolset gating', () => {
 
     // One representative tool per toolset name.
     expect(names).toContain('search_certificates'); // lifecycle
+    expect(names).toContain('list_dcv_policy_status'); // lifecycle
     expect(names).toContain('list_profiles'); // profiles
     expect(names).toContain('list_dashboards'); // dashboards
     expect(names).toContain('list_discovery_campaigns'); // discovery
@@ -133,13 +135,20 @@ describe('createSessionServer toolset gating', () => {
     // Read-only tools survive.
     expect(names).toContain('search_certificates');
     expect(names).toContain('whoami');
+    expect(names).toContain('list_service_accounts');
+    expect(names).not.toContain('create_service_account');
+    expect(names).not.toContain('update_service_account');
+    expect(names).not.toContain('delete_service_account');
     expect(names).toContain('read_knowledge');
     expect(names).toContain('get_certificate');
+    expect(names).toContain('list_dcv_policy_status');
 
     // Mutating tools are stripped.
     expect(names).not.toContain('create_certificate_profile');
     expect(names).not.toContain('delete_ca');
     expect(names).not.toContain('update_trigger');
     expect(names).not.toContain('submit_request');
+    expect(names).not.toContain('run_dcv_policy');
+    expect(names).not.toContain('cancel_dcv_run');
   });
 });

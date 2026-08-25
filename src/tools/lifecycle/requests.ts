@@ -32,7 +32,9 @@ import { registerTool } from '../register.js';
 
 const GET_REQUEST_TEMPLATE_CONFIG = {
   description:
-    'Get the request template showing which fields are required/editable.\n\n Ref: horizon://knowledge/workflows.' +
+    'Get the request template showing which fields are required/editable. For ' +
+    'a WebRA update, inspect template.autoRenew before changing per-certificate ' +
+    'automatic renewal.\n\n Ref: horizon://knowledge/workflows.' +
     'MUST be called before submit_request. The template response tells you:\n' +
     '- Which subject fields exist and whether they are editable or computed\n' +
     '- Which SAN types are allowed\n' +
@@ -64,6 +66,13 @@ const GET_REQUEST_TEMPLATE_CONFIG = {
       .describe(
         'For renew/revoke/update/recover/migrate - the existing certificate ID.',
       ),
+    include_terms_of_service: z
+      .boolean()
+      .optional()
+      .describe(
+        'Include the Terms of Service content the requester must accept. Sent ' +
+          'as the termsOfService query parameter, never in the POST body.',
+      ),
   }),
 };
 
@@ -84,7 +93,9 @@ const SUBMIT_REQUEST_CONFIG = {
     'privilegewithdrawn, aacompromise, unspecified). ' +
     'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
     'EST/SCEP enroll returns the challenge password in the response. ' +
-    'Full workflow + examples: horizon://knowledge/workflows.',
+    'For a WebRA update, template.autoRenew is the generic path for changing ' +
+    'per-certificate automatic renewal. Full workflow + examples: ' +
+    'horizon://knowledge/workflows.',
   // submit_request can run revoke workflows, so mark it destructive even
   // though the name-prefix classifier treats it as an additive mutation.
   annotations: { destructiveHint: true },
@@ -162,9 +173,9 @@ const APPROVE_REQUEST_CONFIG = {
 
 const DENY_REQUEST_CONFIG = {
   description:
-    'Deny a pending certificate lifecycle request.\n\n' +
+    'Deny a pending or in-progress certificate lifecycle request.\n\n' +
     'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
-    'Only pending requests can be denied. Permissions are checked automatically.\n\n' +
+    'Pending and in_progress requests can be denied. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the denial. The workflow\n' +
     'type is determined automatically from the request.\n' +
     'If permission is denied, returns an error - do NOT retry.',
@@ -175,9 +186,9 @@ const DENY_REQUEST_CONFIG = {
 
 const CANCEL_REQUEST_CONFIG = {
   description:
-    'Cancel a pending certificate lifecycle request.\n\n' +
+    'Cancel a pending or in-progress certificate lifecycle request.\n\n' +
     'Prerequisites: Use search_requests or get_request to find the request ID.\n' +
-    'Only pending requests can be cancelled. Permissions are checked automatically.\n\n' +
+    'Pending and in_progress requests can be cancelled. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the cancellation. The workflow\n' +
     'type is determined automatically from the request.\n' +
     'If permission is denied, returns an error - do NOT retry.',
@@ -193,6 +204,7 @@ const SEARCH_REQUESTS_CONFIG = {
     'equals, before, after, contains, in, and/or/not. ' +
     'Full reference: horizon://knowledge/query-languages. ' +
     'Presets: compact (default), diagnostic, compliance. ' +
+    'Status can be in_progress while asynchronous enrollment waits for an external CA. ' +
     'Results are field-truncated; use get_request for the full record. ' +
     'Pagination: page_index is 0-based; use next_page_index from the previous ' +
     'response; stop when has_more is false. Pass sorted_by for stable order.',
@@ -242,6 +254,7 @@ const GET_REQUEST_CONFIG = {
     'Get full details of a certificate lifecycle request by ID.\n\n' +
     'Returns complete untruncated data including all workflow fields,\n' +
     'certificate details, requester/approver info, and audit trail.\n\n' +
+    'An asynchronous enrollment can remain in_progress while Horizon waits for the external CA.\n\n' +
     'PKCS#12 / PFX: For centralized enrollment requests (server-side key\n' +
     'generation), the response contains the PKCS#12 bundle with the\n' +
     'certificate and private key. Look for the pkcs12 or keyStore\n' +
@@ -316,16 +329,22 @@ export function registerRequestTools(
     server,
     'get_request_template',
     GET_REQUEST_TEMPLATE_CONFIG,
-    async ({ workflow, module, profile, certificate_id }) => {
+    async ({
+      workflow,
+      module,
+      profile,
+      certificate_id,
+      include_terms_of_service,
+    }) => {
       const params: Record<string, string> = { workflow };
       if (module) params['module'] = module;
       if (profile) params['profile'] = profile;
       if (certificate_id) params['certificateId'] = certificate_id;
+      const path = include_terms_of_service
+        ? '/api/v1/requests/template?termsOfService=true'
+        : '/api/v1/requests/template';
 
-      const result = await client.post<Record<string, unknown>>(
-        '/api/v1/requests/template',
-        params,
-      );
+      const result = await client.post<Record<string, unknown>>(path, params);
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

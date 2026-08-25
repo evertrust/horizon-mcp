@@ -1,5 +1,261 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
+[
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "iatFutureRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "iatPastRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "identifierMapping": {
+          "description": "Template used to derive the authenticated principal identifier.",
+          "type": "string",
+        },
+        "jwtAllowedClockSkew": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "name": {
+          "description": "Service-account name. Immutable primary key.",
+          "type": "string",
+        },
+        "permissions": {
+          "description": "Permissions granted to principals authenticated by this account.",
+          "items": {
+            "properties": {
+              "filter": {
+                "description": "Optional HPQL filter applied to this permission.",
+                "type": "string",
+              },
+              "value": {
+                "description": "Horizon permission string.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "roles": {
+          "description": "Existing roles granted to successfully authenticated principals.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "trustConfig": {
+          "description": "JWT trust configuration, either an inline static JWKS or dynamic JWKS URL.",
+          "oneOf": [
+            {
+              "properties": {
+                "jwks": {
+                  "description": "JWKS JSON document, serialized as a string.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "static_jwks",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "jwks",
+              ],
+              "type": "object",
+            },
+            {
+              "properties": {
+                "proxy": {
+                  "description": "Name of an existing HTTP proxy configuration.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "dynamic_jwks",
+                  "type": "string",
+                },
+                "url": {
+                  "description": "Absolute HTTP(S) URL from which Horizon fetches the JWKS.",
+                  "format": "uri",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "url",
+              ],
+              "type": "object",
+            },
+          ],
+        },
+        "validationRules": {
+          "description": "Condition templates evaluated against incoming JWT claims.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "trustConfig",
+        "validationRules",
+        "permissions",
+        "roles",
+      ],
+      "type": "object",
+    },
+    "name": "create_service_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "service account name to delete.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_service_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "clear_fields": {
+          "description": "Top-level optional fields to null explicitly.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "iatFutureRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "iatPastRestriction": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "identifierMapping": {
+          "type": "string",
+        },
+        "jwtAllowedClockSkew": {
+          "description": "Horizon duration string, for example "5 minutes".",
+          "type": "string",
+        },
+        "name": {
+          "description": "Service-account name to update (immutable key).",
+          "type": "string",
+        },
+        "permissions": {
+          "description": "Permissions granted to principals authenticated by this account.",
+          "items": {
+            "properties": {
+              "filter": {
+                "description": "Optional HPQL filter applied to this permission.",
+                "type": "string",
+              },
+              "value": {
+                "description": "Horizon permission string.",
+                "type": "string",
+              },
+            },
+            "required": [
+              "value",
+            ],
+            "type": "object",
+          },
+          "type": "array",
+        },
+        "roles": {
+          "description": "Existing roles granted to successfully authenticated principals.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "trustConfig": {
+          "description": "JWT trust configuration, either an inline static JWKS or dynamic JWKS URL.",
+          "oneOf": [
+            {
+              "properties": {
+                "jwks": {
+                  "description": "JWKS JSON document, serialized as a string.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "static_jwks",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "jwks",
+              ],
+              "type": "object",
+            },
+            {
+              "properties": {
+                "proxy": {
+                  "description": "Name of an existing HTTP proxy configuration.",
+                  "type": "string",
+                },
+                "type": {
+                  "const": "dynamic_jwks",
+                  "type": "string",
+                },
+                "url": {
+                  "description": "Absolute HTTP(S) URL from which Horizon fetches the JWKS.",
+                  "format": "uri",
+                  "type": "string",
+                },
+              },
+              "required": [
+                "type",
+                "url",
+              ],
+              "type": "object",
+            },
+          ],
+        },
+        "validationRules": {
+          "description": "Condition templates evaluated against incoming JWT claims.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_service_account",
+  },
+]
+`;
+
 exports[`Golden tests > tool schemas match snapshot 1`] = `
 [
   {
@@ -164,6 +420,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "approve_request",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "cancel_dcv_run",
   },
   {
     "inputSchema": {
@@ -1402,6 +1674,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_dcv_policy_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
           "description": "Exact campaign name.",
           "type": "string",
         },
@@ -1521,6 +1809,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         "certificate_id": {
           "description": "For renew/revoke/update/recover/migrate - the existing certificate ID.",
           "type": "string",
+        },
+        "include_terms_of_service": {
+          "description": "Include the Terms of Service content the requester must accept. Sent as the termsOfService query parameter, never in the POST body.",
+          "type": "boolean",
         },
         "module": {
           "description": "Profile module (webra, est, scep, acme, etc.).",
@@ -1649,6 +1941,53 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "list_datasources",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "domain": {
+          "description": "Optional domain to filter to.",
+          "type": "string",
+        },
+        "page_index": {
+          "description": "Zero-based page index.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "description": "Results per page, maximum 100.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "policy": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort expression, for example 'timestamp:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "description": "Include the total event count.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "policy",
+      ],
+      "type": "object",
+    },
+    "name": "list_dcv_events",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "list_dcv_policy_status",
   },
   {
     "inputSchema": {
@@ -1853,6 +2192,43 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "remove_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "domain": {
+          "description": "Domain to validate.",
+          "type": "string",
+        },
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "domain",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_domain",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_policy",
   },
   {
     "inputSchema": {
@@ -2106,6 +2482,32 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "search_requests",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "certificate_id": {
+          "description": "24-hex Horizon certificate ID.",
+          "pattern": "^[a-fA-F0-9]{24}$",
+          "type": "string",
+        },
+        "certificate_pem": {
+          "description": "PEM-encoded certificate to update.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "enabled": {
+          "description": "Whether to enable automatic renewal.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "enabled",
+      ],
+      "type": "object",
+    },
+    "name": "set_certificate_auto_renew",
   },
   {
     "inputSchema": {

@@ -58,8 +58,8 @@ const settingsSchema = z.object({
   timeout: z.coerce.number().int().positive().default(30),
   exportTimeout: z.coerce.number().int().positive().default(120),
   logLevel: z.string().default('INFO'),
-  testedVersions: z.array(z.string()).default(['2.8']),
-  warnVersions: z.array(z.string()).default(['2.7', '2.9']),
+  testedVersions: z.array(z.string()).default(['2.10']),
+  warnVersions: z.array(z.string()).default(['2.8', '2.9']),
 
   // -- Toolset gating -----------------------------------------------------
   // `enabledToolsets` (HORIZON_ENABLED_TOOLSETS) selects which tool domains to

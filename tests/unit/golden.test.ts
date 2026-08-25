@@ -23,6 +23,7 @@ import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerTranslateTools } from '../../src/tools/assist/translate.js';
+import { registerServiceAccountTools } from '../../src/tools/config/service-accounts.js';
 import { registerDashboardTools } from '../../src/tools/dashboards.js';
 import { registerDatasourceTools } from '../../src/tools/datasources.js';
 import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
@@ -117,7 +118,7 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (17)
+  // lifecycle.ts (24)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -134,7 +135,14 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'get_event',
   'export_events_csv',
   'aggregate_certificates',
+  'set_certificate_auto_renew',
   'aggregate_requests',
+  'list_dcv_policy_status',
+  'get_dcv_policy_status',
+  'run_dcv_policy',
+  'run_dcv_domain',
+  'cancel_dcv_run',
+  'list_dcv_events',
   // profiles.ts (2)
   'list_profiles',
   'get_profile',
@@ -221,6 +229,7 @@ const KNOWLEDGE_FILES: string[] = [
   'system_admin.md',
   'discovery_workflows.md',
   'datasources.md',
+  'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
 ];
@@ -262,9 +271,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 86 tools', async () => {
+  it('registers exactly 93 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(86);
+    expect(result.tools.length).toBe(93);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -385,6 +394,7 @@ describe('Golden tests', () => {
       'search_certificates',
       'get_certificate',
       'download_certificate',
+      'set_certificate_auto_renew',
       'submit_request',
       'approve_request',
       'deny_request',
@@ -454,6 +464,27 @@ describe('Golden tests', () => {
       inputSchema: t.inputSchema,
     }));
     expect(schemas).toMatchSnapshot();
+  });
+
+  it('service-account mutation schemas match snapshot', async () => {
+    const server = new McpServer({
+      name: 'test-service-account-schemas',
+      version: '0.0.0',
+    });
+    registerServiceAccountTools(server, createMockClient() as never);
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    const serviceClient = new Client({
+      name: 'test-service-account-schemas-client',
+      version: '0.0.0',
+    });
+    await Promise.all([serviceClient.connect(ct), server.connect(st)]);
+    const tools = (await serviceClient.listTools()).tools
+      .filter((tool) => tool.name.endsWith('_service_account'))
+      .filter((tool) => !tool.name.startsWith('get_'))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((tool) => ({ name: tool.name, inputSchema: tool.inputSchema }));
+
+    expect(tools).toMatchSnapshot();
   });
 });
 
@@ -977,8 +1008,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 86 tools', () => {
-    expect(toolNames.size).toBe(86);
+  it('registers exactly 93 tools', () => {
+    expect(toolNames.size).toBe(93);
   });
 
   it('excludes admin tools', () => {
@@ -1055,6 +1086,7 @@ describe('Tool registration verification', () => {
       'search_certificates',
       'get_certificate',
       'download_certificate',
+      'set_certificate_auto_renew',
       // Profiles readonly
       'list_profiles',
       'get_profile',

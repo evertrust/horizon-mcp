@@ -285,11 +285,13 @@ export async function preflightRequestAction(
   }
 
   const status = String(request['status'] ?? '').toLowerCase();
-  if (status !== 'pending') {
+  const acceptedStatuses =
+    action === 'approve' ? ['pending'] : ['pending', 'in_progress'];
+  if (!acceptedStatuses.includes(status)) {
     return {
       error:
-        `Request is not pending (current status: '${status}'). ` +
-        `Only pending requests can be ${action}d.`,
+        `Request status '${status}' cannot be ${action}d. ` +
+        `Only ${acceptedStatuses.join(' or ')} requests can be ${action}d.`,
       request_id: requestId,
       request_status: status,
     };
