@@ -76,21 +76,13 @@
       "type": "string",
       "description": "A finite duration string.",
       "pattern": "^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$",
-      "examples": [
-        "5 seconds",
-        "10s",
-        "7 days"
-      ]
+      "examples": ["5 seconds", "10s", "7 days"]
     },
     "PositiveFiniteDuration": {
       "type": "string",
       "description": "A positive finite duration string.",
       "pattern": "^(0*[1-9][0-9]*) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$",
-      "examples": [
-        "5 seconds",
-        "10s",
-        "7 days"
-      ]
+      "examples": ["5 seconds", "10s", "7 days"]
     },
     "ConnectorName": {
       "type": "string",
@@ -108,10 +100,7 @@
       "description": "A secret value passed to Horizon. On create/update, set 'value'. On response the clear value is never returned.",
       "properties": {
         "value": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "Value of the secret that will be passed to Horizon"
         }
       }
@@ -143,10 +132,7 @@
           "example": "application/json"
         }
       },
-      "required": [
-        "name",
-        "value"
-      ]
+      "required": ["name", "value"]
     },
     "TemplateString": {
       "type": "string",
@@ -165,58 +151,34 @@
         },
         "authenticationType": {
           "type": "string",
-          "enum": [
-            "noauth",
-            "basic",
-            "x509",
-            "bearer",
-            "custom"
-          ]
+          "enum": ["noauth", "basic", "x509", "bearer", "custom"]
         },
         "credentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "example": "myRawCredentials"
         },
         "headers": {
-          "type": [
-            "array",
-            "null"
-          ],
+          "type": ["array", "null"],
           "items": {
             "$ref": "#/$defs/RESTHeader"
           }
         },
         "payloadType": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "example": "json"
         },
         "payload": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "expectedHttpCodes": {
           "type": "array",
           "items": {
             "type": "integer"
           },
-          "example": [
-            200,
-            204
-          ]
+          "example": [200, 204]
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "example": "ProxyForInternet"
         },
         "timeout": {
@@ -237,9 +199,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "manual"
-          ]
+          "enum": ["manual"]
         },
         "setTriggers": {
           "type": "array",
@@ -254,10 +214,7 @@
           }
         }
       },
-      "required": [
-        "type",
-        "setTriggers"
-      ]
+      "required": ["type", "setTriggers"]
     },
     "NameshieldDnsChallengeProvider": {
       "title": "Nameshield DNS Challenge Provider",
@@ -265,9 +222,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "nameshield"
-          ]
+          "enum": ["nameshield"]
         },
         "credentials": {
           "type": "string",
@@ -277,21 +232,13 @@
           "type": "string"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "timeout": {
           "$ref": "#/$defs/FiniteDuration"
         }
       },
-      "required": [
-        "type",
-        "credentials",
-        "endPoint",
-        "timeout"
-      ]
+      "required": ["type", "credentials", "endPoint", "timeout"]
     },
     "DnsChallengeProviders": {
       "oneOf": [
@@ -309,9 +256,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "static"
-          ]
+          "enum": ["static"]
         },
         "domains": {
           "type": "array",
@@ -328,17 +273,11 @@
                 }
               }
             },
-            "required": [
-              "domain",
-              "dictionary"
-            ]
+            "required": ["domain", "dictionary"]
           }
         }
       },
-      "required": [
-        "type",
-        "domains"
-      ]
+      "required": ["type", "domains"]
     },
     "DomainDictionaryProviders": {
       "oneOf": [
@@ -358,10 +297,7 @@
           "$ref": "#/$defs/FiniteDuration"
         }
       },
-      "required": [
-        "responseDelay",
-        "certificateCacheDuration"
-      ]
+      "required": ["responseDelay", "certificateCacheDuration"]
     },
     "StreamConnector": {
       "title": "Stream",
@@ -372,9 +308,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "stream"
-          ]
+          "enum": ["stream"]
         },
         "endPoint": {
           "type": "string",
@@ -389,42 +323,24 @@
           "description": "Stream's technical name of the CA on which to enroll"
         },
         "loginCredentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "password credentials name. At least one of loginCredentials/authenticationCredentials is required (server-enforced)."
         },
         "authenticationCredentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "certificate credentials name. At least one of loginCredentials/authenticationCredentials is required (server-enforced)."
         },
         "timeout": {
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "name",
-        "type",
-        "endPoint",
-        "template",
-        "ca"
-      ]
+      "required": ["name", "type", "endPoint", "template", "ca"]
     },
     "AcmeEnrollConnector": {
       "title": "Acme enroll",
@@ -436,9 +352,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "acmeenroll"
-          ]
+          "enum": ["acmeenroll"]
         },
         "endPoint": {
           "type": "string",
@@ -448,51 +362,28 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "eab": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "password credentials name for External Account Binding"
         },
         "eabMacAlgorithm": {
-          "type": [
-            "string",
-            "null"
-          ],
-          "enum": [
-            "HS256",
-            "HS384",
-            "HS512",
-            null
-          ],
+          "type": ["string", "null"],
+          "enum": ["HS256", "HS384", "HS512", null],
           "description": "Can only be set when eab is defined (server-enforced)."
         },
         "accountKeyType": {
           "$ref": "#/$defs/KeyType"
         },
         "accountEmail": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "rotateAccount": {
-          "type": [
-            "boolean",
-            "null"
-          ],
+          "type": ["boolean", "null"],
           "description": "If true on update, regenerate the account. Reset to null by server after hooks."
         },
         "domainDictionaryProvider": {
@@ -531,9 +422,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "acmerevoke"
-          ]
+          "enum": ["acmerevoke"]
         },
         "acmeDirectoryUrl": {
           "type": "string",
@@ -543,23 +432,13 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "name",
-        "acmeDirectoryUrl",
-        "type"
-      ]
+      "required": ["name", "acmeDirectoryUrl", "type"]
     },
     "EverTrustADCSConnector": {
       "title": "ADCS",
@@ -570,9 +449,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "evtadcs"
-          ]
+          "enum": ["evtadcs"]
         },
         "endPoint": {
           "type": "string"
@@ -598,16 +475,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -630,9 +501,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "awsacmpca"
-          ]
+          "enum": ["awsacmpca"]
         },
         "region": {
           "type": "string"
@@ -641,23 +510,14 @@
           "type": "string"
         },
         "accessCredentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "password credentials with Access Key Id / Secret Access Key. If absent, environment account is used."
         },
         "templateArn": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "roleArn": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "validDays": {
           "$ref": "#/$defs/FiniteDuration"
@@ -666,45 +526,25 @@
           "$ref": "#/$defs/PositiveFiniteDuration"
         },
         "signingHash": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "certificateUsage": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "caPolicyOid": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "timeout": {
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "name",
-        "type",
-        "region",
-        "caArn"
-      ]
+      "required": ["name", "type", "region", "caArn"]
     },
     "CertEuropeConnector": {
       "title": "CertEurope",
@@ -715,9 +555,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "certeurope"
-          ]
+          "enum": ["certeurope"]
         },
         "endPoint": {
           "type": "string"
@@ -733,10 +571,7 @@
           "type": "string"
         },
         "revReason": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "retryInterval": {
           "$ref": "#/$defs/PositiveFiniteDuration"
@@ -749,16 +584,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -780,9 +609,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "cmp"
-          ]
+          "enum": ["cmp"]
         },
         "endPoint": {
           "type": "string"
@@ -801,40 +628,22 @@
           "description": "certificate credentials name to sign"
         },
         "emailMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "sanDnsMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "cnMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "profileMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "issuerMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "legacyCMPStyle": {
-          "type": [
-            "boolean",
-            "null"
-          ]
+          "type": ["boolean", "null"]
         },
         "authenticationCredentials": {
           "type": "string",
@@ -844,16 +653,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -876,9 +679,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "digicert"
-          ]
+          "enum": ["digicert"]
         },
         "baseUrl": {
           "type": "string",
@@ -899,25 +700,16 @@
           "format": "int32"
         },
         "caCertId": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "retryInterval": {
           "$ref": "#/$defs/PositiveFiniteDuration"
         },
         "skipApproval": {
-          "type": [
-            "boolean",
-            "null"
-          ]
+          "type": ["boolean", "null"]
         },
         "customConnectorDataMapping": {
-          "type": [
-            "object",
-            "null"
-          ],
+          "type": ["object", "null"],
           "additionalProperties": {
             "type": "string"
           }
@@ -926,16 +718,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -955,9 +741,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "ejbca"
-          ]
+          "enum": ["ejbca"]
         },
         "endPoint": {
           "type": "string"
@@ -969,10 +753,7 @@
           "type": "string"
         },
         "eeProfile": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "authenticationCredentials": {
           "type": "string",
@@ -982,16 +763,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1012,9 +787,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "ejbca_rest"
-          ]
+          "enum": ["ejbca_rest"]
         },
         "endPoint": {
           "type": "string"
@@ -1026,10 +799,7 @@
           "type": "string"
         },
         "eeProfile": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "authenticationCredentials": {
           "type": "string",
@@ -1039,16 +809,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1069,9 +833,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "idca"
-          ]
+          "enum": ["idca"]
         },
         "endPoint": {
           "type": "string"
@@ -1080,10 +842,7 @@
           "type": "string"
         },
         "authenticationCredentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "certificate credentials name"
         },
         "timeout": {
@@ -1097,16 +856,10 @@
           ]
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1126,9 +879,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "integrated"
-          ]
+          "enum": ["integrated"]
         },
         "caKey": {
           "oneOf": [
@@ -1141,32 +892,20 @@
           ]
         },
         "caCert": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "crlPath": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "crlLifetime": {
           "$ref": "#/$defs/FiniteDuration",
           "default": "7 days"
         },
         "certType": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "signAlg": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "crtLifetime": {
           "$ref": "#/$defs/FiniteDuration",
@@ -1177,10 +916,7 @@
           "default": "5 minutes"
         },
         "checkPop": {
-          "type": [
-            "boolean",
-            "null"
-          ],
+          "type": ["boolean", "null"],
           "default": false
         },
         "asyncParams": {
@@ -1198,25 +934,14 @@
           "default": "5 seconds"
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "cryptoType": {
           "type": "string",
-          "enum": [
-            "legacy",
-            "hybrid",
-            "pqc"
-          ]
+          "enum": ["legacy", "hybrid", "pqc"]
         }
       },
-      "required": [
-        "name",
-        "type",
-        "cryptoType"
-      ]
+      "required": ["name", "type", "cryptoType"]
     },
     "FCMSConnector": {
       "title": "FISid",
@@ -1227,9 +952,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "fcms"
-          ]
+          "enum": ["fcms"]
         },
         "endPoint": {
           "type": "string"
@@ -1246,18 +969,12 @@
           "type": "string"
         },
         "authenticationDomainId": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "format": "int32",
           "minimum": 1
         },
         "ownerGroups": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "deleteOnRevoke": {
           "type": "boolean"
@@ -1266,16 +983,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1297,9 +1008,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "gcp"
-          ]
+          "enum": ["gcp"]
         },
         "projectId": {
           "type": "string",
@@ -1340,10 +1049,7 @@
               "example": "1 hour"
             }
           },
-          "required": [
-            "target",
-            "lifetime"
-          ]
+          "required": ["target", "lifetime"]
         },
         "certificateTemplate": {
           "type": "string",
@@ -1364,10 +1070,7 @@
           "description": "Name of the proxy to use to connect to the GCP Api"
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1388,25 +1091,17 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "gsatlas"
-          ]
+          "enum": ["gsatlas"]
         },
         "loginCredentials": {
           "type": "string",
           "description": "password credentials name"
         },
         "hashAlgorithm": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "certificateUsage": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "retryInterval": {
           "$ref": "#/$defs/PositiveFiniteDuration"
@@ -1419,16 +1114,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1447,9 +1136,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "gsmssl"
-          ]
+          "enum": ["gsmssl"]
         },
         "endpointType": {
           "type": "string"
@@ -1465,23 +1152,14 @@
           "type": "string"
         },
         "certificateValidity": {
-          "type": [
-            "integer",
-            "null"
-          ],
+          "type": ["integer", "null"],
           "format": "int32"
         },
         "defaultEmail": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "defaultPhone": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "retryInterval": {
           "$ref": "#/$defs/PositiveFiniteDuration"
@@ -1490,16 +1168,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1520,9 +1192,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "otpki"
-          ]
+          "enum": ["otpki"]
         },
         "endPoint": {
           "type": "string"
@@ -1531,40 +1201,22 @@
           "type": "string"
         },
         "emailMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "sanDnsMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "sanEmailMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "uidMap": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "zone": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "zoneLabel": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "The label name where the zone value is stored on an enrolled certificate"
         },
         "authenticationCredentials": {
@@ -1575,16 +1227,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1604,9 +1250,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "metapki"
-          ]
+          "enum": ["metapki"]
         },
         "endPoint": {
           "type": "string",
@@ -1620,47 +1264,29 @@
           "type": "string"
         },
         "workflow": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "profilCle": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "validDays": {
           "$ref": "#/$defs/FiniteDuration"
         },
         "formPorteurName": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "authenticationCredentials": {
-          "type": [
-            "string",
-            "null"
-          ],
+          "type": ["string", "null"],
           "description": "certificate credentials name"
         },
         "timeout": {
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1682,9 +1308,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "nameshield"
-          ]
+          "enum": ["nameshield"]
         },
         "apiCredentials": {
           "type": "string",
@@ -1692,10 +1316,7 @@
         },
         "environment": {
           "type": "string",
-          "enum": [
-            "production",
-            "testing"
-          ]
+          "enum": ["production", "testing"]
         },
         "organizationId": {
           "type": "string"
@@ -1707,10 +1328,7 @@
           "type": "string"
         },
         "customConnectorDataMapping": {
-          "type": [
-            "object",
-            "null"
-          ],
+          "type": ["object", "null"],
           "additionalProperties": {
             "type": "string"
           }
@@ -1719,16 +1337,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "retryInterval": {
           "$ref": "#/$defs/PositiveFiniteDuration"
@@ -1753,9 +1365,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "nexuscm"
-          ]
+          "enum": ["nexuscm"]
         },
         "endPoint": {
           "type": "string"
@@ -1774,16 +1384,10 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1804,9 +1408,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "sectigo"
-          ]
+          "enum": ["sectigo"]
         },
         "loginCredentials": {
           "type": "string",
@@ -1829,11 +1431,7 @@
         },
         "endpointType": {
           "type": "string",
-          "enum": [
-            "eu",
-            "hard",
-            "default"
-          ]
+          "enum": ["eu", "hard", "default"]
         },
         "timeout": {
           "oneOf": [
@@ -1846,16 +1444,10 @@
           ]
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
       "required": [
@@ -1876,9 +1468,7 @@
         },
         "type": {
           "type": "string",
-          "enum": [
-            "swisssign"
-          ]
+          "enum": ["swisssign"]
         },
         "mpkiCredentials": {
           "type": "string",
@@ -1896,25 +1486,13 @@
           "$ref": "#/$defs/FiniteDuration"
         },
         "proxy": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         },
         "queue": {
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": ["string", "null"]
         }
       },
-      "required": [
-        "name",
-        "type",
-        "mpkiCredentials",
-        "endPoint",
-        "productUuid"
-      ]
+      "required": ["name", "type", "mpkiCredentials", "endPoint", "productUuid"]
     }
   }
 }
