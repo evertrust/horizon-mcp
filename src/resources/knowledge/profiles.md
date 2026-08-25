@@ -48,36 +48,21 @@ These fields appear on every managed profile regardless of protocol module:
 
 ## WebRA Auto-Renewal Policy
 
-WebRA profiles can set `autoRenewalPolicy` to control the initial auto-renew
-flag on their certificates:
+`autoRenewalPolicy` controls auto-renew on WebRA certificates.
 
-```json
-{
-  "autoRenewalPolicy": {
-    "default": true,
-    "editable": true
-  }
-}
-```
-
-`default` is the auto-renew value for new certificates. `editable` determines
-whether a certificate's auto-renew value can be changed through the WebRA
-`update` workflow. The server-side transitions are important: adding the policy
-where none existed bulk-sets existing certificates to the new `default`;
-removing it disables auto-renew on all the profile's certificates; changing an
-existing policy does not bulk-rewrite existing certificate flags.
-
-This is WebRA per-certificate automatic renewal. It is not the trust-chain
-automation-policy renewal described in `automation.md`; that older automation
-controls trust-chain operations rather than this certificate flag.
+`default` applies to new certificates; `editable` allows a certificate's value
+to change through the WebRA `update` workflow. Adding a missing policy
+bulk-sets existing certificates to its new `default`; removing it disables
+auto-renew on all profile certificates; changing an existing policy leaves
+existing certificate flags unchanged. This is per-certificate renewal, not the
+trust-chain automation-policy renewal in `automation.md`.
 
 ---
 
 ## Terms of Service Mapping
 
-WebRA, SCEP, and EST profiles can reference a Terms of Service object with the
-top-level `termsOfService` field. Its value is the Terms of Service object's
-immutable `name`, not inline text:
+WebRA, SCEP, and EST profiles use top-level `termsOfService` to reference a
+Terms of Service object's immutable `name`, not inline text:
 
 ```json
 {
@@ -85,15 +70,12 @@ immutable `name`, not inline text:
 }
 ```
 
-Create or update the referenced localized markdown content with
-`create_terms_of_service` and `update_terms_of_service` before assigning it to
-a profile. Use `get_request_template` with `include_terms_of_service: true` to
-retrieve the content a requester must accept. `delete_terms_of_service` is
-guarded and fails while any certificate profile still references the object.
-
-This mapping is available only for `webra`, `scep`, and `est`. It is distinct
-from ACME's `requireTermsOfService` boolean, which governs ACME account
-agreement and does not reference a Terms of Service object.
+Use `list_terms_of_services`, `get_terms_of_service`,
+`create_terms_of_service`, `update_terms_of_service`, and
+`delete_terms_of_service`; deletion fails while any profile references it.
+This mapping is only for `webra`, `scep`, and `est`, unlike ACME's
+`requireTermsOfService` boolean, which governs account agreement and does not
+reference a Terms of Service object.
 
 ---
 

@@ -105,7 +105,7 @@ const MANDATORY_INPUT_FIELDS = [
   'crypto_policy',
 ] as const;
 
-/** Union of every top-level property key across all 11 subtypes (53 keys). */
+/** Union of every top-level property key across all 11 subtypes (54 keys). */
 const KNOWN_KEYS = [
   'acmeUrl',
   'authorizationLevels',
@@ -304,9 +304,9 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .optional()
     .describe(
       'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
-        'This is not ACME requireTermsOfService. Manage the referenced object ' +
-        'with create_terms_of_service/update_terms_of_service; deletion is ' +
-        'guarded while a profile references it.',
+        'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+        'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+        'delete_terms_of_service; deletion fails while a profile references the object.',
     ),
   config: objectRecord
     .optional()
@@ -337,9 +337,9 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .optional()
     .describe(
       'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
-        'This is not ACME requireTermsOfService. Manage the referenced object ' +
-        'with create_terms_of_service/update_terms_of_service; deletion is ' +
-        'guarded while a profile references it.',
+        'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+        'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+        'delete_terms_of_service; deletion fails while a profile references the object.',
     ),
   config: objectRecord
     .optional()

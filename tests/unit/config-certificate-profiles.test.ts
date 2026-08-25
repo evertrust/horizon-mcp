@@ -77,7 +77,8 @@ function mandatoryArgs(overrides: Record<string, unknown> = {}) {
 describe('certificate profile tools registration', () => {
   it('registers list/get/create/update/delete + describe tools', async () => {
     const { client } = await setup();
-    const names = (await client.listTools()).tools.map((t) => t.name);
+    const tools = (await client.listTools()).tools;
+    const names = tools.map((tool) => tool.name);
     for (const n of [
       'list_certificate_profiles',
       'get_certificate_profile',
@@ -87,6 +88,25 @@ describe('certificate profile tools registration', () => {
       'describe_certificate_profile_schema',
     ]) {
       expect(names).toContain(n);
+    }
+
+    for (const name of [
+      'create_certificate_profile',
+      'update_certificate_profile',
+    ]) {
+      const schema = tools.find((tool) => tool.name === name)?.inputSchema;
+      const properties = schema?.['properties'] as Record<string, unknown>;
+      const termsOfService = properties['terms_of_service'] as {
+        description?: string;
+      };
+      expect(termsOfService.description).toContain('list_terms_of_services');
+      expect(termsOfService.description).toContain('get_terms_of_service');
+      expect(termsOfService.description).toContain('create_terms_of_service');
+      expect(termsOfService.description).toContain('update_terms_of_service');
+      expect(termsOfService.description).toContain('delete_terms_of_service');
+      expect(termsOfService.description).toContain(
+        'deletion fails while a profile references the object',
+      );
     }
   });
 });
