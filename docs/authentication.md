@@ -52,8 +52,9 @@ through a configured HTTP proxy) and refreshes itself. In both modes Horizon
 owns JWKS retrieval and signature verification; the MCP only forwards
 `X-API-SVA` and `X-API-TOKEN` and does not independently verify the JWT
 signature. It forwards the
-initial pair unchanged and does not trust the token-controlled `iss` or `exp`
-claims until Horizon accepts the token during lazy initialization.
+initial pair unchanged unless pinned renewal is required. In discovery fallback
+mode, it does not trust the token-controlled `iss` or `exp` claims until Horizon
+accepts the token during lazy initialization.
 
 For automatic renewal, configure the OAuth `client_credentials` tuple:
 
@@ -160,10 +161,13 @@ accepted methods are `client_secret_basic` and `client_secret_post`. The value
 is limited to 65,536 characters and malformed entries stop startup with an
 error naming the offending issuer key.
 
-With the allowlist configured, the validated initial JWT's `iss` must exactly
-match a map key. Otherwise renewal is refused and the error names the configured
-issuers. The MCP sends credentials only to the mapped `tokenUrl`, using only the
-mapped authentication method. It does not perform discovery in this mode.
+With the allowlist configured, the presented JWT's `iss` must exactly match an
+own-property map key. Otherwise renewal is refused and the error names the
+configured issuers. Because the token endpoint and authentication method come
+only from operator configuration, pinned mode may renew an expired or rejected
+token before Horizon validates the presented token. The MCP sends credentials
+only to the mapped `tokenUrl`, using only the mapped authentication method. It
+does not perform discovery in this mode.
 
 When `HORIZON_OAUTH_ISSUERS` is unset, the existing lower-assurance fallback
 remains available for compatibility. After Horizon validates the initial JWT,
@@ -172,19 +176,27 @@ document, verifies the discovery issuer, and uses its `token_endpoint`. The
 issuer and token endpoint must use HTTPS, the endpoint must have the same origin
 as the issuer, and redirects are refused. This mode derives a network target
 from a token claim and should be used only where operator pinning is unavailable.
+The discovery fallback never contacts an issuer before Horizon accepts the
+presented token. Consequently, an unpinned stdio deployment whose initial token
+is rejected cannot self-heal through automatic renewal.
 
 The renewal sequence is as follows:
 
 1. Stdio loads the service-account pair and renewal tuple from the environment, or an HTTP client sends the equivalent headers.
-2. The MCP forwards the initial `X-API-TOKEN` to Horizon without a change.
-3. Horizon validates the initial JWT.
-4. After validation, the MCP trusts the JWT `iss` and `exp` claims.
-5. In pinned mode, the MCP requires an exact allowlist match and selects the mapped token URL and authentication method. In fallback mode, it performs the constrained discovery described above.
+2. In pinned mode, the MCP may renew before Horizon validation after requiring
+   the presented JWT's `iss` to exactly match an own-property allowlist key.
+3. Otherwise, the MCP forwards the initial `X-API-TOKEN` to Horizon unchanged.
+4. Horizon validates the presented JWT. Only after this succeeds may fallback
+   mode trust its `iss` and `exp` claims and perform constrained discovery.
+5. In pinned mode, the MCP selects only the mapped token URL and authentication
+   method. In fallback mode, it performs the constrained discovery described
+   above.
 6. The MCP requests a token 60 seconds before expiry. It also requests a token after Horizon rejects authentication.
 7. The request contains `grant_type=client_credentials`. It also contains the configured scope or audience.
 8. The MCP verifies that the renewed JWT's `iss` matches the initial issuer before using the token.
 9. The MCP uses the returned `access_token` as the new `X-API-TOKEN`.
-10. Concurrent refresh requests use one shared renewal request.
+10. Concurrent refresh requests use one shared renewal request. After a failed
+    renewal, that provider waits 30 seconds before another attempt.
 
 Operator pinning removes the token-controlled discovery request and is the
 recommended SSRF control. Entra ID and Okta deployments usually support this

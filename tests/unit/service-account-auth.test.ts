@@ -57,8 +57,6 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
       },
       fetcher,
     });
-    provider.markValidated();
-
     await expect(provider.refreshIfNeeded()).rejects.toThrow(
       'https://issuer.example.com, https://login.example.com/tenant',
     );
@@ -84,8 +82,6 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
         },
         fetcher,
       });
-      provider.markValidated();
-
       await expect(provider.refreshIfNeeded()).rejects.toThrow(
         `OAuth renewal refused: JWT issuer "${issuer}" is not listed in ` +
           'HORIZON_OAUTH_ISSUERS. Configured issuers: https://issuer.example.com',
@@ -137,7 +133,7 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
     expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
   });
 
-  it('uses the pinned token URL with client_secret_post', async () => {
+  it('renews an expired token before validation through the pinned client_secret_post endpoint', async () => {
     const now = Math.floor(Date.now() / 1000);
     const issuer = 'https://idp.example.com';
     const renewed = jwt({ iss: issuer, exp: now + 3600 });
@@ -160,7 +156,6 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
       },
     );
 
-    provider.markValidated();
     await provider.refreshIfNeeded();
 
     expect(fetcher).toHaveBeenCalledTimes(1);
@@ -176,6 +171,69 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
         client_secret: 'secret',
       }),
     );
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('renews after an authentication failure before validation in pinned mode', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://issuer.example.com';
+    const renewed = jwt({ iss: issuer, exp: now + 7200 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider(
+      'ci',
+      jwt({ iss: issuer, exp: now + 3600 }),
+      {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          [issuer]: {
+            tokenUrl: 'https://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+      },
+    );
+
+    await provider.markAuthFailed();
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('cools down after a failed pinned renewal', async () => {
+    const issuer = 'https://issuer.example.com';
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(503, { error: 'unavailable' }));
+    const provider = new ServiceAccountAuthProvider(
+      'ci',
+      jwt({
+        iss: issuer,
+        exp: Math.floor(Date.now() / 1000) - 1,
+      }),
+      {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          [issuer]: {
+            tokenUrl: 'https://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+      },
+    );
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'OAuth token request failed with HTTP 503',
+    );
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
   });
 
   it('rejects a renewed JWT from a different issuer', async () => {

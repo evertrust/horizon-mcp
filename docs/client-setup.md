@@ -329,7 +329,7 @@ MCP clients do not support all connection capabilities. Your client must support
 
 Use the HTTP transport form in `.mcp.json`. Do not use `command` or `args` for this configuration.
 
-For `service`, supply the Horizon service-account name and an initial JWT. The MCP sends these values directly to Horizon.
+For `service`, supply the Horizon service-account name and an initial JWT. The MCP sends the active pair to Horizon; pinned renewal may replace an expired or rejected JWT before the first Horizon validation.
 
 Supply the OAuth client headers when the MCP must renew the JWT. See [Service-account JWT renewal](authentication.md#service-account-jwt-renewal) for the header requirements.
 

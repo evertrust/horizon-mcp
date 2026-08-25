@@ -24,6 +24,7 @@ interface DiscoveryDocument {
 }
 
 const MAX_OAUTH_RESPONSE_BYTES = 1024 * 1024;
+const RENEWAL_FAILURE_COOLDOWN_MS = 30_000;
 
 function decodeClaims(jwt: string): JwtClaims {
   const parts = jwt.split('.');
@@ -98,6 +99,7 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     exactIssuerMatch: boolean;
   } | null = null;
   private _refreshPromise: Promise<void> | null = null;
+  private _renewalRetryAfter = 0;
 
   constructor(
     serviceAccount: string,
@@ -129,18 +131,31 @@ export class ServiceAccountAuthProvider extends AuthProvider {
   }
 
   async refreshIfNeeded(): Promise<void> {
-    // Never make a network request based on untrusted JWT claims. The HTTP
-    // server opens this gate only after Horizon accepts the initial token.
-    if (!this._validated || !this._oauth) return;
+    if (!this._oauth) return;
+    const pinned = this._oauth.issuers !== undefined;
+    // Unpinned discovery remains gated on Horizon validation. Pinned mode may
+    // read claims early because the network target comes only from operator
+    // configuration and _discover requires an exact own-property issuer match.
+    if ((!this._validated && !pinned) || Date.now() < this._renewalRetryAfter) {
+      return;
+    }
 
     const { exp } = decodeClaims(this._jwt);
     const nearExpiry = exp - Date.now() / 1000 <= this._refreshSkewSeconds;
     if (!nearExpiry && !this._forceRefresh) return;
 
     if (!this._refreshPromise) {
-      this._refreshPromise = this._renew().finally(() => {
-        this._refreshPromise = null;
-      });
+      this._refreshPromise = this._renew()
+        .then(() => {
+          this._renewalRetryAfter = 0;
+        })
+        .catch((err: unknown) => {
+          this._renewalRetryAfter = Date.now() + RENEWAL_FAILURE_COOLDOWN_MS;
+          throw err;
+        })
+        .finally(() => {
+          this._refreshPromise = null;
+        });
     }
     await this._refreshPromise;
   }
@@ -150,7 +165,9 @@ export class ServiceAccountAuthProvider extends AuthProvider {
   }
 
   override async markAuthFailed(): Promise<void> {
-    if (this._validated && this._oauth) this._forceRefresh = true;
+    if (this._oauth && (this._validated || this._oauth.issuers !== undefined)) {
+      this._forceRefresh = true;
+    }
   }
 
   private async _discover(): Promise<NonNullable<typeof this._discovery>> {
