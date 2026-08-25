@@ -243,22 +243,121 @@ describe('CredentialCache', () => {
     }
   });
 
-  it('keeps close pending until an orphaned build settles', async () => {
-    let markBuildStarted = () => {};
-    const buildStarted = new Promise<void>((resolve) => {
-      markBuildStarted = resolve;
+  it('discards an orphaned build that resolves after cancellation', async () => {
+    let calls = 0;
+    const orphanEntry = fakeEntry();
+    const freshEntry = fakeEntry();
+    let markOrphanBuildStarted = () => {};
+    const orphanBuildStarted = new Promise<void>((resolve) => {
+      markOrphanBuildStarted = resolve;
     });
-    let releaseBuild = () => {};
-    const buildRelease = new Promise<void>((resolve) => {
-      releaseBuild = resolve;
+    let releaseOrphanBuild = () => {};
+    const orphanBuildRelease = new Promise<void>((resolve) => {
+      releaseOrphanBuild = resolve;
+    });
+    let markFreshBuildStarted = () => {};
+    const freshBuildStarted = new Promise<void>((resolve) => {
+      markFreshBuildStarted = resolve;
+    });
+    let releaseFreshBuild = () => {};
+    const freshBuildRelease = new Promise<void>((resolve) => {
+      releaseFreshBuild = resolve;
     });
     const { cache } = makeCache({
       build: async () => {
-        const buildSignal = currentRequestSignal();
-        markBuildStarted();
-        await buildRelease;
-        if (buildSignal?.aborted) throw buildSignal.reason;
-        return fakeEntry();
+        calls += 1;
+        if (calls === 1) {
+          markOrphanBuildStarted();
+          await orphanBuildRelease;
+          return orphanEntry;
+        }
+        markFreshBuildStarted();
+        await freshBuildRelease;
+        return freshEntry;
+      },
+    });
+    const controller = new AbortController();
+    const reason = new Error('caller disconnected');
+    const releases: (() => void)[] = [];
+    const first = cache.get(
+      'shared',
+      apiKeyMaterial(),
+      undefined,
+      controller.signal,
+    );
+    let second: ReturnType<typeof cache.get> | undefined;
+
+    try {
+      await orphanBuildStarted;
+      controller.abort(reason);
+      await expect(first).rejects.toBe(reason);
+
+      second = cache.get('shared', apiKeyMaterial());
+      await freshBuildStarted;
+
+      releaseOrphanBuild();
+      await Promise.resolve();
+      releaseFreshBuild();
+
+      const secondLease = await second;
+      releases.push(secondLease.releaseLease);
+      expect(secondLease.entry).toBe(freshEntry);
+
+      const thirdLease = await cache.get('shared', apiKeyMaterial());
+      releases.push(thirdLease.releaseLease);
+      expect(thirdLease.entry).toBe(freshEntry);
+      expect(orphanEntry.closed()).toBe(1);
+      expect(orphanEntry.cleaned()).toBe(1);
+      expect(freshEntry.closed()).toBe(0);
+      expect(freshEntry.cleaned()).toBe(0);
+      expect(cache.size).toBe(1);
+    } finally {
+      releaseOrphanBuild();
+      releaseFreshBuild();
+      const results = await Promise.allSettled([
+        first,
+        ...(second ? [second] : []),
+      ]);
+      for (const result of results) {
+        if (result.status === 'fulfilled') result.value.releaseLease();
+      }
+      for (const release of releases) release();
+      await cache.close();
+    }
+  });
+
+  it('keeps close pending until an orphaned build settles', async () => {
+    let calls = 0;
+    let orphanSignal: AbortSignal | undefined;
+    const freshEntry = fakeEntry();
+    let markOrphanBuildStarted = () => {};
+    const orphanBuildStarted = new Promise<void>((resolve) => {
+      markOrphanBuildStarted = resolve;
+    });
+    let releaseOrphanBuild = () => {};
+    const orphanBuildRelease = new Promise<void>((resolve) => {
+      releaseOrphanBuild = resolve;
+    });
+    let markFreshBuildStarted = () => {};
+    const freshBuildStarted = new Promise<void>((resolve) => {
+      markFreshBuildStarted = resolve;
+    });
+    let releaseFreshBuild = () => {};
+    const freshBuildRelease = new Promise<void>((resolve) => {
+      releaseFreshBuild = resolve;
+    });
+    const { cache } = makeCache({
+      build: async () => {
+        calls += 1;
+        if (calls === 1) {
+          orphanSignal = currentRequestSignal();
+          markOrphanBuildStarted();
+          await orphanBuildRelease;
+          return fakeEntry();
+        }
+        markFreshBuildStarted();
+        await freshBuildRelease;
+        return freshEntry;
       },
     });
     const controller = new AbortController();
@@ -269,12 +368,27 @@ describe('CredentialCache', () => {
       undefined,
       controller.signal,
     );
+    let fresh: ReturnType<typeof cache.get> | undefined;
+    let orphanPromise: Promise<unknown> | undefined;
     let closing: Promise<void> | undefined;
 
     try {
-      await buildStarted;
+      await orphanBuildStarted;
       controller.abort(reason);
       await expect(pending).rejects.toBe(reason);
+
+      fresh = cache.get('shared', apiKeyMaterial());
+      await freshBuildStarted;
+      const orphanPromises = (
+        cache as unknown as { orphans: Set<Promise<unknown>> }
+      ).orphans;
+      orphanPromise = [...orphanPromises][0];
+      expect(orphanPromise).toBeDefined();
+
+      releaseFreshBuild();
+      const freshLease = await fresh;
+      expect(freshLease.entry).toBe(freshEntry);
+      freshLease.releaseLease();
 
       closing = cache.close();
       let closed = false;
@@ -284,13 +398,23 @@ describe('CredentialCache', () => {
       await Promise.resolve();
       await Promise.resolve();
       expect(closed).toBe(false);
+      await vi.waitFor(() => expect(freshEntry.closed()).toBe(1));
+      expect(freshEntry.cleaned()).toBe(1);
+      expect(closed).toBe(false);
 
-      releaseBuild();
+      releaseOrphanBuild();
+      await expect(orphanPromise).rejects.toBe(orphanSignal!.reason);
       await expect(closing).resolves.toBeUndefined();
     } finally {
-      releaseBuild();
-      const result = await Promise.allSettled([pending]);
-      if (result[0]?.status === 'fulfilled') result[0].value.releaseLease();
+      releaseOrphanBuild();
+      releaseFreshBuild();
+      const results = await Promise.allSettled([
+        pending,
+        ...(fresh ? [fresh] : []),
+      ]);
+      for (const result of results) {
+        if (result.status === 'fulfilled') result.value.releaseLease();
+      }
       await (closing ?? cache.close());
     }
   });

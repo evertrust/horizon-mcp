@@ -153,6 +153,11 @@ export class CredentialCache {
             retired: false,
             disposeStarted: false,
           };
+          // Cancelled flights cannot publish work built after their last waiter left.
+          if (controller.signal.aborted) {
+            await this.retire(fingerprint, record);
+            throw controller.signal.reason;
+          }
           // Closed caches cannot publish a completed in-flight build.
           if (this.closed) {
             await this.retire(fingerprint, record);
