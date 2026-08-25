@@ -414,3 +414,22 @@ Create two roles to enforce four-eyes principle:
   "permissions": ["certificates:approve:TLS-Internal", "certificates:search:TLS-Internal"]
 }
 ```
+
+---
+
+## Service-Account Identity Across Token Rotation
+
+For a service account authenticated with a JWT, Horizon builds the principal
+identifier from the configured service-account name and the presented token:
+
+- Without `identifierMapping`: `<name>-<sha256(jwt).take(16)>`
+- With `identifierMapping`: `<name>-<hash16>-<mapped-value>`
+
+The 16-character hash segment is always present. Because it is derived from the
+JWT, rotating the token changes the principal identifier in both configurations.
+`identifierMapping` appends claim-derived context; it does not replace the hash
+or create a stable identity.
+
+Do not rely on the service-account identifier as a durable certificate owner.
+Use team-based ownership for certificates and other ownership relationships
+that must remain valid after token rotation.

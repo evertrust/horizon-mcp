@@ -60,8 +60,16 @@ Run against a live Horizon instance:
 export HORIZON_E2E_URL=https://your-qa-instance.evertrust.io
 export HORIZON_E2E_API_ID=your-api-id
 export HORIZON_E2E_API_KEY=your-api-key
+
+# Required only by service-account.e2e.test.ts
+export HORIZON_E2E_SVA=your-service-account-name
+export HORIZON_E2E_SVA_TOKEN=your-service-account-jwt
 bun run test:e2e
 ```
+
+The service-account suite prints a skip notice when either service-account
+variable is unset. Ask the QA operator to provision both values before running
+that suite.
 
 ## Linting and type checking
 
