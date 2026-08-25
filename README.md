@@ -158,7 +158,7 @@ These variables apply only when `HORIZON_TRANSPORT=http`; in stdio mode they are
 | `HORIZON_RATE_LIMIT_RPS`            | `20`        | Per-caller limit, counted per JSON-RPC message per second; `0` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `HORIZON_IP_RATE_LIMIT`             | `600`       | Coarse per-IP request cap per second, a defense-in-depth backstop in front of the per-caller limits; `0` disables.                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
-When an MCP client disconnects, the server cancels credential validation and any
+Under Node, when an MCP client disconnects, the server cancels credential validation and any
 in-flight Horizon requests for that call.
 
 Size non-listen request memory from `HORIZON_MAX_CONCURRENT_REQUESTS`, not from request throughput. The server builds
@@ -211,6 +211,8 @@ See [Streamable HTTP](#streamable-http-horizon_transporthttp) for the full HTTP 
 Deploy one MCP instance for each Horizon instance. Keep the connection from the MCP to Horizon on an internal network.
 
 Use a trusted TLS termination point for client connections. Store secrets in the orchestrator secret store.
+
+HTTP mode is supported under Node >= 24.10. The standalone binaries are compiled with Bun and are intended for the stdio transport; they can serve HTTP, but Bun's `node:http` implementation (verified on Bun 1.3.14) does not surface client disconnects once the request body has been consumed, so cancellation of in-flight Horizon calls and early permit release on disconnect do not happen there; capacity remains bounded by the request timeouts and `HORIZON_SSE_MAX_DURATION`. The server logs a warning at startup in that configuration.
 
 The server provides `/healthz` for liveness probes. It provides `/readyz` for readiness probes.
 
@@ -436,6 +438,8 @@ bun run build:binaries
 ```
 
 The standalone binaries bundle everything needed to run; no extra runtime dependencies are required.
+
+For HTTP hosting, see the [Hosting](#hosting) note.
 
 ## Development
 

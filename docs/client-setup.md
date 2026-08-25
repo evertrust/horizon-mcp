@@ -301,6 +301,8 @@ The previous examples start Horizon MCP as a local stdio process. You can also r
 
 This transport lets remote clients connect to one long-running server. Use it for a shared server, a container, or a server behind a gateway.
 
+Host the HTTP endpoint under Node >= 24.10; see the README [Hosting](../README.md#hosting) note.
+
 The server joins `HORIZON_PUBLIC_URL` with `HORIZON_HTTP_PATH`. The default path is `/mcp`.
 
 For example:

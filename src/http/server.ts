@@ -548,6 +548,12 @@ export async function startHttpServer(
   httpServer.headersTimeout = Math.min(60_000, httpServer.requestTimeout);
   httpServer.keepAliveTimeout = 10_000;
 
+  if (typeof process.versions.bun === 'string') {
+    logger.warning(
+      `HTTP mode is running under Bun ${process.versions.bun}: Bun's node:http server does not report client disconnects once the request body has been consumed, so cancellation of in-flight Horizon calls and early permit release on disconnect are inert until the response completes; run HTTP mode under Node`,
+    );
+  }
+
   await new Promise<void>((resolve, reject) => {
     httpServer.once('error', reject);
     httpServer.listen(config.port, config.host, () => {
