@@ -47,7 +47,9 @@ describe('tool safety labels', () => {
       const mismatches = labelledTools.flatMap(({ tool, tier }) => {
         const annotations = tool.annotations;
         const matches =
-          (tier === 'read-only' && annotations.readOnlyHint === true) ||
+          (tier === 'read-only' &&
+            annotations.readOnlyHint === true &&
+            annotations.destructiveHint === false) ||
           (tier === 'mutating-safe' &&
             annotations.readOnlyHint === false &&
             annotations.destructiveHint === false) ||
