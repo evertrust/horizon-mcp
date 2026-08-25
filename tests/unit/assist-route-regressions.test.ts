@@ -162,6 +162,27 @@ describe('System assist route regressions', () => {
     expect(parsed['explanation']).toEqual({ passed: true });
     expect(parsed['evaluation']).toEqual({ passed: true });
   });
+
+  it('documents rotation-variant service-account identifiers without changing the whoami schema', async () => {
+    const tools = (await client.listTools()).tools;
+    const whoami = tools.find((tool) => tool.name === 'whoami');
+
+    expect(whoami?.description).toContain('<name>-<sha256(jwt).take(16)>');
+    expect(whoami?.description).toContain('<name>-<hash16>-<mapped-value>');
+    expect(whoami?.description).toContain(
+      'identifierMapping adds claim-derived context and does not create a stable identity',
+    );
+    expect(whoami?.description).toContain('team-based ownership');
+    expect(Object.keys(whoami?.outputSchema?.properties ?? {}).sort()).toEqual([
+      '_horizonVersion',
+      'identifier',
+      'name',
+      'permissions',
+      'roles',
+      'team',
+      'teams',
+    ]);
+  });
 });
 
 describe('Computation assist route regressions', () => {

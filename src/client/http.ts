@@ -455,6 +455,8 @@ export class HorizonClient {
         logger[compatibility.level](compatibility.message);
       }
     }
+
+    if (!strict) this._auth.markValidated();
   }
 
   // -- Internal request pipeline --------------------------------------------

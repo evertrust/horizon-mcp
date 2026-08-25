@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
+import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
 import { HorizonError } from '../../src/client/errors.js';
 
 // Mock undici before importing HorizonClient.
@@ -50,6 +51,12 @@ function makeClient() {
 
 function initializedFlag(client: unknown): boolean {
   return (client as Record<string, boolean>)['_initialized'];
+}
+
+function jwt(payload: Record<string, unknown>): string {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode(payload)}.signature`;
 }
 
 describe('HorizonClient.validateAuth', () => {
@@ -111,5 +118,86 @@ describe('HorizonClient.validateAuth', () => {
 
     await expect(client.validateAuth()).rejects.toThrow();
     expect(initializedFlag(client)).toBe(false);
+  });
+
+  it('does not contact the IdP when lazy Horizon validation fails', async () => {
+    const idpFetch = vi.fn<typeof fetch>();
+    const provider = new ServiceAccountAuthProvider(
+      'automation',
+      jwt({
+        iss: 'https://issuer.example.com',
+        exp: Math.floor(Date.now() / 1000) + 30,
+      }),
+      { clientId: 'client', clientSecret: 'secret', fetcher: idpFetch },
+    );
+    const markValidated = vi.spyOn(provider, 'markValidated');
+    const client = new HorizonClient('https://horizon.test', provider, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+    });
+    mockFetch
+      .mockResolvedValueOnce(fakeResponse(200, { token: 'csrf-1' }))
+      .mockResolvedValueOnce(fakeResponse(401, { error: 'SecAuth001' }));
+
+    await (
+      client as unknown as { _ensureInitialized(): Promise<void> }
+    )._ensureInitialized();
+    expect(idpFetch).not.toHaveBeenCalled();
+    expect(markValidated).not.toHaveBeenCalled();
+  });
+
+  it('renews a near-expiry token only after lazy Horizon validation succeeds', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const renewed = jwt({
+      iss: 'https://issuer.example.com',
+      exp: now + 3600,
+    });
+    const idpFetch = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            issuer: 'https://issuer.example.com',
+            token_endpoint: 'https://issuer.example.com/oauth/token',
+            token_endpoint_auth_methods_supported: ['client_secret_basic'],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: renewed }), {
+          status: 200,
+        }),
+      );
+    const provider = new ServiceAccountAuthProvider(
+      'automation',
+      jwt({ iss: 'https://issuer.example.com', exp: now + 30 }),
+      { clientId: 'client', clientSecret: 'secret', fetcher: idpFetch },
+    );
+    const markValidated = vi.spyOn(provider, 'markValidated');
+    const client = new HorizonClient('https://horizon.test', provider, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+    });
+    mockFetch
+      .mockResolvedValueOnce(fakeResponse(200, { token: 'csrf-1' }))
+      .mockImplementationOnce(() => {
+        expect(idpFetch).not.toHaveBeenCalled();
+        return Promise.resolve(
+          fakeResponse(200, { identity: { identifier: 'automation' } }),
+        );
+      })
+      .mockResolvedValueOnce(fakeResponse(200, { ok: true }))
+      .mockResolvedValueOnce(fakeResponse(200, { ok: true }));
+
+    await client.get('/api/v1/anything');
+    await client.get('/api/v1/anything-else');
+
+    expect(idpFetch).toHaveBeenCalledTimes(2);
+    expect(markValidated).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
   });
 });

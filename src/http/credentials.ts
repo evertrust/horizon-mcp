@@ -329,7 +329,7 @@ export function credentialFingerprintOf(
 export function buildSessionAuth(
   material: CredentialMaterial,
   config: HttpConfig,
-  _settings: HorizonSettings,
+  settings: HorizonSettings,
 ): { auth: AuthProvider } {
   switch (material.kind) {
     case 'api-key':
@@ -341,7 +341,14 @@ export function buildSessionAuth(
         auth: new ServiceAccountAuthProvider(
           material.serviceAccount,
           material.jwt,
-          material.oauth,
+          material.oauth
+            ? {
+                ...material.oauth,
+                ...(settings.oauthIssuers !== undefined
+                  ? { issuers: settings.oauthIssuers }
+                  : {}),
+              }
+            : undefined,
         ),
       };
     case 'cert': {

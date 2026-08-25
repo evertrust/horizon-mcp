@@ -1,16 +1,341 @@
 import { describe, expect, it } from 'vitest';
 
 import { HttpAuthMethod } from '../../src/http/auth-methods.js';
-import { loadSettings } from '../../src/settings.js';
+import { loadSettings as parseSettings } from '../../src/settings.js';
+
+const TEST_API_ENV = {
+  HORIZON_API_ID: 'settings-test',
+  HORIZON_API_KEY: 'settings-secret',
+};
+
+function loadSettings(env: Record<string, string | undefined>) {
+  return parseSettings({ ...TEST_API_ENV, ...env });
+}
 
 describe('loadSettings', () => {
+  describe('OAuth issuer allowlist validation', () => {
+    it('parses a valid issuer map', () => {
+      const oauthIssuers = {
+        'https://issuer.example.com/tenant': {
+          tokenUrl: 'https://oauth.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+        'https://login.example.com': {
+          tokenUrl: 'https://login.example.com/oauth/token',
+          authMethod: 'client_secret_post',
+        },
+      };
+
+      expect(
+        loadSettings({ HORIZON_OAUTH_ISSUERS: JSON.stringify(oauthIssuers) })
+          .oauthIssuers,
+      ).toEqual(oauthIssuers);
+    });
+
+    it.each([
+      {
+        name: 'issuer key',
+        offendingKey: 'http://issuer.example.com',
+        value: {
+          'http://issuer.example.com': {
+            tokenUrl: 'https://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+      },
+      {
+        name: 'token URL',
+        offendingKey: 'https://issuer.example.com',
+        value: {
+          'https://issuer.example.com': {
+            tokenUrl: 'http://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+      },
+    ])(
+      'rejects a non-HTTPS $name and names the offending key',
+      ({ offendingKey, value }) => {
+        expect(() =>
+          loadSettings({ HORIZON_OAUTH_ISSUERS: JSON.stringify(value) }),
+        ).toThrow(offendingKey);
+      },
+    );
+
+    it('rejects __proto__ as an issuer key', () => {
+      expect(() =>
+        loadSettings({
+          HORIZON_OAUTH_ISSUERS: JSON.stringify({
+            ['__proto__']: {
+              tokenUrl: 'https://oauth.example.com/token',
+              authMethod: 'client_secret_basic',
+            },
+          }),
+        }),
+      ).toThrow(
+        'HORIZON_OAUTH_ISSUERS issuer "__proto__" must be an absolute HTTPS URL',
+      );
+    });
+
+    it('rejects an unknown auth method and names the offending key', () => {
+      const issuer = 'https://issuer.example.com';
+      expect(() =>
+        loadSettings({
+          HORIZON_OAUTH_ISSUERS: JSON.stringify({
+            [issuer]: {
+              tokenUrl: 'https://issuer.example.com/token',
+              authMethod: 'private_key_jwt',
+            },
+          }),
+        }),
+      ).toThrow(issuer);
+    });
+
+    it('rejects malformed JSON with the environment variable named', () => {
+      expect(() =>
+        loadSettings({ HORIZON_OAUTH_ISSUERS: '{not-json' }),
+      ).toThrow('HORIZON_OAUTH_ISSUERS');
+    });
+
+    it('bounds the issuer map environment value', () => {
+      expect(() =>
+        loadSettings({ HORIZON_OAUTH_ISSUERS: 'x'.repeat(65_537) }),
+      ).toThrow('HORIZON_OAUTH_ISSUERS');
+    });
+  });
+
+  describe('stdio authentication validation', () => {
+    const partialCases = [
+      {
+        name: 'API identifier without API key',
+        env: { HORIZON_API_ID: 'operator' },
+        missing: 'HORIZON_API_KEY',
+      },
+      {
+        name: 'API key without API identifier',
+        env: { HORIZON_API_KEY: 'secret' },
+        missing: 'HORIZON_API_ID',
+      },
+      {
+        name: 'service account without API token',
+        env: { HORIZON_SERVICE_ACCOUNT: 'automation' },
+        missing: 'HORIZON_API_TOKEN',
+      },
+      {
+        name: 'API token without service account',
+        env: { HORIZON_API_TOKEN: 'jwt' },
+        missing: 'HORIZON_SERVICE_ACCOUNT',
+      },
+      {
+        name: 'client certificate without private key',
+        env: { HORIZON_CLIENT_CERT: '/cert.pem' },
+        missing: 'HORIZON_CLIENT_KEY',
+      },
+      {
+        name: 'private key without client certificate',
+        env: { HORIZON_CLIENT_KEY: '/key.pem' },
+        missing: 'HORIZON_CLIENT_CERT',
+      },
+      {
+        name: 'OAuth client identifier without secret',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_OAUTH_CLIENT_ID: 'client',
+        },
+        missing: 'HORIZON_OAUTH_CLIENT_SECRET',
+      },
+      {
+        name: 'OAuth client secret without identifier',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_OAUTH_CLIENT_SECRET: 'secret',
+        },
+        missing: 'HORIZON_OAUTH_CLIENT_ID',
+      },
+      {
+        name: 'OAuth scope without client credentials',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_OAUTH_SCOPE: 'horizon.read',
+        },
+        missing: 'HORIZON_OAUTH_CLIENT_ID and HORIZON_OAUTH_CLIENT_SECRET',
+      },
+      {
+        name: 'OAuth audience without client credentials',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_OAUTH_AUDIENCE: 'horizon-api',
+        },
+        missing: 'HORIZON_OAUTH_CLIENT_ID and HORIZON_OAUTH_CLIENT_SECRET',
+      },
+      {
+        name: 'PEM key password without PEM material',
+        env: { HORIZON_CLIENT_KEY_PASSWORD: 'secret' },
+        missing: 'HORIZON_CLIENT_CERT and HORIZON_CLIENT_KEY',
+      },
+      {
+        name: 'PFX password without PFX material',
+        env: { HORIZON_CLIENT_PFX_PASSWORD: 'secret' },
+        missing: 'HORIZON_CLIENT_PFX',
+      },
+    ] as const;
+
+    it.each(partialCases)(
+      'rejects $name and names $missing',
+      ({ env, missing }) => {
+        expect(() => parseSettings(env)).toThrow(missing);
+      },
+    );
+
+    it('rejects OAuth renewal metadata without service-account credentials', () => {
+      expect(() =>
+        parseSettings({
+          HORIZON_OAUTH_CLIENT_ID: 'client',
+          HORIZON_OAUTH_CLIENT_SECRET: 'secret',
+        }),
+      ).toThrow('HORIZON_SERVICE_ACCOUNT and HORIZON_API_TOKEN');
+    });
+
+    it('rejects no configured authentication method', () => {
+      expect(() => parseSettings({})).toThrow(
+        'Exactly one complete stdio authentication method must be configured',
+      );
+    });
+
+    it.each([
+      {
+        name: 'API key and service account',
+        env: {
+          HORIZON_API_ID: 'operator',
+          HORIZON_API_KEY: 'secret',
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+        },
+      },
+      {
+        name: 'API key and PEM mTLS',
+        env: {
+          HORIZON_API_ID: 'operator',
+          HORIZON_API_KEY: 'secret',
+          HORIZON_CLIENT_CERT: '/cert.pem',
+          HORIZON_CLIENT_KEY: '/key.pem',
+        },
+      },
+      {
+        name: 'API key and PFX mTLS',
+        env: {
+          HORIZON_API_ID: 'operator',
+          HORIZON_API_KEY: 'secret',
+          HORIZON_CLIENT_PFX: '/client.p12',
+        },
+      },
+      {
+        name: 'service account and PEM mTLS',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_CLIENT_CERT: '/cert.pem',
+          HORIZON_CLIENT_KEY: '/key.pem',
+        },
+      },
+      {
+        name: 'service account and PFX mTLS',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_CLIENT_PFX: '/client.p12',
+        },
+      },
+    ])('rejects multiple complete methods: $name', ({ env }) => {
+      expect(() => parseSettings(env)).toThrow(
+        'Exactly one complete stdio authentication method must be configured',
+      );
+    });
+
+    it('rejects PEM and PFX mTLS material together', () => {
+      expect(() =>
+        parseSettings({
+          HORIZON_CLIENT_CERT: '/cert.pem',
+          HORIZON_CLIENT_KEY: '/key.pem',
+          HORIZON_CLIENT_PFX: '/client.p12',
+        }),
+      ).toThrow('HORIZON_CLIENT_CERT or HORIZON_CLIENT_PFX, not both');
+    });
+
+    it.each([
+      {
+        name: 'API key',
+        env: { HORIZON_API_ID: 'operator', HORIZON_API_KEY: 'secret' },
+      },
+      {
+        name: 'service account',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+        },
+      },
+      {
+        name: 'service account with renewal',
+        env: {
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_API_TOKEN: 'jwt',
+          HORIZON_OAUTH_CLIENT_ID: 'client',
+          HORIZON_OAUTH_CLIENT_SECRET: 'secret',
+          HORIZON_OAUTH_SCOPE: 'horizon.read',
+          HORIZON_OAUTH_AUDIENCE: 'horizon-api',
+        },
+      },
+      {
+        name: 'PEM mTLS',
+        env: {
+          HORIZON_CLIENT_CERT: '/cert.pem',
+          HORIZON_CLIENT_KEY: '/key.pem',
+          HORIZON_CLIENT_KEY_PASSWORD: 'secret',
+        },
+      },
+      {
+        name: 'PFX mTLS',
+        env: {
+          HORIZON_CLIENT_PFX: '/client.p12',
+          HORIZON_CLIENT_PFX_PASSWORD: 'secret',
+        },
+      },
+    ])('accepts one complete method: $name', ({ env }) => {
+      expect(() => parseSettings(env)).not.toThrow();
+    });
+
+    it('does not require stdio credentials in HTTP transport', () => {
+      expect(() => parseSettings({ HORIZON_TRANSPORT: 'http' })).not.toThrow();
+    });
+
+    it.each([
+      ['HORIZON_SERVICE_ACCOUNT', 256],
+      ['HORIZON_API_TOKEN', 16_385],
+      ['HORIZON_OAUTH_CLIENT_ID', 513],
+      ['HORIZON_OAUTH_CLIENT_SECRET', 4097],
+      ['HORIZON_OAUTH_SCOPE', 2049],
+      ['HORIZON_OAUTH_AUDIENCE', 2049],
+    ])('bounds %s', (name, length) => {
+      expect(() =>
+        parseSettings({
+          HORIZON_TRANSPORT: 'http',
+          [name]: 'x'.repeat(length),
+        }),
+      ).toThrow();
+    });
+  });
+
   describe('default values', () => {
     it('returns defaults when no HORIZON_ env vars are set', () => {
       const settings = loadSettings({});
 
       expect(settings.url).toBe('https://localhost');
-      expect(settings.apiId).toBe('');
-      expect(settings.apiKey).toBe('');
+      expect(settings.apiId).toBe('settings-test');
+      expect(settings.apiKey).toBe('settings-secret');
       expect(settings.verifySsl).toBe(true);
       expect(settings.timeout).toBe(30);
       expect(settings.exportTimeout).toBe(120);
@@ -30,7 +355,7 @@ describe('loadSettings', () => {
         URL: 'https://ignored.example.com',
       });
 
-      expect(settings.apiId).toBe('');
+      expect(settings.apiId).toBe('settings-test');
       expect(settings.url).toBe('https://localhost');
     });
   });
@@ -43,6 +368,7 @@ describe('loadSettings', () => {
 
     it('converts multi-word keys like CLIENT_PFX_PASSWORD', () => {
       const settings = loadSettings({
+        HORIZON_TRANSPORT: 'http',
         HORIZON_CLIENT_PFX_PASSWORD: 'my-secret',
       });
       expect(settings.clientPfxPassword).toBe('my-secret');
@@ -50,6 +376,7 @@ describe('loadSettings', () => {
 
     it('converts CLIENT_KEY_PASSWORD correctly', () => {
       const settings = loadSettings({
+        HORIZON_TRANSPORT: 'http',
         HORIZON_CLIENT_KEY_PASSWORD: 'key-pass',
       });
       expect(settings.clientKeyPassword).toBe('key-pass');
