@@ -169,6 +169,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "cancel_dcv_run",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "request_id": {
           "description": "The request ID to cancel.",
           "type": "string",
@@ -1402,6 +1418,22 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_dcv_policy_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
           "description": "Exact campaign name.",
           "type": "string",
         },
@@ -1654,6 +1686,53 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "domain": {
+          "description": "Optional domain to filter to.",
+          "type": "string",
+        },
+        "page_index": {
+          "description": "Zero-based page index.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "description": "Results per page, maximum 100.",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "policy": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort expression, for example 'timestamp:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "description": "Include the total event count.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "policy",
+      ],
+      "type": "object",
+    },
+    "name": "list_dcv_events",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "list_dcv_policy_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "max_items": {
           "default": 50,
           "description": "Maximum items to return (default 50).",
@@ -1853,6 +1932,43 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "remove_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "domain": {
+          "description": "Domain to validate.",
+          "type": "string",
+        },
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "domain",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_domain",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "description": "DCV policy name.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_policy",
   },
   {
     "inputSchema": {

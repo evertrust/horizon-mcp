@@ -41,7 +41,7 @@ The MCP endpoint accepts `POST` only for protocol requests. Other protocol reque
 
 ## Trimming the tool surface (recommended)
 
-The full server registers 212 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
+The full server registers 218 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
 
 If you do not need all domains, use these environment variables to reduce the tool set:
 
@@ -72,7 +72,7 @@ Suggested presets:
 | Configuration administration                            | `HORIZON_ENABLED_TOOLSETS=config,assist,docs`            |
 | Discovery review                                        | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist`    |
 
-A read-only `lifecycle,docs,assist` server registers approximately 38 tools. This configuration decreases the context use by approximately 80 percent.
+A read-only `lifecycle,docs,assist` server registers approximately 41 tools. This configuration decreases the context use by approximately 80 percent.
 
 ## Claude Desktop
 
@@ -150,7 +150,7 @@ Or with the standalone binary:
 }
 ```
 
-Start Claude Code from that directory. The server makes the 212 tools available immediately.
+Start Claude Code from that directory. The server makes the 218 tools available immediately.
 
 ## Cursor
 

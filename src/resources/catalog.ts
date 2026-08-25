@@ -4,6 +4,7 @@ import automationContent from './knowledge/automation.md';
 import computationContent from './knowledge/computation_and_data_flow.md';
 import dashboardsContent from './knowledge/dashboards.md';
 import datasourcesContent from './knowledge/datasources.md';
+import dcvContent from './knowledge/dcv.md';
 import dictionaryMatrixContent from './knowledge/dictionary_matrix.md';
 import digicertIntegrationContent from './knowledge/digicert_integration.md';
 import discoveryContent from './knowledge/discovery.md';
@@ -124,6 +125,13 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     uri: 'horizon://knowledge/datasources',
     description: 'Data source configuration (DNS/LDAP/REST)',
     content: datasourcesContent,
+    splitSections: true,
+  },
+  {
+    name: 'dcv',
+    uri: 'horizon://knowledge/dcv',
+    description: 'Domain Control Validation providers, policies, and lifecycle',
+    content: dcvContent,
     splitSections: true,
   },
   {
