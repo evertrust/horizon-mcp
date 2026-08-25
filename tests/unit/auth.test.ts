@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { createAuthProvider } from '../../src/auth/index.js';
 import { MtlsAuthProvider } from '../../src/auth/mtls.js';
+import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
 import { loadSettings } from '../../src/settings.js';
 import type { HorizonSettings } from '../../src/settings.js';
 
@@ -17,7 +18,8 @@ function makeSettings(
   overrides: Partial<HorizonSettings> = {},
 ): HorizonSettings {
   return {
-    ...loadSettings({}),
+    ...loadSettings({ HORIZON_TRANSPORT: 'http' }),
+    transport: 'stdio',
     url: 'https://horizon.example.com',
     ...overrides,
   };
@@ -284,6 +286,44 @@ describe('MtlsAuthProvider (PFX)', () => {
 // ===========================================================================
 
 describe('createAuthProvider (factory)', () => {
+  describe('service-account detection', () => {
+    it('creates a service-account provider with the configured headers', async () => {
+      const provider = createAuthProvider(
+        makeSettings({
+          serviceAccount: 'automation',
+          apiToken: 'signed-jwt',
+        }),
+      );
+
+      expect(provider).toBeInstanceOf(ServiceAccountAuthProvider);
+      await expect(provider.getHeaders()).resolves.toEqual({
+        'X-API-SVA': 'automation',
+        'X-API-TOKEN': 'signed-jwt',
+      });
+    });
+
+    it('passes the complete OAuth renewal tuple to the provider', () => {
+      const provider = createAuthProvider(
+        makeSettings({
+          serviceAccount: 'automation',
+          apiToken: 'signed-jwt',
+          oauthClientId: 'client',
+          oauthClientSecret: 'secret',
+          oauthScope: 'horizon.read',
+          oauthAudience: 'horizon-api',
+        }),
+      ) as ServiceAccountAuthProvider;
+
+      expect(provider).toBeInstanceOf(ServiceAccountAuthProvider);
+      expect((provider as unknown as { _oauth: unknown })._oauth).toEqual({
+        clientId: 'client',
+        clientSecret: 'secret',
+        scope: 'horizon.read',
+        audience: 'horizon-api',
+      });
+    });
+  });
+
   describe('mTLS detection', () => {
     it('detects mTLS when clientCert is present (with clientKey)', () => {
       const settings = makeSettings({
@@ -347,7 +387,7 @@ describe('createAuthProvider (factory)', () => {
     it('throws a clear error when no certs or API key are set', () => {
       const settings = makeSettings();
       expect(() => createAuthProvider(settings)).toThrow(
-        /No Horizon credentials configured/i,
+        /Exactly one complete stdio authentication method/i,
       );
     });
   });
@@ -372,7 +412,7 @@ describe('createAuthProvider (factory)', () => {
       });
 
       expect(() => createAuthProvider(settings)).toThrow(
-        'HORIZON_CLIENT_KEY is required when HORIZON_CLIENT_CERT is set',
+        'HORIZON_CLIENT_KEY is required',
       );
     });
 
@@ -382,21 +422,20 @@ describe('createAuthProvider (factory)', () => {
         apiKey: '',
       });
 
-      expect(() => createAuthProvider(settings)).toThrow('HORIZON_API_ID');
+      expect(() => createAuthProvider(settings)).toThrow('HORIZON_API_KEY');
     });
   });
 
-  describe('priority ordering', () => {
-    it('prefers mTLS over API key when both are configured', () => {
+  describe('method exclusivity', () => {
+    it('rejects PFX mTLS with API key credentials', () => {
       const settings = makeSettings({
         clientPfx: '/path/to/bundle.pfx',
         apiId: 'my-id',
         apiKey: 'my-key',
       });
 
-      // Should attempt mTLS (and fail on file read), not API key
       expect(() => createAuthProvider(settings)).toThrow(
-        'HORIZON_CLIENT_PFX file not found',
+        'Exactly one complete stdio authentication method',
       );
     });
 
@@ -410,7 +449,7 @@ describe('createAuthProvider (factory)', () => {
       expect(provider).toBeInstanceOf(ApiKeyAuthProvider);
     });
 
-    it('prefers mTLS PEM over API key when both are configured', () => {
+    it('rejects PEM mTLS with API key credentials', () => {
       const dir = makeTmpDir();
       const cert = writeDummyPem(dir, 'cert.pem');
       const key = writeDummyKey(dir, 'key.pem');
@@ -420,8 +459,9 @@ describe('createAuthProvider (factory)', () => {
         apiId: 'test-id',
         apiKey: 'test-key',
       });
-      const provider = createAuthProvider(settings);
-      expect(provider).toBeInstanceOf(MtlsAuthProvider);
+      expect(() => createAuthProvider(settings)).toThrow(
+        'Exactly one complete stdio authentication method',
+      );
     });
   });
 

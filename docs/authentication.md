@@ -1,6 +1,6 @@
 # Authentication
 
-Horizon MCP supports two credential models:
+Horizon MCP supports two credential ownership models:
 
 - In **stdio** mode, one environment-owned credential authenticates the local MCP process to Horizon.
 - In **streamable HTTP** mode, each caller supplies a Horizon credential. The server accepts only configured authentication methods.
@@ -11,7 +11,9 @@ The MCP does not duplicate Horizon RBAC. The MCP rejects requests that contain m
 
 ## Stdio server credentials
 
-Stdio credentials are auto-detected with the priority mTLS > API key.
+Configure exactly one complete stdio authentication method. API key,
+service-account, PEM mTLS, and PFX mTLS credentials are mutually exclusive.
+Startup fails when a pair is incomplete or more than one method is present.
 
 ### API key
 
@@ -33,6 +35,33 @@ HORIZON_CLIENT_KEY_PASSWORD=optional-password
 HORIZON_CLIENT_PFX=/path/to/client.p12
 HORIZON_CLIENT_PFX_PASSWORD=optional-password
 ```
+
+### Service-account JWT
+
+```bash
+HORIZON_SERVICE_ACCOUNT=automation-account
+HORIZON_API_TOKEN=initial-jwt
+```
+
+Horizon validates the JWT signature against the JWKS configured for the
+service account, maps it to a Horizon principal, and applies that principal's
+RBAC. The MCP does not independently verify the JWT signature. It forwards the
+initial pair unchanged and does not trust the token-controlled `iss` or `exp`
+claims until Horizon accepts the token during lazy initialization.
+
+For automatic renewal, configure the OAuth `client_credentials` tuple:
+
+```bash
+HORIZON_OAUTH_CLIENT_ID=oauth-client
+HORIZON_OAUTH_CLIENT_SECRET=oauth-secret
+HORIZON_OAUTH_SCOPE=horizon.read       # optional, provider-specific
+HORIZON_OAUTH_AUDIENCE=horizon-api     # optional, provider-specific
+```
+
+Client ID and secret must be set together. Scope and audience are accepted
+only with that complete pair. The MCP discovers the token endpoint from the
+validated initial JWT's issuer and renews tokens using the same rules described
+under [Service-account JWT renewal](#service-account-jwt-renewal).
 
 ## HTTP authentication whitelist
 
@@ -78,11 +107,14 @@ Cache shutdown waits for outstanding leases. The HTTP server applies its configu
 
 ### Service-account JWT renewal
 
-Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request.
+Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request. It is available to both transports: stdio reads the service-account pair and optional renewal tuple from environment variables, while HTTP reads their equivalent request headers.
 
-The client sends the service-account name and an initial JWT to the MCP. The MCP forwards both values directly to Horizon.
+In stdio mode, the MCP loads the service-account name and initial JWT from its
+environment. In HTTP mode, the caller sends both values to the MCP. The MCP
+forwards the selected pair directly to Horizon.
 
-The client can also send OAuth 2.0 client credentials. The MCP uses these credentials to fetch and renew a short-lived JWT.
+For renewal, stdio can load OAuth 2.0 client credentials from its environment,
+and an HTTP caller can send the equivalent values in these headers:
 
 | Header                  | Required for renewal | Purpose                                                               |
 | ----------------------- | -------------------- | --------------------------------------------------------------------- |
@@ -103,7 +135,7 @@ It then gets the `token_endpoint` from the issuer's OpenID Connect discovery doc
 
 The renewal sequence is as follows:
 
-1. The client sends `X-API-SVA`, `X-API-TOKEN`, and the required OAuth headers.
+1. Stdio loads the service-account pair and renewal tuple from the environment, or an HTTP client sends the equivalent headers.
 2. The MCP forwards the initial `X-API-TOKEN` to Horizon without a change.
 3. Horizon validates the initial JWT.
 4. After validation, the MCP trusts the JWT `iss` and `exp` claims.
@@ -123,7 +155,15 @@ Google Workspace service accounts usually use JWT bearer assertions or domain-wi
 
 The MCP does not support these Google Workspace flows.
 
-If the client omits the OAuth headers, the MCP forwards the JWT. The MCP cannot renew that JWT.
+Issuer continuity is not identity continuity. The MCP checks that a renewed
+token has the same issuer as the initial token, but it does not require the
+same subject or other identity claims. Configure the OAuth client to issue
+tokens for the same Horizon service-account identity as the initial
+`HORIZON_API_TOKEN` or `X-API-TOKEN`. Otherwise rotation can change the Horizon
+principal, permissions, ownership, and audit identity used by later calls.
+
+If stdio omits the renewal tuple, or an HTTP caller omits the OAuth headers, the
+MCP forwards the JWT but cannot renew it.
 
 ### API-key forwarding
 
@@ -179,18 +219,21 @@ Use an HTTPS `HORIZON_PUBLIC_URL` behind a TLS termination point. Alternatively,
 
 ## Configuration reference
 
-| Variable                                         | Required            | Default             | Description                                              |
-| ------------------------------------------------ | ------------------- | ------------------- | -------------------------------------------------------- |
-| `HORIZON_URL`                                    | Yes                 | `https://localhost` | Horizon instance URL                                     |
-| `HORIZON_API_ID` / `HORIZON_API_KEY`             | Stdio API key       |                     | Environment-owned stdio credential                       |
-| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`     | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential           |
-| `HORIZON_CLIENT_PFX`                             | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle               |
-| `HORIZON_TRANSPORT`                              | No                  | `stdio`             | `stdio` or `http`                                        |
-| `HORIZON_HTTP_AUTH_METHODS`                      | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service` |
-| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY` | Direct inbound mTLS |                     | MCP listener certificate and key                         |
-| `HORIZON_INBOUND_CERT_HEADER`                    | Ingress mTLS        |                     | Trusted ingress certificate header                       |
-| `HORIZON_TRUSTED_PROXY`                          | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header   |
-| `HORIZON_FORWARD_CERT_HEADER`                    | No                  | `SSL_CLIENT_CERT`   | Horizon-facing certificate header                        |
-| `HORIZON_VERIFY_SSL`                             | No                  | `true`              | Verify Horizon TLS certificates                          |
+| Variable                                                  | Required            | Default             | Description                                              |
+| --------------------------------------------------------- | ------------------- | ------------------- | -------------------------------------------------------- |
+| `HORIZON_URL`                                             | Yes                 | `https://localhost` | Horizon instance URL                                     |
+| `HORIZON_API_ID` / `HORIZON_API_KEY`                      | Stdio API key       |                     | Environment-owned stdio credential                       |
+| `HORIZON_SERVICE_ACCOUNT` / `HORIZON_API_TOKEN`           | Stdio service       |                     | Environment-owned service-account name and initial JWT   |
+| `HORIZON_OAUTH_CLIENT_ID` / `HORIZON_OAUTH_CLIENT_SECRET` | Stdio renewal       |                     | OAuth client credentials for JWT renewal                 |
+| `HORIZON_OAUTH_SCOPE` / `HORIZON_OAUTH_AUDIENCE`          | Provider-specific   |                     | Optional OAuth renewal parameters                        |
+| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential           |
+| `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle               |
+| `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                        |
+| `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service` |
+| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY`          | Direct inbound mTLS |                     | MCP listener certificate and key                         |
+| `HORIZON_INBOUND_CERT_HEADER`                             | Ingress mTLS        |                     | Trusted ingress certificate header                       |
+| `HORIZON_TRUSTED_PROXY`                                   | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header   |
+| `HORIZON_FORWARD_CERT_HEADER`                             | No                  | `SSL_CLIENT_CERT`   | Horizon-facing certificate header                        |
+| `HORIZON_VERIFY_SSL`                                      | No                  | `true`              | Verify Horizon TLS certificates                          |
 
 See [client setup](client-setup.md) for remote-client header examples.

@@ -26,7 +26,7 @@ The server does not preload these resources. The server also cannot guarantee th
 - **Knowledge catalog**: 17 core topic URIs and 4 curated playbooks.
   The server also generates section URIs from H2 headings in the longest guides.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. A whitelist can enable multiple methods.
-- **Service JWT renewal**: The MCP can use OAuth `client_credentials` to fetch and renew a caller's short-lived JWT.
+- **Service JWT renewal**: The MCP can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
 - **Crypto decoding**: Parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses.
   The tools return structured JSON in the chat.
@@ -57,7 +57,7 @@ Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-re
 
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
 - An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
-- API credentials or a client certificate for that instance
+- API credentials, a service-account JWT, or a client certificate for that instance
 - An MCP client that speaks protocol revision **2026-07-28**. Version 3.0.0 serves that revision only.
   Check [docs/client-setup.md](docs/client-setup.md#client-compatibility) before upgrading, and stay on 2.x if your client is older.
 
@@ -104,7 +104,8 @@ node dist/index.js
 
 Configure the server with `HORIZON_*` environment variables. Copy [.env.example](.env.example) to `.env.local`, and then change the necessary values.
 
-The server detects stdio authentication from the configured variables. It gives mTLS priority over an API key.
+The server requires exactly one complete stdio authentication method. API key,
+service-account, PEM mTLS, and PFX mTLS credentials are mutually exclusive.
 
 If you do not configure a credential, the server stops during startup.
 
@@ -115,6 +116,12 @@ If you do not configure a credential, the server stops during startup.
 | `HORIZON_URL`                     | Yes             | `https://localhost` | Base URL of your Horizon instance. Trailing slash is stripped automatically.                                                                                                                                                                                                                       |
 | `HORIZON_API_ID`                  | API key mode    |                     | API key identifier.                                                                                                                                                                                                                                                                                |
 | `HORIZON_API_KEY`                 | API key mode    |                     | API key secret.                                                                                                                                                                                                                                                                                    |
+| `HORIZON_SERVICE_ACCOUNT`         | Service mode    |                     | Horizon service-account name paired with `HORIZON_API_TOKEN` (maximum 255 characters).                                                                                                                                                                                                             |
+| `HORIZON_API_TOKEN`               | Service mode    |                     | Initial JWKS service-account JWT forwarded to Horizon (maximum 16,384 characters).                                                                                                                                                                                                                 |
+| `HORIZON_OAUTH_CLIENT_ID`         | Renewal         |                     | OAuth `client_credentials` client identifier; requires `HORIZON_OAUTH_CLIENT_SECRET` (maximum 512 characters).                                                                                                                                                                                     |
+| `HORIZON_OAUTH_CLIENT_SECRET`     | Renewal         |                     | OAuth client secret; requires `HORIZON_OAUTH_CLIENT_ID` (maximum 4,096 characters).                                                                                                                                                                                                                |
+| `HORIZON_OAUTH_SCOPE`             | No              |                     | Optional provider-specific OAuth scope; valid only with the complete OAuth client pair (maximum 2,048 characters).                                                                                                                                                                                 |
+| `HORIZON_OAUTH_AUDIENCE`          | No              |                     | Optional provider-specific OAuth audience; valid only with the complete OAuth client pair (maximum 2,048 characters).                                                                                                                                                                              |
 | `HORIZON_CLIENT_CERT`             | mTLS (PEM) mode |                     | Filesystem path to a PEM client certificate.                                                                                                                                                                                                                                                       |
 | `HORIZON_CLIENT_KEY`              | mTLS (PEM) mode |                     | Filesystem path to the matching PEM private key.                                                                                                                                                                                                                                                   |
 | `HORIZON_CLIENT_KEY_PASSWORD`     | No              |                     | Decryption password for an encrypted PEM private key.                                                                                                                                                                                                                                              |
@@ -197,7 +204,8 @@ These variables are read by the test suite only and never by the server itself:
 `HORIZON_TRANSPORT` selects one of two MCP transports.
 
 - **stdio** (default) - Use this transport for one local user. The MCP client starts the server as a child process.
-  The client communicates through standard input and standard output. The client environment supplies an API key or an mTLS credential.
+  The client communicates through standard input and standard output. The client environment supplies an API key,
+  a service-account JWT, or an mTLS credential.
 - **streamable HTTP** (`HORIZON_TRANSPORT=http`) - Use this transport for a hosted server. Deploy one MCP instance for each Horizon instance.
   The server always reads the Horizon URL from `HORIZON_URL`. A client cannot supply the Horizon URL.
   One endpoint serves every client. The endpoint accepts `POST` only; each request carries its own credential and is
@@ -491,7 +499,7 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 
 ## Troubleshooting
 
-- **`No Horizon credentials configured`** - exactly one auth mode must be fully configured. Provide both API key variables (`HORIZON_API_ID` + `HORIZON_API_KEY`) or the mTLS variables (cert+key, or pfx). Startup fails closed if neither is set.
+- **`Exactly one complete stdio authentication method must be configured`** - provide one complete API key pair (`HORIZON_API_ID` + `HORIZON_API_KEY`), service-account pair (`HORIZON_SERVICE_ACCOUNT` + `HORIZON_API_TOKEN`), PEM mTLS pair, or PFX bundle. Startup also fails closed when methods are combined.
 - **TLS handshake failures** - Make sure that `HORIZON_URL` uses `https://`. Make sure that the system store trusts the Horizon certificate authority.
   For development only, you can set `HORIZON_VERIFY_SSL=false`.
 - **`HQL-001` parse errors** - HQL field names are lowercase (`contactemail`, not `contactEmail`). The two exceptions are `groupBy` and `sortedBy`, which are camelCase because they are API parameters rather than query fields. See `horizon://knowledge/query-languages`.

@@ -237,7 +237,7 @@ describe('extractCredential', () => {
 
 describe('buildSessionAuth', () => {
   it('service credentials build a forwarding provider', () => {
-    const settings = loadSettings({});
+    const settings = loadSettings({ HORIZON_TRANSPORT: 'http' });
     const { auth } = buildSessionAuth(
       { kind: 'service', serviceAccount: 'ci', jwt: 'jwt' },
       cfg({ acceptedAuthMethods: HttpAuthMethod.Service }),
@@ -247,7 +247,7 @@ describe('buildSessionAuth', () => {
   });
 
   it('api-key mode builds an ApiKeyAuthProvider', () => {
-    const settings = loadSettings({});
+    const settings = loadSettings({ HORIZON_TRANSPORT: 'http' });
     const { auth } = buildSessionAuth(
       { kind: 'api-key', apiId: 'id', apiKey: 'secret' },
       cfg({ acceptedAuthMethods: HttpAuthMethod.ApiKey }),
@@ -257,7 +257,7 @@ describe('buildSessionAuth', () => {
   });
 
   it('mtls mode builds a CertForwardAuthProvider', () => {
-    const settings = loadSettings({});
+    const settings = loadSettings({ HORIZON_TRANSPORT: 'http' });
     const { auth } = buildSessionAuth(
       { kind: 'cert', pem: PEM },
       cfg({
