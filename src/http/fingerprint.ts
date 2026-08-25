@@ -16,7 +16,8 @@ const SHORT_LEN = 12;
 export function credentialFingerprint(canonical: string): string {
   // Not password storage: a keyed MAC over high-entropy credential material,
   // used only as an in-memory cache key and never persisted or compared offline.
-  // codeql[js/insufficient-password-hash]
+  // CodeQL's js/insufficient-password-hash heuristic matches the apiKey field
+  // name here; the alert is dismissed as a false positive in code scanning.
   return createHmac('sha256', FINGERPRINT_KEY).update(canonical).digest('hex');
 }
 
