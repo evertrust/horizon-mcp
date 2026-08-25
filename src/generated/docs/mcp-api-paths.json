@@ -1,185 +1,243 @@
 {
-  "generatedAt": "2026-04-13T15:31:23.255Z",
-  "referenceCount": 51,
+  "generatedAt": "2026-08-25T15:22:37.998Z",
+  "referenceCount": 82,
   "references": [
     {
       "path": "/api/v1/certificate/grading/policies/{param}",
       "file": "src/models/payloads.ts",
-      "line": 164,
-      "rawPath": "/api/v1/certificate/grading/policies/${n}"
+      "line": 171,
+      "rawPath": "/api/v1/certificate/grading/policies/${encodeURIComponent(n)}"
     },
     {
       "path": "/api/v1/certificate/grading/policies/{param}",
       "file": "src/tools/assist/system.ts",
-      "line": 78,
+      "line": 143,
       "rawPath": "/api/v1/certificate/grading/policies/${encodedName}",
       "method": "GET"
     },
     {
       "path": "/api/v1/certificate/grading/policies/{param}/explain",
       "file": "src/tools/assist/system.ts",
-      "line": 85,
+      "line": 150,
       "rawPath": "/api/v1/certificate/grading/policies/${encodedName}/explain",
       "method": "POST"
     },
     {
       "path": "/api/v1/certificate/grading/rulesets/{param}",
       "file": "src/tools/assist/system.ts",
-      "line": 131,
+      "line": 178,
       "rawPath": "/api/v1/certificate/grading/rulesets/${encodedName}",
       "method": "GET"
     },
     {
       "path": "/api/v1/certificate/grading/rulesets/{param}/explain",
       "file": "src/tools/assist/system.ts",
-      "line": 138,
+      "line": 185,
       "rawPath": "/api/v1/certificate/grading/rulesets/${encodedName}/explain",
       "method": "POST"
     },
     {
       "path": "/api/v1/certificate/profiles",
       "file": "src/tools/profiles.ts",
-      "line": 7,
+      "line": 13,
       "rawPath": "/api/v1/certificate/profiles"
+    },
+    {
+      "path": "/api/v1/certificate/profiles",
+      "file": "src/tools/profiles.ts",
+      "line": 68,
+      "rawPath": "/api/v1/certificate/profiles",
+      "method": "GET"
     },
     {
       "path": "/api/v1/certificate/profiles/{param}",
       "file": "src/tools/profiles.ts",
-      "line": 87,
-      "rawPath": "/api/v1/certificate/profiles/${name}",
+      "line": 84,
+      "rawPath": "/api/v1/certificate/profiles/${encodePathSegment(name)}",
       "method": "GET"
     },
     {
       "path": "/api/v1/certificates/{param}",
-      "file": "src/tools/lifecycle.ts",
-      "line": 168,
-      "rawPath": "/api/v1/certificates/${certificate_id}",
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 268,
+      "rawPath": "/api/v1/certificates/${encodePathSegment(certificate_id)}",
       "method": "GET"
     },
     {
+      "path": "/api/v1/certificates/{param}",
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 315,
+      "rawPath": "/api/v1/certificates/${encodePathSegment(certificate_id)}",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/certificates/aggregate",
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 390,
+      "rawPath": "/api/v1/certificates/aggregate",
+      "method": "POST"
+    },
+    {
       "path": "/api/v1/certificates/csv",
-      "file": "src/tools/lifecycle.ts",
-      "line": 204,
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 287,
       "rawPath": "/api/v1/certificates/csv",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/certificates/search",
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 249,
+      "rawPath": "/api/v1/certificates/search",
       "method": "POST"
     },
     {
       "path": "/api/v1/crypto/detect",
       "file": "src/tools/assist/crypto.ts",
-      "line": 411,
+      "line": 542,
       "rawPath": "/api/v1/crypto/detect",
       "method": "POST"
     },
     {
       "path": "/api/v1/datasource/flows",
       "file": "src/tools/assist/computation.ts",
-      "line": 138,
+      "line": 139,
       "rawPath": "/api/v1/datasource/flows",
       "method": "POST"
     },
     {
       "path": "/api/v1/datasources",
-      "file": "src/tools/datasources.ts",
-      "line": 35,
+      "file": "src/tools/datasources/shared.ts",
+      "line": 10,
       "rawPath": "/api/v1/datasources"
     },
     {
       "path": "/api/v1/datasources/{param}",
       "file": "src/models/payloads.ts",
-      "line": 179,
-      "rawPath": "/api/v1/datasources/${n}"
+      "line": 187,
+      "rawPath": "/api/v1/datasources/${encodeURIComponent(n)}"
     },
     {
-      "path": "/api/v1/datasources/{param}",
-      "file": "src/tools/datasources.ts",
-      "line": 196,
-      "rawPath": "/api/v1/datasources/${name}",
+      "path": "/api/v1/dcv/lifecycle/policies",
+      "file": "src/tools/dcv-lifecycle.ts",
+      "line": 176,
+      "rawPath": "/api/v1/dcv/lifecycle/policies",
       "method": "GET"
-    },
-    {
-      "path": "/api/v1/datasources/{param}",
-      "file": "src/tools/datasources.ts",
-      "line": 901,
-      "rawPath": "/api/v1/datasources/${name}",
-      "method": "DELETE"
     },
     {
       "path": "/api/v1/discovery/campaigns",
       "file": "src/tools/discovery.ts",
-      "line": 33,
+      "line": 36,
       "rawPath": "/api/v1/discovery/campaigns"
+    },
+    {
+      "path": "/api/v1/discovery/campaigns",
+      "file": "src/tools/discovery.ts",
+      "line": 234,
+      "rawPath": "/api/v1/discovery/campaigns",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/discovery/campaigns",
+      "file": "src/tools/discovery.ts",
+      "line": 298,
+      "rawPath": "/api/v1/discovery/campaigns",
+      "method": "POST"
     },
     {
       "path": "/api/v1/discovery/campaigns/{param}",
       "file": "src/tools/discovery.ts",
-      "line": 156,
-      "rawPath": "/api/v1/discovery/campaigns/${name}",
+      "line": 253,
+      "rawPath": "/api/v1/discovery/campaigns/${encodePathSegment(name)}",
       "method": "GET"
     },
     {
       "path": "/api/v1/discovery/campaigns/{param}",
       "file": "src/tools/discovery.ts",
-      "line": 419,
-      "rawPath": "/api/v1/discovery/campaigns/${name}",
+      "line": 385,
+      "rawPath": "/api/v1/discovery/campaigns/${encodePathSegment(name)}",
       "method": "DELETE"
     },
     {
       "path": "/api/v1/discovery/campaigns/{param}",
       "file": "src/tools/discovery.ts",
-      "line": 457,
-      "rawPath": "/api/v1/discovery/campaigns/${name}",
+      "line": 407,
+      "rawPath": "/api/v1/discovery/campaigns/${encodePathSegment(name)}",
       "method": "PATCH"
     },
     {
       "path": "/api/v1/discovery/events/{param}",
       "file": "src/tools/discovery-events.ts",
-      "line": 138,
-      "rawPath": "/api/v1/discovery/events/${event_id}",
+      "line": 166,
+      "rawPath": "/api/v1/discovery/events/${encodePathSegment(event_id)}",
       "method": "GET"
-    },
-    {
-      "path": "/api/v1/discovery/events/csv",
-      "file": "src/tools/discovery-events.ts",
-      "line": 179,
-      "rawPath": "/api/v1/discovery/events/csv"
-    },
-    {
-      "path": "/api/v1/discovery/events/search",
-      "file": "src/tools/discovery-events.ts",
-      "line": 99,
-      "rawPath": "/api/v1/discovery/events/search"
     },
     {
       "path": "/api/v1/discovery/feed",
       "file": "src/tools/discovery-feed.ts",
-      "line": 28,
+      "line": 30,
       "rawPath": "/api/v1/discovery/feed"
+    },
+    {
+      "path": "/api/v1/discovery/feed",
+      "file": "src/tools/discovery-feed.ts",
+      "line": 193,
+      "rawPath": "/api/v1/discovery/feed",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/discovery/feed",
+      "file": "src/tools/discovery-feed.ts",
+      "line": 224,
+      "rawPath": "/api/v1/discovery/feed",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/discovery/feed/{param}",
+      "file": "src/tools/discovery-feed.ts",
+      "line": 137,
+      "rawPath": "/api/v1/discovery/feed/${encodePathSegment(campaign_name)}",
+      "method": "GET"
     },
     {
       "path": "/api/v1/discovery/feed/{param}/{param}",
       "file": "src/tools/discovery-feed.ts",
-      "line": 260,
-      "rawPath": "/api/v1/discovery/feed/${campaign_name}/${session_id}",
+      "line": 251,
+      "rawPath": "/api/v1/discovery/feed/${encodePathSegment(campaign_name)}/${encodePathSegment(session_id)}",
       "method": "DELETE"
     },
     {
       "path": "/api/v1/events/{param}",
-      "file": "src/tools/lifecycle.ts",
-      "line": 941,
-      "rawPath": "/api/v1/events/${event_id}",
+      "file": "src/tools/lifecycle/events.ts",
+      "line": 141,
+      "rawPath": "/api/v1/events/${encodePathSegment(event_id)}",
       "method": "GET"
     },
     {
-      "path": "/api/v1/events/csv",
-      "file": "src/tools/lifecycle.ts",
-      "line": 972,
-      "rawPath": "/api/v1/events/csv",
+      "path": "/api/v1/events/search",
+      "file": "src/tools/lifecycle/event-csv.ts",
+      "line": 146,
+      "rawPath": "/api/v1/events/search",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/events/search",
+      "file": "src/tools/lifecycle/events.ts",
+      "line": 120,
+      "rawPath": "/api/v1/events/search",
       "method": "POST"
     },
     {
       "path": "/api/v1/licenses",
+      "file": "src/docs/versioning.ts",
+      "line": 96,
+      "rawPath": "/api/v1/licenses",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/licenses",
       "file": "src/tools/assist/system.ts",
-      "line": 47,
+      "line": 126,
       "rawPath": "/api/v1/licenses",
       "method": "GET"
     },
@@ -187,160 +245,321 @@
       "path": "/api/v1/pki/connectors/{param}",
       "file": "src/models/payloads.ts",
       "line": 118,
-      "rawPath": "/api/v1/pki/connectors/${value}"
+      "rawPath": "/api/v1/pki/connectors/${encodeURIComponent(value)}"
     },
     {
       "path": "/api/v1/reports",
       "file": "src/tools/reports.ts",
-      "line": 23,
+      "line": 24,
       "rawPath": "/api/v1/reports"
     },
     {
       "path": "/api/v1/reports/{param}",
       "file": "src/tools/reports.ts",
-      "line": 149,
-      "rawPath": "/api/v1/reports/${report_uuid}",
+      "line": 155,
+      "rawPath": "/api/v1/reports/${encodePathSegment(report_uuid)}",
       "method": "DELETE"
     },
     {
       "path": "/api/v1/requests/{param}",
-      "file": "src/tools/lifecycle.ts",
-      "line": 810,
-      "rawPath": "/api/v1/requests/${request_id}",
+      "file": "src/tools/helpers.ts",
+      "line": 267,
+      "rawPath": "/api/v1/requests/${encodePathSegment(requestId)}",
       "method": "GET"
     },
     {
+      "path": "/api/v1/requests/{param}",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 554,
+      "rawPath": "/api/v1/requests/${encodePathSegment(request_id)}",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/requests/aggregate",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 598,
+      "rawPath": "/api/v1/requests/aggregate",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/approve",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 410,
+      "rawPath": "/api/v1/requests/approve",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/cancel",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 490,
+      "rawPath": "/api/v1/requests/cancel",
+      "method": "POST"
+    },
+    {
       "path": "/api/v1/requests/csv",
-      "file": "src/tools/lifecycle.ts",
-      "line": 841,
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 569,
       "rawPath": "/api/v1/requests/csv",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/deny",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 450,
+      "rawPath": "/api/v1/requests/deny",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/search",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 535,
+      "rawPath": "/api/v1/requests/search",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/submit",
+      "file": "src/tools/lifecycle/certificates.ts",
+      "line": 416,
+      "rawPath": "/api/v1/requests/submit",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/requests/submit",
+      "file": "src/tools/lifecycle/requests.ts",
+      "line": 382,
+      "rawPath": "/api/v1/requests/submit",
       "method": "POST"
     },
     {
       "path": "/api/v1/rfc3161",
       "file": "src/tools/assist/crypto.ts",
-      "line": 361,
+      "line": 526,
       "rawPath": "/api/v1/rfc3161",
       "method": "POST"
     },
     {
       "path": "/api/v1/rfc5280/crl",
       "file": "src/tools/assist/crypto.ts",
-      "line": 273,
+      "line": 494,
       "rawPath": "/api/v1/rfc5280/crl",
       "method": "POST"
     },
     {
       "path": "/api/v1/rfc5280/pkcs10",
       "file": "src/tools/assist/crypto.ts",
-      "line": 227,
+      "line": 478,
       "rawPath": "/api/v1/rfc5280/pkcs10",
       "method": "POST"
     },
     {
       "path": "/api/v1/rfc5280/x509",
       "file": "src/tools/assist/crypto.ts",
-      "line": 178,
+      "line": 462,
       "rawPath": "/api/v1/rfc5280/x509",
       "method": "POST"
     },
     {
       "path": "/api/v1/rfc6960",
       "file": "src/tools/assist/crypto.ts",
-      "line": 320,
+      "line": 510,
       "rawPath": "/api/v1/rfc6960",
       "method": "POST"
     },
     {
       "path": "/api/v1/security/credentials",
       "file": "src/tools/triggers.ts",
-      "line": 32,
+      "line": 35,
       "rawPath": "/api/v1/security/credentials"
+    },
+    {
+      "path": "/api/v1/security/credentials",
+      "file": "src/tools/triggers.ts",
+      "line": 410,
+      "rawPath": "/api/v1/security/credentials",
+      "method": "GET"
     },
     {
       "path": "/api/v1/security/credentials/{param}",
       "file": "src/models/payloads.ts",
-      "line": 132,
-      "rawPath": "/api/v1/security/credentials/${n}"
+      "line": 134,
+      "rawPath": "/api/v1/security/credentials/${encodeURIComponent(n)}"
     },
     {
       "path": "/api/v1/security/identity/providers/{param}",
       "file": "src/models/payloads.ts",
-      "line": 191,
-      "rawPath": "/api/v1/security/identity/providers/${n}"
+      "line": 201,
+      "rawPath": "/api/v1/security/identity/providers/${encodeURIComponent(n)}"
     },
     {
       "path": "/api/v1/security/principals/dashboards",
       "file": "src/tools/dashboards.ts",
-      "line": 33,
+      "line": 35,
       "rawPath": "/api/v1/security/principals/dashboards"
+    },
+    {
+      "path": "/api/v1/security/principals/dashboards",
+      "file": "src/tools/dashboards.ts",
+      "line": 447,
+      "rawPath": "/api/v1/security/principals/dashboards",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/security/principals/dashboards",
+      "file": "src/tools/dashboards.ts",
+      "line": 481,
+      "rawPath": "/api/v1/security/principals/dashboards",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/security/principals/dashboards",
+      "file": "src/tools/dashboards.ts",
+      "line": 530,
+      "rawPath": "/api/v1/security/principals/dashboards",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/security/principals/dashboards",
+      "file": "src/tools/dashboards.ts",
+      "line": 631,
+      "rawPath": "/api/v1/security/principals/dashboards",
+      "method": "PUT"
+    },
+    {
+      "path": "/api/v1/security/principals/dashboards",
+      "file": "src/tools/dashboards.ts",
+      "line": 666,
+      "rawPath": "/api/v1/security/principals/dashboards",
+      "method": "PUT"
     },
     {
       "path": "/api/v1/security/principals/dashboards/{param}",
       "file": "src/tools/dashboards.ts",
-      "line": 326,
-      "rawPath": "/api/v1/security/principals/dashboards/${name}",
+      "line": 502,
+      "rawPath": "/api/v1/security/principals/dashboards/${encodePathSegment(name)}",
       "method": "DELETE"
     },
     {
       "path": "/api/v1/security/principals/queries",
       "file": "src/tools/dashboards.ts",
-      "line": 34,
+      "line": 36,
       "rawPath": "/api/v1/security/principals/queries"
+    },
+    {
+      "path": "/api/v1/security/principals/queries",
+      "file": "src/tools/dashboards.ts",
+      "line": 692,
+      "rawPath": "/api/v1/security/principals/queries",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/security/principals/queries",
+      "file": "src/tools/dashboards.ts",
+      "line": 732,
+      "rawPath": "/api/v1/security/principals/queries",
+      "method": "POST"
     },
     {
       "path": "/api/v1/security/principals/queries/{param}",
       "file": "src/tools/dashboards.ts",
-      "line": 697,
-      "rawPath": "/api/v1/security/principals/queries/${name}",
+      "line": 711,
+      "rawPath": "/api/v1/security/principals/queries/${encodePathSegment(name)}",
       "method": "GET"
     },
     {
       "path": "/api/v1/security/principals/queries/{param}",
       "file": "src/tools/dashboards.ts",
-      "line": 776,
-      "rawPath": "/api/v1/security/principals/queries/${name}",
+      "line": 753,
+      "rawPath": "/api/v1/security/principals/queries/${encodePathSegment(name)}",
       "method": "DELETE"
     },
     {
       "path": "/api/v1/security/principals/self",
+      "file": "src/docs/versioning.ts",
+      "line": 118,
+      "rawPath": "/api/v1/security/principals/self",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/security/principals/self",
       "file": "src/tools/assist/system.ts",
-      "line": 29,
+      "line": 112,
+      "rawPath": "/api/v1/security/principals/self",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/security/principals/self",
+      "file": "src/tools/dashboards.ts",
+      "line": 348,
+      "rawPath": "/api/v1/security/principals/self",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/security/principals/self",
+      "file": "src/tools/dashboards.ts",
+      "line": 402,
       "rawPath": "/api/v1/security/principals/self",
       "method": "GET"
     },
     {
       "path": "/api/v1/templatestring/playground",
       "file": "src/tools/assist/computation.ts",
-      "line": 97,
+      "line": 121,
       "rawPath": "/api/v1/templatestring/playground",
       "method": "POST"
     },
     {
       "path": "/api/v1/triggers",
       "file": "src/tools/triggers.ts",
-      "line": 31,
+      "line": 34,
       "rawPath": "/api/v1/triggers"
+    },
+    {
+      "path": "/api/v1/triggers",
+      "file": "src/tools/triggers.ts",
+      "line": 443,
+      "rawPath": "/api/v1/triggers",
+      "method": "GET"
+    },
+    {
+      "path": "/api/v1/triggers",
+      "file": "src/tools/triggers.ts",
+      "line": 574,
+      "rawPath": "/api/v1/triggers",
+      "method": "POST"
+    },
+    {
+      "path": "/api/v1/triggers",
+      "file": "src/tools/triggers.ts",
+      "line": 639,
+      "rawPath": "/api/v1/triggers",
+      "method": "PATCH"
     },
     {
       "path": "/api/v1/triggers/{param}",
       "file": "src/models/payloads.ts",
-      "line": 152,
-      "rawPath": "/api/v1/triggers/${n}"
+      "line": 157,
+      "rawPath": "/api/v1/triggers/${encodeURIComponent(n)}"
     },
     {
       "path": "/api/v1/triggers/{param}",
       "file": "src/tools/triggers.ts",
-      "line": 338,
-      "rawPath": "/api/v1/triggers/${name}",
+      "line": 460,
+      "rawPath": "/api/v1/triggers/${encodePathSegment(name)}",
       "method": "GET"
     },
     {
       "path": "/api/v1/triggers/{param}",
       "file": "src/tools/triggers.ts",
-      "line": 591,
-      "rawPath": "/api/v1/triggers/${name}",
+      "line": 611,
+      "rawPath": "/api/v1/triggers/${encodePathSegment(name)}",
       "method": "DELETE"
+    },
+    {
+      "path": "/api/v1/triggers/{param}",
+      "file": "src/tools/triggers.ts",
+      "line": 636,
+      "rawPath": "/api/v1/triggers/${encodePathSegment(name)}",
+      "method": "GET"
     }
   ]
 }
