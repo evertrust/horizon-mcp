@@ -27,7 +27,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "vitest run --config vitest.config.e2e.ts --reporter=verbose",
-    "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon.test.ts -t \"exports events as CSV\" --reporter=verbose",
+    "test:e2e:smoke": "vitest run --config vitest.config.e2e.ts tests/e2e/docs.test.ts --reporter=verbose && vitest run --config vitest.config.e2e.ts tests/e2e/horizon-lifecycle.e2e.test.ts -t \"exports events as CSV\" --reporter=verbose",
     "test:scenarios": "vitest run --config vitest.config.llm.ts --reporter=verbose",
     "test:llm": "bun run test:scenarios",
     "test:llm:live": "vitest run --config vitest.config.llm-live.ts --reporter=verbose",
