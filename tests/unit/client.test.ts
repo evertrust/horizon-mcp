@@ -112,16 +112,21 @@ describe('ClientOptions', () => {
     );
   });
 
-  it('rejects exportTimeout NaN', () => {
+  it.each([
+    ['NaN', Number.NaN],
+    ['0', 0],
+    ['-1', -1],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('rejects exportTimeout %s', (_label, exportTimeout) => {
     expect(
       () =>
         new HorizonClient('https://horizon.test', auth, {
           timeout: 30,
-          exportTimeout: Number.NaN,
+          exportTimeout,
           verifySsl: true,
         }),
     ).toThrow(
-      'Invalid exportTimeout: expected a positive finite number, received NaN',
+      `Invalid exportTimeout: expected a positive finite number, received ${exportTimeout}`,
     );
   });
 

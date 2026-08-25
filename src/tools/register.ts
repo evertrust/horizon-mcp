@@ -1,4 +1,3 @@
-import { isInputRequiredResult } from '@modelcontextprotocol/server';
 import type {
   CallToolResult,
   InputRequiredResult,
@@ -211,11 +210,9 @@ function wrapHandler(
     try {
       const ctx = args.at(-1) as ServerContext | undefined;
       const signal = ctx?.mcpReq.signal;
-      const result = await (signal
+      return await (signal
         ? runWithRequestSignal(signal, () => handler(...args))
         : handler(...args));
-      if (isInputRequiredResult(result)) return result;
-      return result;
     } catch (err) {
       if (err instanceof HorizonError) return horizonErrorToToolResult(err);
       throw err;
