@@ -163,6 +163,14 @@ const KNOWN_KEYS = [
   'authenticationDomainId',
   'ownerGroups',
   'deleteOnRevoke',
+  'projectId',
+  'location',
+  'caPool',
+  'certificateLifetime',
+  'credentials',
+  'impersonation',
+  'certificateTemplate',
+  'endpoint',
   'hashAlgorithm',
   'endpointType',
   'domainId',
@@ -184,6 +192,8 @@ const KNOWN_KEYS = [
   'mpkiCredentials',
   'productUuid',
 ] as const;
+
+const GCP_REQUIRED_KEYS = pkiConnectorRequestSchema.$defs.GCPConnector.required;
 
 const configSchema = z
   .record(z.string(), z.unknown())
@@ -211,14 +221,16 @@ function mergeBody(
   name: string,
   type: string,
   config: Record<string, unknown>,
+  requireFull = true,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { ...config, name, type };
+  validateRetryInterval(type, config);
   assertConfigBody(body, {
-    requiredKeys: ['name', 'type'],
+    requiredKeys:
+      type === 'gcp' && requireFull ? GCP_REQUIRED_KEYS : ['name', 'type'],
     knownKeys: KNOWN_KEYS,
     enums: { type: CONNECTOR_TYPES },
   });
-  validateRetryInterval(type, config);
   return body;
 }
 
@@ -309,7 +321,7 @@ const UPDATE_PKI_CONNECTOR_OPTS = {
     type,
     config,
   }: z.infer<typeof UPDATE_PKI_CONNECTORS_SCHEMA>) =>
-    mergeBody(name, type, config ?? {}),
+    mergeBody(name, type, config ?? {}, false),
 };
 
 const PKI_CONNECTOR_DESCRIBE_INFO = {

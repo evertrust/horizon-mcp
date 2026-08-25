@@ -1020,7 +1020,7 @@ export const pkiConnectorRequestSchema = {
       ],
     },
     GCPConnector: {
-      title: 'Google Cloud Platform',
+      title: 'GCP Certificate Authority Service',
       type: 'object',
       properties: {
         name: {
@@ -1030,8 +1030,84 @@ export const pkiConnectorRequestSchema = {
           type: 'string',
           enum: ['gcp'],
         },
+        projectId: {
+          type: 'string',
+          description:
+            'Identifier of the Google Cloud project hosting the CA pool',
+          example: 'my-issuing-project',
+        },
+        location: {
+          type: 'string',
+          description: 'Google Cloud location (region) of the CA pool',
+          example: 'europe-west1',
+        },
+        caPool: {
+          type: 'string',
+          description:
+            'Identifier of the CA pool to issue from. The pool auto-selects an enabled certificate authority.',
+          example: 'my-ca-pool',
+        },
+        certificateLifetime: {
+          $ref: '#/$defs/FiniteDuration',
+          description:
+            'Validity applied to every certificate issued through this connector.',
+          example: '90 days',
+        },
+        credentials: {
+          type: 'string',
+          example: 'myGcpServiceAccountKey',
+          description:
+            'Name of the `raw` [credentials](#tag/security.credentials) holding the Google service account key (JSON). If not defined, Application Default Credentials are used (environment variable or workload identity).',
+        },
+        impersonation: {
+          type: 'object',
+          description:
+            'When set, the resolved credentials impersonate the target service account.',
+          properties: {
+            target: {
+              type: 'string',
+              description: 'Email of the service account to impersonate.',
+              example: 'issuer@my-issuing-project.iam.gserviceaccount.com',
+            },
+            lifetime: {
+              $ref: '#/$defs/FiniteDuration',
+              example: '1 hour',
+            },
+          },
+          required: ['target', 'lifetime'],
+        },
+        certificateTemplate: {
+          type: 'string',
+          description:
+            'Certificate template governing issuance policy. Accepts the template short name or its full resource path.',
+          example: 'my-template',
+        },
+        endpoint: {
+          type: 'string',
+          description:
+            'Overrides the default Certificate Authority Service address and port (`privateca.googleapis.com:443`). If not set, the default service URL is used.',
+          example: 'privateca.myapi.com',
+        },
+        timeout: {
+          $ref: '#/$defs/FiniteDuration',
+          example: '5 seconds',
+        },
+        proxy: {
+          type: 'string',
+          description: 'Name of the proxy to use to connect to the GCP Api',
+        },
+        queue: {
+          type: ['string', 'null'],
+        },
       },
-      required: ['name', 'type'],
+      required: [
+        'name',
+        'type',
+        'projectId',
+        'location',
+        'caPool',
+        'certificateLifetime',
+      ],
     },
     GSAtlasConnector: {
       title: 'GlobalSign Atlas',

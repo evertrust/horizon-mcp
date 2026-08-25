@@ -145,6 +145,54 @@ describe('create_pki_connector', () => {
     expect(parse(res)['status']).toBe('created');
   });
 
+  it('creates a GCP connector with every required field and an optional credential', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'gcp-issuing', type: 'gcp' });
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'gcp-issuing',
+        type: 'gcp',
+        config: {
+          projectId: 'issuing-project',
+          location: 'europe-west1',
+          caPool: 'issuing-pool',
+          certificateLifetime: '90 days',
+          credentials: 'gcp-service-account',
+        },
+      },
+    });
+
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      name: 'gcp-issuing',
+      type: 'gcp',
+      projectId: 'issuing-project',
+      location: 'europe-west1',
+      caPool: 'issuing-pool',
+      certificateLifetime: '90 days',
+      credentials: 'gcp-service-account',
+    });
+    expect(parse(res)['status']).toBe('created');
+  });
+
+  it('rejects a GCP create missing a required field and does not POST', async () => {
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'gcp-issuing',
+        type: 'gcp',
+        config: {
+          projectId: 'issuing-project',
+          location: 'europe-west1',
+          certificateLifetime: '90 days',
+        },
+      },
+    });
+
+    expect(isError(res)).toBe(true);
+    expect(errorText(res)).toContain('caPool');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
   it('rejects a missing mandatory field (type) via schema validation and does not POST', async () => {
     const res = await client.callTool({
       name: 'create_pki_connector',
