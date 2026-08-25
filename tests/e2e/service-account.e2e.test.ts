@@ -4,7 +4,15 @@
  * Required in .env.local:
  *   HORIZON_E2E_URL       - Base URL of the Horizon QA instance
  *   HORIZON_E2E_SVA       - Service-account name
+ * plus either a ready-made token:
  *   HORIZON_E2E_SVA_TOKEN - Service-account JWT
+ * or the OAuth client-credentials tuple of the Entra ID app registration the
+ * account trusts (the token is then minted at suite start and the renewal
+ * path is exercised against the real issuer):
+ *   HORIZON_E2E_OAUTH_TENANT        - Directory (tenant) id
+ *   HORIZON_E2E_OAUTH_CLIENT_ID     - Application (client) id
+ *   HORIZON_E2E_OAUTH_CLIENT_SECRET - Client secret
+ *   HORIZON_E2E_OAUTH_SCOPE         - Optional, default api://<client id>/.default
  */
 import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
@@ -13,6 +21,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
 import { HorizonClient } from '../../src/client/http.js';
+import type { OAuthIssuerMap } from '../../src/settings.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerConfigTools } from '../../src/tools/config/index.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
@@ -20,21 +29,77 @@ import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 const E2E_URL = process.env['HORIZON_E2E_URL'] ?? '';
 const E2E_SVA = process.env['HORIZON_E2E_SVA'] ?? '';
 const E2E_SVA_TOKEN = process.env['HORIZON_E2E_SVA_TOKEN'] ?? '';
-const E2E_SVA_CONFIGURED = Boolean(E2E_URL && E2E_SVA && E2E_SVA_TOKEN);
+const OAUTH_TENANT = process.env['HORIZON_E2E_OAUTH_TENANT'] ?? '';
+const OAUTH_CLIENT_ID = process.env['HORIZON_E2E_OAUTH_CLIENT_ID'] ?? '';
+const OAUTH_CLIENT_SECRET =
+  process.env['HORIZON_E2E_OAUTH_CLIENT_SECRET'] ?? '';
+const OAUTH_SCOPE =
+  process.env['HORIZON_E2E_OAUTH_SCOPE'] ||
+  (OAUTH_CLIENT_ID ? `api://${OAUTH_CLIENT_ID}/.default` : '');
+
+const OAUTH_CONFIGURED = Boolean(
+  OAUTH_TENANT && OAUTH_CLIENT_ID && OAUTH_CLIENT_SECRET,
+);
+const E2E_SVA_CONFIGURED = Boolean(
+  E2E_URL && E2E_SVA && (E2E_SVA_TOKEN || OAUTH_CONFIGURED),
+);
+
+const ENTRA_ISSUER = `https://login.microsoftonline.com/${OAUTH_TENANT}/v2.0`;
+const ENTRA_TOKEN_URL = `https://login.microsoftonline.com/${OAUTH_TENANT}/oauth2/v2.0/token`;
+const PINNED_ISSUERS: OAuthIssuerMap = {
+  [ENTRA_ISSUER]: {
+    tokenUrl: ENTRA_TOKEN_URL,
+    authMethod: 'client_secret_post',
+  },
+};
 
 if (!E2E_SVA_CONFIGURED) {
   const missing = [
     ['HORIZON_E2E_URL', E2E_URL],
     ['HORIZON_E2E_SVA', E2E_SVA],
-    ['HORIZON_E2E_SVA_TOKEN', E2E_SVA_TOKEN],
+    ['HORIZON_E2E_SVA_TOKEN or the HORIZON_E2E_OAUTH_* tuple', E2E_SVA_TOKEN],
   ]
     .filter(([, value]) => !value)
     .map(([name]) => name)
     .join(', ');
   console.warn(
     `SKIP: service-account E2E is not configured (${missing} unset). ` +
-      'Please provision HORIZON_E2E_SVA and HORIZON_E2E_SVA_TOKEN in .env.local.',
+      'Provision HORIZON_E2E_SVA plus either HORIZON_E2E_SVA_TOKEN or the ' +
+      'HORIZON_E2E_OAUTH_* tuple in .env.local.',
   );
+}
+
+function decodeClaims(jwt: string): Record<string, unknown> {
+  const payload = jwt.split('.')[1] ?? '';
+  return JSON.parse(
+    Buffer.from(payload, 'base64url').toString('utf8'),
+  ) as Record<string, unknown>;
+}
+
+/** Mint an access token with the client-credentials grant (client_secret_post). */
+async function mintEntraToken(): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'client_credentials',
+    client_id: OAUTH_CLIENT_ID,
+    client_secret: OAUTH_CLIENT_SECRET,
+    scope: OAUTH_SCOPE,
+  });
+  const response = await fetch(ENTRA_TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body,
+  });
+  const json = (await response.json()) as {
+    access_token?: string;
+    error?: string;
+    error_description?: string;
+  };
+  if (!response.ok || !json.access_token) {
+    throw new Error(
+      `Entra token request failed (${response.status}): ${json.error ?? ''} ${json.error_description ?? ''}`.trim(),
+    );
+  }
+  return json.access_token;
 }
 
 describe.skipIf(!E2E_SVA_CONFIGURED)(
@@ -42,9 +107,12 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
   () => {
     let client: Client;
     let horizonClient: HorizonClient;
+    let svaToken = E2E_SVA_TOKEN;
 
     beforeAll(async () => {
-      const auth = new ServiceAccountAuthProvider(E2E_SVA, E2E_SVA_TOKEN);
+      if (!svaToken) svaToken = await mintEntraToken();
+
+      const auth = new ServiceAccountAuthProvider(E2E_SVA, svaToken);
       horizonClient = new HorizonClient(E2E_URL, auth, {
         timeout: 30,
         exportTimeout: 120,
@@ -94,7 +162,7 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
       const identity = (me['identity'] ?? me) as Record<string, unknown>;
       const identifier = String(identity['identifier'] ?? me['identifier']);
       const hash16 = createHash('sha256')
-        .update(E2E_SVA_TOKEN)
+        .update(svaToken)
         .digest('hex')
         .slice(0, 16);
       const expectedBase = `${E2E_SVA}-${hash16}`;
@@ -124,5 +192,41 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
       expect(result['kind']).toBe('service_account');
       expect(Array.isArray(result['items'])).toBe(true);
     });
+
+    it.skipIf(!OAUTH_CONFIGURED)(
+      'renews the token against the pinned issuer and Horizon accepts the renewed token',
+      async () => {
+        const auth = new ServiceAccountAuthProvider(E2E_SVA, svaToken, {
+          clientId: OAUTH_CLIENT_ID,
+          clientSecret: OAUTH_CLIENT_SECRET,
+          scope: OAUTH_SCOPE,
+          issuers: PINNED_ISSUERS,
+        });
+        const renewingClient = new HorizonClient(E2E_URL, auth, {
+          timeout: 30,
+          exportTimeout: 120,
+          verifySsl: false,
+        });
+        try {
+          // Pinned mode may renew before Horizon validated the presented token.
+          await auth.markAuthFailed();
+          await auth.refreshIfNeeded();
+          const renewed = (await auth.getHeaders())['X-API-TOKEN'] ?? '';
+          const claims = decodeClaims(renewed);
+          expect(claims['iss']).toBe(ENTRA_ISSUER);
+          expect(claims['azp'] ?? claims['appid']).toBe(OAUTH_CLIENT_ID);
+
+          const me = await renewingClient.get<Record<string, unknown>>(
+            '/api/v1/security/principals/self',
+          );
+          const identity = (me['identity'] ?? me) as Record<string, unknown>;
+          expect(String(identity['identifier'] ?? me['identifier'])).toMatch(
+            new RegExp(`^${E2E_SVA}-[0-9a-f]{16}`),
+          );
+        } finally {
+          await renewingClient.close();
+        }
+      },
+    );
   },
 );
