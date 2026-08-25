@@ -59,7 +59,7 @@ const FULL_POLICY_STATUS_FIXTURE = {
         dcvStatus: 'not_validated' as const,
         dcvExpiration: null,
         dcvMethod: null,
-        executionStatus: 'error' as const,
+        executionStatus: 'unexpected_error' as const,
       },
       {
         domain: 'legacy.example.test',

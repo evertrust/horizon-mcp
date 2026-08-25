@@ -34,7 +34,10 @@ const DOMAIN_STATUS_SCHEMA = z.object({
       'initialized',
       'succeeded',
       'left_over',
+      // OpenAPI names the generic failure `error`; the Scala DTO serializes
+      // it as `unexpected_error`. Accept both.
       'error',
+      'unexpected_error',
       'get_challenge_error',
       'challenge_publication_error',
       'dcv_validation_error',
