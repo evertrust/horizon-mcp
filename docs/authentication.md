@@ -137,6 +137,12 @@ fails, the MCP logs a safe error without the token endpoint response body and
 continues serving. Tool calls report that the token has not been minted, and
 the request path retries after the existing 30-second cooldown.
 
+Hosts built on MCP SDK 2.0 start a stdio server twice per connection: a
+short-lived sibling process answers the connect-time `server/discover` probe,
+then the session process starts. The startup mint therefore runs twice per
+launch. This is harmless (the sibling exits right after the probe) but it is
+visible as two token requests in identity-provider logs.
+
 HTTP mode is unchanged. Every HTTP service-account request must send both
 `X-API-SVA` and `X-API-TOKEN`, even if it also sends OAuth client headers and
 the operator configured exactly one pinned issuer. The MCP never constructs an
