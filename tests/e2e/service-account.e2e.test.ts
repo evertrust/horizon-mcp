@@ -229,5 +229,39 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
         }
       },
     );
+
+    it.skipIf(!OAUTH_CONFIGURED)(
+      'mints the first token from one pinned issuer and Horizon accepts it',
+      async () => {
+        const issuer = String(decodeClaims(svaToken)['iss']);
+        const auth = new ServiceAccountAuthProvider(E2E_SVA, '', {
+          clientId: OAUTH_CLIENT_ID,
+          clientSecret: OAUTH_CLIENT_SECRET,
+          scope: OAUTH_SCOPE,
+          issuers: {
+            [issuer]: {
+              tokenUrl: ENTRA_TOKEN_URL,
+              authMethod: 'client_secret_post',
+            },
+          },
+        });
+        const mintingClient = new HorizonClient(E2E_URL, auth, {
+          timeout: 30,
+          exportTimeout: 120,
+          verifySsl: false,
+        });
+        try {
+          await auth.refreshIfNeeded();
+          expect(auth.needsInitialToken()).toBe(false);
+
+          const me = await mintingClient.get<Record<string, unknown>>(
+            '/api/v1/security/principals/self',
+          );
+          expect(Array.isArray(me['roles'])).toBe(true);
+        } finally {
+          await mintingClient.close();
+        }
+      },
+    );
   },
 );

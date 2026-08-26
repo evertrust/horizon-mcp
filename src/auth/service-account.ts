@@ -26,6 +26,41 @@ interface DiscoveryDocument {
 const MAX_OAUTH_RESPONSE_BYTES = 1024 * 1024;
 const RENEWAL_FAILURE_COOLDOWN_MS = 30_000;
 
+function safeRenewalErrorMessage(err: unknown): string {
+  const message = err instanceof Error ? err.message : '';
+  const safeMessages = [
+    'service-account token is not a JWT',
+    'service-account JWT payload is not valid JSON',
+    'service-account JWT payload must be an object',
+    'service-account JWT is missing the iss claim',
+    'service-account JWT is missing a numeric exp claim',
+    'OAuth response exceeds the maximum supported size',
+    'OAuth endpoint returned invalid JSON',
+    'OAuth provider does not support client_secret_basic or client_secret_post',
+    'OAuth token response is missing access_token',
+    'renewed JWT issuer differs from the original issuer',
+    'OIDC discovery issuer does not match the JWT issuer',
+    'OIDC discovery is missing token_endpoint',
+    'OAuth token endpoint origin differs from JWT issuer',
+  ];
+  const safePatterns = [
+    /^OAuth token request failed with HTTP \d{3}$/,
+    /^OIDC discovery failed with HTTP \d{3}$/,
+    /^OAuth renewal refused:/,
+    /^(JWT issuer|OAuth token endpoint) (is not a valid URL|must use HTTPS|must not contain credentials or a fragment)$/,
+  ];
+  return safeMessages.includes(message) ||
+    safePatterns.some((pattern) => pattern.test(message))
+    ? message
+    : 'OAuth token request failed';
+}
+
+function safeUrlForLogging(value: string): string {
+  const url = new URL(value);
+  url.search = '';
+  return url.toString();
+}
+
 function decodeClaims(jwt: string): JwtClaims {
   const parts = jwt.split('.');
   if (parts.length !== 3 || !parts[1]) {
@@ -100,6 +135,7 @@ export class ServiceAccountAuthProvider extends AuthProvider {
   } | null = null;
   private _refreshPromise: Promise<void> | null = null;
   private _renewalRetryAfter = 0;
+  private _lastRenewalError: string | null = null;
 
   constructor(
     serviceAccount: string,
@@ -107,7 +143,14 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     oauth?: ServiceAccountOAuthOptions,
   ) {
     super();
-    if (!serviceAccount || !jwt) {
+    const canMintInitialToken = Boolean(
+      serviceAccount &&
+      !jwt &&
+      oauth?.clientId &&
+      oauth.clientSecret &&
+      Object.keys(oauth.issuers ?? {}).length === 1,
+    );
+    if (!serviceAccount || (!jwt && !canMintInitialToken)) {
       throw new Error(
         'service-account authentication requires X-API-SVA and X-API-TOKEN',
       );
@@ -124,9 +167,35 @@ export class ServiceAccountAuthProvider extends AuthProvider {
   }
 
   async getHeaders(): Promise<Record<string, string>> {
+    if (!this._jwt) {
+      const retrySeconds = Math.max(
+        0,
+        Math.ceil((this._renewalRetryAfter - Date.now()) / 1000),
+      );
+      throw new Error(
+        'service-account token not minted yet: ' +
+          `${this._lastRenewalError ?? 'no renewal attempt has completed'}; ` +
+          `next attempt after ${retrySeconds} s`,
+      );
+    }
     return {
       'X-API-SVA': this._serviceAccount,
       'X-API-TOKEN': this._jwt,
+    };
+  }
+
+  needsInitialToken(): boolean {
+    return !this._jwt;
+  }
+
+  getInitialTokenMintInfo():
+    | { readonly tokenUrl: string; readonly expiresInSeconds: number }
+    | undefined {
+    if (!this._jwt || !this._discovery) return undefined;
+    const { exp } = decodeClaims(this._jwt);
+    return {
+      tokenUrl: safeUrlForLogging(this._discovery.tokenEndpoint),
+      expiresInSeconds: Math.max(0, Math.ceil(exp - Date.now() / 1000)),
     };
   }
 
@@ -140,18 +209,23 @@ export class ServiceAccountAuthProvider extends AuthProvider {
       return;
     }
 
-    const { exp } = decodeClaims(this._jwt);
-    const nearExpiry = exp - Date.now() / 1000 <= this._refreshSkewSeconds;
+    const nearExpiry = this._jwt
+      ? decodeClaims(this._jwt).exp - Date.now() / 1000 <=
+        this._refreshSkewSeconds
+      : true;
     if (!nearExpiry && !this._forceRefresh) return;
 
     if (!this._refreshPromise) {
       this._refreshPromise = this._renew()
         .then(() => {
           this._renewalRetryAfter = 0;
+          this._lastRenewalError = null;
         })
         .catch((err: unknown) => {
+          const safeMessage = safeRenewalErrorMessage(err);
+          this._lastRenewalError = safeMessage;
           this._renewalRetryAfter = Date.now() + RENEWAL_FAILURE_COOLDOWN_MS;
-          throw err;
+          throw new Error(safeMessage);
         })
         .finally(() => {
           this._refreshPromise = null;
@@ -173,8 +247,26 @@ export class ServiceAccountAuthProvider extends AuthProvider {
   private async _discover(): Promise<NonNullable<typeof this._discovery>> {
     if (this._discovery) return this._discovery;
 
-    const claims = decodeClaims(this._jwt);
     const configuredIssuers = this._oauth?.issuers;
+    if (!this._jwt && configuredIssuers) {
+      const configured = Object.entries(configuredIssuers)[0];
+      if (!configured || Object.keys(configuredIssuers).length !== 1) {
+        throw new Error(
+          'OAuth renewal refused: initial mint requires exactly one pinned issuer',
+        );
+      }
+      const [issuer, settings] = configured;
+      const endpoint = secureUrl(settings.tokenUrl, 'OAuth token endpoint');
+      this._discovery = {
+        issuer,
+        tokenEndpoint: endpoint.toString(),
+        authMethod: settings.authMethod,
+        exactIssuerMatch: true,
+      };
+      return this._discovery;
+    }
+
+    const claims = decodeClaims(this._jwt);
     if (configuredIssuers) {
       const configured = Object.hasOwn(configuredIssuers, claims.iss)
         ? configuredIssuers[claims.iss]
@@ -188,7 +280,10 @@ export class ServiceAccountAuthProvider extends AuthProvider {
       }
       this._discovery = {
         issuer: claims.iss,
-        tokenEndpoint: configured.tokenUrl,
+        tokenEndpoint: secureUrl(
+          configured.tokenUrl,
+          'OAuth token endpoint',
+        ).toString(),
         authMethod: configured.authMethod,
         exactIssuerMatch: true,
       };

@@ -43,6 +43,16 @@ HORIZON_SERVICE_ACCOUNT=automation-account
 HORIZON_API_TOKEN=initial-jwt
 ```
 
+Alternatively, stdio can mint the first token at startup when exactly one
+issuer is pinned:
+
+```bash
+HORIZON_SERVICE_ACCOUNT=automation-account
+HORIZON_OAUTH_CLIENT_ID=oauth-client
+HORIZON_OAUTH_CLIENT_SECRET=oauth-secret
+HORIZON_OAUTH_ISSUERS='{"https://issuer.example.com":{"tokenUrl":"https://issuer.example.com/oauth/token","authMethod":"client_secret_basic"}}'
+```
+
 Horizon validates the JWT signature against the JWKS configured for the
 service account, maps it to a Horizon principal, and applies that principal's
 RBAC. A service account trusts one of two JWKS sources, chosen in its
@@ -117,11 +127,20 @@ Cache shutdown waits for outstanding leases. The HTTP server applies its configu
 
 ### Service-account JWT renewal
 
-Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request. It is available to both transports: stdio reads the service-account pair and optional renewal tuple from environment variables, while HTTP reads their equivalent request headers.
+Horizon JWKS service-account authentication requires a JSON Web Token (JWT) on each Horizon request. It is available to both transports: stdio reads service-account settings from environment variables, while HTTP reads a complete service-account pair and optional renewal tuple from request headers.
 
-In stdio mode, the MCP loads the service-account name and initial JWT from its
-environment. In HTTP mode, the caller sends both values to the MCP. The MCP
-forwards the selected pair directly to Horizon.
+In stdio mode, the MCP loads the service-account name and normally an initial
+JWT from its environment. When the initial JWT is omitted, the complete OAuth
+client pair and exactly one `HORIZON_OAUTH_ISSUERS` entry let the MCP mint the
+first token during startup without reading token claims. If the startup mint
+fails, the MCP logs a safe error without the token endpoint response body and
+continues serving. Tool calls report that the token has not been minted, and
+the request path retries after the existing 30-second cooldown.
+
+HTTP mode is unchanged. Every HTTP service-account request must send both
+`X-API-SVA` and `X-API-TOKEN`, even if it also sends OAuth client headers and
+the operator configured exactly one pinned issuer. The MCP never constructs an
+HTTP request provider with an empty token.
 
 For renewal, stdio can load OAuth 2.0 client credentials from its environment,
 and an HTTP caller can send the equivalent values in these headers:
@@ -161,9 +180,12 @@ accepted methods are `client_secret_basic` and `client_secret_post`. The value
 is limited to 65,536 characters and malformed entries stop startup with an
 error naming the offending issuer key.
 
-With the allowlist configured, the presented JWT's `iss` must exactly match an
+With the allowlist configured, a presented JWT's `iss` must exactly match an
 own-property map key. Otherwise renewal is refused and the error names the
-configured issuers. Because the token endpoint and authentication method come
+configured issuers. When stdio starts without a JWT and the map contains
+exactly one issuer, the MCP selects that entry directly and mints the first
+token. With zero or multiple entries, startup settings validation requires
+`HORIZON_API_TOKEN`. Because the token endpoint and authentication method come
 only from operator configuration, pinned mode may renew an expired or rejected
 token before Horizon validates the presented token. The MCP sends credentials
 only to the mapped `tokenUrl`, using only the mapped authentication method. It
@@ -182,20 +204,23 @@ is rejected cannot self-heal through automatic renewal.
 
 The renewal sequence is as follows:
 
-1. Stdio loads the service-account pair and renewal tuple from the environment, or an HTTP client sends the equivalent headers.
-2. In pinned mode, the MCP may renew before Horizon validation after requiring
-   the presented JWT's `iss` to exactly match an own-property allowlist key.
-3. Otherwise, the MCP forwards the initial `X-API-TOKEN` to Horizon unchanged.
-4. Horizon validates the presented JWT. Only after this succeeds may fallback
+1. Stdio loads the service-account settings from the environment, or an HTTP
+   client sends a complete service-account pair and optional renewal headers.
+2. Stdio with no initial token mints one at startup only when the OAuth client
+   pair is complete and the issuer map contains exactly one entry.
+3. In other pinned cases, the MCP may renew before Horizon validation after
+   requiring the presented JWT's `iss` to exactly match an own-property key.
+4. Otherwise, the MCP forwards the initial `X-API-TOKEN` to Horizon unchanged.
+5. Horizon validates the presented JWT. Only after this succeeds may fallback
    mode trust its `iss` and `exp` claims and perform constrained discovery.
-5. In pinned mode, the MCP selects only the mapped token URL and authentication
+6. In pinned mode, the MCP selects only the mapped token URL and authentication
    method. In fallback mode, it performs the constrained discovery described
    above.
-6. The MCP requests a token 60 seconds before expiry. It also requests a token after Horizon rejects authentication.
-7. The request contains `grant_type=client_credentials`. It also contains the configured scope or audience.
-8. The MCP verifies that the renewed JWT's `iss` matches the initial issuer before using the token.
-9. The MCP uses the returned `access_token` as the new `X-API-TOKEN`.
-10. Concurrent refresh requests use one shared renewal request. After a failed
+7. The MCP requests a token 60 seconds before expiry. It also requests a token after Horizon rejects authentication.
+8. The request contains `grant_type=client_credentials`. It also contains the configured scope or audience.
+9. The MCP verifies that the renewed JWT's `iss` matches the selected issuer before using the token.
+10. The MCP uses the returned `access_token` as the new `X-API-TOKEN`.
+11. Concurrent refresh requests use one shared renewal request. After a failed
     renewal, that provider waits 30 seconds before another attempt.
 
 Operator pinning removes the token-controlled discovery request and is the
@@ -277,22 +302,22 @@ Use an HTTPS `HORIZON_PUBLIC_URL` behind a TLS termination point. Alternatively,
 
 ## Configuration reference
 
-| Variable                                                  | Required            | Default             | Description                                              |
-| --------------------------------------------------------- | ------------------- | ------------------- | -------------------------------------------------------- |
-| `HORIZON_URL`                                             | Yes                 | `https://localhost` | Horizon instance URL                                     |
-| `HORIZON_API_ID` / `HORIZON_API_KEY`                      | Stdio API key       |                     | Environment-owned stdio credential                       |
-| `HORIZON_SERVICE_ACCOUNT` / `HORIZON_API_TOKEN`           | Stdio service       |                     | Environment-owned service-account name and initial JWT   |
-| `HORIZON_OAUTH_CLIENT_ID` / `HORIZON_OAUTH_CLIENT_SECRET` | Stdio renewal       |                     | OAuth client credentials for JWT renewal                 |
-| `HORIZON_OAUTH_SCOPE` / `HORIZON_OAUTH_AUDIENCE`          | Provider-specific   |                     | Optional OAuth renewal parameters                        |
-| `HORIZON_OAUTH_ISSUERS`                                   | Recommended renewal |                     | Operator-pinned issuer, token URL, and auth-method map   |
-| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential           |
-| `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle               |
-| `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                        |
-| `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service` |
-| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY`          | Direct inbound mTLS |                     | MCP listener certificate and key                         |
-| `HORIZON_INBOUND_CERT_HEADER`                             | Ingress mTLS        |                     | Trusted ingress certificate header                       |
-| `HORIZON_TRUSTED_PROXY`                                   | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header   |
-| `HORIZON_FORWARD_CERT_HEADER`                             | No                  | `SSL_CLIENT_CERT`   | Horizon-facing certificate header                        |
-| `HORIZON_VERIFY_SSL`                                      | No                  | `true`              | Verify Horizon TLS certificates                          |
+| Variable                                                  | Required            | Default             | Description                                                                             |
+| --------------------------------------------------------- | ------------------- | ------------------- | --------------------------------------------------------------------------------------- |
+| `HORIZON_URL`                                             | Yes                 | `https://localhost` | Horizon instance URL                                                                    |
+| `HORIZON_API_ID` / `HORIZON_API_KEY`                      | Stdio API key       |                     | Environment-owned stdio credential                                                      |
+| `HORIZON_SERVICE_ACCOUNT` / `HORIZON_API_TOKEN`           | Stdio service       |                     | Service-account name and initial JWT; the JWT has the documented startup-mint exception |
+| `HORIZON_OAUTH_CLIENT_ID` / `HORIZON_OAUTH_CLIENT_SECRET` | Stdio renewal       |                     | OAuth client credentials for JWT renewal                                                |
+| `HORIZON_OAUTH_SCOPE` / `HORIZON_OAUTH_AUDIENCE`          | Provider-specific   |                     | Optional OAuth renewal parameters                                                       |
+| `HORIZON_OAUTH_ISSUERS`                                   | Recommended renewal |                     | Operator-pinned issuer, token URL, and auth-method map                                  |
+| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential                                          |
+| `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle                                              |
+| `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                                                       |
+| `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service`                                |
+| `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY`          | Direct inbound mTLS |                     | MCP listener certificate and key                                                        |
+| `HORIZON_INBOUND_CERT_HEADER`                             | Ingress mTLS        |                     | Trusted ingress certificate header                                                      |
+| `HORIZON_TRUSTED_PROXY`                                   | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header                                  |
+| `HORIZON_FORWARD_CERT_HEADER`                             | No                  | `SSL_CLIENT_CERT`   | Horizon-facing certificate header                                                       |
+| `HORIZON_VERIFY_SSL`                                      | No                  | `true`              | Verify Horizon TLS certificates                                                         |
 
 See [client setup](client-setup.md) for remote-client header examples.

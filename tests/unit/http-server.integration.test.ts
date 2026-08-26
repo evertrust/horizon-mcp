@@ -517,6 +517,61 @@ describe('HTTP server integration (api-key mode)', () => {
 });
 
 describe('HTTP server integration (authentication whitelist)', () => {
+  it('requires X-API-TOKEN even with OAuth headers and one pinned issuer', async () => {
+    const port = await freePort();
+    const tokenUrl = 'https://oauth.example.com/token';
+    const env = {
+      HORIZON_TRANSPORT: 'http',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
+      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_HOST: '127.0.0.1',
+      HORIZON_HTTP_PORT: String(port),
+      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
+      HORIZON_OAUTH_ISSUERS: JSON.stringify({
+        'https://issuer.example.com': {
+          tokenUrl,
+          authMethod: 'client_secret_post',
+        },
+      }),
+    };
+    const settings = loadSettings(env);
+    const handle = await startHttpServer(
+      settings,
+      buildHttpConfig(settings, env),
+    );
+    const before = mockFetch.mock.calls.filter(
+      (call) => String(call[0]) === tokenUrl,
+    ).length;
+    try {
+      const response = await fetch(`http://127.0.0.1:${handle.port}/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-SVA': 'svc',
+          'X-OAUTH-CLIENT-ID': 'client',
+          'X-OAUTH-CLIENT-SECRET': 'secret',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+        }),
+      });
+      expect(response.status).toBe(401);
+      const body = (await response.json()) as {
+        error: { message: string };
+      };
+      expect(body.error.message).toBe(
+        'service authentication requires both X-API-SVA and X-API-TOKEN headers',
+      );
+      expect(
+        mockFetch.mock.calls.filter((call) => String(call[0]) === tokenUrl),
+      ).toHaveLength(before);
+    } finally {
+      await handle.close();
+    }
+  }, 20000);
+
   it('forwards a caller-supplied service-account identity to Horizon', async () => {
     const port = await freePort();
     const env = {

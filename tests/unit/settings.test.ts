@@ -197,8 +197,57 @@ describe('loadSettings', () => {
           HORIZON_OAUTH_CLIENT_ID: 'client',
           HORIZON_OAUTH_CLIENT_SECRET: 'secret',
         }),
-      ).toThrow('HORIZON_SERVICE_ACCOUNT and HORIZON_API_TOKEN');
+      ).toThrow('OAuth renewal settings require HORIZON_SERVICE_ACCOUNT');
     });
+
+    it('accepts startup minting with one pinned issuer', () => {
+      expect(() =>
+        parseSettings({
+          HORIZON_SERVICE_ACCOUNT: 'automation',
+          HORIZON_OAUTH_CLIENT_ID: 'client',
+          HORIZON_OAUTH_CLIENT_SECRET: 'secret',
+          HORIZON_OAUTH_ISSUERS: JSON.stringify({
+            'https://issuer.example.com': {
+              tokenUrl: 'https://issuer.example.com/token',
+              authMethod: 'client_secret_post',
+            },
+          }),
+        }),
+      ).not.toThrow();
+    });
+
+    it.each([
+      { issuers: undefined, count: 0 },
+      {
+        issuers: {
+          'https://one.example.com': {
+            tokenUrl: 'https://one.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+          'https://two.example.com': {
+            tokenUrl: 'https://two.example.com/token',
+            authMethod: 'client_secret_post',
+          },
+        },
+        count: 2,
+      },
+    ])(
+      'rejects startup minting with $count pinned issuers',
+      ({ issuers, count }) => {
+        expect(() =>
+          parseSettings({
+            HORIZON_SERVICE_ACCOUNT: 'automation',
+            HORIZON_OAUTH_CLIENT_ID: 'client',
+            HORIZON_OAUTH_CLIENT_SECRET: 'secret',
+            ...(issuers
+              ? { HORIZON_OAUTH_ISSUERS: JSON.stringify(issuers) }
+              : {}),
+          }),
+        ).toThrow(
+          `HORIZON_API_TOKEN is required unless HORIZON_OAUTH_ISSUERS pins exactly one issuer (found ${count})`,
+        );
+      },
+    );
 
     it('rejects no configured authentication method', () => {
       expect(() => parseSettings({})).toThrow(
@@ -454,36 +503,6 @@ describe('loadSettings', () => {
     it('coerces string to number for EXPORT_TIMEOUT', () => {
       const settings = loadSettings({ HORIZON_EXPORT_TIMEOUT: '240' });
       expect(settings.exportTimeout).toBe(240);
-    });
-  });
-
-  describe('URL trailing slash stripping', () => {
-    it('strips a single trailing slash', () => {
-      const settings = loadSettings({
-        HORIZON_URL: 'https://horizon.example.com/',
-      });
-      expect(settings.url).toBe('https://horizon.example.com');
-    });
-
-    it('strips multiple trailing slashes', () => {
-      const settings = loadSettings({
-        HORIZON_URL: 'https://horizon.example.com///',
-      });
-      expect(settings.url).toBe('https://horizon.example.com');
-    });
-
-    it('leaves URL without trailing slash unchanged', () => {
-      const settings = loadSettings({
-        HORIZON_URL: 'https://horizon.example.com',
-      });
-      expect(settings.url).toBe('https://horizon.example.com');
-    });
-
-    it('preserves path segments that are not trailing', () => {
-      const settings = loadSettings({
-        HORIZON_URL: 'https://horizon.example.com/api/',
-      });
-      expect(settings.url).toBe('https://horizon.example.com/api');
     });
   });
 

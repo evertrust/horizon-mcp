@@ -51,6 +51,26 @@ export interface OAuthIssuerSettings {
 
 export type OAuthIssuerMap = Readonly<Record<string, OAuthIssuerSettings>>;
 
+interface StartupMintSettings {
+  readonly serviceAccount: string;
+  readonly apiToken: string;
+  readonly oauthClientId: string;
+  readonly oauthClientSecret: string;
+  readonly oauthIssuers?: OAuthIssuerMap;
+}
+
+export function isStartupMintedServiceAccountMode(
+  settings: StartupMintSettings,
+): boolean {
+  return Boolean(
+    settings.serviceAccount &&
+    !settings.apiToken &&
+    settings.oauthClientId &&
+    settings.oauthClientSecret &&
+    Object.keys(settings.oauthIssuers ?? {}).length === 1,
+  );
+}
+
 const MAX_OAUTH_ISSUERS_LENGTH = 65_536;
 const OAUTH_AUTH_METHODS: ReadonlySet<string> = new Set([
   'client_secret_basic',
@@ -256,12 +276,6 @@ const settingsSchema = z
       'HORIZON_API_KEY',
     );
     requirePartner(
-      settings.serviceAccount,
-      settings.apiToken,
-      'HORIZON_SERVICE_ACCOUNT',
-      'HORIZON_API_TOKEN',
-    );
-    requirePartner(
       settings.clientCert,
       settings.clientKey,
       'HORIZON_CLIENT_CERT',
@@ -286,9 +300,30 @@ const settingsSchema = z
       settings.oauthScope ||
       settings.oauthAudience,
     );
-    if (hasOauthMetadata && !hasServiceCredential) {
+    const startupMintedServiceAccount =
+      isStartupMintedServiceAccountMode(settings);
+    const issuerCount = Object.keys(settings.oauthIssuers ?? {}).length;
+    if (settings.apiToken && !settings.serviceAccount) {
+      addIssue('HORIZON_SERVICE_ACCOUNT is required', 'serviceAccount');
+    }
+    if (settings.serviceAccount && !settings.apiToken && !hasOauthClient) {
+      addIssue('HORIZON_API_TOKEN is required', 'apiToken');
+    }
+    if (
+      settings.serviceAccount &&
+      !settings.apiToken &&
+      hasOauthClient &&
+      !startupMintedServiceAccount
+    ) {
       addIssue(
-        'OAuth renewal settings require HORIZON_SERVICE_ACCOUNT and HORIZON_API_TOKEN',
+        'HORIZON_API_TOKEN is required unless HORIZON_OAUTH_ISSUERS pins ' +
+          `exactly one issuer (found ${issuerCount})`,
+        'apiToken',
+      );
+    }
+    if (hasOauthMetadata && !settings.serviceAccount) {
+      addIssue(
+        'OAuth renewal settings require HORIZON_SERVICE_ACCOUNT',
         'oauthClientId',
       );
     }
@@ -322,14 +357,14 @@ const settingsSchema = z
 
     const completeMethods = [
       Boolean(settings.apiId && settings.apiKey),
-      hasServiceCredential,
+      hasServiceCredential || startupMintedServiceAccount,
       Boolean(
         (settings.clientCert && settings.clientKey) || settings.clientPfx,
       ),
     ].filter(Boolean).length;
     if (completeMethods !== 1) {
       addIssue(
-        'Exactly one complete stdio authentication method must be configured: HORIZON_API_ID with HORIZON_API_KEY, HORIZON_SERVICE_ACCOUNT with HORIZON_API_TOKEN, or mTLS using HORIZON_CLIENT_CERT with HORIZON_CLIENT_KEY or HORIZON_CLIENT_PFX',
+        'Exactly one complete stdio authentication method must be configured: HORIZON_API_ID with HORIZON_API_KEY, HORIZON_SERVICE_ACCOUNT with HORIZON_API_TOKEN or the complete OAuth tuple with exactly one HORIZON_OAUTH_ISSUERS entry, or mTLS using HORIZON_CLIENT_CERT with HORIZON_CLIENT_KEY or HORIZON_CLIENT_PFX',
         'transport',
       );
     }

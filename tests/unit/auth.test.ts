@@ -330,6 +330,77 @@ describe('createAuthProvider (factory)', () => {
         issuers: oauthIssuers,
       });
     });
+
+    it('creates a provider that needs an initial startup-minted token', () => {
+      const provider = createAuthProvider(
+        makeSettings({
+          serviceAccount: 'automation',
+          apiToken: '',
+          oauthClientId: 'client',
+          oauthClientSecret: 'secret',
+          oauthIssuers: {
+            'https://issuer.example.com': {
+              tokenUrl: 'https://issuer.example.com/token',
+              authMethod: 'client_secret_post',
+            },
+          },
+        }),
+      );
+
+      expect(provider).toBeInstanceOf(ServiceAccountAuthProvider);
+      expect((provider as ServiceAccountAuthProvider).needsInitialToken()).toBe(
+        true,
+      );
+    });
+
+    it.each([
+      { name: 'no issuer map', oauthIssuers: undefined },
+      { name: 'an empty issuer map', oauthIssuers: {} },
+      {
+        name: 'two pinned issuers',
+        oauthIssuers: {
+          'https://one.example.com': {
+            tokenUrl: 'https://one.example.com/token',
+            authMethod: 'client_secret_basic' as const,
+          },
+          'https://two.example.com': {
+            tokenUrl: 'https://two.example.com/token',
+            authMethod: 'client_secret_post' as const,
+          },
+        },
+      },
+    ])('rejects startup minting with $name', ({ oauthIssuers }) => {
+      expect(() =>
+        createAuthProvider(
+          makeSettings({
+            serviceAccount: 'automation',
+            apiToken: '',
+            oauthClientId: 'client',
+            oauthClientSecret: 'secret',
+            oauthIssuers,
+          }),
+        ),
+      ).toThrow(/HORIZON_API_TOKEN/);
+    });
+
+    it('keeps requiring a token when no OAuth tuple is configured', () => {
+      expect(() =>
+        createAuthProvider(
+          makeSettings({ serviceAccount: 'automation', apiToken: '' }),
+        ),
+      ).toThrow('HORIZON_API_TOKEN is required');
+    });
+
+    it('requires a service account for OAuth renewal settings', () => {
+      expect(() =>
+        createAuthProvider(
+          makeSettings({
+            oauthClientId: 'client',
+            oauthClientSecret: 'secret',
+          }),
+        ),
+      ).toThrow('OAuth renewal settings require HORIZON_SERVICE_ACCOUNT');
+    });
   });
 
   describe('mTLS detection', () => {

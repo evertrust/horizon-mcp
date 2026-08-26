@@ -2,6 +2,7 @@
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 
 import { createAuthProvider } from './auth/index.js';
+import { mintInitialTokenAtStartup } from './auth/startup-mint.js';
 import { HorizonClient } from './client/http.js';
 import { buildHttpConfig } from './http/config.js';
 import { startHttpServer } from './http/server.js';
@@ -30,6 +31,7 @@ function installShutdown(close: () => Promise<void>): void {
 
 async function runStdio(settings: HorizonSettings): Promise<void> {
   const auth = createAuthProvider(settings);
+  await mintInitialTokenAtStartup(auth, logger);
   const client = new HorizonClient(settings.url, auth, {
     timeout: settings.timeout,
     exportTimeout: settings.exportTimeout,

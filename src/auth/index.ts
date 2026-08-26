@@ -1,5 +1,8 @@
 import { getLogger } from '../logging.js';
-import type { HorizonSettings } from '../settings.js';
+import {
+  type HorizonSettings,
+  isStartupMintedServiceAccountMode,
+} from '../settings.js';
 import { ApiKeyAuthProvider } from './apikey.js';
 import { AuthProvider } from './base.js';
 import { MtlsAuthProvider } from './mtls.js';
@@ -10,12 +13,6 @@ const logger = getLogger('horizon_mcp.auth');
 function assertOneCompleteMethod(settings: HorizonSettings): void {
   const pairs = [
     [settings.apiId, settings.apiKey, 'HORIZON_API_ID', 'HORIZON_API_KEY'],
-    [
-      settings.serviceAccount,
-      settings.apiToken,
-      'HORIZON_SERVICE_ACCOUNT',
-      'HORIZON_API_TOKEN',
-    ],
     [
       settings.clientCert,
       settings.clientKey,
@@ -48,10 +45,28 @@ function assertOneCompleteMethod(settings: HorizonSettings): void {
     settings.oauthScope ||
     settings.oauthAudience,
   );
-  if (hasOauthMetadata && !hasService) {
+  const startupMintedServiceAccount =
+    isStartupMintedServiceAccountMode(settings);
+  const issuerCount = Object.keys(settings.oauthIssuers ?? {}).length;
+  if (settings.apiToken && !settings.serviceAccount) {
+    throw new Error('HORIZON_SERVICE_ACCOUNT is required.');
+  }
+  if (settings.serviceAccount && !settings.apiToken && !hasOauthClient) {
+    throw new Error('HORIZON_API_TOKEN is required.');
+  }
+  if (
+    settings.serviceAccount &&
+    !settings.apiToken &&
+    hasOauthClient &&
+    !startupMintedServiceAccount
+  ) {
     throw new Error(
-      'OAuth renewal settings require HORIZON_SERVICE_ACCOUNT and HORIZON_API_TOKEN.',
+      'HORIZON_API_TOKEN is required unless HORIZON_OAUTH_ISSUERS pins ' +
+        `exactly one issuer (found ${issuerCount}).`,
     );
+  }
+  if (hasOauthMetadata && !settings.serviceAccount) {
+    throw new Error('OAuth renewal settings require HORIZON_SERVICE_ACCOUNT.');
   }
   if ((settings.oauthScope || settings.oauthAudience) && !hasOauthClient) {
     throw new Error(
@@ -62,14 +77,15 @@ function assertOneCompleteMethod(settings: HorizonSettings): void {
 
   const completeMethods = [
     Boolean(settings.apiId && settings.apiKey),
-    hasService,
+    hasService || startupMintedServiceAccount,
     Boolean((settings.clientCert && settings.clientKey) || settings.clientPfx),
   ].filter(Boolean).length;
   if (completeMethods !== 1) {
     throw new Error(
       'Exactly one complete stdio authentication method must be configured: ' +
         'HORIZON_API_ID with HORIZON_API_KEY, HORIZON_SERVICE_ACCOUNT with ' +
-        'HORIZON_API_TOKEN, or mTLS using HORIZON_CLIENT_CERT with ' +
+        'HORIZON_API_TOKEN or the complete OAuth tuple with exactly one ' +
+        'HORIZON_OAUTH_ISSUERS entry, or mTLS using HORIZON_CLIENT_CERT with ' +
         'HORIZON_CLIENT_KEY or HORIZON_CLIENT_PFX.',
     );
   }
