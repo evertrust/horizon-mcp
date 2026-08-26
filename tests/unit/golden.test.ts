@@ -12,6 +12,18 @@ import {
   registerAllTools,
 } from './support/golden-harness.js';
 
+const OUTPUT_SCHEMA_TOOL_NAMES = new Set([
+  'whoami',
+  'get_license_info',
+  'export_certificates_csv',
+  'export_discovery_events_csv',
+  'export_events_csv',
+  'export_requests_csv',
+  'list_dcv_policy_status',
+  'get_dcv_policy_status',
+  'list_dcv_events',
+]);
+
 describe('Golden tests', () => {
   let client: Client;
   let server: McpServer;
@@ -230,6 +242,18 @@ describe('Golden tests', () => {
       name: t.name,
       inputSchema: t.inputSchema,
     }));
+    expect(schemas).toMatchSnapshot();
+  });
+
+  it('affected tool output schemas match snapshot', async () => {
+    const result = await client.listTools();
+    const schemas = result.tools
+      .filter((tool) => OUTPUT_SCHEMA_TOOL_NAMES.has(tool.name))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((tool) => ({
+        name: tool.name,
+        outputSchema: JSON.stringify(tool.outputSchema),
+      }));
     expect(schemas).toMatchSnapshot();
   });
 

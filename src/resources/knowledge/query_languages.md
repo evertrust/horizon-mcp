@@ -757,8 +757,8 @@ owned by the user's teams.
 
 ### Workflow
 
-1. Call **whoami** to get the current principal's identifier and team list
-2. Extract the identifier (e.g. `sbo@evertrust.fr`) and team names (e.g.
+1. Call **whoami** to get `identity.identifier` and the `teams` list
+2. Extract `identity.identifier` (e.g. `sbo@evertrust.fr`) and team names (e.g.
    `["DevOps", "Network", "Active_Directory"]`)
 3. Build the combined HCQL query:
 

@@ -5,19 +5,33 @@ import type { HorizonClient } from '../../client/http.js';
 import { encodePathSegment } from '../helpers.js';
 import { registerTool } from '../register.js';
 
-const WHOAMI_OUTPUT_SCHEMA = z.object({
-  identifier: z.string().nullish(),
+const WHOAMI_IDENTITY_SCHEMA = z.looseObject({
+  identifier: z.string(),
+  identityProviderType: z.string(),
+  identityProviderName: z.string().nullish(),
+  email: z.string().nullish(),
   name: z.string().nullish(),
-  team: z.string().nullish(),
+  certificate: z.string().nullish(),
+});
+
+const WHOAMI_OUTPUT_SCHEMA = z.looseObject({
+  identity: WHOAMI_IDENTITY_SCHEMA,
+  permissions: z.array(
+    z.looseObject({
+      value: z.string(),
+      filter: z.string().nullish(),
+    }),
+  ),
+  roles: z.array(z.string()).nullish(),
   teams: z.array(z.string()).nullish(),
-  roles: z.array(z.unknown()).nullish(),
-  permissions: z.unknown().nullish(),
-  // Injected by HorizonClient from the undocumented whoami field; extra
-  // Horizon keys still need to survive output validation.
+  preferences: z.looseObject({}).nullish(),
+  customDashboards: z.array(z.unknown()).nullish(),
+  teamInfos: z.array(z.unknown()).nullish(),
+  // Injected by HorizonClient from the undocumented whoami field.
   _horizonVersion: z.string().nullish(),
 });
 
-const GET_LICENSE_INFO_OUTPUT_SCHEMA = z.object({
+const GET_LICENSE_INFO_OUTPUT_SCHEMA = z.looseObject({
   isValid: z.boolean().nullish(),
   version: z.string().nullish(),
   expiration: z.number().nullish(),

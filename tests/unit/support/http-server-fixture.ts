@@ -59,8 +59,12 @@ mockFetch.mockImplementation((url: unknown, init: unknown) => {
     const id = apiIdOf(init) ?? 'anonymous';
     return Promise.resolve(
       fakeResponse(200, {
-        identifier: id,
-        name: id,
+        identity: {
+          identifier: id,
+          identityProviderType: 'API_KEY',
+          name: id,
+        },
+        permissions: [],
         _horizonVersion: '2.10.0',
       }),
     );

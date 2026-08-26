@@ -34,11 +34,14 @@ describe('Assist tools', () => {
   describe('whoami', () => {
     it('returns principal', async () => {
       const principal = {
-        identifier: 'test-admin',
-        name: 'Test Admin',
+        identity: {
+          identifier: 'test-admin',
+          identityProviderType: 'API_KEY',
+          name: 'Test Admin',
+        },
         roles: ['admin'],
         teams: [],
-        permissions: ['*'],
+        permissions: [{ value: '*' }],
       };
       mockClient.get.mockResolvedValueOnce(principal);
 
@@ -51,7 +54,9 @@ describe('Assist tools', () => {
       expect(mockClient.get).toHaveBeenCalledWith(
         '/api/v1/security/principals/self',
       );
-      expect(parsed['identifier']).toBe('test-admin');
+      expect(
+        (parsed['identity'] as Record<string, unknown>)['identifier'],
+      ).toBe('test-admin');
       expect(parsed['roles']).toEqual(['admin']);
     });
 
@@ -60,12 +65,14 @@ describe('Assist tools', () => {
       // The output schema must accept null or the MCP stack rejects the whole
       // whoami response before the client can read it.
       const principal = {
-        identifier: 'svc-account',
-        name: 'Service Account',
-        team: null,
+        identity: {
+          identifier: 'svc-account',
+          identityProviderType: 'JWKS',
+          name: 'Service Account',
+        },
         teams: null,
         roles: null,
-        permissions: null,
+        permissions: [],
       };
       mockClient.get.mockResolvedValueOnce(principal);
 
@@ -76,7 +83,9 @@ describe('Assist tools', () => {
 
       expect((result as { isError?: boolean }).isError).toBeFalsy();
       const parsed = parseToolResult(result);
-      expect(parsed['identifier']).toBe('svc-account');
+      expect(
+        (parsed['identity'] as Record<string, unknown>)['identifier'],
+      ).toBe('svc-account');
       expect(parsed['teams']).toBeNull();
     });
   });

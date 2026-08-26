@@ -1,5 +1,46 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`Golden tests > affected tool output schemas match snapshot 1`] = `
+[
+  {
+    "name": "export_certificates_csv",
+    "outputSchema": "{"type":"object","properties":{"csv":{"type":"string"},"truncated":{"type":"boolean"},"returned_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"max_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"source":{"type":"string","const":"search_fallback"}},"required":["csv","truncated","returned_rows","max_rows"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false}",
+  },
+  {
+    "name": "export_discovery_events_csv",
+    "outputSchema": "{"type":"object","properties":{"csv":{"type":"string"},"truncated":{"type":"boolean"},"returned_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"max_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"source":{"type":"string","const":"search_fallback"}},"required":["csv","truncated","returned_rows","max_rows"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false}",
+  },
+  {
+    "name": "export_events_csv",
+    "outputSchema": "{"type":"object","properties":{"csv":{"type":"string"},"truncated":{"type":"boolean"},"returned_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"max_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"source":{"type":"string","const":"search_fallback"}},"required":["csv","truncated","returned_rows","max_rows"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false}",
+  },
+  {
+    "name": "export_requests_csv",
+    "outputSchema": "{"type":"object","properties":{"csv":{"type":"string"},"truncated":{"type":"boolean"},"returned_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"max_rows":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"source":{"type":"string","const":"search_fallback"}},"required":["csv","truncated","returned_rows","max_rows"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":false}",
+  },
+  {
+    "name": "get_dcv_policy_status",
+    "outputSchema": "{"type":"object","properties":{"name":{"type":"string"},"enabled":{"type":"boolean"},"renewalPeriod":{"anyOf":[{"type":"string"},{"type":"null"}]},"executionTimeout":{"type":"string"},"retryDelay":{"type":"string"},"runnable":{"type":"boolean"},"status":{"type":"string","enum":["scheduled","disabled","running","queued","enabled"]},"startedAt":{"anyOf":[{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},{"type":"null"}]},"executionTimeoutAt":{"anyOf":[{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},{"type":"null"}]},"nextCheckAt":{"anyOf":[{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},{"type":"null"}]},"domainsStatus":{"type":"object","properties":{"error":{"anyOf":[{"type":"string"},{"type":"null"}]},"domains":{"type":"array","items":{"type":"object","properties":{"domain":{"type":"string"},"isActive":{"type":"boolean"},"dcvStatus":{"anyOf":[{"type":"string","enum":["not_validated","validated","expired"]},{"type":"null"}]},"dcvExpiration":{"anyOf":[{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},{"type":"null"}]},"dcvMethod":{"anyOf":[{"type":"string"},{"type":"null"}]},"executionStatus":{"anyOf":[{"type":"string","enum":["initialized","succeeded","left_over","error","unexpected_error","get_challenge_error","challenge_publication_error","dcv_validation_error"]},{"type":"null"}]}},"required":["domain","isActive"],"additionalProperties":{}}}},"required":["domains"],"additionalProperties":{}}},"required":["name","enabled","executionTimeout","retryDelay","runnable","status","domainsStatus"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":{}}",
+  },
+  {
+    "name": "get_license_info",
+    "outputSchema": "{"type":"object","properties":{"isValid":{"anyOf":[{"type":"boolean"},{"type":"null"}]},"version":{"anyOf":[{"type":"string"},{"type":"null"}]},"expiration":{"anyOf":[{"type":"number"},{"type":"null"}]},"buildTime":{"anyOf":[{"type":"number"},{"type":"null"}]},"count":{"anyOf":[{"type":"number"},{"type":"null"}]},"dcvCount":{"anyOf":[{"type":"number"},{"type":"null"}]},"modules":{"anyOf":[{"type":"array","items":{"anyOf":[{"type":"string"},{"type":"object","propertyNames":{"type":"string"},"additionalProperties":{}}]}},{"type":"null"}]},"libraries":{"anyOf":[{"type":"array","items":{"type":"object","propertyNames":{"type":"string"},"additionalProperties":{}}},{"type":"null"}]},"releaseChannel":{"anyOf":[{"type":"string"},{"type":"null"}]},"expiry":{"anyOf":[{"type":"string"},{"type":"null"}]},"features":{"anyOf":[{"type":"object","propertyNames":{"type":"string"},"additionalProperties":{}},{"type":"null"}]}},"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":{}}",
+  },
+  {
+    "name": "list_dcv_events",
+    "outputSchema": "{"type":"object","properties":{"results":{"type":"array","items":{"type":"object","properties":{"status":{"type":"string","enum":["started","success","failure","retrying","blocked"]},"timestamp":{"type":"string"},"domain":{"type":"string"},"policy":{"type":"string"},"attempt":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"lastError":{"anyOf":[{"type":"string"},{"type":"null"}]},"msg":{"type":"string"},"removeAt":{"type":"string"}},"required":["status","timestamp","domain","policy","removeAt"],"additionalProperties":{}}},"pageIndex":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"pageSize":{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},"count":{"anyOf":[{"type":"integer","minimum":-9007199254740991,"maximum":9007199254740991},{"type":"null"}]},"hasMore":{"type":"boolean"}},"required":["results","pageIndex","pageSize","hasMore"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":{}}",
+  },
+  {
+    "name": "list_dcv_policy_status",
+    "outputSchema": "{"type":"object","properties":{"result":{"$schema":"https://json-schema.org/draft/2020-12/schema","type":"array","items":{"type":"object","properties":{"name":{"type":"string"},"provider":{"type":"string"},"provisioner":{"type":"string"},"filter":{"anyOf":[{"type":"string"},{"type":"null"}]},"enabled":{"type":"boolean"},"renewalPolicy":{"anyOf":[{"type":"object","properties":{"cron":{"type":"string"},"renewalPeriod":{"type":"string"}},"required":["cron","renewalPeriod"],"additionalProperties":{}},{"type":"null"}]},"runnable":{"type":"boolean"}},"required":["name","provider","provisioner","enabled","runnable"],"additionalProperties":{}}}},"required":["result"],"$schema":"https://json-schema.org/draft/2020-12/schema"}",
+  },
+  {
+    "name": "whoami",
+    "outputSchema": "{"type":"object","properties":{"identity":{"type":"object","properties":{"identifier":{"type":"string"},"identityProviderType":{"type":"string"},"identityProviderName":{"anyOf":[{"type":"string"},{"type":"null"}]},"email":{"anyOf":[{"type":"string"},{"type":"null"}]},"name":{"anyOf":[{"type":"string"},{"type":"null"}]},"certificate":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["identifier","identityProviderType"],"additionalProperties":{}},"permissions":{"type":"array","items":{"type":"object","properties":{"value":{"type":"string"},"filter":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["value"],"additionalProperties":{}}},"roles":{"anyOf":[{"type":"array","items":{"type":"string"}},{"type":"null"}]},"teams":{"anyOf":[{"type":"array","items":{"type":"string"}},{"type":"null"}]},"preferences":{"anyOf":[{"type":"object","properties":{},"additionalProperties":{}},{"type":"null"}]},"customDashboards":{"anyOf":[{"type":"array","items":{}},{"type":"null"}]},"teamInfos":{"anyOf":[{"type":"array","items":{}},{"type":"null"}]},"_horizonVersion":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["identity","permissions"],"$schema":"https://json-schema.org/draft/2020-12/schema","additionalProperties":{}}",
+  },
+]
+`;
+
 exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
 [
   {

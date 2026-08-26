@@ -5,12 +5,12 @@ import type { HorizonClient } from '../client/http.js';
 import { buildSortedBy, encodePathSegment, toApiPageIndex } from './helpers.js';
 import { registerTool } from './register.js';
 
-const RENEWAL_POLICY_SCHEMA = z.object({
+const RENEWAL_POLICY_SCHEMA = z.looseObject({
   cron: z.string(),
   renewalPeriod: z.string(),
 });
 
-const POLICY_STATUS_SCHEMA = z.object({
+const POLICY_STATUS_SCHEMA = z.looseObject({
   name: z.string(),
   provider: z.string(),
   provisioner: z.string(),
@@ -20,7 +20,7 @@ const POLICY_STATUS_SCHEMA = z.object({
   runnable: z.boolean(),
 });
 
-const DOMAIN_STATUS_SCHEMA = z.object({
+const DOMAIN_STATUS_SCHEMA = z.looseObject({
   domain: z.string(),
   isActive: z.boolean(),
   dcvStatus: z
@@ -46,7 +46,7 @@ const DOMAIN_STATUS_SCHEMA = z.object({
     .optional(),
 });
 
-const DCV_POLICY_STATUS_SCHEMA = z.object({
+const DCV_POLICY_STATUS_SCHEMA = z.looseObject({
   name: z.string(),
   enabled: z.boolean(),
   renewalPeriod: z.string().nullable().optional(),
@@ -57,13 +57,13 @@ const DCV_POLICY_STATUS_SCHEMA = z.object({
   startedAt: z.number().int().nullable().optional(),
   executionTimeoutAt: z.number().int().nullable().optional(),
   nextCheckAt: z.number().int().nullable().optional(),
-  domainsStatus: z.object({
+  domainsStatus: z.looseObject({
     error: z.string().nullable().optional(),
     domains: z.array(DOMAIN_STATUS_SCHEMA),
   }),
 });
 
-const DCV_EVENT_SCHEMA = z.object({
+const DCV_EVENT_SCHEMA = z.looseObject({
   status: z.enum(['started', 'success', 'failure', 'retrying', 'blocked']),
   timestamp: z.string(),
   domain: z.string(),
@@ -74,7 +74,7 @@ const DCV_EVENT_SCHEMA = z.object({
   removeAt: z.string(),
 });
 
-const DCV_EVENTS_RESPONSE_SCHEMA = z.object({
+const DCV_EVENTS_RESPONSE_SCHEMA = z.looseObject({
   results: z.array(DCV_EVENT_SCHEMA),
   pageIndex: z.number().int(),
   pageSize: z.number().int(),

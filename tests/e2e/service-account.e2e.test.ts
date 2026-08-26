@@ -131,6 +131,8 @@ describe.skipIf(!E2E_SVA_CONFIGURED)(
         client.connect(clientTransport),
         server.connect(serverTransport),
       ]);
+      // Real hosts list tools before calling them, which arms the SDK client's structuredContent validation against each tool's output schema.
+      await client.listTools();
     });
 
     afterAll(async () => {

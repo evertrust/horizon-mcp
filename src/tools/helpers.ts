@@ -28,6 +28,9 @@ export const CSV_EXPORT_OUTPUT_SCHEMA = z.object({
   truncated: z.boolean(),
   returned_rows: z.number().int(),
   max_rows: z.number().int(),
+  // Events fall back to a paged search when the CSV endpoint is unavailable;
+  // the flag tells the model the rows came from that path.
+  source: z.literal('search_fallback').optional(),
 });
 
 // ---------------------------------------------------------------------------

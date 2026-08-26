@@ -54,8 +54,12 @@ mockFetch.mockImplementation((url: unknown) => {
   if (String(url).includes('/api/v1/security/principals/self')) {
     return Promise.resolve(
       fakeResponse(200, {
-        identifier: 'alice',
-        name: 'alice',
+        identity: {
+          identifier: 'alice',
+          identityProviderType: 'API_KEY',
+          name: 'alice',
+        },
+        permissions: [],
         _horizonVersion: '2.10.0',
       }),
     );

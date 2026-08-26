@@ -25,7 +25,7 @@ fully identified.
 ### Ownership and Permissions
 
 - Use `whoami` before answering "my certificates", "my requests", or permission questions.
-- Build ownership queries with the user identifier and team list. Do not assume direct ownership alone is enough.
+- Build ownership queries with `identity.identifier` and the `teams` list. Do not assume direct ownership alone is enough.
 
 ## Documentation Lookup
 

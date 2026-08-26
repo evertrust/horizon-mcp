@@ -392,7 +392,7 @@ Export a CSV of all valid certificates matching dn contains ".example.com".
 ```
 
 ```
-List my certificates (resolve me with whoami first, then query owner and team).
+List my certificates (resolve `identity.identifier` and `teams` with whoami first, then query owner and team).
 ```
 
 ### Certificate lifecycle

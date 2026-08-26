@@ -175,11 +175,12 @@ describe('System assist route regressions', () => {
     expect(whoami?.description).toContain('team-based ownership');
     expect(Object.keys(whoami?.outputSchema?.properties ?? {}).sort()).toEqual([
       '_horizonVersion',
-      'identifier',
-      'name',
+      'customDashboards',
+      'identity',
       'permissions',
+      'preferences',
       'roles',
-      'team',
+      'teamInfos',
       'teams',
     ]);
   });

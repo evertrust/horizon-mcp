@@ -263,6 +263,8 @@ export function setupE2EStack(): void {
       mcpClient.connect(clientTransport),
       server.connect(serverTransport),
     ]);
+    // Real hosts list tools before calling them, which arms the SDK client's structuredContent validation against each tool's output schema.
+    await mcpClient.listTools();
   });
 
   afterAll(async () => {
