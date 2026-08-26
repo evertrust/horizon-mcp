@@ -49,7 +49,7 @@ chmod +x horizon-mcp
 ./horizon-mcp
 ```
 
-The project provides binaries for macOS, Linux, and Windows. The macOS and Linux binaries support x64 and arm64 architectures.
+The project provides binaries for macOS, Linux, and Windows. The macOS and Linux binaries support x64 and arm64 architectures. The binaries support trusted-TLS stdio authentication with an API key or service account. Use Node for PEM or PFX mTLS to Horizon and for `HORIZON_VERIFY_SSL=false`, because Bun's built-in fetch ignores the undici Agent required for those settings.
 
 ### Docker with streamable HTTP
 

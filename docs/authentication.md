@@ -25,6 +25,8 @@ HORIZON_API_KEY=your-api-key
 
 ### Mutual TLS
 
+PEM and PFX mTLS to Horizon are supported only with Node because Bun's built-in fetch ignores the undici Agent that carries the client certificate.
+
 ```bash
 # PEM
 HORIZON_CLIENT_CERT=/path/to/client.crt
@@ -316,14 +318,14 @@ Use an HTTPS `HORIZON_PUBLIC_URL` behind a TLS termination point. Alternatively,
 | `HORIZON_OAUTH_CLIENT_ID` / `HORIZON_OAUTH_CLIENT_SECRET` | Stdio renewal       |                     | OAuth client credentials for JWT renewal                                                |
 | `HORIZON_OAUTH_SCOPE` / `HORIZON_OAUTH_AUDIENCE`          | Provider-specific   |                     | Optional OAuth renewal parameters                                                       |
 | `HORIZON_OAUTH_ISSUERS`                                   | Recommended renewal |                     | Operator-pinned issuer, token URL, and auth-method map                                  |
-| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential                                          |
-| `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle                                              |
+| `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential; Node only                               |
+| `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle; Node only                                   |
 | `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                                                       |
 | `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service`                                |
 | `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY`          | Direct inbound mTLS |                     | MCP listener certificate and key                                                        |
 | `HORIZON_INBOUND_CERT_HEADER`                             | Ingress mTLS        |                     | Trusted ingress certificate header                                                      |
 | `HORIZON_TRUSTED_PROXY`                                   | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header                                  |
 | `HORIZON_FORWARD_CERT_HEADER`                             | No                  | `SSL_CLIENT_CERT`   | Horizon-facing certificate header                                                       |
-| `HORIZON_VERIFY_SSL`                                      | No                  | `true`              | Verify Horizon TLS certificates                                                         |
+| `HORIZON_VERIFY_SSL`                                      | No                  | `true`              | Verify Horizon TLS certificates; disabling verification requires Node                   |
 
 See [client setup](client-setup.md) for remote-client header examples.

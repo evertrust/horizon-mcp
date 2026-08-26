@@ -327,7 +327,6 @@ describe('stdio transport speaks the stateless 2026-07-28 envelope', () => {
         HORIZON_URL: 'https://horizon.test',
         HORIZON_API_ID: 'alice',
         HORIZON_API_KEY: 'key',
-        HORIZON_VERIFY_SSL: 'false',
         HORIZON_LOG_LEVEL: 'ERROR',
       },
     });

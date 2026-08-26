@@ -13,12 +13,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const mockFetch = vi.fn<(...args: unknown[]) => Promise<Response>>();
+let mockAgentClose: (() => Promise<void>) | undefined = () => Promise.resolve();
 
 vi.mock('undici', () => ({
   fetch: (...args: unknown[]) => mockFetch(...args),
   Agent: class MockAgent {
-    close() {
-      return Promise.resolve();
+    close?: () => Promise<void>;
+
+    constructor() {
+      if (mockAgentClose) this.close = mockAgentClose;
     }
   },
   FormData: class MockFormData {
@@ -512,7 +515,44 @@ describe('ClientTlsWarning', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 7. Multipart success-path body parsing
+// 7. Agent lifecycle
+// ---------------------------------------------------------------------------
+
+describe('ClientAgentLifecycle', () => {
+  beforeEach(() => {
+    mockAgentClose = () => Promise.resolve();
+  });
+
+  it('resolves when the runtime Agent does not implement close', async () => {
+    mockAgentClose = undefined;
+    const client = makeClient(new ApiKeyAuthProvider('id', 'key'));
+
+    await expect(client.close()).resolves.toBeUndefined();
+  });
+
+  it('awaits the runtime Agent close method exactly once', async () => {
+    let resolveClose: (() => void) | undefined;
+    const closed = new Promise<void>((resolve) => {
+      resolveClose = resolve;
+    });
+    mockAgentClose = vi.fn(() => closed);
+    const client = makeClient(new ApiKeyAuthProvider('id', 'key'));
+    let finished = false;
+    const closing = client.close().then(() => {
+      finished = true;
+    });
+
+    expect(mockAgentClose).toHaveBeenCalledOnce();
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    resolveClose?.();
+    await closing;
+    expect(mockAgentClose).toHaveBeenCalledOnce();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Multipart success-path body parsing
 // ---------------------------------------------------------------------------
 
 describe('ClientMultipart', () => {

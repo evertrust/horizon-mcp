@@ -7,6 +7,7 @@ import { HorizonClient } from './client/http.js';
 import { buildHttpConfig } from './http/config.js';
 import { startHttpServer } from './http/server.js';
 import { configureLogging, getLogger } from './logging.js';
+import { assertRuntimeSupportsTls } from './runtime.js';
 import { assertToolsetsValid, createSessionServer } from './server-factory.js';
 import { type HorizonSettings, loadSettings } from './settings.js';
 
@@ -85,6 +86,7 @@ async function main(): Promise<void> {
 
   // Fail-closed on a misconfigured toolset list before binding any transport.
   assertToolsetsValid(settings.enabledToolsets);
+  assertRuntimeSupportsTls(settings);
 
   if (settings.transport === 'http') {
     await runHttp(settings);

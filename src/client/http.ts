@@ -296,7 +296,11 @@ export class HorizonClient {
   }
 
   async close(): Promise<void> {
-    await this._agent.close();
+    if (typeof this._agent.close === 'function') {
+      // Bun's built-in undici shim exposes Agent without a close() method.
+      // Node's installed undici Agent still needs graceful shutdown.
+      await this._agent.close();
+    }
   }
 
   // -- CSRF -----------------------------------------------------------------
