@@ -355,7 +355,10 @@ export class HorizonClient {
   private async _ensureInitialized(): Promise<void> {
     if (this._initialized) return;
     if (!this._initPromise) {
-      this._initPromise = this._doLazyInit();
+      this._initPromise = this._doLazyInit().catch((err: unknown) => {
+        this._initPromise = null;
+        throw err;
+      });
     }
     await this._initPromise;
   }
