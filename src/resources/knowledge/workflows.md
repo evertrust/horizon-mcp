@@ -37,6 +37,32 @@ Each workflow supports up to four sub-actions:
 
 ---
 
+## WebRA Update Template: `autoRenew`
+
+For a WebRA `update` workflow, the request template can include the
+per-certificate `autoRenew` element:
+
+```json
+{
+  "autoRenew": {
+    "value": true
+  }
+}
+```
+
+Call `get_request_template` for `workflow: "update"` and `module: "webra"`
+before submitting the generic request. Submit the value in
+`template.autoRenew`; Horizon accepts the change only when the profile's
+`autoRenewalPolicy.editable` is `true`. The dedicated
+`set_certificate_auto_renew` tool submits this exact update request for one
+certificate.
+
+This is WebRA per-certificate automatic renewal, not the trust-chain
+automation-policy renewal in `automation.md`. The trust-chain automation policy
+governs chain operations and does not set `template.autoRenew`.
+
+---
+
 ## AuthorizationLevels = WHO (28 Fields)
 
 The `authorizationLevels` object on a profile contains **28 fields**, each
@@ -174,6 +200,23 @@ Approver -> enrollApprove -> [computation rules] -> PKI connector -> certificate
 Two-step process: the requester submits a request, then a separate approver
 approves it. The requester must meet `enrollRequest` access level; the
 approver must meet `enrollApprove` access level.
+
+### Asynchronous Enrollment Flow
+
+Some PKI connectors submit enrollment to an external CA that does not return
+the certificate immediately. Horizon records the request as `in_progress`
+while it waits and retries the external CA according to the connector's
+`retryInterval`.
+
+```
+Caller -> submit_request -> in_progress request -> external CA polling -> certificate issued
+                                            -> deny_request or cancel_request
+```
+
+Use `search_requests` to find requests with status `in_progress`, then
+`get_request` to inspect the full record. Poll rather than submitting another
+request. `approve_request` is only valid for `pending` requests; `deny_request`
+and `cancel_request` accept both `pending` and `in_progress` requests.
 
 ### API-Specific Actions
 

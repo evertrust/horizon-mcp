@@ -30,12 +30,15 @@ export function isOriginAllowed(
 
 /** Request headers the browser CORS preflight is allowed to send. */
 export function allowedRequestHeaders(config: HttpConfig): string[] {
+  // MCP 2026-07-28 removed sessions and SSE resumability, so Mcp-Session-Id
+  // and Last-Event-ID are gone. Mcp-Method and Mcp-Name are new and required:
+  // the server validates them against the request body.
   const base = [
     'Content-Type',
     'Accept',
-    'Mcp-Session-Id',
-    'Mcp-Protocol-Version',
-    'Last-Event-ID',
+    'MCP-Protocol-Version',
+    'Mcp-Method',
+    'Mcp-Name',
   ];
   if (hasAuthMethod(config.acceptedAuthMethods, HttpAuthMethod.ApiKey)) {
     base.push('X-API-ID', 'X-API-KEY');
@@ -65,10 +68,11 @@ export function corsHeaders(
   const headers: Record<string, string> = { Vary: 'Origin' };
   if (origin !== undefined && config.allowedOrigins.has(origin.toLowerCase())) {
     headers['Access-Control-Allow-Origin'] = origin;
-    headers['Access-Control-Allow-Methods'] = 'GET, POST, DELETE, OPTIONS';
+    // POST only: GET and DELETE were the 2025 session operations and are now
+    // answered with 405.
+    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
     headers['Access-Control-Allow-Headers'] =
       allowedRequestHeaders(config).join(', ');
-    headers['Access-Control-Expose-Headers'] = 'Mcp-Session-Id';
   }
   return headers;
 }

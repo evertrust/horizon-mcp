@@ -7,9 +7,8 @@
  *   HORIZON_E2E_API_ID   - API key identifier
  *   HORIZON_E2E_API_KEY  - API key secret
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { afterAll, beforeAll } from 'vitest';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
@@ -48,6 +47,10 @@ export const E2E_CONFIGURED = Boolean(E2E_URL && E2E_API_ID && E2E_API_KEY);
 
 const hex8 = Math.random().toString(16).slice(2, 10);
 export const E2E_PREFIX = `e2e-${hex8}`;
+
+export function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 // ---------------------------------------------------------------------------
 // Server instructions (matches src/index.ts)
@@ -117,7 +120,6 @@ export async function callTool(
   const client = getMcpClient();
   const result = await client.callTool(
     { name, arguments: args },
-    undefined,
     opts?.timeout ? { timeout: opts.timeout } : undefined,
   );
 
@@ -171,7 +173,6 @@ export async function callToolRaw(
   const client = getMcpClient();
   const result = await client.callTool(
     { name, arguments: args },
-    undefined,
     opts?.timeout ? { timeout: opts.timeout } : undefined,
   );
 
@@ -262,6 +263,8 @@ export function setupE2EStack(): void {
       mcpClient.connect(clientTransport),
       server.connect(serverTransport),
     ]);
+    // Real hosts list tools before calling them, which arms the SDK client's structuredContent validation against each tool's output schema.
+    await mcpClient.listTools();
   });
 
   afterAll(async () => {

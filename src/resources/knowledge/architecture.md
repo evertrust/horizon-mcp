@@ -110,30 +110,30 @@ metadata with no enrichment or lifecycle control.
 
 ## PKI Connector Types (22)
 
-| Type         | CA / Protocol                     |
-| ------------ | --------------------------------- |
-| `stream`     | Stream CA (generic)               |
-| `acmeenroll` | ACME enrollment connector         |
-| `acmerevoke` | ACME revocation connector         |
-| `evtadcs`    | Evertrust ADCS connector          |
-| `msadcs`     | Microsoft AD Certificate Services |
-| `awsacmpca`  | AWS ACM Private CA                |
-| `certeurope` | CertEurope CA                     |
-| `cmp`        | Certificate Management Protocol   |
-| `digicert`   | DigiCert CertCentral              |
-| `ejbca`      | EJBCA                             |
-| `entrust`    | Entrust                           |
-| `idca`       | IDCA                              |
-| `integrated` | Integrated CA (built-in)          |
-| `fcms`       | FCMS                              |
-| `gsatlas`    | GlobalSign Atlas                  |
-| `gsmssl`     | GlobalSign MSSL                   |
-| `otpki`      | OpenTrust PKI                     |
-| `metapki`    | MetaPKI                           |
-| `nameshield` | Nameshield                        |
-| `nexuscm`    | Nexus Certificate Manager         |
-| `sectigo`    | Sectigo                           |
-| `swisssign`  | SwissSign                         |
+| Type         | CA / Protocol                   |
+| ------------ | ------------------------------- |
+| `stream`     | Stream CA (generic)             |
+| `acmeenroll` | ACME enrollment connector       |
+| `acmerevoke` | ACME revocation connector       |
+| `evtadcs`    | Evertrust ADCS connector        |
+| `ejbca_rest` | EJBCA REST                      |
+| `awsacmpca`  | AWS ACM Private CA              |
+| `certeurope` | CertEurope CA                   |
+| `cmp`        | Certificate Management Protocol |
+| `digicert`   | DigiCert CertCentral            |
+| `ejbca`      | EJBCA                           |
+| `gcp`        | Google Cloud Platform           |
+| `idca`       | IDCA                            |
+| `integrated` | Integrated CA (built-in)        |
+| `fcms`       | FCMS                            |
+| `gsatlas`    | GlobalSign Atlas                |
+| `gsmssl`     | GlobalSign MSSL                 |
+| `otpki`      | OpenTrust PKI                   |
+| `metapki`    | MetaPKI                         |
+| `nameshield` | Nameshield                      |
+| `nexuscm`    | Nexus Certificate Manager       |
+| `sectigo`    | Sectigo                         |
+| `swisssign`  | SwissSign                       |
 
 ---
 

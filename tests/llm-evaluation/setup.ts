@@ -1,6 +1,5 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 
 import { registerAllResources } from '../../src/resources/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
@@ -91,7 +90,7 @@ function createMockClient(): unknown {
     request: async () => new Response(),
     close: async () => {},
     fetchCsrfToken: async () => undefined,
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };
@@ -216,7 +215,7 @@ function keywordBonus(question: string, candidate: string): number {
   if (/(id|uuid)\b/.test(question) && candidate.includes('get_')) score += 10;
   if (
     /request [a-f0-9-]{8,}/.test(question) &&
-    candidate.includes('get_request')
+    candidate.startsWith('get_request ')
   ) {
     score += 28;
   }
@@ -232,7 +231,7 @@ function keywordBonus(question: string, candidate: string): number {
   ) {
     score += 12;
   }
-  if (/(request)/.test(question) && candidate.includes('get_request'))
+  if (/(request)/.test(question) && candidate.startsWith('get_request '))
     score += 10;
   if (
     /(live|exposed|deployed|host|https:\/\/|ldaps:\/\/|port)/.test(question) &&

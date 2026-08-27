@@ -13,22 +13,25 @@ import { toUpdatePayload } from '../models/payloads.js';
 // ---------------------------------------------------------------------------
 
 /** Output shape returned by `buildSearchResponse`. */
-export const SEARCH_RESPONSE_OUTPUT_SCHEMA = {
+export const SEARCH_RESPONSE_OUTPUT_SCHEMA = z.object({
   results: z.array(z.record(z.string(), z.unknown())),
   page_index: z.number().int(),
   page_size: z.number().int(),
   total: z.number().nullable(),
   has_more: z.boolean(),
   next_page_index: z.number().int().nullable(),
-} as const;
+});
 
 /** Output shape returned by CSV exporters. */
-export const CSV_EXPORT_OUTPUT_SCHEMA = {
+export const CSV_EXPORT_OUTPUT_SCHEMA = z.object({
   csv: z.string(),
   truncated: z.boolean(),
   returned_rows: z.number().int(),
   max_rows: z.number().int(),
-} as const;
+  // Events fall back to a paged search when the CSV endpoint is unavailable;
+  // the flag tells the model the rows came from that path.
+  source: z.literal('search_fallback').optional(),
+});
 
 // ---------------------------------------------------------------------------
 // URL path encoding
@@ -49,7 +52,6 @@ export const encodePathSegment = (value: string): string =>
 
 const MAX_PAGE_SIZE = 100;
 const MAX_CSV_ROWS = 1000;
-const CSV_TIMEOUT = 120;
 
 // Field-level truncation limits (search results only)
 const MAX_STRING_LEN = 500;
@@ -251,9 +253,15 @@ export async function getStripMergePut(
 // Request action preflight
 // ---------------------------------------------------------------------------
 
+const REQUEST_ACTION_PARTICIPLES = {
+  approve: 'approved',
+  deny: 'denied',
+  cancel: 'cancelled',
+} as const;
+
 export async function preflightRequestAction(
   client: HorizonClient,
-  action: string,
+  action: keyof typeof REQUEST_ACTION_PARTICIPLES,
   requestId: string,
   permissionKey: string,
 ): Promise<Record<string, unknown>> {
@@ -286,11 +294,14 @@ export async function preflightRequestAction(
   }
 
   const status = String(request['status'] ?? '').toLowerCase();
-  if (status !== 'pending') {
+  const acceptedStatuses =
+    action === 'approve' ? ['pending'] : ['pending', 'in_progress'];
+  if (!acceptedStatuses.includes(status)) {
+    const participle = REQUEST_ACTION_PARTICIPLES[action];
     return {
       error:
-        `Request is not pending (current status: '${status}'). ` +
-        `Only pending requests can be ${action}d.`,
+        `Request status '${status}' cannot be ${participle}. ` +
+        `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
       request_id: requestId,
       request_status: status,
     };
@@ -422,12 +433,6 @@ export function buildExportPayload(
   if (sorted) payload['sortedBy'] = sorted;
   return payload;
 }
-
-// ---------------------------------------------------------------------------
-// CSV export helper
-// ---------------------------------------------------------------------------
-
-export { CSV_TIMEOUT };
 
 export function csvTruncationMetadata(csvText: string): {
   truncated: boolean;

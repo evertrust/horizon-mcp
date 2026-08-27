@@ -5,9 +5,8 @@
  * required, proxy optional), mandatory-field enforcement, GET-merge-PUT update
  * on the collection root, and the delete safety echo.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerDcvProviderTools } from '../../src/tools/config/dcv-providers.js';
@@ -27,7 +26,7 @@ function createMockClient() {
     request: vi.fn().mockResolvedValue(new Response()),
     close: vi.fn().mockResolvedValue(undefined),
     fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };
@@ -117,6 +116,48 @@ describe('create_dcv_provider', () => {
         type: 'sectigo',
         endpoint: 'https://x',
         credentials: 'c',
+        timeout: '30 seconds',
+      },
+    });
+    expect(isError(res)).toBe(true);
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it('POSTs the gs_mssl subtype fields', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'gs' });
+    await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
+        timeout: '30 seconds',
+        profile: 'managed-ssl',
+        defaultEmail: 'dcv@example.test',
+        defaultPhone: '+33102030405',
+      },
+    });
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/dcv/providers', {
+      name: 'gs',
+      type: 'gs_mssl',
+      endpoint: 'https://system.globalsign.com',
+      credentials: 'gs-creds',
+      timeout: '30 seconds',
+      profile: 'managed-ssl',
+      defaultEmail: 'dcv@example.test',
+      defaultPhone: '+33102030405',
+    });
+  });
+
+  it('requires gs_mssl profile and default contact fields', async () => {
+    const res = await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
         timeout: '30 seconds',
       },
     });

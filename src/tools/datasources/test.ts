@@ -2,12 +2,90 @@
  * test_datasource tool: live test of a datasource definition against a
  * context dictionary without persisting anything.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
 import { registerTool } from '../register.js';
 import { DS_BASE, dsAttributeSchema, validateDsType } from './shared.js';
+
+const TEST_DATASOURCE_CONFIG = {
+  description:
+    'Test a datasource configuration against a context dictionary.\n\n Ref: horizon://knowledge/datasources.' +
+    'Sends the datasource definition and an optional context dictionary to ' +
+    'Horizon for a one-off test execution. Useful for validating datasource\n' +
+    'configuration before creating or after modifying it.\n\n' +
+    'For DNS: returns resolved records (A, AAAA, CNAME, PTR, TXT).\n' +
+    'For LDAP: returns matched attributes and computed DN/filter.\n' +
+    'For REST: returns response code, headers, body, and extracted attributes.\n\n' +
+    'Typical workflow:\n' +
+    '    1. Call test_datasource with your planned configuration\n' +
+    '    2. Check the result: status should be "success"\n' +
+    '    3. If successful, proceed to create_dns/ldap/rest_datasource\n' +
+    '    4. If failed, adjust configuration and test again\n\n' +
+    'Example - Test DNS CNAME lookup:\n' +
+    '    ds_type="dns", name="test-cname",\n' +
+    '    lookup="{{hostname}}", record_types=["cname"],\n' +
+    '    context={"hostname": "app.corp.local"}\n' +
+    '    -> Expect: status="success", dictionary contains cname record\n\n' +
+    'Example - Test LDAP user lookup:\n' +
+    '    ds_type="ldap", name="test-ldap",\n' +
+    '    hostname="ldaps://ldap.corp.local", credentials="ldap-creds",\n' +
+    '    base_dn="DC=corp,DC=local", filter="(sAMAccountName={{user}})",\n' +
+    '    secure=True,\n' +
+    '    context={"user": "jdoe"}\n' +
+    '    -> Expect: status="success", dictionary contains user attributes\n\n' +
+    '    create_rest_datasource (create after testing),\n' +
+    '    simulate_datasource_flow (test full flow pipeline with chaining).',
+  inputSchema: z.object({
+    ds_type: z.string().describe('Datasource type: "dns", "ldap", or "rest".'),
+    name: z.string().describe('Datasource name (for identification).'),
+    context: z
+      .record(z.string(), z.string())
+      .optional()
+      .describe(
+        'Key-value pairs to resolve TemplateString variables. ' +
+          'Example: {"hostname": "web01.corp.local"}.',
+      ),
+    lookup: z.string().optional().describe('(DNS) Hostname to look up.'),
+    host: z.string().optional().describe('(DNS) DNS server IP.'),
+    port: z.number().int().optional().describe('(DNS/LDAP) Port number.'),
+    timeout: z.string().optional().describe('Timeout in duration format.'),
+    record_types: z
+      .array(z.string())
+      .optional()
+      .describe('(DNS) Record types to query.'),
+    hostname: z.string().optional().describe('(LDAP) LDAP server URL.'),
+    credentials: z
+      .string()
+      .optional()
+      .describe('(LDAP/REST) Credentials name.'),
+    base_dn: z.string().optional().describe('(LDAP) Base DN TemplateString.'),
+    filter: z
+      .string()
+      .optional()
+      .describe('(LDAP) Search filter TemplateString.'),
+    secure: z.boolean().optional().describe('(LDAP) Use LDAPS.'),
+    attributes: dsAttributeSchema,
+    limit: z.number().int().optional().describe('(LDAP) Max results.'),
+    method: z.string().optional().describe('(REST) HTTP method.'),
+    url: z.string().optional().describe('(REST) Endpoint URL TemplateString.'),
+    authentication_type: z.string().optional().describe('(REST) Auth type.'),
+    headers: z
+      .array(z.object({ name: z.string(), value: z.string() }))
+      .optional()
+      .describe('(REST) HTTP headers.'),
+    payload_type: z.string().optional().describe('(REST) Payload format.'),
+    payload: z
+      .string()
+      .optional()
+      .describe('(REST) Request body TemplateString.'),
+    expected_http_codes: z
+      .array(z.number().int())
+      .optional()
+      .describe('(REST) Success HTTP codes.'),
+  }),
+};
 
 export function registerTestDatasourceTool(
   server: McpServer,
@@ -16,94 +94,7 @@ export function registerTestDatasourceTool(
   registerTool(
     server,
     'test_datasource',
-    {
-      description:
-        'Test a datasource configuration against a context dictionary.\n\n Ref: horizon://knowledge/datasources.' +
-        'Sends the datasource definition and an optional context dictionary to ' +
-        'Horizon for a one-off test execution. Useful for validating datasource\n' +
-        'configuration before creating or after modifying it.\n\n' +
-        'For DNS: returns resolved records (A, AAAA, CNAME, PTR, TXT).\n' +
-        'For LDAP: returns matched attributes and computed DN/filter.\n' +
-        'For REST: returns response code, headers, body, and extracted attributes.\n\n' +
-        'Typical workflow:\n' +
-        '    1. Call test_datasource with your planned configuration\n' +
-        '    2. Check the result: status should be "success"\n' +
-        '    3. If successful, proceed to create_dns/ldap/rest_datasource\n' +
-        '    4. If failed, adjust configuration and test again\n\n' +
-        'Example - Test DNS CNAME lookup:\n' +
-        '    ds_type="dns", name="test-cname",\n' +
-        '    lookup="{{hostname}}", record_types=["cname"],\n' +
-        '    context={"hostname": "app.corp.local"}\n' +
-        '    -> Expect: status="success", dictionary contains cname record\n\n' +
-        'Example - Test LDAP user lookup:\n' +
-        '    ds_type="ldap", name="test-ldap",\n' +
-        '    hostname="ldaps://ldap.corp.local", credentials="ldap-creds",\n' +
-        '    base_dn="DC=corp,DC=local", filter="(sAMAccountName={{user}})",\n' +
-        '    secure=True,\n' +
-        '    context={"user": "jdoe"}\n' +
-        '    -> Expect: status="success", dictionary contains user attributes\n\n' +
-        '    create_rest_datasource (create after testing),\n' +
-        '    simulate_datasource_flow (test full flow pipeline with chaining).',
-      inputSchema: z.object({
-        ds_type: z
-          .string()
-          .describe('Datasource type: "dns", "ldap", or "rest".'),
-        name: z.string().describe('Datasource name (for identification).'),
-        context: z
-          .record(z.string(), z.string())
-          .optional()
-          .describe(
-            'Key-value pairs to resolve TemplateString variables. ' +
-              'Example: {"hostname": "web01.corp.local"}.',
-          ),
-        lookup: z.string().optional().describe('(DNS) Hostname to look up.'),
-        host: z.string().optional().describe('(DNS) DNS server IP.'),
-        port: z.number().int().optional().describe('(DNS/LDAP) Port number.'),
-        timeout: z.string().optional().describe('Timeout in duration format.'),
-        record_types: z
-          .array(z.string())
-          .optional()
-          .describe('(DNS) Record types to query.'),
-        hostname: z.string().optional().describe('(LDAP) LDAP server URL.'),
-        credentials: z
-          .string()
-          .optional()
-          .describe('(LDAP/REST) Credentials name.'),
-        base_dn: z
-          .string()
-          .optional()
-          .describe('(LDAP) Base DN TemplateString.'),
-        filter: z
-          .string()
-          .optional()
-          .describe('(LDAP) Search filter TemplateString.'),
-        secure: z.boolean().optional().describe('(LDAP) Use LDAPS.'),
-        attributes: dsAttributeSchema,
-        limit: z.number().int().optional().describe('(LDAP) Max results.'),
-        method: z.string().optional().describe('(REST) HTTP method.'),
-        url: z
-          .string()
-          .optional()
-          .describe('(REST) Endpoint URL TemplateString.'),
-        authentication_type: z
-          .string()
-          .optional()
-          .describe('(REST) Auth type.'),
-        headers: z
-          .array(z.object({ name: z.string(), value: z.string() }))
-          .optional()
-          .describe('(REST) HTTP headers.'),
-        payload_type: z.string().optional().describe('(REST) Payload format.'),
-        payload: z
-          .string()
-          .optional()
-          .describe('(REST) Request body TemplateString.'),
-        expected_http_codes: z
-          .array(z.number().int())
-          .optional()
-          .describe('(REST) Success HTTP codes.'),
-      }),
-    },
+    TEST_DATASOURCE_CONFIG,
     async ({
       ds_type,
       name,

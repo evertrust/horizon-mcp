@@ -1,0 +1,612 @@
+import type { Client } from '@modelcontextprotocol/client';
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
+import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
+import { registerDiscoveryFeedTools } from '../../src/tools/discovery-feed.js';
+import { registerDiscoveryTools } from '../../src/tools/discovery.js';
+import {
+  type MockClient,
+  parseToolResult,
+  resetMocks,
+  setupServerAndClient,
+} from './support/tool-harness.js';
+
+describe('Discovery campaign tools', () => {
+  let client: Client;
+  let mockClient: MockClient;
+
+  beforeAll(async () => {
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerDiscoveryTools(server, mc as any);
+      },
+    ]);
+    client = ctx.client;
+    mockClient = ctx.mockClient;
+  });
+
+  beforeEach(() => {
+    resetMocks(mockClient);
+  });
+
+  describe('list_discovery_campaigns', () => {
+    it('returns all campaigns', async () => {
+      mockClient.get.mockResolvedValueOnce([
+        { name: 'net-scan-prod' },
+        { name: 'net-scan-dev' },
+      ]);
+      const result = await client.callTool({
+        name: 'list_discovery_campaigns',
+        arguments: {},
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/api/v1/discovery/campaigns',
+      );
+      expect(parsed['count']).toBe(2);
+      expect(parsed['kind']).toBe('discovery_campaign');
+      expect(parsed['truncated']).toBe(false);
+    });
+
+    it('filters by name', async () => {
+      mockClient.get.mockResolvedValueOnce([
+        { name: 'net-scan-prod' },
+        { name: 'net-scan-dev' },
+        { name: 'tls-check' },
+      ]);
+      const result = await client.callTool({
+        name: 'list_discovery_campaigns',
+        arguments: { name_contains: 'net' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['count']).toBe(2);
+    });
+
+    it('returns no campaigns when the collection field is absent', async () => {
+      mockClient.get.mockResolvedValueOnce({});
+      const result = await client.callTool({
+        name: 'list_discovery_campaigns',
+        arguments: {},
+      });
+
+      expect(parseToolResult(result)).toEqual({
+        items: [],
+        count: 0,
+        total_available: 0,
+        truncated: false,
+        kind: 'discovery_campaign',
+      });
+    });
+
+    it('truncates results', async () => {
+      mockClient.get.mockResolvedValueOnce(
+        Array.from({ length: 60 }, (_, i) => ({ name: `camp-${i}` })),
+      );
+      const result = await client.callTool({
+        name: 'list_discovery_campaigns',
+        arguments: { max_items: 5 },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['truncated']).toBe(true);
+      expect(parsed['count']).toBe(5);
+      expect(parsed['total_available']).toBe(60);
+    });
+  });
+
+  describe('get_discovery_campaign', () => {
+    it('returns campaign', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        name: 'prod-scan',
+        enabled: true,
+      });
+      const result = await client.callTool({
+        name: 'get_discovery_campaign',
+        arguments: { name: 'prod-scan' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/api/v1/discovery/campaigns/prod-scan',
+      );
+      expect(parsed['name']).toBe('prod-scan');
+    });
+  });
+
+  describe('create_discovery_campaign', () => {
+    it('creates valid campaign', async () => {
+      mockClient.post.mockResolvedValueOnce({ name: 'new-scan' });
+      const authLevels = {
+        search: { accessLevel: 'authenticated' },
+        feed: { accessLevel: 'authorized' },
+      };
+      const result = await client.callTool({
+        name: 'create_discovery_campaign',
+        arguments: { name: 'new-scan', authorization_levels: authLevels },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.post).toHaveBeenCalledOnce();
+      const payload = mockClient.post.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      expect(payload['name']).toBe('new-scan');
+      expect(payload['authorizationLevels']).toEqual(authLevels);
+      expect(payload['eventOnSuccess']).toBe(true);
+      expect(payload['enabled']).toBe(true);
+      expect(parsed['status']).toBe('created');
+      expect(parsed['kind']).toBe('discovery_campaign');
+      expect(parsed['name']).toBe('new-scan');
+    });
+
+    it('rejects dot in name', async () => {
+      const result = await client.callTool({
+        name: 'create_discovery_campaign',
+        arguments: {
+          name: 'bad.name',
+          authorization_levels: {
+            search: { accessLevel: 'everyone' },
+            feed: { accessLevel: 'everyone' },
+          },
+        },
+      });
+      expect(result.isError).toBe(true);
+
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('rejects invalid access level', async () => {
+      const result = await client.callTool({
+        name: 'create_discovery_campaign',
+        arguments: {
+          name: 'test',
+          authorization_levels: {
+            search: { accessLevel: 'public' },
+            feed: { accessLevel: 'everyone' },
+          },
+        },
+      });
+      expect(result.isError).toBe(true);
+
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('rejects missing feed section', async () => {
+      const result = await client.callTool({
+        name: 'create_discovery_campaign',
+        arguments: {
+          name: 'test',
+          authorization_levels: {
+            search: { accessLevel: 'everyone' },
+          },
+        },
+      });
+      expect(result.isError).toBe(true);
+
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('update_discovery_campaign', () => {
+    it('merges updates', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        _id: 'abc',
+        name: 'my-scan',
+        enabled: true,
+      });
+      mockClient.put.mockResolvedValueOnce({
+        name: 'my-scan',
+        enabled: false,
+      });
+      const result = await client.callTool({
+        name: 'update_discovery_campaign',
+        arguments: { name: 'my-scan', enabled: false },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['status']).toBe('updated');
+      expect(parsed['kind']).toBe('discovery_campaign');
+    });
+  });
+
+  describe('delete_discovery_campaign', () => {
+    it('deletes with matching name', async () => {
+      const result = await client.callTool({
+        name: 'delete_discovery_campaign',
+        arguments: { name: 'old-scan', expected_name: 'old-scan' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.delete).toHaveBeenCalledWith(
+        '/api/v1/discovery/campaigns/old-scan',
+      );
+      expect(parsed['deleted']).toBe(true);
+    });
+
+    it('raises on name mismatch', async () => {
+      const result = await client.callTool({
+        name: 'delete_discovery_campaign',
+        arguments: { name: 'scan-a', expected_name: 'scan-b' },
+      });
+      expect(result.isError).toBe(true);
+
+      expect(mockClient.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('flush_discovery_campaign', () => {
+    it('flushes with matching name', async () => {
+      const result = await client.callTool({
+        name: 'flush_discovery_campaign',
+        arguments: { name: 'old-scan', expected_name: 'old-scan' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.patch).toHaveBeenCalledWith(
+        '/api/v1/discovery/campaigns/old-scan',
+        {},
+      );
+      expect(parsed['flushed']).toBe(true);
+    });
+
+    it('raises on name mismatch', async () => {
+      const result = await client.callTool({
+        name: 'flush_discovery_campaign',
+        arguments: { name: 'scan-a', expected_name: 'scan-b' },
+      });
+      expect(result.isError).toBe(true);
+
+      expect(mockClient.patch).not.toHaveBeenCalled();
+    });
+  });
+});
+
+// ===========================================================================
+// 2. DISCOVERY EVENTS
+// ===========================================================================
+
+describe('Discovery event tools', () => {
+  let client: Client;
+  let mockClient: MockClient;
+
+  beforeAll(async () => {
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerDiscoveryEventTools(server, mc as any);
+      },
+    ]);
+    client = ctx.client;
+    mockClient = ctx.mockClient;
+  });
+
+  beforeEach(() => {
+    resetMocks(mockClient);
+  });
+
+  describe('search_discovery_events', () => {
+    it('performs basic search', async () => {
+      mockClient.post.mockResolvedValueOnce({
+        results: [{ id: 'ev-1', timestamp: '2025-01-01T00:00:00Z' }],
+      });
+      const result = await client.callTool({
+        name: 'search_discovery_events',
+        arguments: { query: 'timestamp after -24h' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.post).toHaveBeenCalledOnce();
+      const callArgs = mockClient.post.mock.calls[0]!;
+      expect(String(callArgs[0])).toContain('/api/v1/discovery/events/search');
+      const payload = callArgs[1] as Record<string, unknown>;
+      expect(payload['query']).toBe('timestamp after -24h');
+      expect(payload['pageSize']).toBe(25);
+      expect((parsed['results'] as unknown[]).length).toBe(1);
+    });
+
+    it('caps page size at 100', async () => {
+      // Zod schema enforces max(100). We verify with 100 to confirm the cap.
+      mockClient.post.mockResolvedValueOnce({ results: [] });
+      await client.callTool({
+        name: 'search_discovery_events',
+        arguments: { query: '*', page_size: 100 },
+      });
+      const payload = mockClient.post.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      expect(payload['pageSize']).toBe(100);
+    });
+
+    it('parses sorted_by', async () => {
+      mockClient.post.mockResolvedValueOnce({ results: [] });
+      await client.callTool({
+        name: 'search_discovery_events',
+        arguments: { query: '*', sorted_by: 'timestamp:Desc' },
+      });
+      const payload = mockClient.post.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      expect(payload['sortedBy']).toEqual([
+        { element: 'timestamp', order: 'Desc' },
+      ]);
+    });
+
+    // ------------------------------------------------------------------
+    // Pagination regression suite. Mirrors the contract verified in
+    // tools.test.ts for the other three search tools. If this block
+    // diverges from that one, the 4 tools stopped behaving identically.
+    // ------------------------------------------------------------------
+    describe('pagination contract', () => {
+      it('sends distinct 1-based pageIndex for each page_index walked', async () => {
+        mockClient.post
+          .mockResolvedValueOnce({ results: [{ _id: 'a' }], count: 400 })
+          .mockResolvedValueOnce({ results: [{ _id: 'b' }], count: 400 })
+          .mockResolvedValueOnce({ results: [{ _id: 'c' }], count: 400 });
+
+        for (const idx of [0, 1, 2]) {
+          await client.callTool({
+            name: 'search_discovery_events',
+            arguments: {
+              query: '*',
+              page_index: idx,
+              page_size: 100,
+              sorted_by: 'timestamp:Desc',
+            },
+          });
+        }
+
+        const sent = mockClient.post.mock.calls
+          .slice(-3)
+          .map((c) => (c[1] as Record<string, unknown>)['pageIndex']);
+        expect(sent).toEqual([1, 2, 3]);
+      });
+
+      it('returns the standardized envelope', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: Array.from({ length: 50 }, (_, i) => ({ _id: `r${i}` })),
+          count: 187,
+        });
+
+        const result = await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*', page_index: 0, page_size: 50 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['page_index']).toBe(0);
+        expect(parsed['page_size']).toBe(50);
+        expect(parsed['total']).toBe(187);
+        expect(parsed['has_more']).toBe(true);
+        expect(parsed['next_page_index']).toBe(1);
+        expect(parsed).not.toHaveProperty('pageIndex');
+        expect(parsed).not.toHaveProperty('hasMore');
+      });
+
+      it('next_page_index is null on last page', async () => {
+        mockClient.post.mockResolvedValueOnce({
+          results: [{ _id: 'tail' }],
+          count: 1,
+        });
+
+        const result = await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*', page_index: 0, page_size: 100 },
+        });
+        const parsed = parseToolResult(result);
+
+        expect(parsed['has_more']).toBe(false);
+        expect(parsed['next_page_index']).toBeNull();
+      });
+
+      it('defaults with_count=true', async () => {
+        mockClient.post.mockResolvedValueOnce({ results: [], count: 0 });
+        await client.callTool({
+          name: 'search_discovery_events',
+          arguments: { query: '*' },
+        });
+        const payload = mockClient.post.mock.calls[0]![1] as Record<
+          string,
+          unknown
+        >;
+        expect(payload['withCount']).toBe(true);
+      });
+    });
+  });
+
+  describe('get_discovery_event', () => {
+    it('returns event', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        id: 'ev-42',
+        certificateid: 'cert-1',
+      });
+      const result = await client.callTool({
+        name: 'get_discovery_event',
+        arguments: { event_id: 'ev-42' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/api/v1/discovery/events/ev-42',
+      );
+      expect(parsed['id']).toBe('ev-42');
+    });
+  });
+
+  describe('export_discovery_events_csv', () => {
+    it('exports CSV', async () => {
+      const csvText = 'col1,col2\nval1,val2\nval3,val4';
+      mockClient.postText.mockResolvedValueOnce(csvText);
+
+      const result = await client.callTool({
+        name: 'export_discovery_events_csv',
+        arguments: { query: 'timestamp after -7d' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.postText).toHaveBeenCalledOnce();
+      expect(parsed['returned_rows']).toBe(2);
+      expect(parsed['csv']).toBe(csvText);
+    });
+
+    it('exports empty CSV', async () => {
+      mockClient.postText.mockResolvedValueOnce('');
+
+      const result = await client.callTool({
+        name: 'export_discovery_events_csv',
+        arguments: { query: '*' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(parsed['returned_rows']).toBe(0);
+    });
+  });
+});
+
+// ===========================================================================
+// 3. DISCOVERY FEED
+// ===========================================================================
+
+describe('Discovery feed tools', () => {
+  let client: Client;
+  let mockClient: MockClient;
+
+  beforeAll(async () => {
+    const ctx = await setupServerAndClient([
+      (server, mc) => {
+        registerDiscoveryFeedTools(server, mc as any);
+      },
+    ]);
+    client = ctx.client;
+    mockClient = ctx.mockClient;
+  });
+
+  beforeEach(() => {
+    resetMocks(mockClient);
+  });
+
+  describe('start_discovery_feed_session', () => {
+    it('starts session', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        id: 'sess-001',
+        campaign: 'my-camp',
+      });
+      const result = await client.callTool({
+        name: 'start_discovery_feed_session',
+        arguments: { campaign_name: 'my-camp' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.get).toHaveBeenCalledWith(
+        '/api/v1/discovery/feed/my-camp',
+      );
+      expect(String(parsed['content'])).toContain('sess-001');
+      const data = parsed['data'] as Record<string, unknown>;
+      expect(data['id']).toBe('sess-001');
+    });
+  });
+
+  describe('feed_discovery_certificate', () => {
+    it('feeds certificate', async () => {
+      mockClient.post.mockResolvedValueOnce({ status: 'accepted' });
+      const result = await client.callTool({
+        name: 'feed_discovery_certificate',
+        arguments: {
+          session_id: 'sess-001',
+          campaign_name: 'my-campaign',
+          certificate:
+            '-----BEGIN CERTIFICATE-----\nMIIB...\n-----END CERTIFICATE-----',
+          ip: '10.0.0.1',
+        },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.post).toHaveBeenCalledOnce();
+      const payload = mockClient.post.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      expect(payload['sessionId']).toBe('sess-001');
+      expect(payload['campaign']).toBe('my-campaign');
+      const hostData = payload['hostDiscoveryData'] as Record<string, unknown>;
+      expect(hostData['ip']).toBe('10.0.0.1');
+      expect(String(parsed['content'])).toContain('Certificate fed');
+    });
+
+    it('includes optional fields', async () => {
+      mockClient.post.mockResolvedValueOnce({});
+      await client.callTool({
+        name: 'feed_discovery_certificate',
+        arguments: {
+          session_id: 'sess-001',
+          campaign_name: 'my-campaign',
+          certificate: 'PEM',
+          ip: '10.0.0.1',
+          hostnames: ['server.example.com'],
+          tls_ports: [{ port: 443, version: 'TLSv1.3' }],
+          sources: ['netscan'],
+          paths: ['/etc/ssl/cert.pem'],
+          usages: ['nginx:443'],
+          operating_systems: ['linux'],
+        },
+      });
+      const payload = mockClient.post.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      const hostData = payload['hostDiscoveryData'] as Record<string, unknown>;
+      expect(hostData['ip']).toBe('10.0.0.1');
+      expect(hostData['hostnames']).toEqual(['server.example.com']);
+      expect(hostData['tlsPorts']).toEqual([{ port: 443, version: 'TLSv1.3' }]);
+      expect(hostData['sources']).toEqual(['netscan']);
+      expect(hostData['paths']).toEqual(['/etc/ssl/cert.pem']);
+      expect(hostData['usages']).toEqual(['nginx:443']);
+      expect(hostData['operatingSystems']).toEqual(['linux']);
+    });
+  });
+
+  describe('register_discovery_event', () => {
+    it('registers event', async () => {
+      mockClient.put.mockResolvedValueOnce({ status: 'ok' });
+      const result = await client.callTool({
+        name: 'register_discovery_event',
+        arguments: {
+          session_id: 'sess-001',
+          data: { type: 'error', code: 'TIMEOUT' },
+        },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.put).toHaveBeenCalledOnce();
+      const payload = mockClient.put.mock.calls[0]![1] as Record<
+        string,
+        unknown
+      >;
+      expect(payload['sessionId']).toBe('sess-001');
+      expect(payload['type']).toBe('error');
+      expect(String(parsed['content'])).toContain('registered');
+    });
+  });
+
+  describe('end_discovery_feed_session', () => {
+    it('ends session', async () => {
+      const result = await client.callTool({
+        name: 'end_discovery_feed_session',
+        arguments: { campaign_name: 'my-camp', session_id: 'sess-001' },
+      });
+      const parsed = parseToolResult(result);
+
+      expect(mockClient.delete).toHaveBeenCalledWith(
+        '/api/v1/discovery/feed/my-camp/sess-001',
+      );
+      expect(String(parsed['content'])).toContain('ended');
+    });
+  });
+});
+
+// ===========================================================================
+// 4. DASHBOARDS
+// ===========================================================================

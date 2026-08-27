@@ -1,24 +1,19 @@
 import type {
-  McpServer,
-  ToolCallback,
-} from '@modelcontextprotocol/sdk/server/mcp.js';
-import type {
-  AnySchema,
-  ZodRawShapeCompat,
-} from '@modelcontextprotocol/sdk/server/zod-compat.js';
-import type { RequestHandlerExtra } from '@modelcontextprotocol/sdk/shared/protocol.js';
-import type {
   CallToolResult,
-  ServerNotification,
-  ServerRequest,
+  InputRequiredResult,
+  McpServer,
+  ServerContext,
+  StandardSchemaWithJSON,
   ToolAnnotations,
-} from '@modelcontextprotocol/sdk/types.js';
+  ToolCallback,
+} from '@modelcontextprotocol/server';
 import type { z } from 'zod';
 
 import { HorizonError } from '../client/errors.js';
+import { runWithRequestSignal } from '../client/request-signal.js';
 import { buildToolDescription } from './guidance.js';
 
-type ToolExtra = RequestHandlerExtra<ServerRequest, ServerNotification>;
+type ToolExtra = ServerContext;
 
 type ToolConfigBase = {
   title?: string;
@@ -29,7 +24,68 @@ type ToolConfigBase = {
   _meta?: Record<string, unknown>;
 };
 
-type ToolResult = CallToolResult | Promise<CallToolResult>;
+type ToolResult =
+  | CallToolResult
+  | InputRequiredResult
+  | Promise<CallToolResult | InputRequiredResult>;
+
+type JsonSchemaConverter = StandardSchemaWithJSON['~standard']['jsonSchema'];
+type JsonSchemaOptions = Parameters<JsonSchemaConverter['input']>[0];
+type JsonSchemaMode = 'input' | 'output';
+type JsonSchema = ReturnType<JsonSchemaConverter['input']>;
+
+const jsonSchemaCache = new WeakMap<
+  StandardSchemaWithJSON,
+  Map<string, JsonSchema>
+>();
+
+function memoizeJsonSchema(
+  schema: StandardSchemaWithJSON,
+  converter: JsonSchemaConverter,
+  mode: JsonSchemaMode,
+  options: JsonSchemaOptions,
+): JsonSchema {
+  if (options.libraryOptions !== undefined) {
+    // The options change the output and are not identity-comparable.
+    return converter[mode](options);
+  }
+
+  let schemas = jsonSchemaCache.get(schema);
+  if (!schemas) {
+    schemas = new Map<string, JsonSchema>();
+    jsonSchemaCache.set(schema, schemas);
+  }
+
+  const key = `${mode}:${options.target}`;
+  let jsonSchema = schemas.get(key);
+  if (!jsonSchema) {
+    jsonSchema = converter[mode](options);
+    schemas.set(key, jsonSchema);
+  }
+  return jsonSchema;
+}
+
+function memoizeSchemaConversion<Schema extends StandardSchemaWithJSON>(
+  schema: Schema,
+): Schema {
+  const standard = schema['~standard'];
+  const converter = standard.jsonSchema;
+
+  return {
+    '~standard': {
+      vendor: standard.vendor,
+      version: standard.version,
+      types: standard.types,
+      validate: standard.validate,
+      jsonSchema: {
+        input: (options) =>
+          memoizeJsonSchema(schema, converter, 'input', options),
+        output: (options) =>
+          memoizeJsonSchema(schema, converter, 'output', options),
+      },
+    },
+  } as Schema;
+}
 
 export interface RegisterToolOptions {
   /**
@@ -207,10 +263,14 @@ function horizonErrorToToolResult(err: HorizonError): CallToolResult {
 
 function wrapHandler(
   handler: (...args: unknown[]) => ToolResult,
-): (...args: unknown[]) => Promise<CallToolResult> {
+): (...args: unknown[]) => Promise<CallToolResult | InputRequiredResult> {
   return async (...args: unknown[]) => {
     try {
-      return await handler(...args);
+      const ctx = args.at(-1) as ServerContext | undefined;
+      const signal = ctx?.mcpReq.signal;
+      return await (signal
+        ? runWithRequestSignal(signal, () => handler(...args))
+        : handler(...args));
     } catch (err) {
       if (err instanceof HorizonError) return horizonErrorToToolResult(err);
       throw err;
@@ -307,7 +367,9 @@ export function registerTool(
 
   const handler = wrapErrors
     ? wrapHandler(cb as (...args: unknown[]) => ToolResult)
-    : (cb as (...args: unknown[]) => Promise<CallToolResult>);
+    : (cb as (
+        ...args: unknown[]
+      ) => Promise<CallToolResult | InputRequiredResult>);
 
   const sdkConfig: Record<string, unknown> = {
     ...config,
@@ -317,12 +379,18 @@ export function registerTool(
     inputSchema:
       config.inputSchema === undefined
         ? undefined
-        : (config.inputSchema as unknown as AnySchema | ZodRawShapeCompat),
+        : memoizeSchemaConversion(config.inputSchema as StandardSchemaWithJSON),
+    outputSchema:
+      config.outputSchema === undefined
+        ? undefined
+        : memoizeSchemaConversion(
+            config.outputSchema as StandardSchemaWithJSON,
+          ),
   };
 
   return server.registerTool(
     name,
     sdkConfig as never,
-    handler as unknown as ToolCallback<AnySchema | ZodRawShapeCompat>,
+    handler as unknown as ToolCallback<StandardSchemaWithJSON>,
   );
 }

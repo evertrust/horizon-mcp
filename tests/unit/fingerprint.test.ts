@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   credentialFingerprint,
-  fingerprintsMatch,
   shortFingerprint,
 } from '../../src/http/fingerprint.js';
 
@@ -29,23 +28,6 @@ describe('credentialFingerprint', () => {
     const bareSha256 =
       '936a185caaa266bb9cbe981e9e05cb78cd732b0b3280eb944412bb6f8f8f07af';
     expect(credentialFingerprint('hello')).not.toBe(bareSha256);
-  });
-});
-
-describe('fingerprintsMatch', () => {
-  it('matches identical fingerprints', () => {
-    const fp = credentialFingerprint('id:key');
-    expect(fingerprintsMatch(fp, fp)).toBe(true);
-  });
-
-  it('rejects different fingerprints', () => {
-    expect(
-      fingerprintsMatch(credentialFingerprint('a'), credentialFingerprint('b')),
-    ).toBe(false);
-  });
-
-  it('returns false (does not throw) on a length mismatch', () => {
-    expect(fingerprintsMatch('abcd', credentialFingerprint('a'))).toBe(false);
   });
 });
 

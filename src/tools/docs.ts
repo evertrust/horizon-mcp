@@ -1,4 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
@@ -43,6 +43,127 @@ const PRODUCT_ALIASES: Record<string, DocProduct> = {
   terraform: 'terraform-provider-horizon',
   'terraform-provider-horizon': 'terraform-provider-horizon',
   winhorizon: 'winhorizon',
+};
+
+const SEARCH_DOCS_CONFIG = {
+  description:
+    'Search the indexed product documentation for Horizon, ADCS Connector, Horizon CLI, Horizon Issuer, WinHorizon, the Horizon Ansible collection, and the Horizon Terraform provider.\n\n' +
+    'Use when: the user asks how to install, configure, integrate, troubleshoot, or operate one of those products. Call this first, then call get_doc_page with one of the returned page_id values. Do not invent page IDs.\n\n' +
+    'Do not use when: the user asks about HTTP endpoints, request payloads, response payloads, or route semantics. Use search_api_docs for API-reference questions instead.\n\n' +
+    'For Horizon docs, the tool resolves the connected instance version from the live Horizon API when possible. If the configured user cannot read that version, the tool returns a warning and falls back to the latest indexed Horizon docs.',
+  inputSchema: z.object({
+    query: z.string().describe('What documentation you need to find.'),
+    product: z
+      .string()
+      .optional()
+      .describe(
+        'Optional product filter. Supported values: horizon, adcs-connector, horizon-cli, horizon-issuer, winhorizon, horizon-ansible, terraform-provider-horizon.',
+      ),
+    version: z
+      .string()
+      .optional()
+      .describe(
+        'Optional explicit docs version. Only set this when the user explicitly requests a specific version.',
+      ),
+    max_results: z
+      .number()
+      .int()
+      .min(1)
+      .max(SEARCH_MAX_RESULTS)
+      .default(5)
+      .describe('Maximum number of results to return (1-10).'),
+  }),
+};
+
+const SEARCH_API_DOCS_CONFIG = {
+  description:
+    'Search the indexed Horizon API reference and return exact API reference pages with the HTTP method and route.\n\n' +
+    'Use when: the user asks about endpoints, HTTP methods, request or response payloads, fields, authentication, or route semantics. Call this first, then call get_doc_page with one of the returned page_id values. Do not invent page IDs.\n\n' +
+    'Do not use when: the user asks about product installation, configuration walkthroughs, or operational guidance. Use search_docs for product documentation instead.\n\n' +
+    'The tool resolves the connected Horizon version from the live Horizon API when possible. If the configured user cannot read that version, the tool returns a warning and falls back to the latest indexed Horizon API docs.',
+  inputSchema: z.object({
+    query: z.string().describe('What Horizon API reference page you need.'),
+    version: z
+      .string()
+      .optional()
+      .describe(
+        'Optional explicit Horizon API docs version. Only set this when the user explicitly asks for one.',
+      ),
+    max_results: z
+      .number()
+      .int()
+      .min(1)
+      .max(SEARCH_MAX_RESULTS)
+      .default(5)
+      .describe('Maximum number of results to return (1-10).'),
+  }),
+};
+
+const GET_DOC_PAGE_CONFIG = {
+  description:
+    'Return the indexed content of a specific documentation page.\n\n' +
+    'Always call search_docs or search_api_docs first and pass one of their page_id values here. Do not guess or fabricate page IDs. If the page is not the one you need, go back to search and refine the query instead of guessing another page_id.\n\n' +
+    'Long pages are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call the tool again with that offset to continue.',
+  inputSchema: z.object({
+    page_id: z
+      .string()
+      .describe('Exact page_id returned by search_docs or search_api_docs.'),
+    max_chars: z
+      .number()
+      .int()
+      .positive()
+      .max(50000)
+      .default(20000)
+      .describe(
+        'Maximum number of content characters to return in this window (1-50000, default 20000).',
+      ),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Character offset into the page content to start from. Use next_offset from a prior truncated response to continue.',
+      ),
+  }),
+};
+
+const READ_KNOWLEDGE_CONFIG = {
+  description:
+    'Return the embedded Horizon knowledge base content for a topic as tool output.\n\n' +
+    'Use when: a horizon://knowledge/* resource is referenced but the client cannot read MCP resources. This exposes the same guidance (server rules, query languages, workflows, integration recipes, ...) through a tool call instead.\n\n' +
+    'Pass a topic slug (the segment after horizon://knowledge/). Optionally pass a section slug to fetch a single section of a long topic. Call with no valid topic to get the list of valid topics in the error.\n\n' +
+    'Long topics are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call again with that offset to continue.',
+  inputSchema: z.object({
+    topic: z
+      .string()
+      .describe(
+        'Knowledge topic slug, e.g. server-rules, query-languages, tool-selection. This is the segment after horizon://knowledge/.',
+      ),
+    section: z
+      .string()
+      .optional()
+      .describe(
+        'Optional section slug within the topic (only some topics are split into sections).',
+      ),
+    max_chars: z
+      .number()
+      .int()
+      .positive()
+      .max(50000)
+      .default(20000)
+      .describe(
+        'Maximum number of content characters to return in this window (1-50000, default 20000).',
+      ),
+    offset: z
+      .number()
+      .int()
+      .min(0)
+      .default(0)
+      .describe(
+        'Character offset into the content to start from. Use next_offset from a prior truncated response to continue.',
+      ),
+  }),
 };
 
 function normalizeProduct(input?: string): DocProduct | undefined {
@@ -142,35 +263,7 @@ export function registerDocsTools(
   registerTool(
     server,
     'search_docs',
-    {
-      description:
-        'Search the indexed product documentation for Horizon, ADCS Connector, Horizon CLI, Horizon Issuer, WinHorizon, the Horizon Ansible collection, and the Horizon Terraform provider.\n\n' +
-        'Use when: the user asks how to install, configure, integrate, troubleshoot, or operate one of those products. Call this first, then call get_doc_page with one of the returned page_id values. Do not invent page IDs.\n\n' +
-        'Do not use when: the user asks about HTTP endpoints, request payloads, response payloads, or route semantics. Use search_api_docs for API-reference questions instead.\n\n' +
-        'For Horizon docs, the tool resolves the connected instance version from the live Horizon API when possible. If the configured user cannot read that version, the tool returns a warning and falls back to the latest indexed Horizon docs.',
-      inputSchema: z.object({
-        query: z.string().describe('What documentation you need to find.'),
-        product: z
-          .string()
-          .optional()
-          .describe(
-            'Optional product filter. Supported values: horizon, adcs-connector, horizon-cli, horizon-issuer, winhorizon, horizon-ansible, terraform-provider-horizon.',
-          ),
-        version: z
-          .string()
-          .optional()
-          .describe(
-            'Optional explicit docs version. Only set this when the user explicitly requests a specific version.',
-          ),
-        max_results: z
-          .number()
-          .int()
-          .min(1)
-          .max(SEARCH_MAX_RESULTS)
-          .default(5)
-          .describe('Maximum number of results to return (1-10).'),
-      }),
-    },
+    SEARCH_DOCS_CONFIG,
     async ({ query, product, version, max_results }) => {
       const normalizedProduct = normalizeProduct(product);
       if (product && !normalizedProduct) {
@@ -265,29 +358,7 @@ export function registerDocsTools(
   registerTool(
     server,
     'search_api_docs',
-    {
-      description:
-        'Search the indexed Horizon API reference and return exact API reference pages with the HTTP method and route.\n\n' +
-        'Use when: the user asks about endpoints, HTTP methods, request or response payloads, fields, authentication, or route semantics. Call this first, then call get_doc_page with one of the returned page_id values. Do not invent page IDs.\n\n' +
-        'Do not use when: the user asks about product installation, configuration walkthroughs, or operational guidance. Use search_docs for product documentation instead.\n\n' +
-        'The tool resolves the connected Horizon version from the live Horizon API when possible. If the configured user cannot read that version, the tool returns a warning and falls back to the latest indexed Horizon API docs.',
-      inputSchema: z.object({
-        query: z.string().describe('What Horizon API reference page you need.'),
-        version: z
-          .string()
-          .optional()
-          .describe(
-            'Optional explicit Horizon API docs version. Only set this when the user explicitly asks for one.',
-          ),
-        max_results: z
-          .number()
-          .int()
-          .min(1)
-          .max(SEARCH_MAX_RESULTS)
-          .default(5)
-          .describe('Maximum number of results to return (1-10).'),
-      }),
-    },
+    SEARCH_API_DOCS_CONFIG,
     async ({ query, version, max_results }) => {
       const resolved = await resolveDocVersion({
         client,
@@ -329,36 +400,7 @@ export function registerDocsTools(
   registerTool(
     server,
     'get_doc_page',
-    {
-      description:
-        'Return the indexed content of a specific documentation page.\n\n' +
-        'Always call search_docs or search_api_docs first and pass one of their page_id values here. Do not guess or fabricate page IDs. If the page is not the one you need, go back to search and refine the query instead of guessing another page_id.\n\n' +
-        'Long pages are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call the tool again with that offset to continue.',
-      inputSchema: z.object({
-        page_id: z
-          .string()
-          .describe(
-            'Exact page_id returned by search_docs or search_api_docs.',
-          ),
-        max_chars: z
-          .number()
-          .int()
-          .positive()
-          .max(50000)
-          .default(20000)
-          .describe(
-            'Maximum number of content characters to return in this window (1-50000, default 20000).',
-          ),
-        offset: z
-          .number()
-          .int()
-          .min(0)
-          .default(0)
-          .describe(
-            'Character offset into the page content to start from. Use next_offset from a prior truncated response to continue.',
-          ),
-      }),
-    },
+    GET_DOC_PAGE_CONFIG,
     async ({ page_id, max_chars, offset }) => {
       const page = getDocPageById(page_id);
       if (!page) {
@@ -409,43 +451,7 @@ export function registerDocsTools(
   registerTool(
     server,
     'read_knowledge',
-    {
-      description:
-        'Return the embedded Horizon knowledge base content for a topic as tool output.\n\n' +
-        'Use when: a horizon://knowledge/* resource is referenced but the client cannot read MCP resources. This exposes the same guidance (server rules, query languages, workflows, integration recipes, ...) through a tool call instead.\n\n' +
-        'Pass a topic slug (the segment after horizon://knowledge/). Optionally pass a section slug to fetch a single section of a long topic. Call with no valid topic to get the list of valid topics in the error.\n\n' +
-        'Long topics are returned in windows bounded by max_chars. When the content exceeds the window the response carries a truncation notice with total_chars and next_offset; call again with that offset to continue.',
-      inputSchema: z.object({
-        topic: z
-          .string()
-          .describe(
-            'Knowledge topic slug, e.g. server-rules, query-languages, tool-selection. This is the segment after horizon://knowledge/.',
-          ),
-        section: z
-          .string()
-          .optional()
-          .describe(
-            'Optional section slug within the topic (only some topics are split into sections).',
-          ),
-        max_chars: z
-          .number()
-          .int()
-          .positive()
-          .max(50000)
-          .default(20000)
-          .describe(
-            'Maximum number of content characters to return in this window (1-50000, default 20000).',
-          ),
-        offset: z
-          .number()
-          .int()
-          .min(0)
-          .default(0)
-          .describe(
-            'Character offset into the content to start from. Use next_offset from a prior truncated response to continue.',
-          ),
-      }),
-    },
+    READ_KNOWLEDGE_CONFIG,
     async ({ topic, section, max_chars, offset }) => {
       const resource = resolveKnowledge(topic, section);
       if (!resource) {

@@ -1,92 +1,74 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  getLogger,
-  runWithLoggingSink,
-  setMcpLoggingSink,
-} from '../../src/logging.js';
+import { configureLogging, getLogger } from '../../src/logging.js';
+
+function captureStderr(): { lines: string[]; restore: () => void } {
+  const lines: string[] = [];
+  const spy = vi
+    .spyOn(process.stderr, 'write')
+    .mockImplementation((chunk: unknown) => {
+      lines.push(String(chunk));
+      return true;
+    });
+  return { lines, restore: () => spy.mockRestore() };
+}
 
 afterEach(() => {
-  // Never leak a global sink between tests.
-  setMcpLoggingSink(undefined);
+  configureLogging('info');
 });
 
-describe('logging sink routing', () => {
-  it('routes logs to the active session sink', () => {
-    const sessionLogs: string[] = [];
-    const log = getLogger('test');
-    runWithLoggingSink(
-      (_level, p) => sessionLogs.push(p.msg),
-      () => log.info('hello'),
-    );
-    expect(sessionLogs).toEqual(['hello']);
-  });
-
-  it('does not leak a session sink outside its scope', () => {
-    const sessionLogs: string[] = [];
-    const log = getLogger('test');
-    runWithLoggingSink(
-      (_level, p) => sessionLogs.push(p.msg),
-      () => log.info('inside'),
-    );
-    log.info('outside');
-    expect(sessionLogs).toEqual(['inside']);
-  });
-
-  it('keeps two concurrent session sinks isolated across awaits', async () => {
-    const a: string[] = [];
-    const b: string[] = [];
-    const log = getLogger('iso');
-
-    async function sessionA(): Promise<void> {
-      log.info('a1');
-      await new Promise((r) => setTimeout(r, 5));
-      log.info('a2');
-    }
-    async function sessionB(): Promise<void> {
-      log.info('b1');
-      await new Promise((r) => setTimeout(r, 5));
-      log.info('b2');
+describe('logging', () => {
+  it('writes structured JSON to stderr', () => {
+    const { lines, restore } = captureStderr();
+    try {
+      getLogger('test').info('hello');
+    } finally {
+      restore();
     }
 
-    await Promise.all([
-      runWithLoggingSink((_level, p) => a.push(p.msg), sessionA),
-      runWithLoggingSink((_level, p) => b.push(p.msg), sessionB),
-    ]);
-
-    expect(a).toEqual(['a1', 'a2']);
-    expect(b).toEqual(['b1', 'b2']);
+    expect(lines).toHaveLength(1);
+    const entry = JSON.parse(lines[0]!) as Record<string, unknown>;
+    expect(entry['level']).toBe('INFO');
+    expect(entry['logger']).toBe('test');
+    expect(entry['msg']).toBe('hello');
+    expect(typeof entry['ts']).toBe('string');
   });
 
-  it('prefers the session sink over a global sink', () => {
-    const globalLogs: string[] = [];
-    const sessionLogs: string[] = [];
-    setMcpLoggingSink((_level, p) => globalLogs.push(p.msg));
-    const log = getLogger('test');
-    runWithLoggingSink(
-      (_level, p) => sessionLogs.push(p.msg),
-      () => log.info('scoped'),
-    );
-    expect(sessionLogs).toEqual(['scoped']);
-    expect(globalLogs).toEqual([]);
+  it('merges extra fields into the entry', () => {
+    const { lines, restore } = captureStderr();
+    try {
+      getLogger('test').info('with extra', { request_id: 'r1', status: 200 });
+    } finally {
+      restore();
+    }
+
+    const entry = JSON.parse(lines[0]!) as Record<string, unknown>;
+    expect(entry['request_id']).toBe('r1');
+    expect(entry['status']).toBe(200);
   });
 
-  it('falls back to the global sink outside a session scope', () => {
-    const globalLogs: string[] = [];
-    setMcpLoggingSink((_level, p) => globalLogs.push(p.msg));
-    getLogger('test').info('global');
-    expect(globalLogs).toContain('global');
+  it('drops entries below the configured level', () => {
+    configureLogging('error');
+    const { lines, restore } = captureStderr();
+    try {
+      const log = getLogger('test');
+      log.info('suppressed');
+      log.error('kept');
+    } finally {
+      restore();
+    }
+
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0]!)['msg']).toBe('kept');
   });
 
-  it('swallows session sink errors', () => {
-    const log = getLogger('test');
-    expect(() =>
-      runWithLoggingSink(
-        () => {
-          throw new Error('boom');
-        },
-        () => log.info('x'),
-      ),
-    ).not.toThrow();
+  // MCP 2026-07-28 deprecates the Logging capability (SEP-2577) and forbids
+  // emitting `notifications/message` for a request that did not opt in. The
+  // server no longer declares the capability, so logging must have no MCP-facing
+  // side channel at all - stderr is the only destination.
+  it('exposes no MCP logging sink', async () => {
+    const mod: Record<string, unknown> = await import('../../src/logging.js');
+    expect(mod['setMcpLoggingSink']).toBeUndefined();
+    expect(mod['runWithLoggingSink']).toBeUndefined();
   });
 });

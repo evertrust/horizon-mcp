@@ -25,6 +25,23 @@ order:
 
 ---
 
+## Asynchronous PKI Connector Enrollment
+
+The following PKI connector types use asynchronous enrollment and accept a
+`retryInterval`: `digicert`, `acmeenroll`, `integrated`, `gsmssl`, `gsatlas`,
+`awsacmpca`, `certeurope`, `sectigo`, and `nameshield`. Set it to a positive
+finite duration such as `"6 seconds"` when creating or updating the connector.
+
+Horizon keeps a request in `in_progress` while it waits for an external CA.
+Find it with `search_requests`, inspect it with `get_request`, and poll for its
+completion. A request in `in_progress` can be denied or cancelled if needed.
+
+`retryInterval` is not valid for synchronous PKI connector types. Call
+`describe_pki_connector_schema` before configuring a connector to discover the
+other fields required by its subtype.
+
+---
+
 ## ACME DNS-01 Integration
 
 Use case: Automated certificate issuance for wildcard domains or domains

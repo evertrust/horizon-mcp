@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { runWithRequestSignal } from '../../../src/client/request-signal.js';
 import { withRetry } from '../../../src/client/retry.js';
 
 /**
@@ -129,5 +130,43 @@ describe('withRetry Retry-After clamping', () => {
     } finally {
       setTimeoutSpy.mockRestore();
     }
+  });
+});
+
+describe('withRetry cancellation', () => {
+  it('does not retry an aborted fetch', async () => {
+    const controller = new AbortController();
+    const abortError = new DOMException('cancelled', 'AbortError');
+    const fn = vi.fn(async () => {
+      controller.abort(abortError);
+      throw abortError;
+    });
+    const startedAt = performance.now();
+
+    await expect(
+      runWithRequestSignal(controller.signal, () =>
+        withRetry(fn, { baseDelayMs: 1000 }),
+      ),
+    ).rejects.toBe(abortError);
+
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(performance.now() - startedAt).toBeLessThan(50);
+  });
+
+  it('ends backoff promptly when the request is aborted', async () => {
+    const controller = new AbortController();
+    const abortError = new DOMException('cancelled', 'AbortError');
+    const fn = vi.fn(() => Promise.resolve(fakeResponse(503)));
+    const startedAt = performance.now();
+    const result = runWithRequestSignal(controller.signal, () =>
+      withRetry(fn, { baseDelayMs: 10_000 }),
+    );
+
+    await vi.waitFor(() => expect(fn).toHaveBeenCalledTimes(1));
+    controller.abort(abortError);
+
+    await expect(result).rejects.toBe(abortError);
+    expect(fn).toHaveBeenCalledTimes(1);
+    expect(performance.now() - startedAt).toBeLessThan(500);
   });
 });

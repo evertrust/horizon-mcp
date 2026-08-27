@@ -16,7 +16,7 @@
  *   - horizon://knowledge/discovery (concepts, data structures, search patterns)
  *   - horizon://knowledge/discovery-workflows (CLI commands for all scan types)
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
@@ -28,6 +28,94 @@ import { registerTool } from './register.js';
 // ---------------------------------------------------------------------------
 
 const FEED_BASE = '/api/v1/discovery/feed';
+
+const START_DISCOVERY_FEED_SESSION_CONFIG = {
+  description:
+    'Start a discovery feed session for a campaign.\n\n' +
+    "Store the returned 'id' field - you will need it to end the session. " +
+    'If you lose this value, use list_discovery_campaigns to check campaign ' +
+    'status, or use Horizon UI to clean up.',
+  inputSchema: z.object({
+    campaign_name: z
+      .string()
+      .describe('Name of the discovery campaign to feed into.'),
+  }),
+};
+
+const FEED_DISCOVERY_CERTIFICATE_CONFIG = {
+  description:
+    'Feed a discovered certificate into an active feed session.\n\n' +
+    'The hostDiscoveryData describes where the certificate was found. ' +
+    'See horizon://knowledge/discovery for field details.',
+  inputSchema: z.object({
+    session_id: z
+      .string()
+      .describe('Session ID obtained from start_discovery_feed_session.'),
+    campaign_name: z
+      .string()
+      .describe('Name of the discovery campaign (must match the session).'),
+    certificate: z.string().describe('PEM-encoded certificate string.'),
+    ip: z
+      .string()
+      .describe('IP address of the host where the certificate was discovered.'),
+    hostnames: z
+      .array(z.string())
+      .optional()
+      .describe('DNS hostnames of the host (e.g. ["web01.example.com"]).'),
+    tls_ports: z
+      .array(
+        z
+          .object({
+            port: z.number().int(),
+            version: z.string().optional(),
+          })
+          .passthrough(),
+      )
+      .optional()
+      .describe(
+        'TLS ports serving the cert (e.g. [{"port": 443, "version": "TLSv1.3"}]).',
+      ),
+    sources: z
+      .array(z.string())
+      .optional()
+      .describe('Discovery source identifiers (e.g. ["netscan"]).'),
+    paths: z
+      .array(z.string())
+      .optional()
+      .describe('File paths where cert was found (localscan only).'),
+    usages: z
+      .array(z.string())
+      .optional()
+      .describe('Service bindings (localscan only).'),
+    operating_systems: z
+      .array(z.string())
+      .optional()
+      .describe('OS detected on the host (localscan only).'),
+  }),
+};
+
+const REGISTER_DISCOVERY_EVENT_CONFIG = {
+  description:
+    'Register an arbitrary discovery event in an active feed session.\n\n',
+  inputSchema: z.object({
+    session_id: z
+      .string()
+      .describe('Session ID obtained from start_discovery_feed_session.'),
+    data: z
+      .record(z.string(), z.unknown())
+      .describe('Event data object - contents depend on the event type.'),
+  }),
+};
+
+const END_DISCOVERY_FEED_SESSION_CONFIG = {
+  description: 'End a discovery feed session.\n\n',
+  inputSchema: z.object({
+    campaign_name: z.string().describe('Name of the discovery campaign.'),
+    session_id: z
+      .string()
+      .describe('Session ID obtained from start_discovery_feed_session.'),
+  }),
+};
 
 // ---------------------------------------------------------------------------
 // Registration
@@ -44,18 +132,7 @@ export function registerDiscoveryFeedTools(
   registerTool(
     server,
     'start_discovery_feed_session',
-    {
-      description:
-        'Start a discovery feed session for a campaign.\n\n' +
-        "Store the returned 'id' field - you will need it to end the session. " +
-        'If you lose this value, use list_discovery_campaigns to check campaign ' +
-        'status, or use Horizon UI to clean up.',
-      inputSchema: z.object({
-        campaign_name: z
-          .string()
-          .describe('Name of the discovery campaign to feed into.'),
-      }),
-    },
+    START_DISCOVERY_FEED_SESSION_CONFIG,
     async ({ campaign_name }) => {
       const result = await client.get<Record<string, unknown>>(
         `${FEED_BASE}/${encodePathSegment(campaign_name)}`,
@@ -85,59 +162,7 @@ export function registerDiscoveryFeedTools(
   registerTool(
     server,
     'feed_discovery_certificate',
-    {
-      description:
-        'Feed a discovered certificate into an active feed session.\n\n' +
-        'The hostDiscoveryData describes where the certificate was found. ' +
-        'See horizon://knowledge/discovery for field details.',
-      inputSchema: z.object({
-        session_id: z
-          .string()
-          .describe('Session ID obtained from start_discovery_feed_session.'),
-        campaign_name: z
-          .string()
-          .describe('Name of the discovery campaign (must match the session).'),
-        certificate: z.string().describe('PEM-encoded certificate string.'),
-        ip: z
-          .string()
-          .describe(
-            'IP address of the host where the certificate was discovered.',
-          ),
-        hostnames: z
-          .array(z.string())
-          .optional()
-          .describe('DNS hostnames of the host (e.g. ["web01.example.com"]).'),
-        tls_ports: z
-          .array(
-            z
-              .object({
-                port: z.number().int(),
-                version: z.string().optional(),
-              })
-              .passthrough(),
-          )
-          .optional()
-          .describe(
-            'TLS ports serving the cert (e.g. [{"port": 443, "version": "TLSv1.3"}]).',
-          ),
-        sources: z
-          .array(z.string())
-          .optional()
-          .describe('Discovery source identifiers (e.g. ["netscan"]).'),
-        paths: z
-          .array(z.string())
-          .optional()
-          .describe('File paths where cert was found (localscan only).'),
-        usages: z
-          .array(z.string())
-          .optional()
-          .describe('Service bindings (localscan only).'),
-        operating_systems: z
-          .array(z.string())
-          .optional()
-          .describe('OS detected on the host (localscan only).'),
-      }),
-    },
+    FEED_DISCOVERY_CERTIFICATE_CONFIG,
     async ({
       session_id,
       campaign_name,
@@ -190,18 +215,7 @@ export function registerDiscoveryFeedTools(
   registerTool(
     server,
     'register_discovery_event',
-    {
-      description:
-        'Register an arbitrary discovery event in an active feed session.\n\n',
-      inputSchema: z.object({
-        session_id: z
-          .string()
-          .describe('Session ID obtained from start_discovery_feed_session.'),
-        data: z
-          .record(z.string(), z.unknown())
-          .describe('Event data object - contents depend on the event type.'),
-      }),
-    },
+    REGISTER_DISCOVERY_EVENT_CONFIG,
     async ({ session_id, data }) => {
       const payload: Record<string, unknown> = {
         sessionId: session_id,
@@ -232,15 +246,7 @@ export function registerDiscoveryFeedTools(
   registerTool(
     server,
     'end_discovery_feed_session',
-    {
-      description: 'End a discovery feed session.\n\n',
-      inputSchema: z.object({
-        campaign_name: z.string().describe('Name of the discovery campaign.'),
-        session_id: z
-          .string()
-          .describe('Session ID obtained from start_discovery_feed_session.'),
-      }),
-    },
+    END_DISCOVERY_FEED_SESSION_CONFIG,
     async ({ campaign_name, session_id }) => {
       await client.delete(
         `${FEED_BASE}/${encodePathSegment(campaign_name)}/${encodePathSegment(session_id)}`,
