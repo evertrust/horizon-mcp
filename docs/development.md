@@ -23,11 +23,14 @@ Use product names, protocol names, configuration names, and HTTP header names as
 
 ## CI gates
 
-Every PR runs the checks below (plus commitlint on the commit range - one-liner
-`type: description` messages, header under 100 chars). The hosted docs-inventory
-step is informational because docs.evertrust.fr publishes independently; all
-other listed CI steps are blocking. Run the stricter full sequence locally
-before pushing:
+Every PR runs the checks in the table below. Every PR also runs commitlint on
+the commit range. Each commit message must be a one-liner in the
+`type: description` form. The header must stay under 100 characters.
+
+The hosted docs-inventory step is informational, because docs.evertrust.fr
+publishes independently. Every other CI step in the table blocks the PR.
+
+Run the stricter full sequence on your machine before you push:
 
 ```bash
 bun run validate:ci
@@ -50,11 +53,12 @@ bun run validate:ci
 bun run test
 ```
 
-Runs [vitest](https://vitest.dev/) on the full test suite (excluding E2E and LLM evaluation tests).
+This command runs [vitest](https://vitest.dev/) on the full test suite. It
+excludes the E2E tests and the LLM evaluation tests.
 
 ## E2E tests
 
-Run against a live Horizon instance:
+Run the E2E tests against a live Horizon instance:
 
 ```bash
 export HORIZON_E2E_URL=https://your-qa-instance.evertrust.io
@@ -67,9 +71,9 @@ export HORIZON_E2E_SVA_TOKEN=your-service-account-jwt
 bun run test:e2e
 ```
 
-The service-account suite prints a skip notice when either service-account
-variable is unset. Ask the QA operator to provision both values before running
-that suite.
+If either service-account variable is unset, the service-account suite prints a
+skip notice. Ask the QA operator to supply both values before you run that
+suite.
 
 ## Linting and type checking
 
