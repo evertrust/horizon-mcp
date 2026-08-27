@@ -10,7 +10,7 @@ The server lets a supported LLM client operate Horizon. Supported clients includ
 
 You can issue, renew, and revoke certificates. You can also search Horizon data, manage discovery, decode cryptographic data, and read the product documentation.
 
-The server is for PKI engineers, platform teams, and security operators. They operate Horizon from an integrated development environment or a chat client.
+The server is for PKI engineers, platform teams, and security operators. They can operate Horizon from an integrated development environment or a chat client.
 
 ## Why knowledge-first?
 
@@ -24,7 +24,7 @@ The server does not preload the resources. The server cannot guarantee that a cl
 
 - **222 tools across 12 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 111 registered topic URIs: 18 core guides, 4 curated playbooks, and 89 generated section resources.
-- **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. The whitelist can turn on more than one method.
+- **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. The allowlist can turn on more than one method.
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
 - **Crypto decoding**: Parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses.
@@ -82,7 +82,7 @@ Download the prebuilt binary for your platform from the [releases page](https://
 - `horizon-mcp-linux-arm64`
 - `horizon-mcp-windows-x64.exe`
 
-Make it executable and run it:
+Make the binary executable. Then run the binary:
 
 ```bash
 chmod +x horizon-mcp-darwin-arm64
@@ -101,12 +101,12 @@ node dist/index.js
 
 ## Configuration
 
-Configure the server with the `HORIZON_*` environment variables. Copy [.env.example](.env.example) to `.env.local`, then change the values you need.
+Configure the server with the `HORIZON_*` environment variables. Copy [.env.example](.env.example) to `.env.local`. Change the values for your environment.
 
 The server needs exactly one complete stdio authentication method. The API key,
 service-account, PEM mTLS, and PFX mTLS credentials are mutually exclusive.
 
-If you configure no credential, the server does not start.
+If you do not configure a credential, the server does not start.
 
 ### Connection and authentication
 
@@ -151,7 +151,7 @@ These variables apply only when `HORIZON_TRANSPORT=http`. In stdio mode the serv
 | `HORIZON_PUBLIC_URL`                | (unset)     | Public origin or base URL that clients use to reach the server. The endpoint is `new URL(HORIZON_HTTP_PATH, HORIZON_PUBLIC_URL)`.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `HORIZON_TRUSTED_HOSTS`             | derived     | Comma list of allowed `Host` values. The server derives it from `HORIZON_PUBLIC_URL` or, on a loopback bind, from the loopback hosts. If you bind to a non-loopback address and set neither `HORIZON_PUBLIC_URL` nor `HORIZON_TRUSTED_HOSTS`, the server does not start.                                                                                                                                                                                                                                                                                                                      |
 | `HORIZON_TRUSTED_ORIGINS`           | (unset)     | Comma list of allowed CORS origins. If you leave it unset, the server rejects every request that carries an `Origin` header. Non-browser MCP clients send none.                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| `HORIZON_HTTP_AUTH_METHODS`         | `api-key`   | Comma- or pipe-separated whitelist of `api-key`, `mtls`, and `service`. You can turn on more than one method.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `HORIZON_HTTP_AUTH_METHODS`         | `api-key`   | Comma- or pipe-separated allowlist of `api-key`, `mtls`, and `service`. You can turn on more than one method.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | `HORIZON_MAX_CONCURRENT_REQUESTS`   | `32`        | Maximum non-listen requests served at once across all callers (valid range `1` to `256`). This setting bounds the memory that non-listen requests use.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `HORIZON_MAX_INFLIGHT_TOOLCALLS`    | `8`         | Maximum non-listen requests served at once for a single caller. One busy client cannot consume the whole budget above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `HORIZON_MAX_LISTEN_STREAMS_GLOBAL` | `8`         | Maximum listen streams across all callers (valid range `1` to `64`). Listen streams use this dedicated pair. They do not consume the request or tool-call concurrency budgets.                                                                                                                                                                                                                                                                                                                                                                                                                |
@@ -165,7 +165,7 @@ These variables apply only when `HORIZON_TRANSPORT=http`. In stdio mode the serv
 | `HORIZON_RATE_LIMIT_RPS`            | `20`        | Per-caller limit, counted per JSON-RPC message per second. Set `0` to disable it.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `HORIZON_IP_RATE_LIMIT`             | `600`       | Coarse per-IP request cap per second. The cap is a defense-in-depth backstop in front of the per-caller limits. Set `0` to disable it.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
-Version 3.0.0 removed the singular `HORIZON_HTTP_AUTH_MODE` setting. Use the plural `HORIZON_HTTP_AUTH_METHODS` whitelist instead.
+Version 3.0.0 removed the singular `HORIZON_HTTP_AUTH_MODE` setting. Use the plural `HORIZON_HTTP_AUTH_METHODS` allowlist instead.
 
 #### Removed in 3.0.0
 
@@ -247,7 +247,7 @@ HORIZON_HTTP_AUTH_METHODS=api-key,service
 HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
 ```
 
-Then build, run, and probe it:
+Run these commands in order:
 
 ```bash
 docker build -t horizon-mcp .
@@ -260,7 +260,7 @@ curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
 ```
 
-The image defaults to HTTP on `0.0.0.0:8080`. For remote hosting, terminate TLS at a trusted edge and set `HORIZON_PUBLIC_URL=https://mcp.example.com`. Every caller must present one whitelisted credential. See [docs/installation.md](docs/installation.md) for the container checklist and [docs/client-setup.md](docs/client-setup.md) for remote clients.
+The image defaults to HTTP on `0.0.0.0:8080`. For remote hosting, terminate TLS at a trusted edge and set `HORIZON_PUBLIC_URL=https://mcp.example.com`. Every caller must present a credential from the allowlist. See [docs/installation.md](docs/installation.md) for the container checklist and [docs/client-setup.md](docs/client-setup.md) for remote clients.
 
 ## MCP client setup
 
@@ -556,7 +556,7 @@ The [tool reference](docs/tools-reference.md) gives the complete list. These lim
 
 ## Contributing
 
-Before you open a pull request, run `bun run validate:ci`. The command runs every local check.
+Before you open a pull request, run `bun run validate:ci`. The command runs all required local checks.
 
 If you have QA credentials, load `.env.local` first. QA credentials give more test coverage.
 
@@ -565,15 +565,15 @@ Use one-line conventional commit messages with the `type: description` format.
 ## Safety and trust caveats
 
 > [!CAUTION]
-> **Experimental software** - This MCP server is experimental. For now, use it for exploratory purposes only.
+> **Experimental software** - This MCP server is experimental. For now, we recommend that you use this MCP server for exploratory purposes only.
 >
 > **Permissions** - Horizon enforces RBAC for the configured identity or the caller identity. The server can restrict the available operations further.
-> Those restrictions cannot make an identity with excessive privileges safe. Use an identity with minimum privileges, and use the client approval controls.
+> Those restrictions cannot make an identity with excessive privileges safe. Use an identity with minimum privileges. Use the client approval controls.
 >
 > **No approval prompt guarantee** - Most tools that change data run as soon as the client calls them. The MCP client controls the approval prompts.
 > Only the delete and flush tools need explicit confirmation parameters.
 >
-> **AI-generated output** - All output is AI-generated. Validate it manually before you rely on it.
+> **AI-generated output** - All output is AI-generated. We recommend manual validation before you rely on any output.
 >
 > **Third-party AI providers** - The AI provider's terms of service and privacy policy apply to AI agents.
 > The MCP server and Evertrust do not control those terms or policies.
@@ -595,4 +595,4 @@ Copyright 2025-2026 [Evertrust](https://www.evertrust.fr/). Licensed under the [
 
 ## Acknowledgements
 
-Evertrust developed this project with help from [Anthropic's Claude](https://www.anthropic.com/claude) and [OpenAI's Codex](https://chatgpt.com/codex).
+This project was developed with help from [Anthropic's Claude](https://www.anthropic.com/claude) and [OpenAI's Codex](https://chatgpt.com/codex).
