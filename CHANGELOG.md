@@ -1,3 +1,13 @@
+## [3.0.0](https://github.com/evertrust/horizon-mcp/compare/v2.0.0...v3.0.0) (2026-08-27)
+
+### ⚠ BREAKING CHANGES
+
+* Horizon MCP 3.0.0 (MCP 2026-07-28, Horizon 2.10 coverage, service-account auth) (#20)
+
+### Features
+
+* Horizon MCP 3.0.0 (MCP 2026-07-28, Horizon 2.10 coverage, service-account auth) ([#20](https://github.com/evertrust/horizon-mcp/issues/20)) ([5d97fbd](https://github.com/evertrust/horizon-mcp/commit/5d97fbd286eb152fc5d1a29a438b0fac2bc141d1))
+
 ## [2.0.0](https://github.com/evertrust/horizon-mcp/compare/v1.2.0...v2.0.0) (2026-07-03)
 
 ### ⚠ BREAKING CHANGES
