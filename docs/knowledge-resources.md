@@ -6,9 +6,9 @@ The server exposes 111 registered knowledge resources at `horizon://knowledge/*`
 - 4 curated playbooks for smaller-model usability and integration recipes
 - 89 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
 
-A host can read these resources to ground its tool choice and its payload construction. The server does not guarantee that every host preloads them before it calls a tool.
+MCP clients can read these resources to ground their tool choice and their payload construction. The server does not guarantee that every MCP client preloads them before it calls a tool.
 
-If a host has weak MCP resource support, or none, it can read the same content through the `read_knowledge` tool in the `docs` toolset:
+Some MCP clients have weak MCP resource support or none. Those clients can read the same content through the `read_knowledge` tool in the `docs` toolset:
 
 - Pass a `topic` slug, for example `query-languages`.
 - Pass a `section` when you need one part of a guide.

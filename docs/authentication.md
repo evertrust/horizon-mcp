@@ -198,11 +198,11 @@ The error does not contain the response body of the token endpoint. Tool calls
 report that the server did not mint the token. The request path retries after
 the 30-second cooldown.
 
-> Note: A host built on MCP SDK 2.0 starts a stdio server two times for each
+> Note: An MCP client built on MCP SDK 2.0 starts a stdio server twice per
 > connection. A short-lived sibling process answers the connect-time
-> `server/discover` probe, and the session process starts after it. The startup
-> mint runs two times for each launch. The sibling exits right after the probe,
-> so this is harmless, but identity-provider logs show two token requests.
+> `server/discover` probe. The session process starts next. The startup mint
+> therefore runs twice per launch. The sibling exits immediately after the
+> probe, so this is harmless. Identity-provider logs show two token requests.
 
 The startup mint does not change HTTP mode. Every HTTP service-account request
 must send both `X-API-SVA` and `X-API-TOKEN`. This is also true when the request
@@ -341,8 +341,8 @@ that Horizon records do not carry over across renewals. Grant the permissions
 through the roles of the service account. Use team-based ownership for anything
 that must survive a rotation.
 
-The issuer check of the server on renewal only prevents a renewed token from a
-different issuer. It does not preserve the identity.
+During renewal, the server checks the issuer only to block a renewed token from
+a different issuer. This check does not preserve identity.
 
 If stdio omits the renewal tuple, or if an HTTP caller omits the OAuth headers,
 the server forwards the JWT but cannot renew it.
@@ -385,7 +385,7 @@ The server does not use `X-Forwarded-For` for this check.
 
 ### Readiness
 
-`/readyz` reports the process readiness only. In HTTP mode, the server holds no
+`/readyz` reports process readiness only. In HTTP mode, the server has no
 Horizon credential of its own, so it cannot probe Horizon for an operator.
 
 ## MCP OAuth authorization is not supported
@@ -393,15 +393,15 @@ Horizon credential of its own, so it cannot probe Horizon for an operator.
 The MCP specification defines an optional OAuth flow. In that flow, the client
 gets a token for the MCP server itself and sends it in an
 `Authorization: Bearer` header. This server does not implement the flow. The
-server rejects
-`Authorization`, `Proxy-Authorization` and `Cookie` with a 400, and the error
-names `HORIZON_HTTP_AUTH_METHODS` so the cause is clear.
+server rejects `Authorization`, `Proxy-Authorization` and `Cookie` with a 400,
+and the error names `HORIZON_HTTP_AUTH_METHODS` so the cause is clear.
 
 Use one of the Horizon-native methods above instead. They give you a per-user
 identity in Horizon. Ownership, team membership and the audit trail depend on
 that identity.
 
-If your host only speaks MCP OAuth, it cannot use this server over HTTP today.
+If your MCP client only speaks MCP OAuth, it cannot use this server over HTTP
+today.
 [ADR 0001](adr/0001-mcp-authorization.md) records the reasoning and the changes
 that Horizon needs first.
 

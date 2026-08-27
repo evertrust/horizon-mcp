@@ -71,7 +71,7 @@ HORIZON_HTTP_AUTH_METHODS=api-key,service
 HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
 ```
 
-Build the image and bind the published port to loopback:
+Run these commands to build the image and bind the published port to loopback:
 
 ```bash
 docker build -t horizon-mcp .
@@ -88,7 +88,9 @@ curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
 ```
 
-The server validates the `Host` header of both probes. Readiness means that the listener can accept requests. Horizon validates the credentials of a caller on the first request, and again when the cached result expires.
+The server validates the `Host` header of both probes. Readiness means that the listener can accept requests.
+
+Horizon validates the credentials of a caller on the first request, and again when the cached result expires.
 
 For remote hosting, complete these steps:
 
