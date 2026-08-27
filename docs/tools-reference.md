@@ -1,80 +1,82 @@
 # Tool reference
 
-222 tools across 12 domains (incl. 129 Configuration CRUD tools). Safety tiers:
+The server has 222 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
 
-- **read-only** - no side effects
-- **mutating-safe** - creates or modifies data without being classified as destructive; it may still be non-idempotent and must not be retried blindly
-- **mutating-destructive** - deletes data, removes access, or changes active behavior; inspect the arguments and use client-side approval controls
+- **read-only** - the tool has no side effects.
+- **mutating-safe** - the tool creates or changes data, but it is not destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
+- **mutating-destructive** - the tool deletes data, removes access, or changes active behavior. Read the arguments before you call it, and set approval controls in the MCP client.
 
 ## Delete safety
 
-All `delete_*` and `flush_*` tools require an `expected_name` or object-specific `expected_<identifier>` parameter that must exactly match the target. This is an explicit safety echo, not an interactive prompt. Other destructive tools do not universally carry an echo and execute when called, so configure approval policy in the MCP client as well.
+Every `delete_*` and `flush_*` tool needs an `expected_name` parameter, or an object-specific `expected_<identifier>` parameter. The value must match the target exactly. This echo is a safety check inside the tool, not an interactive prompt.
+
+Other destructive tools do not all carry an echo, and they run as soon as the MCP client calls them. Set an approval policy in the MCP client for those tools too.
 
 ---
 
 ## Assist (21 tools)
 
-| Tool                        | Safety    | Description                                                                                                                          |
-| --------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `whoami`                    | read-only | Current principal identity and permissions                                                                                           |
-| `get_license_info`          | read-only | Horizon license details, quotas, feature flags                                                                                       |
-| `explain_grading_policy`    | read-only | Explain policy; optionally explain a certificate against it                                                                          |
-| `explain_grading_ruleset`   | read-only | Explain ruleset; optionally explain a certificate against it                                                                         |
-| `validate_hql`              | read-only | Validate any Horizon search query by dialect (hcql/hrql/heql/hdql); canonical tool, the four validate_h\*ql entries are thin aliases |
-| `validate_hcql`             | read-only | Validate a certificate search query                                                                                                  |
-| `validate_hrql`             | read-only | Validate a request search query                                                                                                      |
-| `validate_heql`             | read-only | Validate an event search query                                                                                                       |
-| `validate_hdql`             | read-only | Validate a discovery event search query                                                                                              |
-| `describe_query_fields`     | read-only | List available fields and syntax for a query language                                                                                |
-| `translate_to_hql`          | read-only | Translate natural language to an HQL query expression                                                                                |
-| `decode_x509`               | read-only | Decode a PEM X.509 certificate                                                                                                       |
-| `decode_csr`                | read-only | Decode a PEM PKCS#10 CSR                                                                                                             |
-| `detect_file`               | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA)                                                        |
-| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server                                                                                       |
-| `decode_crl`                | read-only | Decode a PEM/DER CRL                                                                                                                 |
-| `decode_ocsp`               | read-only | Decode an OCSP response (RFC 6960)                                                                                                   |
-| `decode_tsa`                | read-only | Decode a timestamping response (RFC 3161)                                                                                            |
-| `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary                                                                                |
-| `simulate_datasource_flow`  | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads                                                   |
-| `convert_pkcs12_to_jks`     | read-only | Convert PKCS#12 to JKS keystore                                                                                                      |
+| Tool                        | Safety    | Description                                                                                                                    |
+| --------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `whoami`                    | read-only | Current principal identity and permissions                                                                                     |
+| `get_license_info`          | read-only | Horizon license details, quotas, feature flags                                                                                 |
+| `explain_grading_policy`    | read-only | Explain policy; optionally explain a certificate against it                                                                    |
+| `explain_grading_ruleset`   | read-only | Explain ruleset; optionally explain a certificate against it                                                                   |
+| `validate_hql`              | read-only | Validate any Horizon search query by dialect (hcql, hrql, heql, hdql). The four `validate_h*ql` tools are aliases of this one. |
+| `validate_hcql`             | read-only | Validate a certificate search query                                                                                            |
+| `validate_hrql`             | read-only | Validate a request search query                                                                                                |
+| `validate_heql`             | read-only | Validate an event search query                                                                                                 |
+| `validate_hdql`             | read-only | Validate a discovery event search query                                                                                        |
+| `describe_query_fields`     | read-only | List available fields and syntax for a query language                                                                          |
+| `translate_to_hql`          | read-only | Translate natural language to an HQL query expression                                                                          |
+| `decode_x509`               | read-only | Decode a PEM X.509 certificate                                                                                                 |
+| `decode_csr`                | read-only | Decode a PEM PKCS#10 CSR                                                                                                       |
+| `detect_file`               | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA)                                                  |
+| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server                                                                                 |
+| `decode_crl`                | read-only | Decode a PEM/DER CRL                                                                                                           |
+| `decode_ocsp`               | read-only | Decode an OCSP response (RFC 6960)                                                                                             |
+| `decode_tsa`                | read-only | Decode a timestamping response (RFC 3161)                                                                                      |
+| `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary                                                                          |
+| `simulate_datasource_flow`  | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads                                             |
+| `convert_pkcs12_to_jks`     | read-only | Convert PKCS#12 to JKS keystore                                                                                                |
 
 ## Docs (4 tools)
 
-| Tool              | Safety    | Description                                                                                             |
-| ----------------- | --------- | ------------------------------------------------------------------------------------------------------- |
-| `search_docs`     | read-only | Search official product documentation; use this first, then `get_doc_page`                              |
-| `search_api_docs` | read-only | Search official Horizon API reference pages; use this first, then `get_doc_page`                        |
-| `get_doc_page`    | read-only | Fetch the indexed content for a page returned by a docs-search tool (windowed via `max_chars`/`offset`) |
-| `read_knowledge`  | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support      |
+| Tool              | Safety    | Description                                                                                                               |
+| ----------------- | --------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `search_docs`     | read-only | Search official product documentation; use this first, then `get_doc_page`                                                |
+| `search_api_docs` | read-only | Search official Horizon API reference pages; use this first, then `get_doc_page`                                          |
+| `get_doc_page`    | read-only | Fetch the indexed content of a page that a docs search tool returned. Use `max_chars` and `offset` to read it in windows. |
+| `read_knowledge`  | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support                        |
 
 ## Lifecycle (24 tools)
 
-| Tool                         | Safety               | Description                                                                                                                                 |
-| ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `search_certificates`        | read-only            | Search via HCQL with presets and pagination                                                                                                 |
-| `export_certificates_csv`    | read-only            | Export certificates to CSV (max 1000 rows)                                                                                                  |
-| `get_certificate`            | read-only            | Get full certificate details by ID                                                                                                          |
-| `download_certificate`       | read-only            | Download PEM certificate content; use `get_request` on the enrollment request for PKCS#12 retrieval                                         |
-| `aggregate_certificates`     | read-only            | Aggregate certificate counts by field                                                                                                       |
-| `set_certificate_auto_renew` | mutating-safe        | Set WebRA automatic renewal for one certificate when its profile allows edits                                                               |
-| `search_requests`            | read-only            | Search requests via HRQL                                                                                                                    |
-| `export_requests_csv`        | read-only            | Export requests to CSV                                                                                                                      |
-| `get_request`                | read-only            | Get request details by ID                                                                                                                   |
-| `aggregate_requests`         | read-only            | Aggregate request counts by field                                                                                                           |
-| `search_events`              | read-only            | Search audit events via HEQL                                                                                                                |
-| `get_event`                  | read-only            | Get audit event details by ID                                                                                                               |
-| `export_events_csv`          | read-only            | Export audit events to a compact CSV via paged search (max 1000 rows, default core columns + optional `detail.*` fields)                    |
-| `get_request_template`       | read-only            | Get request template for a workflow                                                                                                         |
-| `submit_request`             | mutating-destructive | Submit a lifecycle request (enroll, renew, revoke, ...); classified destructive because it can revoke or otherwise change certificate state |
-| `approve_request`            | mutating-safe        | Approve a pending request                                                                                                                   |
-| `deny_request`               | mutating-destructive | Deny a pending request                                                                                                                      |
-| `cancel_request`             | mutating-destructive | Cancel a pending request                                                                                                                    |
-| `list_dcv_policy_status`     | read-only            | List DCV policy lifecycle status                                                                                                            |
-| `get_dcv_policy_status`      | read-only            | Get full DCV policy and domain status                                                                                                       |
-| `run_dcv_policy`             | mutating-safe        | Start DCV for every eligible policy domain                                                                                                  |
-| `run_dcv_domain`             | mutating-safe        | Start DCV for one policy domain                                                                                                             |
-| `cancel_dcv_run`             | mutating-destructive | Cancel the whole active DCV policy run                                                                                                      |
-| `list_dcv_events`            | read-only            | List policy or domain DCV lifecycle events                                                                                                  |
+| Tool                         | Safety               | Description                                                                                                                              |
+| ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `search_certificates`        | read-only            | Search via HCQL with presets and pagination                                                                                              |
+| `export_certificates_csv`    | read-only            | Export certificates to CSV (max 1000 rows)                                                                                               |
+| `get_certificate`            | read-only            | Get full certificate details by ID                                                                                                       |
+| `download_certificate`       | read-only            | Download the PEM certificate content. To get a PKCS#12, call `get_request` on the enrollment request.                                    |
+| `aggregate_certificates`     | read-only            | Aggregate certificate counts by field                                                                                                    |
+| `set_certificate_auto_renew` | mutating-safe        | Set WebRA automatic renewal for one certificate when its profile allows edits                                                            |
+| `search_requests`            | read-only            | Search requests via HRQL                                                                                                                 |
+| `export_requests_csv`        | read-only            | Export requests to CSV                                                                                                                   |
+| `get_request`                | read-only            | Get request details by ID                                                                                                                |
+| `aggregate_requests`         | read-only            | Aggregate request counts by field                                                                                                        |
+| `search_events`              | read-only            | Search audit events via HEQL                                                                                                             |
+| `get_event`                  | read-only            | Get audit event details by ID                                                                                                            |
+| `export_events_csv`          | read-only            | Export audit events to a compact CSV with a paged search (max 1000 rows, core columns by default, optional `detail.*` fields)            |
+| `get_request_template`       | read-only            | Get request template for a workflow                                                                                                      |
+| `submit_request`             | mutating-destructive | Submit a lifecycle request (enroll, renew, revoke and so on). It is destructive because it can revoke a certificate or change its state. |
+| `approve_request`            | mutating-safe        | Approve a pending request                                                                                                                |
+| `deny_request`               | mutating-destructive | Deny a pending request                                                                                                                   |
+| `cancel_request`             | mutating-destructive | Cancel a pending request                                                                                                                 |
+| `list_dcv_policy_status`     | read-only            | List DCV policy lifecycle status                                                                                                         |
+| `get_dcv_policy_status`      | read-only            | Get full DCV policy and domain status                                                                                                    |
+| `run_dcv_policy`             | mutating-safe        | Start DCV for every eligible policy domain                                                                                               |
+| `run_dcv_domain`             | mutating-safe        | Start DCV for one policy domain                                                                                                          |
+| `cancel_dcv_run`             | mutating-destructive | Cancel the whole active DCV policy run                                                                                                   |
+| `list_dcv_events`            | read-only            | List policy or domain DCV lifecycle events                                                                                               |
 
 ## Dashboards (12 tools)
 
@@ -104,7 +106,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 | `delete_discovery_campaign` | mutating-destructive | Delete a campaign (requires name confirmation)            |
 | `flush_discovery_campaign`  | mutating-destructive | Purge all events from a campaign (requires confirmation)  |
 
-## Discovery Events (3 tools)
+## Discovery events (3 tools)
 
 | Tool                          | Safety    | Description                      |
 | ----------------------------- | --------- | -------------------------------- |
@@ -112,7 +114,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 | `get_discovery_event`         | read-only | Get a discovery event by ID      |
 | `export_discovery_events_csv` | read-only | Export discovery events to CSV   |
 
-## Discovery Feed (4 tools)
+## Discovery feed (4 tools)
 
 | Tool                           | Safety        | Description                                                             |
 | ------------------------------ | ------------- | ----------------------------------------------------------------------- |
@@ -149,7 +151,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 | `delete_datasource`      | mutating-destructive | Delete a datasource (requires name confirmation)       |
 | `test_datasource`        | read-only            | Test a datasource config against a context dictionary  |
 
-## Triggers & Credentials (6 tools)
+## Triggers and credentials (6 tools)
 
 | Tool                       | Safety               | Description                                                       |
 | -------------------------- | -------------------- | ----------------------------------------------------------------- |
@@ -164,15 +166,20 @@ All `delete_*` and `flush_*` tools require an `expected_name` or object-specific
 
 ## Configuration (129 tools)
 
-Source-grounded CRUD over Horizon configuration objects (see `docs/audit/` for
-the per-object contracts). Every family has read tools (`list_*`, `get_*`);
-mutating families add `create_*`/`update_*`/`delete_*`. Mandatory fields are
-required parameters; `delete_*` needs an `expected_<id>` echo; update is
-GET-strip-merge-PUT: stored fields not mentioned in the call are preserved by the
-merge, and `clear_fields` resets a field. Polymorphic objects add
-a `describe_<obj>_schema` read tool that must be called before create/update.
+These tools do CRUD on Horizon configuration objects. The contracts come from
+the Horizon source. For the contract of one object, see `docs/audit/`.
 
-### Configuration: Certificate & PKI (31 tools)
+Every object family has the read tools `list_*` and `get_*`. A family that
+supports mutation adds `create_*`, `update_*` and `delete_*`. Mandatory Horizon
+fields become required parameters, and every `delete_*` tool needs an
+`expected_<id>` echo.
+
+An update follows the GET-strip-merge-PUT pattern: the merge keeps every stored
+field that the call does not mention, and `clear_fields` resets a field. A
+polymorphic object adds a `describe_<obj>_schema` read tool. Call that tool
+before you create or update the object.
+
+### Configuration: certificate and PKI (31 tools)
 
 | Object                                      | Tools                                                                                     | Safety                   |
 | ------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------ |
@@ -192,7 +199,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | Teams             | `list/get/create/update/delete_team`, `list/add/remove_team_members`, `switch_team` | read-only + mutating (`switch_team` destructive) |
 | Password policies | `list/get/create/update/delete_password_policy`                                     | read-only + mutating                             |
 
-### Configuration: Automation & integrations (29 tools)
+### Configuration: automation and integrations (29 tools)
 
 | Object                                | Tools                                                                                       | Safety                                                          |
 | ------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -203,7 +210,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | WCCE forest mappings                  | `list/get/create/update/delete_wcce_forest`                                                 | read-only + mutating                                            |
 | Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger`                                 | read-only + mutating (list/get/delete in Triggers domain above) |
 
-### Configuration: System & operations (25 tools)
+### Configuration: system and operations (25 tools)
 
 | Object                                        | Tools                                                                                            | Safety                                  |
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------- |
@@ -215,8 +222,8 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 
 ### Configuration: DCV automation (15 tools, Horizon 2.10)
 
-Domain Control Validation automation: a DCV policy binds a provider + provisioner
-and renews domain validation on a schedule.
+DCV is Domain Control Validation. A DCV policy binds a provider and a
+provisioner, then renews the domain validation on a schedule.
 
 | Object                                                              | Tools                                           | Safety                                          |
 | ------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
@@ -224,10 +231,11 @@ and renews domain validation on a schedule.
 | DCV providers (digicert/gs_mssl)                                    | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
 
-### Configuration: Identity & access (7 tools)
+### Configuration: identity and access (7 tools)
 
-Identity providers remain read-only. Service accounts support CRUD for callers
-with `access-management:service-account:*`; list and get support audit access.
+The identity provider tools are read-only. The service account tools do full
+CRUD for a caller that has `access-management:service-account:*`. The `list` and
+`get` service account tools also work with audit access.
 
 | Object                                         | Tools                                             | Safety                     |
 | ---------------------------------------------- | ------------------------------------------------- | -------------------------- |
@@ -236,9 +244,9 @@ with `access-management:service-account:*`; list and get support audit access.
 
 ### Complete configuration tool index
 
-The family tables above explain object coverage and subtype behavior. This table
-enumerates every configuration tool individually; its safety values mirror the
-annotations returned by MCP `tools/list`.
+The family tables above show which objects the tools cover and how the subtypes
+behave. The table below lists every configuration tool one by one. The safety
+values in the table match the annotations that MCP `tools/list` returns.
 
 | Tool                                   | Safety               | Description                                             |
 | -------------------------------------- | -------------------- | ------------------------------------------------------- |
