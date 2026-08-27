@@ -3,8 +3,8 @@
 The server has 222 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
 
 - **read-only** - the tool has no side effects.
-- **mutating-safe** - the tool creates or changes data, but it is not destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
-- **mutating-destructive** - the tool deletes data, removes access, or changes active behavior. Read the arguments before you call it, and set approval controls in the MCP client.
+- **mutating-safe** - the tool creates or changes data, but the server does not classify the tool as destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
+- **mutating-destructive** - the tool deletes data, removes access, or changes active behavior. Read the arguments before you call it. Set approval controls in the MCP client.
 
 ## Delete safety
 
@@ -16,29 +16,29 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 
 ## Assist (21 tools)
 
-| Tool                        | Safety    | Description                                                                                                                    |
-| --------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `whoami`                    | read-only | Current principal identity and permissions                                                                                     |
-| `get_license_info`          | read-only | Horizon license details, quotas, feature flags                                                                                 |
-| `explain_grading_policy`    | read-only | Explain policy; optionally explain a certificate against it                                                                    |
-| `explain_grading_ruleset`   | read-only | Explain ruleset; optionally explain a certificate against it                                                                   |
-| `validate_hql`              | read-only | Validate any Horizon search query by dialect (hcql, hrql, heql, hdql). The four `validate_h*ql` tools are aliases of this one. |
-| `validate_hcql`             | read-only | Validate a certificate search query                                                                                            |
-| `validate_hrql`             | read-only | Validate a request search query                                                                                                |
-| `validate_heql`             | read-only | Validate an event search query                                                                                                 |
-| `validate_hdql`             | read-only | Validate a discovery event search query                                                                                        |
-| `describe_query_fields`     | read-only | List available fields and syntax for a query language                                                                          |
-| `translate_to_hql`          | read-only | Translate natural language to an HQL query expression                                                                          |
-| `decode_x509`               | read-only | Decode a PEM X.509 certificate                                                                                                 |
-| `decode_csr`                | read-only | Decode a PEM PKCS#10 CSR                                                                                                       |
-| `detect_file`               | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA)                                                  |
-| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server                                                                                 |
-| `decode_crl`                | read-only | Decode a PEM/DER CRL                                                                                                           |
-| `decode_ocsp`               | read-only | Decode an OCSP response (RFC 6960)                                                                                             |
-| `decode_tsa`                | read-only | Decode a timestamping response (RFC 3161)                                                                                      |
-| `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary                                                                          |
-| `simulate_datasource_flow`  | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads                                             |
-| `convert_pkcs12_to_jks`     | read-only | Convert PKCS#12 to JKS keystore                                                                                                |
+| Tool                        | Safety    | Description                                                                                                                                                                         |
+| --------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `whoami`                    | read-only | Current principal identity and permissions                                                                                                                                          |
+| `get_license_info`          | read-only | Horizon license details, quotas, feature flags                                                                                                                                      |
+| `explain_grading_policy`    | read-only | Explain policy; optionally explain a certificate against it                                                                                                                         |
+| `explain_grading_ruleset`   | read-only | Explain ruleset; optionally explain a certificate against it                                                                                                                        |
+| `validate_hql`              | read-only | Validate any Horizon search query by dialect (`hcql`, `hrql`, `heql`, or `hdql`). This is the canonical tool. The four `validate_h*ql` tools are aliases that use the same handler. |
+| `validate_hcql`             | read-only | Validate a certificate search query                                                                                                                                                 |
+| `validate_hrql`             | read-only | Validate a request search query                                                                                                                                                     |
+| `validate_heql`             | read-only | Validate an event search query                                                                                                                                                      |
+| `validate_hdql`             | read-only | Validate a discovery event search query                                                                                                                                             |
+| `describe_query_fields`     | read-only | List available fields and syntax for a query language                                                                                                                               |
+| `translate_to_hql`          | read-only | Translate natural language to an HQL query expression                                                                                                                               |
+| `decode_x509`               | read-only | Decode a PEM X.509 certificate                                                                                                                                                      |
+| `decode_csr`                | read-only | Decode a PEM PKCS#10 CSR                                                                                                                                                            |
+| `detect_file`               | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA)                                                                                                       |
+| `fetch_exposed_certificate` | read-only | Fetch the TLS certificate from a remote server                                                                                                                                      |
+| `decode_crl`                | read-only | Decode a PEM/DER CRL                                                                                                                                                                |
+| `decode_ocsp`               | read-only | Decode an OCSP response (RFC 6960)                                                                                                                                                  |
+| `decode_tsa`                | read-only | Decode a timestamping response (RFC 3161)                                                                                                                                           |
+| `simulate_computation_rule` | read-only | Test a computation rule template against a dictionary                                                                                                                               |
+| `simulate_datasource_flow`  | read-only | Test a datasource flow pipeline and translate MCP input to Horizon dsFlow payloads                                                                                                  |
+| `convert_pkcs12_to_jks`     | read-only | Convert PKCS#12 to JKS keystore                                                                                                                                                     |
 
 ## Docs (4 tools)
 
