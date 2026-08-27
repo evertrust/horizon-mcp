@@ -49,7 +49,9 @@ chmod +x horizon-mcp
 ./horizon-mcp
 ```
 
-The project provides binaries for macOS, Linux, and Windows. The macOS and Linux binaries support x64 and arm64 architectures. The binaries support trusted-TLS stdio authentication with an API key or service account. Use Node for PEM or PFX mTLS to Horizon and for `HORIZON_VERIFY_SSL=false`, because Bun's built-in fetch ignores the undici Agent required for those settings.
+The project supplies binaries for macOS, Linux, and Windows. The macOS and Linux binaries support the x64 and arm64 architectures. The binaries support trusted-TLS stdio authentication with an API key or with a service account.
+
+> Note: Use Node for PEM mTLS or PFX mTLS to Horizon, and for `HORIZON_VERIFY_SSL=false`. Bun's built-in fetch ignores the undici Agent that those settings need.
 
 ### Docker with streamable HTTP
 
@@ -69,7 +71,7 @@ HORIZON_HTTP_AUTH_METHODS=api-key,service
 HORIZON_TRUSTED_HOSTS=localhost:8080,127.0.0.1:8080
 ```
 
-Build and bind the published port to loopback:
+Build the image and bind the published port to loopback:
 
 ```bash
 docker build -t horizon-mcp .
@@ -79,24 +81,24 @@ docker run --rm --name horizon-mcp \
   horizon-mcp
 ```
 
-The server validates the `Host` header of both probes. Readiness means that the listener can accept requests.
-
-Horizon validates each caller's credentials on their first request, and again whenever the cached result expires:
+Call the liveness probe and the readiness probe:
 
 ```bash
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/healthz
 curl -H 'Host: localhost:8080' http://127.0.0.1:8080/readyz
 ```
 
+The server validates the `Host` header of both probes. Readiness means that the listener can accept requests. Horizon validates the credentials of a caller on the first request, and again when the cached result expires.
+
 For remote hosting, complete these steps:
 
 - Set `HORIZON_PUBLIC_URL` to the external HTTPS origin.
-- Set `HORIZON_HTTP_PATH` if the endpoint does not use the default `/mcp` path.
-- Terminate TLS at a trusted edge. Alternatively, configure the MCP inbound mTLS listener.
-- Store secrets in the orchestrator secret store. Do not store them in the image or repository.
-- Enable only the authentication methods that the deployment requires.
-- Run as many replicas as you need. The server keeps no session state, so no session affinity is required.
-- Send probes with a `Host` value from `HORIZON_PUBLIC_URL` or `HORIZON_TRUSTED_HOSTS`.
+- If the endpoint does not use the default `/mcp` path, set `HORIZON_HTTP_PATH`.
+- Terminate TLS at a trusted edge, or configure the inbound mTLS listener of the server.
+- Store the secrets in the orchestrator secret store. Do not store them in the image or in the repository.
+- Enable only the authentication methods that the deployment needs.
+- Run as many replicas as you need. The server keeps no session state, so it needs no session affinity.
+- Send the probes with a `Host` value from `HORIZON_PUBLIC_URL` or `HORIZON_TRUSTED_HOSTS`.
 
 See the HTTP environment-variable table in the [README](../README.md#streamable-http-horizon_transporthttp) and remote examples in [client setup](client-setup.md).
 
