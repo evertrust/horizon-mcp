@@ -107,4 +107,4 @@ See the HTTP environment-variable table in the [README](../README.md#streamable-
 ## Next steps
 
 - [Authentication](authentication.md) - configure how the server connects to Horizon
-- [Client setup](client-setup.md) - connect your LLM client to the server
+- [Client setup](client-setup.md) - connect your MCP client to the server

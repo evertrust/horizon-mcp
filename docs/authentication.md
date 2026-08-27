@@ -4,8 +4,8 @@ Horizon MCP has two credential ownership models:
 
 - In **stdio** mode, one environment-owned credential authenticates the local
   server process to Horizon.
-- In **streamable HTTP** mode, each caller supplies a Horizon credential. The
-  server accepts only the configured authentication methods.
+- In **HTTP mode**, each caller supplies a Horizon credential. The server
+  accepts only the configured authentication methods.
 
 The server forwards the selected identity to Horizon. Horizon resolves the
 identity to a principal and applies its role-based access control (RBAC). The

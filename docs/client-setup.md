@@ -307,9 +307,9 @@ This command opens the MCP Inspector in a browser. The inspector shows all tools
 
 ## Verify the connection
 
-After you restart the client, ask it to call `whoami`. A successful answer contains the Horizon `identity` object with your `identifier`, the `permissions` list, and the `teams` list. Horizon returns `teams: null` for a principal in no team.
+After you restart the MCP client, ask it to call `whoami`. A successful answer contains an `identity` object with an `identifier` and a `permissions` list. The optional `teams` field is a string list or `null`.
 
-If the call fails, the error comes from Horizon or from the credential, not from the MCP connection. Read [Authentication](authentication.md) next.
+If the call fails, inspect the MCP connection first, then the Horizon authentication response. Read [Authentication](authentication.md) next.
 
 ## Connect through streamable HTTP
 

@@ -14,7 +14,7 @@ Some MCP clients have weak MCP resource support or none. Those clients can read 
 - Pass a `section` when you need one part of a guide. The `section` slug is the segment after the topic.
 - Page through a long guide with `max_chars` and `offset`.
 
-If a tool description points to a `horizon://knowledge/*` URI, you can always read that content with `read_knowledge` instead.
+If the `docs` toolset is enabled and a tool description points to a `horizon://knowledge/*` URI, you can read that content with `read_knowledge` instead.
 
 | Resource                  | URI                                             | Contents                                                                                                     |
 | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |

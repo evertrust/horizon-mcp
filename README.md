@@ -6,9 +6,9 @@
 
 Horizon MCP is an [MCP](https://modelcontextprotocol.io/) server for [Evertrust Horizon](https://www.evertrust.fr/). Horizon is a certificate lifecycle management (CLM) platform.
 
-The server lets a supported LLM client operate Horizon: Claude Desktop, Claude Code, Cursor, Codex, and OpenCode.
+The server lets a supported MCP client operate Horizon: Claude Desktop, Claude Code, Cursor, Codex, and OpenCode.
 
-PKI engineers, platform teams, and security operators can issue, renew, and revoke certificates from an integrated development environment or a chat client. They can also search Horizon data, manage discovery, decode cryptographic data, and read the product documentation.
+PKI engineers, platform teams, and security operators can issue, renew, and revoke certificates from an integrated development environment or a chat interface. They can also search Horizon data, manage discovery, decode cryptographic data, and read the product documentation.
 
 ## Why knowledge-first?
 
@@ -330,7 +330,7 @@ The server can reduce the available operations with these controls:
 
 The server does not grant access beyond the forwarded Horizon credential.
 
-In stdio mode, the environment supplies the credential. In streamable HTTP mode, `HORIZON_HTTP_AUTH_METHODS` accepts one or more methods.
+In stdio mode, the environment supplies the credential. In HTTP mode, `HORIZON_HTTP_AUTH_METHODS` accepts one or more methods.
 
 For example, `api-key,service` turns on both of these methods:
 

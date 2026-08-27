@@ -240,7 +240,7 @@ depends on them.
 **For the follow-up release**, beyond the seven contracts:
 
 - `verifyAccessToken` needs an explicit JWT or introspection path. It must cover
-  an algorithm allow-list, `kid` rotation, issuer, `exp`/`nbf`, and an audience
+  an algorithm allowlist, `kid` rotation, issuer, `exp`/`nbf`, and an audience
   given as a string or an array. It must throw the SDK's `OAuthError`. A generic
   throw becomes an HTTP 500.
 - Mount `mcpAuthMetadataRouter` at the **path-aware** location
