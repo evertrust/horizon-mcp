@@ -281,6 +281,27 @@ describe('parseErrorResponse', () => {
       expect(err.remediation).toContain('update_*');
     });
 
+    it('keeps LIC-004 in the licence family instead of treating it as already existing', () => {
+      const body = JSON.stringify({
+        error: { code: 'LIC-004', message: 'Expired License' },
+      });
+      const err = parseErrorResponse(403, body);
+
+      expect(err.remediation).toContain('license');
+      expect(err.remediation).not.toContain('Already exists');
+    });
+
+    it.each([
+      ['SERV-ACC-003', 'Already exists'],
+      ['SERV-ACC-004', 'Not found'],
+      ['SERV-ACC-005', 'read-only'],
+    ])('resolves %s with its service-account-specific hint', (code, hint) => {
+      const body = JSON.stringify({ error: { code, message: 'failed' } });
+      const err = parseErrorResponse(400, body);
+
+      expect(err.remediation).toContain(hint);
+    });
+
     it('returns undefined remediation for unknown error codes', () => {
       const body = JSON.stringify({
         error: { code: 'UNKNOWN-999', message: 'Unknown error' },

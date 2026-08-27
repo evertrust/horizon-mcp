@@ -1,7 +1,7 @@
 /**
  * Live-QA E2E CRUD test for the Horizon "pki_connectors" config object.
  *
- * PKI connectors are polymorphic (21 subtypes discriminated by the lowercase
+ * PKI connectors are polymorphic (22 subtypes discriminated by the lowercase
  * `type` field). We exercise the SIMPLEST subtype that has no external
  * dependency on a standard QA instance: `integrated` (the Evertrust built-in
  * Integrated CA backend). Unlike `stream` (needs a reachable endPoint + a real

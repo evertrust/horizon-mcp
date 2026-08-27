@@ -13,7 +13,7 @@
  *   - horizon://knowledge/rest-notifications
  *   - horizon://knowledge/automation
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
@@ -84,6 +84,197 @@ const SENSITIVE_CREDENTIAL_FIELDS = new Set([
   'store',
   'login',
 ]);
+
+const LIST_CREDENTIALS_CONFIG = {
+  description:
+    'List stored credentials (names and types only - secrets are never exposed).\n\n' +
+    'Safety tier: read-only\n' +
+    'Credentials are referenced by name in REST notification steps and ' +
+    'datasource configurations. Secret values (passwords, API tokens, private ' +
+    'keys) are NEVER returned.\n\n',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(MAX_LIST_ITEMS)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on credential name.'),
+    credential_type: z
+      .string()
+      .optional()
+      .describe(
+        'Filter by type: "password" (login/password), "raw" (API token), or "x509" (client certificate).',
+      ),
+  }),
+};
+
+const LIST_TRIGGERS_CONFIG = {
+  description:
+    'List triggers (notifications and third-party connectors) with optional filtering.\n\n Ref: horizon://knowledge/rest-notifications.' +
+    'Safety tier: read-only\n' +
+    'Use trigger_type="rest" to list only REST notifications.\n\n',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(MAX_LIST_ITEMS)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on trigger name.'),
+    trigger_type: z
+      .string()
+      .optional()
+      .describe(
+        'Filter by type: "rest", "email", "webhook", "akv", "aws", etc.',
+      ),
+  }),
+};
+
+const GET_TRIGGER_CONFIG = {
+  description:
+    'Get a single trigger by name.\n\n Ref: horizon://knowledge/rest-notifications.' +
+    'Safety tier: read-only\n' +
+    'Returns the full trigger configuration including sequence steps, ' +
+    'authentication, headers, and payload templates for REST notifications.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Exact trigger name.'),
+  }),
+};
+
+const CREATE_REST_NOTIFICATION_CONFIG = {
+  description:
+    'Create a REST notification for custom certificate deployment or integration.\n\n' +
+    'Safety tier: mutating-safe\n' +
+    'REST notifications execute a sequence of HTTP requests when a certificate ' +
+    'lifecycle event occurs. Each step can reference template variables from the ' +
+    "certificate/request dictionary and from previous steps' responses.\n\n" +
+    'IMPORTANT: Trigger names are IMMUTABLE after creation. Always ask the\n' +
+    'user for the name before creating.\n\n' +
+    'Each step in the sequence is a dict with these fields:\n' +
+    '    - url (required): Target URL - supports {{variable}} template strings\n' +
+    '    - method (required): HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD)\n' +
+    '    - authenticationType (required): "noauth", "basic", "bearer", "x509", or "custom"\n' +
+    '    - credentials (required unless noauth): Name of credential in Horizon\n' +
+    '    - expectedHttpCodes (required): List of HTTP codes meaning success (e.g., [200, 201])\n' +
+    '    - timeout (required): Duration string (e.g., "30 seconds")\n' +
+    '    - headers: List of {name, value} dicts - values support {{variable}} templates\n' +
+    '    - payloadType: "json", "text", or "none"\n' +
+    '    - payload: Request body - supports {{variable}} template strings\n' +
+    '    - proxy: Name of HTTP proxy in Horizon\n\n' +
+    'Template variables available in URL, headers, and payload:\n' +
+    '    - Certificate: {{certificate.pem}}, {{certificate.serial}}, {{certificate.subject.cn.1}},\n' +
+    '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, {{certificate.private_key}}, etc.\n' +
+    '    - Request: {{request.id}}, {{request.workflow}}, {{request.requester}}, etc.\n' +
+    '    - Previous cert (on_renew only): {{previous.certificate.serial}}, etc.\n' +
+    '    - Credentials (custom auth): {{credentials.key}}, {{credentials.login}}, {{credentials.password}}\n' +
+    '    - Response chaining: {{rest.response.1.field}}, {{rest.response.2.field.nested}}, etc.\n' +
+    '    - Computation rules: {{Upper({{certificate.subject.cn.1}})}}, {{Base64(Raw({{certificate.pem}}))}}, etc.\n\n' +
+    'See horizon://knowledge/rest-notifications for the complete dictionary reference\n' +
+    'and multi-step chaining patterns.\n\n' +
+    'Common patterns:\n' +
+    '    - Single-step deployment: POST cert PEM + key to a target API\n' +
+    '    - OAuth + deploy: Step 1 gets token, step 2 uses {{rest.response.1.access_token}}\n' +
+    '    - Lookup + update: Step 1 finds resource ID, step 2 updates by ID\n' +
+    '    - Create + activate: Step 1 creates resource, step 2 activates it\n\n' +
+    'After creating, attach the trigger to a profile using the Horizon UI or API\n' +
+    'to start receiving events. See horizon://knowledge/automation for attachment.\n\n' +
+    '    list_triggers (verify creation), get_trigger (inspect config),\n' +
+    '    delete_trigger (remove).',
+  inputSchema: z.object({
+    name: z.string().describe('Unique trigger name (immutable primary key).'),
+    event: z
+      .string()
+      .describe(
+        'Single lifecycle event to subscribe to. ' +
+          'Examples: "on_enroll", "on_revoke", "on_renew", "on_expire".',
+      ),
+    sequence: z
+      .array(z.record(z.string(), z.unknown()))
+      .describe(
+        'Ordered list of REST call steps. Each step: ' +
+          '{url, method, authenticationType, expectedHttpCodes, timeout, ...}.',
+      ),
+    retries: z
+      .number()
+      .int()
+      .default(10)
+      .describe(
+        'Retry count on failure with exponential backoff (default 10).',
+      ),
+    run_period: z
+      .string()
+      .optional()
+      .describe(
+        'Duration for periodic events (e.g. "30 days"). ' +
+          'MANDATORY for on_expire, on_pending_*, on_license_expiration, ' +
+          'on_credentials_expiration. FORBIDDEN for all other events.',
+      ),
+    run_on_renewed: z
+      .boolean()
+      .optional()
+      .describe(
+        'Whether to fire even if certificate was renewed. ' +
+          'MANDATORY for on_expire only.',
+      ),
+    licence_usage_percent: z
+      .number()
+      .int()
+      .optional()
+      .describe(
+        'Threshold 1-100 for on_license_usage. ' +
+          'MANDATORY for on_license_usage only.',
+      ),
+    on_trigger_error: z
+      .array(z.string())
+      .optional()
+      .describe('Names of triggers to fire if this notification fails.'),
+  }),
+};
+
+const DELETE_TRIGGER_CONFIG = {
+  description:
+    'Delete a trigger. Requires name confirmation.\n\n Ref: horizon://knowledge/rest-notifications.' +
+    'A trigger should be detached from all profiles before deletion.\n\n' +
+    'Safety tier: mutating-destructive\n',
+  inputSchema: z.object({
+    name: z.string().describe('Trigger name to delete.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a deletion safeguard.'),
+  }),
+};
+
+const SIMULATE_TRIGGER_CONFIG = {
+  description:
+    'Test-fire an existing trigger without real certificate context.\n\n Ref: horizon://knowledge/rest-notifications.' +
+    'Safety tier: read-only (executes the trigger but uses test context only)\n' +
+    'Sends a PATCH request to simulate the trigger. The trigger must already ' +
+    'exist. Horizon executes it with a synthetic test context and returns the ' +
+    'execution result.\n\n' +
+    "Use this to verify that a REST notification's sequence steps, authentication,\n" +
+    'and URL/payload templates work correctly before attaching the trigger to a\n' +
+    'production profile.\n\n' +
+    'Note: Template variables like {{certificate.serial}} will not have real\n' +
+    'values during simulation - they are filled with test/placeholder data.\n\n' +
+    'Typical workflow:\n' +
+    '    1. Create a REST notification with create_rest_notification\n' +
+    '    2. Call simulate_trigger to verify the HTTP calls succeed\n' +
+    '    3. If simulation passes, attach the trigger to a profile\n' +
+    '    4. If simulation fails, inspect errors, fix config, and retry\n\n' +
+    '    get_trigger (inspect current config).',
+  inputSchema: z.object({
+    name: z.string().describe('Name of the existing trigger to simulate.'),
+  }),
+};
 
 // ---------------------------------------------------------------------------
 // Validation helpers
@@ -196,33 +387,7 @@ export function registerTriggerTools(
   registerTool(
     server,
     'list_credentials',
-    {
-      description:
-        'List stored credentials (names and types only - secrets are never exposed).\n\n' +
-        'Safety tier: read-only\n' +
-        'Credentials are referenced by name in REST notification steps and ' +
-        'datasource configurations. Secret values (passwords, API tokens, private ' +
-        'keys) are NEVER returned.\n\n',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(MAX_LIST_ITEMS)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on credential name.'),
-        credential_type: z
-          .string()
-          .optional()
-          .describe(
-            'Filter by type: "password" (login/password), "raw" (API token), or "x509" (client certificate).',
-          ),
-      }),
-    },
+    LIST_CREDENTIALS_CONFIG,
     async ({ max_items, name_contains, credential_type }) => {
       const validCredTypes = new Set(['password', 'raw', 'x509']);
       if (
@@ -266,31 +431,7 @@ export function registerTriggerTools(
   registerTool(
     server,
     'list_triggers',
-    {
-      description:
-        'List triggers (notifications and third-party connectors) with optional filtering.\n\n Ref: horizon://knowledge/rest-notifications.' +
-        'Safety tier: read-only\n' +
-        'Use trigger_type="rest" to list only REST notifications.\n\n',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(MAX_LIST_ITEMS)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on trigger name.'),
-        trigger_type: z
-          .string()
-          .optional()
-          .describe(
-            'Filter by type: "rest", "email", "webhook", "akv", "aws", etc.',
-          ),
-      }),
-    },
+    LIST_TRIGGERS_CONFIG,
     async ({ max_items, name_contains, trigger_type }) => {
       if (trigger_type !== undefined) {
         const err = validateTriggerType(trigger_type);
@@ -315,28 +456,14 @@ export function registerTriggerTools(
     },
   );
 
-  registerTool(
-    server,
-    'get_trigger',
-    {
-      description:
-        'Get a single trigger by name.\n\n Ref: horizon://knowledge/rest-notifications.' +
-        'Safety tier: read-only\n' +
-        'Returns the full trigger configuration including sequence steps, ' +
-        'authentication, headers, and payload templates for REST notifications.\n\n',
-      inputSchema: z.object({
-        name: z.string().describe('Exact trigger name.'),
-      }),
-    },
-    async ({ name }) => {
-      const result = await client.get(
-        `${TRIGGER_BASE}/${encodePathSegment(name)}`,
-      );
-      return {
-        content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-      };
-    },
-  );
+  registerTool(server, 'get_trigger', GET_TRIGGER_CONFIG, async ({ name }) => {
+    const result = await client.get(
+      `${TRIGGER_BASE}/${encodePathSegment(name)}`,
+    );
+    return {
+      content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+    };
+  });
 
   // =======================================================================
   // Create (1 tool)
@@ -345,97 +472,7 @@ export function registerTriggerTools(
   registerTool(
     server,
     'create_rest_notification',
-    {
-      description:
-        'Create a REST notification for custom certificate deployment or integration.\n\n' +
-        'Safety tier: mutating-safe\n' +
-        'REST notifications execute a sequence of HTTP requests when a certificate ' +
-        'lifecycle event occurs. Each step can reference template variables from the ' +
-        "certificate/request dictionary and from previous steps' responses.\n\n" +
-        'IMPORTANT: Trigger names are IMMUTABLE after creation. Always ask the\n' +
-        'user for the name before creating.\n\n' +
-        'Each step in the sequence is a dict with these fields:\n' +
-        '    - url (required): Target URL - supports {{variable}} template strings\n' +
-        '    - method (required): HTTP method (GET, POST, PUT, PATCH, DELETE, HEAD)\n' +
-        '    - authenticationType (required): "noauth", "basic", "bearer", "x509", or "custom"\n' +
-        '    - credentials (required unless noauth): Name of credential in Horizon\n' +
-        '    - expectedHttpCodes (required): List of HTTP codes meaning success (e.g., [200, 201])\n' +
-        '    - timeout (required): Duration string (e.g., "30 seconds")\n' +
-        '    - headers: List of {name, value} dicts - values support {{variable}} templates\n' +
-        '    - payloadType: "json", "text", or "none"\n' +
-        '    - payload: Request body - supports {{variable}} template strings\n' +
-        '    - proxy: Name of HTTP proxy in Horizon\n\n' +
-        'Template variables available in URL, headers, and payload:\n' +
-        '    - Certificate: {{certificate.pem}}, {{certificate.serial}}, {{certificate.subject.cn.1}},\n' +
-        '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, {{certificate.private_key}}, etc.\n' +
-        '    - Request: {{request.id}}, {{request.workflow}}, {{request.requester}}, etc.\n' +
-        '    - Previous cert (on_renew only): {{previous.certificate.serial}}, etc.\n' +
-        '    - Credentials (custom auth): {{credentials.key}}, {{credentials.login}}, {{credentials.password}}\n' +
-        '    - Response chaining: {{rest.response.1.field}}, {{rest.response.2.field.nested}}, etc.\n' +
-        '    - Computation rules: {{Upper({{certificate.subject.cn.1}})}}, {{Base64(Raw({{certificate.pem}}))}}, etc.\n\n' +
-        'See horizon://knowledge/rest-notifications for the complete dictionary reference\n' +
-        'and multi-step chaining patterns.\n\n' +
-        'Common patterns:\n' +
-        '    - Single-step deployment: POST cert PEM + key to a target API\n' +
-        '    - OAuth + deploy: Step 1 gets token, step 2 uses {{rest.response.1.access_token}}\n' +
-        '    - Lookup + update: Step 1 finds resource ID, step 2 updates by ID\n' +
-        '    - Create + activate: Step 1 creates resource, step 2 activates it\n\n' +
-        'After creating, attach the trigger to a profile using the Horizon UI or API\n' +
-        'to start receiving events. See horizon://knowledge/automation for attachment.\n\n' +
-        '    list_triggers (verify creation), get_trigger (inspect config),\n' +
-        '    delete_trigger (remove).',
-      inputSchema: z.object({
-        name: z
-          .string()
-          .describe('Unique trigger name (immutable primary key).'),
-        event: z
-          .string()
-          .describe(
-            'Single lifecycle event to subscribe to. ' +
-              'Examples: "on_enroll", "on_revoke", "on_renew", "on_expire".',
-          ),
-        sequence: z
-          .array(z.record(z.string(), z.unknown()))
-          .describe(
-            'Ordered list of REST call steps. Each step: ' +
-              '{url, method, authenticationType, expectedHttpCodes, timeout, ...}.',
-          ),
-        retries: z
-          .number()
-          .int()
-          .default(10)
-          .describe(
-            'Retry count on failure with exponential backoff (default 10).',
-          ),
-        run_period: z
-          .string()
-          .optional()
-          .describe(
-            'Duration for periodic events (e.g. "30 days"). ' +
-              'MANDATORY for on_expire, on_pending_*, on_license_expiration, ' +
-              'on_credentials_expiration. FORBIDDEN for all other events.',
-          ),
-        run_on_renewed: z
-          .boolean()
-          .optional()
-          .describe(
-            'Whether to fire even if certificate was renewed. ' +
-              'MANDATORY for on_expire only.',
-          ),
-        licence_usage_percent: z
-          .number()
-          .int()
-          .optional()
-          .describe(
-            'Threshold 1-100 for on_license_usage. ' +
-              'MANDATORY for on_license_usage only.',
-          ),
-        on_trigger_error: z
-          .array(z.string())
-          .optional()
-          .describe('Names of triggers to fire if this notification fails.'),
-      }),
-    },
+    CREATE_REST_NOTIFICATION_CONFIG,
     async ({
       name,
       event,
@@ -568,18 +605,7 @@ export function registerTriggerTools(
   registerTool(
     server,
     'delete_trigger',
-    {
-      description:
-        'Delete a trigger. Requires name confirmation.\n\n Ref: horizon://knowledge/rest-notifications.' +
-        'A trigger should be detached from all profiles before deletion.\n\n' +
-        'Safety tier: mutating-destructive\n',
-      inputSchema: z.object({
-        name: z.string().describe('Trigger name to delete.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a deletion safeguard.'),
-      }),
-    },
+    DELETE_TRIGGER_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.delete(`${TRIGGER_BASE}/${encodePathSegment(name)}`);
@@ -605,28 +631,7 @@ export function registerTriggerTools(
   registerTool(
     server,
     'simulate_trigger',
-    {
-      description:
-        'Test-fire an existing trigger without real certificate context.\n\n Ref: horizon://knowledge/rest-notifications.' +
-        'Safety tier: read-only (executes the trigger but uses test context only)\n' +
-        'Sends a PATCH request to simulate the trigger. The trigger must already ' +
-        'exist. Horizon executes it with a synthetic test context and returns the ' +
-        'execution result.\n\n' +
-        "Use this to verify that a REST notification's sequence steps, authentication,\n" +
-        'and URL/payload templates work correctly before attaching the trigger to a\n' +
-        'production profile.\n\n' +
-        'Note: Template variables like {{certificate.serial}} will not have real\n' +
-        'values during simulation - they are filled with test/placeholder data.\n\n' +
-        'Typical workflow:\n' +
-        '    1. Create a REST notification with create_rest_notification\n' +
-        '    2. Call simulate_trigger to verify the HTTP calls succeed\n' +
-        '    3. If simulation passes, attach the trigger to a profile\n' +
-        '    4. If simulation fails, inspect errors, fix config, and retry\n\n' +
-        '    get_trigger (inspect current config).',
-      inputSchema: z.object({
-        name: z.string().describe('Name of the existing trigger to simulate.'),
-      }),
-    },
+    SIMULATE_TRIGGER_CONFIG,
     async ({ name }) => {
       const trigger = await client.get<Record<string, unknown>>(
         `${TRIGGER_BASE}/${encodePathSegment(name)}`,

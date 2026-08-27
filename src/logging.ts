@@ -1,5 +1,3 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
-
 const LOG_LEVELS = {
   DEBUG: 0,
   INFO: 1,
@@ -8,15 +6,6 @@ const LOG_LEVELS = {
 } as const;
 
 type LogLevel = keyof typeof LOG_LEVELS;
-
-// Map our internal level names to the MCP `notifications/message` level enum
-// (RFC 5424).
-const MCP_LEVEL: Record<LogLevel, string> = {
-  DEBUG: 'debug',
-  INFO: 'info',
-  WARNING: 'warning',
-  ERROR: 'error',
-};
 
 let currentLevel: number = LOG_LEVELS.INFO;
 
@@ -34,31 +23,10 @@ interface LogExtra {
   [key: string]: unknown;
 }
 
-// MCP sink (set once at server startup) -- when present, logs are also
-// forwarded to the client via `notifications/message`. Errors from the sink
-// are swallowed so logging stays best-effort.
-type McpSink = (
-  level: string,
-  payload: { logger: string; msg: string; extra?: LogExtra },
-) => void;
-
-let mcpSink: McpSink | undefined;
-
-export function setMcpLoggingSink(sink: McpSink | undefined): void {
-  mcpSink = sink;
-}
-
-// Per-session sink override for HTTP mode. A single module-level `mcpSink`
-// would let one session's logs leak into another's client stream (last writer
-// wins), so HTTP mode never registers a global sink: it wraps each request's
-// handling in `runWithLoggingSink`, and `emit()` reads the current session's
-// sink from AsyncLocalStorage. The context propagates across awaits within the
-// handler, so concurrent sessions stay isolated.
-const sessionSinkStore = new AsyncLocalStorage<McpSink>();
-
-export function runWithLoggingSink<T>(sink: McpSink, fn: () => T): T {
-  return sessionSinkStore.run(sink, fn);
-}
+// MCP revision 2026-07-28 deprecates the Logging capability (SEP-2577) and
+// forbids emitting `notifications/message` for a request that did not ask for
+// logs. This server no longer declares the capability, so logs go to stderr
+// only: spec-endorsed for stdio, and the process logger for HTTP.
 
 function emit(
   level: LogLevel,
@@ -84,17 +52,6 @@ function emit(
   }
 
   process.stderr.write(JSON.stringify(entry) + '\n');
-
-  // Session sink (HTTP mode, per-request via ALS) takes precedence over the
-  // global sink (stdio mode, set once). Stderr above always fires regardless.
-  const activeSink = sessionSinkStore.getStore() ?? mcpSink;
-  if (activeSink) {
-    try {
-      activeSink(MCP_LEVEL[level], { logger, msg, extra });
-    } catch {
-      // best-effort -- swallow sink errors
-    }
-  }
 }
 
 export interface Logger {

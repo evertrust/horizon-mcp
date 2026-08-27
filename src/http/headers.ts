@@ -2,15 +2,15 @@
  * Central credential-header hygiene for HTTP mode.
  *
  * Two concerns:
- *  - Stripping: after the session credential is captured and fingerprinted at
- *    initialize, the secret headers must be removed before the request reaches
+ *  - Stripping: after the request credential is captured and fingerprinted,
+ *    the secret headers must be removed before the request reaches
  *    `transport.handleRequest`, so they never surface in `requestInfo.headers`
  *    inside tool handlers. The SDK converts the Node request via
  *    `@hono/node-server`, which builds the Web request headers from
  *    `req.rawHeaders` (the raw array), NOT the parsed `req.headers` object - so
  *    BOTH must be scrubbed.
  *  - Redaction: access logs and error paths never print these names' values;
- *    callers log only method/path/status and a session fingerprint.
+ *    callers log only method/path/status and a credential fingerprint.
  */
 
 // Lowercased header names that must never be logged or forwarded onward.

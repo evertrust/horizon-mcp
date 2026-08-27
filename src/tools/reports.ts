@@ -10,7 +10,7 @@
  *   - CSV downloads use /reports/{uuid} (NO /api/v1 prefix).
  *   - API management (list / delete) uses /api/v1/reports/.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../client/http.js';
@@ -24,6 +24,53 @@ import { registerTool } from './register.js';
 const REPORT_API_BASE = '/api/v1/reports';
 const REPORT_CSV_BASE = '/reports';
 
+const LIST_REPORTS_CONFIG = {
+  description:
+    'List available reports, optionally filtered by name.\n\n' +
+    'When report_name is provided the server returns all report entries ' +
+    'matching that name (there can be more than one). Without a name the ' +
+    'full report catalogue is returned.',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(50)
+      .describe('Maximum items to return (default 50).'),
+    report_name: z
+      .string()
+      .optional()
+      .describe('Exact report name to filter on (server-side).'),
+    expired: z
+      .boolean()
+      .default(false)
+      .describe('Include expired reports (default false).'),
+  }),
+};
+
+const DOWNLOAD_REPORT_CONFIG = {
+  description:
+    'Download a report as CSV by its UUID.\n\n' +
+    'CRITICAL: The CSV endpoint lives at /reports/{uuid} - there is ' +
+    'NO /api/v1 prefix for this path.',
+  inputSchema: z.object({
+    report_uuid: z.string().describe('UUID of the report to download.'),
+  }),
+};
+
+const DELETE_REPORT_CONFIG = {
+  description:
+    'Delete a report by UUID. Irreversible; confirm with user first. ' +
+    'Requires expected_uuid to match report_uuid as a safeguard.',
+  inputSchema: z.object({
+    report_uuid: z.string().describe('UUID of the report to delete.'),
+    expected_uuid: z
+      .string()
+      .describe('Must exactly match report_uuid as a deletion safeguard.'),
+  }),
+};
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -35,30 +82,7 @@ export function registerReportTools(
   registerTool(
     server,
     'list_reports',
-    {
-      description:
-        'List available reports, optionally filtered by name.\n\n' +
-        'When report_name is provided the server returns all report entries ' +
-        'matching that name (there can be more than one). Without a name the ' +
-        'full report catalogue is returned.',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(50)
-          .describe('Maximum items to return (default 50).'),
-        report_name: z
-          .string()
-          .optional()
-          .describe('Exact report name to filter on (server-side).'),
-        expired: z
-          .boolean()
-          .default(false)
-          .describe('Include expired reports (default false).'),
-      }),
-    },
+    LIST_REPORTS_CONFIG,
     async ({ max_items, report_name, expired }) => {
       const params = new URLSearchParams({
         expired: String(expired),
@@ -98,15 +122,7 @@ export function registerReportTools(
   registerTool(
     server,
     'download_report',
-    {
-      description:
-        'Download a report as CSV by its UUID.\n\n' +
-        'CRITICAL: The CSV endpoint lives at /reports/{uuid} - there is ' +
-        'NO /api/v1 prefix for this path.',
-      inputSchema: z.object({
-        report_uuid: z.string().describe('UUID of the report to download.'),
-      }),
-    },
+    DOWNLOAD_REPORT_CONFIG,
     async ({ report_uuid }) => {
       const csvText = await client.getText(
         `${REPORT_CSV_BASE}/${encodePathSegment(report_uuid)}`,
@@ -133,17 +149,7 @@ export function registerReportTools(
   registerTool(
     server,
     'delete_report',
-    {
-      description:
-        'Delete a report by UUID. Irreversible; confirm with user first. ' +
-        'Requires expected_uuid to match report_uuid as a safeguard.',
-      inputSchema: z.object({
-        report_uuid: z.string().describe('UUID of the report to delete.'),
-        expected_uuid: z
-          .string()
-          .describe('Must exactly match report_uuid as a deletion safeguard.'),
-      }),
-    },
+    DELETE_REPORT_CONFIG,
     async ({ report_uuid, expected_uuid }) => {
       deleteGuard(report_uuid, expected_uuid, 'uuid');
       await client.delete(

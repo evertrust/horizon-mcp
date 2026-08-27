@@ -1,7 +1,7 @@
 /**
  * Registration of the translate_to_hql MCP tool.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../../client/http.js';
@@ -14,6 +14,43 @@ import {
   QUERY_TYPES,
   type QueryType,
 } from './types.js';
+
+const TRANSLATE_TO_HQL_CONFIG = {
+  description:
+    'Translate natural language into a Horizon Query Language expression.\n\n' +
+    'Takes a plain-English description and produces a syntactically valid ' +
+    'HQL query. Auto-detects the appropriate query type (HCQL for ' +
+    'certificates, HRQL for requests, HEQL for events, HDQL for discovery) ' +
+    'unless *target_type* is specified.\n\n' +
+    'The generated query is optionally validated against the live Horizon ' +
+    'instance to confirm syntactic correctness and report match counts.',
+  inputSchema: z.object({
+    natural_language: z
+      .string()
+      .describe(
+        'Plain-English description of what to search for.\n' +
+          'Examples:\n' +
+          '- "expired RSA certificates from team-alpha"\n' +
+          '- "pending enrollment requests for the ACME profile"\n' +
+          '- "audit events in the last 24 hours"\n' +
+          '- "discovery scans on port 443"',
+      ),
+    target_type: z
+      .string()
+      .optional()
+      .describe(
+        'Force a specific query type (hcql, hrql, heql, hdql). ' +
+          'If omitted the type is auto-detected from the input.',
+      ),
+    validate: z
+      .boolean()
+      .default(true)
+      .describe(
+        'Whether to validate the query against Horizon ' +
+          '(default true). Set to false for offline usage.',
+      ),
+  }),
+};
 
 const SEARCH_ENDPOINTS: Readonly<Record<QueryType, string>> = {
   hcql: '/api/v1/certificates/search',
@@ -40,42 +77,7 @@ export function registerTranslateTools(
   registerTool(
     server,
     'translate_to_hql',
-    {
-      description:
-        'Translate natural language into a Horizon Query Language expression.\n\n' +
-        'Takes a plain-English description and produces a syntactically valid ' +
-        'HQL query. Auto-detects the appropriate query type (HCQL for ' +
-        'certificates, HRQL for requests, HEQL for events, HDQL for discovery) ' +
-        'unless *target_type* is specified.\n\n' +
-        'The generated query is optionally validated against the live Horizon ' +
-        'instance to confirm syntactic correctness and report match counts.',
-      inputSchema: z.object({
-        natural_language: z
-          .string()
-          .describe(
-            'Plain-English description of what to search for.\n' +
-              'Examples:\n' +
-              '- "expired RSA certificates from team-alpha"\n' +
-              '- "pending enrollment requests for the ACME profile"\n' +
-              '- "audit events in the last 24 hours"\n' +
-              '- "discovery scans on port 443"',
-          ),
-        target_type: z
-          .string()
-          .optional()
-          .describe(
-            'Force a specific query type (hcql, hrql, heql, hdql). ' +
-              'If omitted the type is auto-detected from the input.',
-          ),
-        validate: z
-          .boolean()
-          .default(true)
-          .describe(
-            'Whether to validate the query against Horizon ' +
-              '(default true). Set to false for offline usage.',
-          ),
-      }),
-    },
+    TRANSLATE_TO_HQL_CONFIG,
     async ({ natural_language, target_type, validate }) => {
       // --- Phase 0: cap input length to bound regex work (ReDoS guard) ---
       const inputBytes = Buffer.byteLength(natural_language, 'utf8');

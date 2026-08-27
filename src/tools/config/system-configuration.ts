@@ -17,7 +17,7 @@
  * + a free-form `config` record, merge them into the body, run assertConfigBody,
  * then POST (create) / GET-strip-merge-PUT on the collection root (update).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -196,19 +196,38 @@ function validateSystemConfigBody(body: Record<string, unknown>): void {
   });
 }
 
+const UPDATE_SYSTEM_CONFIGURATION_SCHEMA = z.object({
+  type: typeSchema,
+  cron: cronSchema.optional(),
+  triggers: triggersSchema.optional(),
+  logo: optionalStrings.logo.optional(),
+  headerStart: optionalStrings.headerStart.optional(),
+  headerEnd: optionalStrings.headerEnd.optional(),
+  announcements: announcementsSchema.optional(),
+  archiveStorage: optionalStrings.archiveStorage.optional(),
+  magicLinkReportStorage: optionalStrings.magicLinkReportStorage.optional(),
+  config: configSchema,
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["archiveStorage"].'),
+});
+
+const SYSTEM_CONFIGURATION_DESCRIBE_INFO = {
+  noun: 'system_config',
+  label: 'System Configuration',
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['type'],
+  jsonSchema: systemConfigurationRequestSchema,
+  schemaVersion: '1',
+};
+
 export function registerSystemConfigTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: 'system_config',
-    label: 'System Configuration',
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['type'],
-    jsonSchema: systemConfigurationRequestSchema,
-    schemaVersion: '1',
-  });
+  registerDescribeSchemaTool(server, SYSTEM_CONFIGURATION_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription:
@@ -230,24 +249,7 @@ export function registerSystemConfigTools(
       'server-bootstrapped; this PUT fully replaces the entry of that type, and ' +
       'the wrapper does GET-strip-merge so omitted fields are preserved. Call ' +
       'describe_system_config_schema first.',
-    inputSchema: z.object({
-      type: typeSchema,
-      cron: cronSchema.optional(),
-      triggers: triggersSchema.optional(),
-      logo: optionalStrings.logo.optional(),
-      headerStart: optionalStrings.headerStart.optional(),
-      headerEnd: optionalStrings.headerEnd.optional(),
-      announcements: announcementsSchema.optional(),
-      archiveStorage: optionalStrings.archiveStorage.optional(),
-      magicLinkReportStorage: optionalStrings.magicLinkReportStorage.optional(),
-      config: configSchema,
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["archiveStorage"].',
-        ),
-    }),
+    inputSchema: UPDATE_SYSTEM_CONFIGURATION_SCHEMA,
     buildOverrides: (args) => {
       const overrides = buildSystemConfigBody(args as SystemConfigArgs);
       validateSystemConfigBody(overrides);

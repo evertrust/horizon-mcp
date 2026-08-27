@@ -13,7 +13,7 @@
  * Knowledge resources:
  *     - horizon://knowledge/dashboards
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 
@@ -37,6 +37,288 @@ const QUERY_BASE = '/api/v1/security/principals/queries';
 
 const DASHBOARD_TYPES = ['certificate', 'request'] as const;
 const QUERY_TYPES = ['hcql', 'hrql', 'heql', 'hdql', 'hpql'] as const;
+
+const LIST_DASHBOARDS_CONFIG = {
+  description:
+    'List personal dashboards with optional filtering.\n\n' +
+    'Returns JSON with items, count, total_available, and truncated flag.',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(50)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on dashboard name.'),
+    dashboard_type: z
+      .enum(DASHBOARD_TYPES)
+      .optional()
+      .describe('Filter by type - "certificate" or "request".'),
+  }),
+};
+
+const GET_DASHBOARD_CONFIG = {
+  description:
+    'Get a single dashboard by name.\n\n' +
+    'Returns JSON representation of the dashboard including its charts.',
+  inputSchema: z.object({
+    name: z.string().describe('Exact dashboard name.'),
+  }),
+};
+
+const CREATE_DASHBOARD_CONFIG = {
+  description:
+    'Create a new personal dashboard.\n\n' +
+    'IMPORTANT - The dashboard name is IMMUTABLE: it CANNOT be changed ' +
+    'after creation. You MUST ask the user for the name (and optionally ' +
+    'a description) before calling this tool. Never invent a name on the ' +
+    "user's behalf.\n\n" +
+    'Dashboard Creation Workflow (recommended):\n' +
+    '1) Ask the user for the dashboard name and optional description\n' +
+    '2) Create a blank dashboard with charts=[]\n' +
+    '3) Use add_dashboard_chart to add charts one at a time, ' +
+    "prompting the user for each chart's configuration.\n\n" +
+    'upsert_saved_query (save queries for reuse in charts).',
+  inputSchema: z.object({
+    name: z
+      .string()
+      .describe('Unique dashboard name (IMMUTABLE - cannot be renamed later).'),
+    dashboard_type: z
+      .enum(DASHBOARD_TYPES)
+      .describe('Dashboard scope - "certificate" or "request".'),
+    charts: z
+      .array(z.record(z.string(), z.unknown()))
+      .optional()
+      .describe(
+        'List of chart objects (default: empty list for blank dashboard). ' +
+          'Each chart: {"type": "donut", "title": "My Chart", ' +
+          '"localQuery": "status is valid", "fields": ["keyType"], ' +
+          '"i": "1", "x": 0, "y": 0, "w": 6, "h": 4}. ' +
+          'Recommended: start with charts=[] and use add_dashboard_chart interactively.',
+      ),
+    description: z
+      .string()
+      .optional()
+      .describe('Optional human-readable description.'),
+  }),
+};
+
+const UPDATE_DASHBOARD_CONFIG = {
+  description:
+    'Update an existing dashboard (GET -> merge -> PUT).\n\n' +
+    'Fetches the current dashboard, merges provided overrides, and ' +
+    'PUTs the full object back. No field stripping needed - dashboards ' +
+    'are principal-scoped with no server-injected metadata.',
+  inputSchema: z.object({
+    name: z.string().describe('Dashboard name to update.'),
+    charts: z
+      .array(z.record(z.string(), z.unknown()))
+      .optional()
+      .describe('New charts list (replaces existing).'),
+    description: z.string().optional().describe('New description.'),
+    clear_fields: z
+      .array(z.string())
+      .optional()
+      .describe('Top-level field names to explicitly set to null.'),
+  }),
+};
+
+const DELETE_DASHBOARD_CONFIG = {
+  description: 'Delete a dashboard. Requires name confirmation.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Dashboard name to delete.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a deletion safeguard.'),
+  }),
+};
+
+const ADD_DASHBOARD_CHART_CONFIG = {
+  description:
+    'Add a chart to an existing dashboard.\n\n' +
+    'Prerequisites: Dashboard must exist (use create_dashboard first).\n\n' +
+    'Fetches the dashboard, appends the chart to its charts list, ' +
+    'and PUTs the updated dashboard back. Auto-generates a unique ' +
+    'chart identifier if the chart does not already include one.',
+  inputSchema: z.object({
+    dashboard_name: z.string().describe('Name of the dashboard to modify.'),
+    chart: z
+      .record(z.string(), z.unknown())
+      .describe(
+        'Chart configuration object. Required fields: ' +
+          '{"type": "donut", "title": "My Chart", ' +
+          '"localQuery": "status is valid", "fields": ["keyType"]}. ' +
+          'Valid chart types: area, donut, heatmap, bar-horizontal, ' +
+          'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
+          'bar-vertical. ' +
+          'Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). ' +
+          'Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), ' +
+          '"direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), ' +
+          '"log" (boolean - logarithmic scale), "description" (string).',
+      ),
+  }),
+};
+
+const UPDATE_DASHBOARD_CHART_CONFIG = {
+  description:
+    'Update a single chart within a dashboard.\n\n' +
+    'Fetches the dashboard, locates the chart by its identifier, ' +
+    'merges only the provided fields, and PUTs the dashboard back.',
+  inputSchema: z.object({
+    dashboard_name: z
+      .string()
+      .describe('Name of the dashboard containing the chart.'),
+    chart_id: z.string().describe('Unique chart identifier (the "i" field).'),
+    title: z.string().optional().describe('New chart title.'),
+    chart_type: z
+      .string()
+      .optional()
+      .describe(
+        'Chart type - area, donut, heatmap, bar-horizontal, ' +
+          'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
+          'or bar-vertical.',
+      ),
+    local_query: z
+      .string()
+      .optional()
+      .describe('New HQL query string for chart data.'),
+    fields: z
+      .array(z.string())
+      .optional()
+      .describe('New list of aggregation/group-by fields.'),
+    limit: z
+      .number()
+      .int()
+      .min(0)
+      .optional()
+      .describe('Max buckets returned (>= 0).'),
+    having: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe(
+        'Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.',
+      ),
+    sort_order: z
+      .string()
+      .optional()
+      .describe('Data sort - "Asc", "Desc", "KeyAsc", or "KeyDesc".'),
+    direction: z
+      .string()
+      .optional()
+      .describe('Visual rendering direction - "asc" or "desc".'),
+    colors: z
+      .array(z.string())
+      .optional()
+      .describe('List of hex color codes, e.g. ["#A6ADF7", "#4D54A2"].'),
+    description: z.string().optional().describe('New chart description.'),
+    x: z
+      .number()
+      .int()
+      .min(0)
+      .max(11)
+      .optional()
+      .describe('Grid x position (0-11).'),
+    y: z.number().int().min(0).optional().describe('Grid y position.'),
+    w: z
+      .number()
+      .int()
+      .min(1)
+      .max(12)
+      .optional()
+      .describe('Grid column span (1-12).'),
+    h: z.number().int().min(1).optional().describe('Grid row span.'),
+    logarithmic: z
+      .boolean()
+      .optional()
+      .describe('Enable logarithmic scale on value axis (API field: "log").'),
+    clear_fields: z
+      .array(z.string())
+      .optional()
+      .describe('Chart field names to explicitly set to null.'),
+  }),
+};
+
+const REMOVE_DASHBOARD_CHART_CONFIG = {
+  description:
+    'Remove a chart from a dashboard.\n\n' +
+    'Fetches the dashboard, removes the chart matching the given ' +
+    'identifier, and PUTs the updated dashboard back.',
+  inputSchema: z.object({
+    dashboard_name: z
+      .string()
+      .describe('Name of the dashboard containing the chart.'),
+    chart_id: z
+      .string()
+      .describe('Unique chart identifier (the "i" field) to remove.'),
+  }),
+};
+
+const LIST_SAVED_QUERIES_CONFIG = {
+  description:
+    'List saved HQL queries with optional filtering.\n\n' +
+    'Returns JSON with items, count, total_available, and truncated flag.',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(50)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on query name.'),
+    query_type: z
+      .enum(QUERY_TYPES)
+      .optional()
+      .describe(
+        'Filter by HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".',
+      ),
+  }),
+};
+
+const GET_SAVED_QUERY_CONFIG = {
+  description:
+    'Get a single saved query by name.\n\n' +
+    'Returns JSON representation of the saved query.',
+  inputSchema: z.object({
+    name: z.string().describe('Exact saved query name.'),
+  }),
+};
+
+const UPSERT_SAVED_QUERY_CONFIG = {
+  description:
+    'Create or update a saved HQL query.\n\n' +
+    'Uses upsert semantics - if a query with the given name exists it ' +
+    'is updated, otherwise a new one is created. The server validates ' +
+    'the HQL syntax for the specified query type.',
+  inputSchema: z.object({
+    name: z.string().describe('Unique query name (acts as the upsert key).'),
+    query_type: z
+      .enum(QUERY_TYPES)
+      .describe('HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".'),
+    query: z.string().describe('The HQL query string.'),
+    description: z
+      .string()
+      .optional()
+      .describe('Optional human-readable description.'),
+  }),
+};
+
+const DELETE_SAVED_QUERY_CONFIG = {
+  description: 'Delete a saved query. Requires name confirmation.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Saved query name to delete.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a deletion safeguard.'),
+  }),
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -115,28 +397,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'list_dashboards',
-    {
-      description:
-        'List personal dashboards with optional filtering.\n\n' +
-        'Returns JSON with items, count, total_available, and truncated flag.',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(50)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on dashboard name.'),
-        dashboard_type: z
-          .enum(DASHBOARD_TYPES)
-          .optional()
-          .describe('Filter by type - "certificate" or "request".'),
-      }),
-    },
+    LIST_DASHBOARDS_CONFIG,
     async ({ max_items, name_contains, dashboard_type }) => {
       const principal = await client.get<Record<string, unknown>>(
         '/api/v1/security/principals/self',
@@ -162,14 +423,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'get_dashboard',
-    {
-      description:
-        'Get a single dashboard by name.\n\n' +
-        'Returns JSON representation of the dashboard including its charts.',
-      inputSchema: z.object({
-        name: z.string().describe('Exact dashboard name.'),
-      }),
-    },
+    GET_DASHBOARD_CONFIG,
     async ({ name }) => {
       const result = await fetchDashboardByName(client, name);
       return textResult(JSON.stringify(result));
@@ -179,44 +433,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'create_dashboard',
-    {
-      description:
-        'Create a new personal dashboard.\n\n' +
-        'IMPORTANT - The dashboard name is IMMUTABLE: it CANNOT be changed ' +
-        'after creation. You MUST ask the user for the name (and optionally ' +
-        'a description) before calling this tool. Never invent a name on the ' +
-        "user's behalf.\n\n" +
-        'Dashboard Creation Workflow (recommended):\n' +
-        '1) Ask the user for the dashboard name and optional description\n' +
-        '2) Create a blank dashboard with charts=[]\n' +
-        '3) Use add_dashboard_chart to add charts one at a time, ' +
-        "prompting the user for each chart's configuration.\n\n" +
-        'upsert_saved_query (save queries for reuse in charts).',
-      inputSchema: z.object({
-        name: z
-          .string()
-          .describe(
-            'Unique dashboard name (IMMUTABLE - cannot be renamed later).',
-          ),
-        dashboard_type: z
-          .enum(DASHBOARD_TYPES)
-          .describe('Dashboard scope - "certificate" or "request".'),
-        charts: z
-          .array(z.record(z.string(), z.unknown()))
-          .optional()
-          .describe(
-            'List of chart objects (default: empty list for blank dashboard). ' +
-              'Each chart: {"type": "donut", "title": "My Chart", ' +
-              '"localQuery": "status is valid", "fields": ["keyType"], ' +
-              '"i": "1", "x": 0, "y": 0, "w": 6, "h": 4}. ' +
-              'Recommended: start with charts=[] and use add_dashboard_chart interactively.',
-          ),
-        description: z
-          .string()
-          .optional()
-          .describe('Optional human-readable description.'),
-      }),
-    },
+    CREATE_DASHBOARD_CONFIG,
     async ({ name, dashboard_type, charts, description }) => {
       const payload: Record<string, unknown> = {
         name,
@@ -245,25 +462,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'update_dashboard',
-    {
-      description:
-        'Update an existing dashboard (GET -> merge -> PUT).\n\n' +
-        'Fetches the current dashboard, merges provided overrides, and ' +
-        'PUTs the full object back. No field stripping needed - dashboards ' +
-        'are principal-scoped with no server-injected metadata.',
-      inputSchema: z.object({
-        name: z.string().describe('Dashboard name to update.'),
-        charts: z
-          .array(z.record(z.string(), z.unknown()))
-          .optional()
-          .describe('New charts list (replaces existing).'),
-        description: z.string().optional().describe('New description.'),
-        clear_fields: z
-          .array(z.string())
-          .optional()
-          .describe('Top-level field names to explicitly set to null.'),
-      }),
-    },
+    UPDATE_DASHBOARD_CONFIG,
     async ({ name, charts, description, clear_fields }) => {
       const existing = await fetchDashboardByName(client, name);
 
@@ -297,15 +496,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'delete_dashboard',
-    {
-      description: 'Delete a dashboard. Requires name confirmation.\n\n',
-      inputSchema: z.object({
-        name: z.string().describe('Dashboard name to delete.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a deletion safeguard.'),
-      }),
-    },
+    DELETE_DASHBOARD_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.delete(`${DASHBOARD_BASE}/${encodePathSegment(name)}`);
@@ -322,31 +513,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'add_dashboard_chart',
-    {
-      description:
-        'Add a chart to an existing dashboard.\n\n' +
-        'Prerequisites: Dashboard must exist (use create_dashboard first).\n\n' +
-        'Fetches the dashboard, appends the chart to its charts list, ' +
-        'and PUTs the updated dashboard back. Auto-generates a unique ' +
-        'chart identifier if the chart does not already include one.',
-      inputSchema: z.object({
-        dashboard_name: z.string().describe('Name of the dashboard to modify.'),
-        chart: z
-          .record(z.string(), z.unknown())
-          .describe(
-            'Chart configuration object. Required fields: ' +
-              '{"type": "donut", "title": "My Chart", ' +
-              '"localQuery": "status is valid", "fields": ["keyType"]}. ' +
-              'Valid chart types: area, donut, heatmap, bar-horizontal, ' +
-              'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
-              'bar-vertical. ' +
-              'Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). ' +
-              'Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), ' +
-              '"direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), ' +
-              '"log" (boolean - logarithmic scale), "description" (string).',
-          ),
-      }),
-    },
+    ADD_DASHBOARD_CHART_CONFIG,
     async ({ dashboard_name, chart }) => {
       // Auto-generate chart ID if not provided
       const chartWithId: Record<string, unknown> = { ...chart };
@@ -373,88 +540,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'update_dashboard_chart',
-    {
-      description:
-        'Update a single chart within a dashboard.\n\n' +
-        'Fetches the dashboard, locates the chart by its identifier, ' +
-        'merges only the provided fields, and PUTs the dashboard back.',
-      inputSchema: z.object({
-        dashboard_name: z
-          .string()
-          .describe('Name of the dashboard containing the chart.'),
-        chart_id: z
-          .string()
-          .describe('Unique chart identifier (the "i" field).'),
-        title: z.string().optional().describe('New chart title.'),
-        chart_type: z
-          .string()
-          .optional()
-          .describe(
-            'Chart type - area, donut, heatmap, bar-horizontal, ' +
-              'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
-              'or bar-vertical.',
-          ),
-        local_query: z
-          .string()
-          .optional()
-          .describe('New HQL query string for chart data.'),
-        fields: z
-          .array(z.string())
-          .optional()
-          .describe('New list of aggregation/group-by fields.'),
-        limit: z
-          .number()
-          .int()
-          .min(0)
-          .optional()
-          .describe('Max buckets returned (>= 0).'),
-        having: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe(
-            'Post-aggregation filter, e.g. {"operator": "gte", "value": 10}.',
-          ),
-        sort_order: z
-          .string()
-          .optional()
-          .describe('Data sort - "Asc", "Desc", "KeyAsc", or "KeyDesc".'),
-        direction: z
-          .string()
-          .optional()
-          .describe('Visual rendering direction - "asc" or "desc".'),
-        colors: z
-          .array(z.string())
-          .optional()
-          .describe('List of hex color codes, e.g. ["#A6ADF7", "#4D54A2"].'),
-        description: z.string().optional().describe('New chart description.'),
-        x: z
-          .number()
-          .int()
-          .min(0)
-          .max(11)
-          .optional()
-          .describe('Grid x position (0-11).'),
-        y: z.number().int().min(0).optional().describe('Grid y position.'),
-        w: z
-          .number()
-          .int()
-          .min(1)
-          .max(12)
-          .optional()
-          .describe('Grid column span (1-12).'),
-        h: z.number().int().min(1).optional().describe('Grid row span.'),
-        logarithmic: z
-          .boolean()
-          .optional()
-          .describe(
-            'Enable logarithmic scale on value axis (API field: "log").',
-          ),
-        clear_fields: z
-          .array(z.string())
-          .optional()
-          .describe('Chart field names to explicitly set to null.'),
-      }),
-    },
+    UPDATE_DASHBOARD_CHART_CONFIG,
     async ({
       dashboard_name,
       chart_id,
@@ -553,20 +639,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'remove_dashboard_chart',
-    {
-      description:
-        'Remove a chart from a dashboard.\n\n' +
-        'Fetches the dashboard, removes the chart matching the given ' +
-        'identifier, and PUTs the updated dashboard back.',
-      inputSchema: z.object({
-        dashboard_name: z
-          .string()
-          .describe('Name of the dashboard containing the chart.'),
-        chart_id: z
-          .string()
-          .describe('Unique chart identifier (the "i" field) to remove.'),
-      }),
-    },
+    REMOVE_DASHBOARD_CHART_CONFIG,
     async ({ dashboard_name, chart_id }) => {
       const existing = await fetchDashboardByName(client, dashboard_name);
       const charts = [
@@ -610,30 +683,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'list_saved_queries',
-    {
-      description:
-        'List saved HQL queries with optional filtering.\n\n' +
-        'Returns JSON with items, count, total_available, and truncated flag.',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(50)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on query name.'),
-        query_type: z
-          .enum(QUERY_TYPES)
-          .optional()
-          .describe(
-            'Filter by HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".',
-          ),
-      }),
-    },
+    LIST_SAVED_QUERIES_CONFIG,
     async ({ max_items, name_contains, query_type }) => {
       const params = query_type
         ? new URLSearchParams({ type: query_type })
@@ -656,14 +706,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'get_saved_query',
-    {
-      description:
-        'Get a single saved query by name.\n\n' +
-        'Returns JSON representation of the saved query.',
-      inputSchema: z.object({
-        name: z.string().describe('Exact saved query name.'),
-      }),
-    },
+    GET_SAVED_QUERY_CONFIG,
     async ({ name }) => {
       const result = await client.get(
         `${QUERY_BASE}/${encodePathSegment(name)}`,
@@ -675,28 +718,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'upsert_saved_query',
-    {
-      description:
-        'Create or update a saved HQL query.\n\n' +
-        'Uses upsert semantics - if a query with the given name exists it ' +
-        'is updated, otherwise a new one is created. The server validates ' +
-        'the HQL syntax for the specified query type.',
-      inputSchema: z.object({
-        name: z
-          .string()
-          .describe('Unique query name (acts as the upsert key).'),
-        query_type: z
-          .enum(QUERY_TYPES)
-          .describe(
-            'HQL language - "hcql", "hrql", "heql", "hdql", or "hpql".',
-          ),
-        query: z.string().describe('The HQL query string.'),
-        description: z
-          .string()
-          .optional()
-          .describe('Optional human-readable description.'),
-      }),
-    },
+    UPSERT_SAVED_QUERY_CONFIG,
     async ({ name, query_type, query, description }) => {
       const payload: Record<string, unknown> = {
         name,
@@ -725,15 +747,7 @@ export function registerDashboardTools(
   registerTool(
     server,
     'delete_saved_query',
-    {
-      description: 'Delete a saved query. Requires name confirmation.\n\n',
-      inputSchema: z.object({
-        name: z.string().describe('Saved query name to delete.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a deletion safeguard.'),
-      }),
-    },
+    DELETE_SAVED_QUERY_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.delete(`${QUERY_BASE}/${encodePathSegment(name)}`);

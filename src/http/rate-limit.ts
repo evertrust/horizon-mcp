@@ -58,11 +58,6 @@ export class RateLimiter {
     return true;
   }
 
-  /** Drop a key's window (e.g. on session teardown). */
-  forget(key: string): void {
-    this.windows.delete(key);
-  }
-
   /**
    * Delete windows whose period has fully elapsed. Bounds the key map for
    * limiters keyed by unbounded values (e.g. the per-remote-address init

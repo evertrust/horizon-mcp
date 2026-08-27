@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 
 import pkg from '../package.json';
 import type { HorizonClient } from './client/http.js';
@@ -101,7 +101,7 @@ export interface SessionServerOptions {
 /**
  * Throw with the valid list if any requested toolset name is unknown. Called at
  * startup so a misconfigured `HORIZON_ENABLED_TOOLSETS` refuses to start (in HTTP
- * mode session servers are built per request, so per-session validation would be
+ * mode servers are built per request, so per-request validation would be
  * too late).
  */
 export function assertToolsetsValid(enabled?: readonly string[]): void {
@@ -128,8 +128,8 @@ function resolveToolsets(enabled?: readonly string[]): string[] {
 /**
  * Build a fully-wired McpServer bound to a single HorizonClient: knowledge
  * resources plus the selected tool domains. Transport-agnostic - stdio builds
- * one at startup, HTTP builds one per session so each session's tools close over
- * that session's client (no shared client state across sessions).
+ * one at startup, HTTP builds one per request so each request's tools close over
+ * that request's client (no shared client state across requests).
  */
 export function createSessionServer(
   client: HorizonClient,
@@ -140,9 +140,33 @@ export function createSessionServer(
     {
       instructions: SERVER_INSTRUCTIONS,
       capabilities: {
-        tools: {},
-        resources: {},
-        logging: {},
+        // `listChanged: false` is explicit: this server's tool and resource
+        // sets are fixed at construction and it never emits a list-changed
+        // notification. Advertising true would invite a client to hold a
+        // `subscriptions/listen` stream open forever for nothing.
+        tools: { listChanged: false },
+        resources: { listChanged: false },
+        // No `logging`: MCP 2026-07-28 deprecates the Logging capability
+        // (SEP-2577) and declaring it installs a `logging/setLevel` surface
+        // this server never uses. stdio logs to stderr, HTTP to the process
+        // logger.
+      },
+      // Concrete cache hints. The SDK's defaults (`ttlMs: 0`,
+      // `cacheScope: 'private'`) are conformant but useless.
+      //
+      // `public` is correct ONLY because what this server exposes varies by
+      // server-side environment (HORIZON_ENABLED_TOOLSETS, HORIZON_READ_ONLY),
+      // never by caller. If tool visibility ever becomes per-caller - for
+      // example if OAuth scopes start gating tools - every one of these MUST
+      // become `private`.
+      cacheHints: {
+        'server/discover': { ttlMs: 3_600_000, cacheScope: 'public' },
+        'tools/list': { ttlMs: 3_600_000, cacheScope: 'public' },
+        'resources/list': { ttlMs: 3_600_000, cacheScope: 'public' },
+        'resources/templates/list': { ttlMs: 3_600_000, cacheScope: 'public' },
+        // Knowledge markdown is embedded at build time, so a read result is
+        // valid until the binary changes.
+        'resources/read': { ttlMs: 86_400_000, cacheScope: 'public' },
       },
     },
   );

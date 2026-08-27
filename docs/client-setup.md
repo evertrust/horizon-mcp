@@ -1,10 +1,44 @@
 # Client setup
 
-Configure your large language model (LLM) client to connect to Horizon MCP.
+Connect your large language model (LLM) client to Horizon MCP. Read [Client compatibility](#client-compatibility) first, because the server needs a client that speaks MCP revision 2026-07-28.
 
-## Trimming the tool surface (recommended)
+## Client compatibility
 
-The full server registers 212 tools. These tools use approximately 45,000 to 55,000 context tokens before the first user message.
+Horizon MCP 3.0.0 serves MCP protocol revision **2026-07-28** and nothing else. Revision 2026-07-28 removed the `initialize` handshake and protocol sessions, so a client built for an earlier revision cannot negotiate with it.
+
+| Server version | Protocol revision served | Works with                                  |
+| -------------- | ------------------------ | ------------------------------------------- |
+| 3.x            | `2026-07-28` only        | Clients updated for revision 2026-07-28     |
+| 2.x            | `2025-11-25` and earlier | Clients released before revision 2026-07-28 |
+
+Revision 2026-07-28 is recent, and clients adopt it on their own schedules. Check your client's release notes for the protocol revision it speaks. **If your client has not adopted it yet, stay on horizon-mcp 2.x.** Both lines talk to the same Horizon instance, so you can move when your client is ready.
+
+### Check your client before upgrading
+
+An older client fails at connection time. It reports an "unsupported protocol version" error that names `2026-07-28`. That message is the symptom to look for. Horizon itself works normally when this happens.
+
+To check the revision that a running HTTP deployment serves, ask the deployment directly:
+
+```bash
+curl -s -X POST https://mcp.example.com/mcp \
+  -H 'Content-Type: application/json' \
+  -H 'MCP-Protocol-Version: 2026-07-28' \
+  -H 'Mcp-Method: server/discover' \
+  -H 'X-API-ID: <id>' -H 'X-API-KEY: <key>' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"server/discover","params":{"_meta":{
+        "io.modelcontextprotocol/protocolVersion":"2026-07-28",
+        "io.modelcontextprotocol/clientCapabilities":{}}}}'
+```
+
+The `Mcp-Method` header names the method for the transport. Send it with the same value as the body `method`. The server rejects a mismatch. The probe also needs a valid credential, because the server authenticates every request.
+
+A healthy server returns its capabilities and instructions. If a request names any other revision, the server answers with an error that lists the revisions it does support.
+
+If the body sets `params._meta["io.modelcontextprotocol/protocolVersion"]` to a string but omits the `MCP-Protocol-Version` header, the server returns `400` with JSON-RPC error code `-32020`. The error says that the body claims a protocol version but the required header is absent. The curl example above sends the header and names the same revision in both places.
+
+## Reduce the tool surface (recommended)
+
+The full server registers exactly 222 tools. These tools use about 45,000 to 55,000 context tokens before the first user message.
 
 If you do not need all domains, use these environment variables to reduce the tool set:
 
@@ -24,7 +58,7 @@ If you do not need all domains, use these environment variables to reduce the to
 - `assist`
 - `config`
 
-The server stops during startup if a name is not valid. The error message gives the valid names.
+If a name is not valid, the server stops during startup. The error message gives the valid names.
 
 Suggested presets:
 
@@ -35,128 +69,139 @@ Suggested presets:
 | Configuration administration                            | `HORIZON_ENABLED_TOOLSETS=config,assist,docs`            |
 | Discovery review                                        | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist`    |
 
-A read-only `lifecycle,docs,assist` server registers approximately 38 tools. This configuration decreases the context use by approximately 80 percent.
+A read-only `lifecycle,docs,assist` server registers about 41 tools. This configuration cuts the context use by about 80 percent.
+
+The stdio recipes below set the credentials in the client `env` block. Leave `HORIZON_TRANSPORT` unset: the default is `stdio`.
 
 ## Claude Desktop
 
-Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows):
+1. Open `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
+2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "<your-api-id>",
-        "HORIZON_API_KEY": "<your-api-key>"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "<your-api-id>",
+           "HORIZON_API_KEY": "<your-api-key>"
+         }
+       }
+     }
+   }
+   ```
 
-Or with the standalone binary:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "<your-api-id>",
-        "HORIZON_API_KEY": "<your-api-key>"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "<your-api-id>",
+           "HORIZON_API_KEY": "<your-api-key>"
+         }
+       }
+     }
+   }
+   ```
 
-Restart Claude Desktop. The Horizon tools appear in the tools panel.
+3. Restart Claude Desktop. The Horizon tools appear in the tools panel.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Claude Code
 
-Create `.mcp.json` in your project root:
+1. Create `.mcp.json` in your project root.
+2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-Or with the standalone binary:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-Start Claude Code from that directory. The server makes the 212 tools available immediately.
+3. Start Claude Code from that directory. The server makes the 222 tools available immediately.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Cursor
 
-Create `.cursor/mcp.json` in your project root (or `~/.cursor/mcp.json` for global access):
+1. Create `.cursor/mcp.json` in your project root. For global access, create `~/.cursor/mcp.json` instead.
+2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-Or with the standalone binary:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-Restart Cursor. The Horizon tools appear in Cursor's MCP tools panel.
+3. Restart Cursor. The Horizon tools appear in Cursor's MCP tools panel.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Codex (CLI and Desktop app)
 
-Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/config.toml`:
+Codex CLI and the Codex Desktop app share the same configuration at `~/.codex/config.toml`.
+
+1. Open `~/.codex/config.toml`.
+2. Add the `horizon` server:
 
 ```toml
 [mcp_servers.horizon]
@@ -169,7 +214,7 @@ HORIZON_API_ID = "your-api-id"
 HORIZON_API_KEY = "your-api-key"
 ```
 
-Or with the standalone binary:
+For the standalone binary, use this block instead:
 
 ```toml
 [mcp_servers.horizon]
@@ -181,7 +226,7 @@ HORIZON_API_ID = "your-api-id"
 HORIZON_API_KEY = "your-api-key"
 ```
 
-Or with a local source checkout:
+For a local source checkout, use this block instead:
 
 ```toml
 [mcp_servers.horizon]
@@ -194,9 +239,9 @@ HORIZON_API_ID = "your-api-id"
 HORIZON_API_KEY = "your-api-key"
 ```
 
-In the **Codex Desktop app**, you can also add the server through **Settings > MCP** and follow the GUI prompts.
+In the **Codex Desktop app**, you can also add the server through **Settings > MCP**. Follow the GUI prompts.
 
-Alternatively, add via the CLI:
+Or add the server from the command line:
 
 ```bash
 codex mcp add horizon \
@@ -208,7 +253,7 @@ codex mcp add horizon \
 
 ## OpenCode
 
-Add to `opencode.json`:
+Add the `horizon` server to `opencode.json`:
 
 ```json
 {
@@ -227,7 +272,7 @@ Add to `opencode.json`:
 }
 ```
 
-Or with the standalone binary:
+For the standalone binary, use this block instead:
 
 ```json
 {
@@ -248,6 +293,8 @@ Or with the standalone binary:
 
 ## MCP Inspector (debugging and exploration)
 
+Set the credentials in the environment. Then start the inspector:
+
 ```bash
 export HORIZON_URL=https://horizon.example.com
 export HORIZON_API_ID=your-api-id
@@ -258,11 +305,19 @@ bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 
 This command opens the MCP Inspector in a browser. The inspector shows all tools and knowledge resources.
 
+## Verify the connection
+
+After you restart the MCP client, ask it to call `whoami`. A successful answer contains an `identity` object with an `identifier` and a `permissions` list. The optional `teams` field is a string list or `null`.
+
+If the call fails, inspect the MCP connection first, then the Horizon authentication response. Read [Authentication](authentication.md) next.
+
 ## Connect through streamable HTTP
 
 The previous examples start Horizon MCP as a local stdio process. You can also run the server with the **streamable HTTP** transport.
 
 This transport lets remote clients connect to one long-running server. Use it for a shared server, a container, or a server behind a gateway.
+
+Host the HTTP endpoint under Node >= 24.10. See the [Hosting](../README.md#hosting) note in the README.
 
 The server joins `HORIZON_PUBLIC_URL` with `HORIZON_HTTP_PATH`. The default path is `/mcp`.
 
@@ -272,27 +327,29 @@ For example:
 https://horizon.example.com/mcp
 ```
 
+The endpoint accepts `POST` only. Any other HTTP method gets a `405` response with an `Allow: POST` header.
+
 The server accepts one or more methods from `HORIZON_HTTP_AUTH_METHODS`:
 
-- `service` - Send `X-API-SVA` and `X-API-TOKEN`. Send the OAuth client headers if the MCP must renew the JWT.
+- `service` - Send `X-API-SVA` and `X-API-TOKEN`. Send the OAuth client headers if the server must renew the JWT.
 - `api-key` - Send `X-API-ID` and `X-API-KEY` on each request.
 - `mtls` - Present a TLS client certificate on the connection.
 
-The server does not support OpenID Connect (OIDC) browser login. The `service` method uses headless Horizon JWKS service-account authentication.
+The server does not support OpenID Connect (OIDC) browser login. The `service` method uses Horizon service-account authentication with JWKS, which needs no browser.
 
-MCP clients do not support all connection capabilities. Your client must support the capabilities for the selected authentication method:
+MCP clients do not all support the same connection capabilities. Your client must have the capability that your authentication method needs:
 
-1. **Connect to a remote URL.** Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector, and the Claude Desktop connector support remote URLs.
-2. **Send custom request headers.** The `api-key` and `service` methods require this capability. Use a local proxy if necessary.
-3. **Present a TLS client certificate.** The `mtls` method requires this capability. Most MCP clients require the local proxy procedure below.
+- **Connect to a remote URL.** Claude Code, Cursor, Codex CLI, OpenCode, MCP Inspector, and the Claude Desktop connector support remote URLs.
+- **Send custom request headers.** The `api-key` and `service` methods need this capability. If your client cannot send them, use a local proxy.
+- **Present a TLS client certificate.** The `mtls` method needs this capability. Most MCP clients need the local proxy procedure below.
 
 ### Claude Code
 
 Use the HTTP transport form in `.mcp.json`. Do not use `command` or `args` for this configuration.
 
-For `service`, supply the Horizon service-account name and an initial JWT. The MCP sends these values directly to Horizon.
+For `service`, give the Horizon service-account name and an initial JWT. The server sends the active pair to Horizon. Pinned renewal can replace an expired or rejected JWT before the first Horizon validation.
 
-Supply the OAuth client headers when the MCP must renew the JWT. See [Service-account JWT renewal](authentication.md#service-account-jwt-renewal) for the header requirements.
+Add the OAuth client headers when the server must renew the JWT. See [Service-account JWT renewal](authentication.md#service-account-jwt-renewal) for the header requirements.
 
 ```json
 {
@@ -340,7 +397,7 @@ The Claude Desktop local configuration file starts stdio servers only. To connec
 https://horizon.example.com/mcp
 ```
 
-The connector interface does not support arbitrary static request headers. Use a local proxy to add the required authentication headers.
+The connector interface does not let you set arbitrary static request headers. Use a local proxy to add the authentication headers that your method needs.
 
 Use the same proxy pattern as the [mTLS procedure](#per-caller-mtls-local-proxy-procedure).
 
@@ -348,12 +405,12 @@ Use the same proxy pattern as the [mTLS procedure](#per-caller-mtls-local-proxy-
 
 In `~/.codex/config.toml`, set `url` instead of `command`. For `service`, use environment-backed headers.
 
-This configuration keeps the JWT and OAuth client secret out of the file:
+This configuration keeps the JWT and the OAuth client secret out of the file:
 
 ```toml
 [mcp_servers.horizon]
 url = "https://horizon.example.com/mcp"
-env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_SERVICE_JWT", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
+env_http_headers = { "X-API-SVA" = "HORIZON_SERVICE_ACCOUNT", "X-API-TOKEN" = "HORIZON_API_TOKEN", "X-OAUTH-CLIENT-ID" = "OAUTH_CLIENT_ID", "X-OAUTH-CLIENT-SECRET" = "OAUTH_CLIENT_SECRET", "X-OAUTH-SCOPE" = "OAUTH_SCOPE" }
 ```
 
 For `api-key`, Codex supports `http_headers` and `env_http_headers`. Use `env_http_headers` to keep the secret out of `config.toml`:
@@ -366,7 +423,9 @@ env_http_headers = { "X-API-ID" = "HORIZON_API_ID", "X-API-KEY" = "HORIZON_API_K
 
 Set `HORIZON_API_ID` and `HORIZON_API_KEY` in the environment that starts Codex.
 
-If the environment cannot supply them, use literal headers. This configuration stores credentials as plain text:
+If you cannot set them in the environment, use literal headers.
+
+> Caution: Literal headers store the credentials in `config.toml` as plain text. Restrict access to the file.
 
 ```toml
 [mcp_servers.horizon]
@@ -376,11 +435,13 @@ http_headers = { "X-API-ID" = "your-api-id", "X-API-KEY" = "your-api-key" }
 
 In the **Codex Desktop app**, add the remote server through **Settings > MCP servers**. Enter the server URL.
 
-Use the shared `config.toml` configuration when you require custom headers.
+Use the shared `config.toml` configuration when you need custom headers.
 
 ### Cursor
 
-For `service`, create `.cursor/mcp.json` with the required headers:
+For `service`, create `.cursor/mcp.json` with the headers that the method needs:
+
+> Caution: If `.cursor/mcp.json` holds credentials, restrict access to the file.
 
 ```json
 {
@@ -398,11 +459,11 @@ For `service`, create `.cursor/mcp.json` with the required headers:
 
 For `api-key`, add `X-API-ID` and `X-API-KEY` to the remote server `headers` object.
 
-Protect `.cursor/mcp.json` if it contains credentials. Cursor versions have different support for environment variable interpolation.
+Cursor versions have different support for environment variable interpolation. If your Cursor version does not interpolate environment variables, write literal header values and restrict access to the file.
 
 ### OpenCode
 
-OpenCode remote servers use `type: "remote"`. Disable automatic OAuth for Horizon's API-key mode and source the two headers from environment variables:
+OpenCode remote servers use `type: "remote"`. For Horizon's API-key mode, turn off automatic OAuth. Read the two headers from environment variables:
 
 ```json
 {
@@ -424,7 +485,7 @@ OpenCode remote servers use `type: "remote"`. Disable automatic OAuth for Horizo
 
 For `service`, replace the API-key headers with `X-API-SVA` and `X-API-TOKEN`.
 
-If the MCP must renew the JWT, also add the protected `X-OAUTH-*` headers.
+If the server must renew the JWT, also add the protected `X-OAUTH-*` headers.
 
 ### Per-caller mTLS: local proxy procedure
 

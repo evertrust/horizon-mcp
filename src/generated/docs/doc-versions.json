@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-15T16:10:42.181Z",
+  "generatedAt": "2026-08-25T10:30:19.798Z",
   "products": {
     "horizon": {
       "product": "horizon",
@@ -24,15 +24,24 @@
     },
     "horizon-ansible": {
       "product": "horizon-ansible",
-      "latest": "1.5.1",
-      "versions": ["1.5.1"],
+      "latest": "2.0.0",
+      "versions": ["2.0.0"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Horizon Ansible published documentation"
     },
     "horizon-cli": {
       "product": "horizon-cli",
-      "latest": "1.17",
-      "versions": ["1.11", "1.12", "1.13", "1.14", "1.15", "1.16", "1.17"],
+      "latest": "1.18",
+      "versions": [
+        "1.11",
+        "1.12",
+        "1.13",
+        "1.14",
+        "1.15",
+        "1.16",
+        "1.17",
+        "1.18"
+      ],
       "defaultPolicy": "latest-indexed",
       "provenance": "Official Evertrust documentation sitemap"
     },
@@ -45,8 +54,8 @@
     },
     "terraform-provider-horizon": {
       "product": "terraform-provider-horizon",
-      "latest": "0.7.0",
-      "versions": ["0.7.0"],
+      "latest": "0.8.1",
+      "versions": ["0.8.1"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Terraform Registry provider metadata"
     },

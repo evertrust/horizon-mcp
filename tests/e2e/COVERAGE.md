@@ -8,10 +8,12 @@ not a blanket support guarantee for every Horizon 2.10 deployment.
 
 ## Suite layout (Vitest, tests/e2e/)
 
-30 test files, ~301 tests, run with `bun run test:e2e` (source `.env.local`
-first for `HORIZON_E2E_URL` / `HORIZON_E2E_API_ID` / `HORIZON_E2E_API_KEY`).
-Setup lives in `setup.ts` (builds a HorizonClient from env and a `callTool`
-helper that invokes registered MCP tools directly).
+31 test files, ~304 tests, run with `bun run test:e2e` (source `.env.local`
+first). Most suites use `HORIZON_E2E_URL` / `HORIZON_E2E_API_ID` /
+`HORIZON_E2E_API_KEY`; `service-account.e2e.test.ts` instead uses
+`HORIZON_E2E_URL` / `HORIZON_E2E_SVA` / `HORIZON_E2E_SVA_TOKEN`. Setup for the
+API-key suites lives in `setup.ts` and builds a HorizonClient plus a `callTool`
+helper that invokes registered MCP tools directly.
 
 | Area                                                                              | Files                         | Tests | Notes                                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------------------------------------------------------- | ----------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,6 +21,7 @@ helper that invokes registered MCP tools directly).
 | Config CRUD domains                                                               | `config-*.test.ts` (27 files) | ~160  | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
 | Documentation tools                                                               | `docs.test.ts`                | 5     | search_docs, search_api_docs, get_doc_page                                                                                                                                                                                                                                                                                                                 |
 | System tools                                                                      | `system-tools.test.ts`        | 2     | whoami, license                                                                                                                                                                                                                                                                                                                                            |
+| Service-account authentication                                                    | `service-account.e2e.test.ts` | 3     | whoami identity formula, certificate search, conditional service-account list                                                                                                                                                                                                                                                                              |
 
 Mutating tests follow create -> verify -> delete with teardown; nothing is
 left behind on the QA instance.

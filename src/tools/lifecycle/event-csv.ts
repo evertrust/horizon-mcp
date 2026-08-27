@@ -3,7 +3,7 @@
  * builds CSV from event search results, including detail.* columns.
  */
 import type { HorizonClient } from '../../client/http.js';
-import { CSV_TIMEOUT, buildSearchPayload } from '../helpers.js';
+import { buildSearchPayload } from '../helpers.js';
 
 const EVENT_CSV_DELIMITER = ';';
 const EVENT_CSV_BASE_FIELDS = [
@@ -146,7 +146,7 @@ async function fetchEventPage(
   const result = await client.post<Record<string, unknown>>(
     '/api/v1/events/search',
     payload,
-    { timeout: CSV_TIMEOUT },
+    { timeout: client.exportTimeout },
   );
   const batch = (result['results'] ?? result['items'] ?? []) as Record<
     string,

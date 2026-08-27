@@ -156,9 +156,14 @@ export function extractCredential(
 ): CredentialMaterial {
   for (const name of UNSUPPORTED_CRED_HEADERS) {
     if (headerValue(req.headers, name) !== undefined) {
+      // A conformant MCP client that tried OAuth would otherwise get a bare
+      // 400 with no way to tell what this endpoint does accept. See
+      // docs/adr/0001-mcp-authorization.md for why OAuth is not supported yet.
       throw new CredentialError(
         400,
-        `unsupported client credential header "${name}"`,
+        `unsupported client credential header "${name}": this server does not ` +
+          `support MCP OAuth authorization. Use one of the methods enabled by ` +
+          `HORIZON_HTTP_AUTH_METHODS (api-key, mtls, service).`,
       );
     }
   }
@@ -295,13 +300,14 @@ export function credentialFingerprintOf(
       // A structured tuple preserves the id/key boundary even when either
       // value contains a colon (unlike `${id}:${key}`).
       return credentialFingerprint(
-        JSON.stringify([material.apiId, material.apiKey]),
+        JSON.stringify([material.kind, material.apiId, material.apiKey]),
       );
     case 'service':
       return credentialFingerprint(
         JSON.stringify(
           material.oauth
             ? [
+                material.kind,
                 material.serviceAccount,
                 material.jwt,
                 material.oauth.clientId,
@@ -309,44 +315,46 @@ export function credentialFingerprintOf(
                 material.oauth.scope,
                 material.oauth.audience,
               ]
-            : [material.serviceAccount, material.jwt],
+            : [material.kind, material.serviceAccount, material.jwt],
         ),
       );
     case 'cert':
-      return credentialFingerprint(material.pem);
+      return credentialFingerprint(
+        JSON.stringify([material.kind, material.pem]),
+      );
   }
 }
 
-/**
- * Build the per-session AuthProvider and (for per-caller modes) the credential
- * fingerprint used to anti-hijack-bind the session.
- */
+/** Build the per-session AuthProvider. */
 export function buildSessionAuth(
   material: CredentialMaterial,
   config: HttpConfig,
-  _settings: HorizonSettings,
-): { auth: AuthProvider; fingerprint?: string } {
-  const fingerprint = credentialFingerprintOf(material);
+  settings: HorizonSettings,
+): { auth: AuthProvider } {
   switch (material.kind) {
     case 'api-key':
       return {
         auth: new ApiKeyAuthProvider(material.apiId, material.apiKey),
-        fingerprint,
       };
     case 'service':
       return {
         auth: new ServiceAccountAuthProvider(
           material.serviceAccount,
           material.jwt,
-          material.oauth,
+          material.oauth
+            ? {
+                ...material.oauth,
+                ...(settings.oauthIssuers !== undefined
+                  ? { issuers: settings.oauthIssuers }
+                  : {}),
+              }
+            : undefined,
         ),
-        fingerprint,
       };
     case 'cert': {
       const forwardHeader = config.mtls?.forwardHeader ?? 'SSL_CLIENT_CERT';
       return {
         auth: new CertForwardAuthProvider(forwardHeader, material.pem),
-        fingerprint,
       };
     }
   }
