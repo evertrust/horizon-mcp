@@ -6,9 +6,15 @@ The server exposes 111 registered knowledge resources at `horizon://knowledge/*`
 - 4 curated playbooks for smaller-model usability and integration recipes
 - 89 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
 
-MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
+A host can read these resources to ground its tool choice and its payload construction. The server does not guarantee that every host preloads them before it calls a tool.
 
-For clients with weak or missing MCP resource support, the same content is reachable through the `read_knowledge` tool (in the `docs` toolset): pass a `topic` slug (for example `query-languages`) and optionally a `section`, and page through long guides with `max_chars` / `offset`. Tool descriptions that reference `horizon://knowledge/*` URIs can always be resolved this way.
+If a host has weak MCP resource support, or none, it can read the same content through the `read_knowledge` tool in the `docs` toolset:
+
+- Pass a `topic` slug, for example `query-languages`.
+- Pass a `section` when you need one part of a guide.
+- Page through a long guide with `max_chars` and `offset`.
+
+A tool description that references a `horizon://knowledge/*` URI always resolves this way.
 
 | Resource                  | URI                                             | Contents                                                                                                     |
 | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
@@ -42,7 +48,7 @@ For clients with weak or missing MCP resource support, the same content is reach
 
 ## Generated section resources
 
-For the seven longest guides, the server also registers section-level URIs derived from the H2 headings. Examples:
+For the seven longest guides, the server also registers section-level URIs. The server derives these URIs from the H2 headings. Examples:
 
 - `horizon://knowledge/query-languages/ownership-patterns-hcql`
 - `horizon://knowledge/datasources/rest-datasource`
