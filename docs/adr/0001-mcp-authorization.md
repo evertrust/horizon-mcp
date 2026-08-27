@@ -99,24 +99,24 @@ has the same shape, so the design must decide contract 4 below and not assume it
 
 ## Contracts that must be fixed before any implementation
 
-Each contract becomes irreversible after an authorization server issues the
-first tokens against it.
+After an authorization server issues tokens that depend on a contract, that
+contract cannot change.
 
-| #   | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Why it cannot be deferred                       |
-| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1   | **Canonical resource URI.** One function must produce the URI for the PRM `resource` field, the client's OAuth `resource` parameter, audience comparison, and `resource_metadata` derivation. It must derive the URI from `config.publicEndpoint` (`src/http/config.ts:28,305`), not from the bare origin. The URI must use HTTPS outside loopback, carry no userinfo, query, or fragment, use a lowercase scheme and host, keep a non-root path and a non-default port, and end without a trailing slash. | A change invalidates every token already issued |
-| 2   | **Pinned authorization-server issuer.** The server must discover and validate the issuer at startup. The issuer must be entirely independent of Horizon service-account renewal.                                                                                                                                                                                                                                                                                                                           | It determines who can mint tokens               |
-| 3   | **Scope taxonomy and the tool/resource authorization matrix.** The design must choose one coarse `mcp` scope for the whole enabled surface, or named read, write, and domain scopes. It must state how a scope hierarchy expands. It must state if an unauthorized tool stays visible in `tools/list`.                                                                                                                                                                                                     | It appears in the PRM and in every challenge    |
-| 4   | **Coexistence policy.** OAuth must be mutually exclusive with pass-through, live on a separate endpoint, or run as dual auth with an explicit identity binding.                                                                                                                                                                                                                                                                                                                                            | It decides if OAuth is bypassable               |
-| 5   | **Principal key.** The key must be an HMAC of `(issuer, clientId, tenant, subject)`. Do not use the raw Bearer token, because it rotates. Do not use `sub` alone, because it collides across issuers.                                                                                                                                                                                                                                                                                                      | Rate limiting and audit both key on it          |
-| 6   | **Bridge policy.** The bridge from an MCP principal to a Horizon identity must use token exchange, impersonation, or credential lookup. It must have at least one deny-safe default.                                                                                                                                                                                                                                                                                                                       | It determines what a token actually authorizes  |
-| 7   | **Audit model, token format, and revocation posture.** The design must state if the server supports RFC 8705 certificate-bound tokens.                                                                                                                                                                                                                                                                                                                                                                     | It drives the PRM flags and the logging design  |
+| #   | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Why it cannot be deferred                       |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| 1   | **Canonical resource URI.** One function must produce the URI for the PRM `resource` field, the client's OAuth `resource` parameter, audience comparison, and `resource_metadata` derivation. It must derive the URI from `config.publicEndpoint` (`src/http/config.ts:28,305`), not from the bare origin. The URI must use HTTPS outside loopback and carry no userinfo, query, or fragment. It must use a lowercase scheme and host, keep a non-root path and a non-default port, and end without a trailing slash. | A change invalidates every token already issued |
+| 2   | **Pinned authorization-server issuer.** The server must discover and validate the issuer at startup. The issuer must be entirely independent of Horizon service-account renewal.                                                                                                                                                                                                                                                                                                                                      | It determines who can mint tokens               |
+| 3   | **Scope taxonomy and the tool/resource authorization matrix.** The design must choose one coarse `mcp` scope for the whole enabled surface, or named read, write, and domain scopes. It must state how a scope hierarchy expands. It must state if an unauthorized tool stays visible in `tools/list`.                                                                                                                                                                                                                | It appears in the PRM and in every challenge    |
+| 4   | **Coexistence policy.** OAuth must be mutually exclusive with pass-through, live on a separate endpoint, or run as dual auth with an explicit identity binding.                                                                                                                                                                                                                                                                                                                                                       | It decides if OAuth is bypassable               |
+| 5   | **Principal key.** The key must be an HMAC of `(issuer, clientId, tenant, subject)`. Do not use the raw Bearer token, because it rotates. Do not use `sub` alone, because it collides across issuers.                                                                                                                                                                                                                                                                                                                 | Rate limiting and audit both key on it          |
+| 6   | **Bridge policy.** The bridge from an MCP principal to a Horizon identity must use token exchange, impersonation, or credential lookup. It must have at least one deny-safe default.                                                                                                                                                                                                                                                                                                                                  | It determines what a token actually authorizes  |
+| 7   | **Audit model, token format, and revocation posture.** The design must state if the server supports RFC 8705 certificate-bound tokens.                                                                                                                                                                                                                                                                                                                                                                                | It drives the PRM flags and the logging design  |
 
 ### Contract 6 cannot be satisfied against Horizon 2.10
 
-Contract 6 blocks all the others. The investigation went directly to the Horizon
-2.10 source rather than leave the question open. **No bridge exists today.** That
-work is a Horizon-side change, not a horizon-mcp change.
+Contract 6 blocks all the others. The Horizon 2.10 source confirms that **no
+bridge exists today**. A bridge requires a Horizon-side change, not a
+horizon-mcp change.
 
 Four findings, in the order they close off the options:
 
@@ -134,7 +134,7 @@ Four findings, in the order they close off the options:
    token itself: `SecurityManagerActor.scala:591` builds the identifier from
    `s"$serviceAccountName-${jwtHash.take(16)}"`. Every token refresh then
    produces a _different_ Horizon principal. This works for machine federation,
-   where the token has a long life and the identity is the service account. It
+   where the token is long-lived and the identity is the service account. It
    does not work for a human, whose ownership, team membership, and audit trail
    must survive a token refresh.
 4. **OIDC identity exists only inside a Play session.** `OpenIdAuthenticateAction`
@@ -179,7 +179,7 @@ different principals and must not share a field.
 - The server continues to reject `Authorization`, `Proxy-Authorization`, and
   `Cookie` with 400. The message now names `HORIZON_HTTP_AUTH_METHODS` and
   states that the server does not support OAuth. A conformant client gets a
-  diagnosable error and not a bare failure.
+  diagnosable error instead of a bare failure.
 - A client that only speaks MCP OAuth cannot use this server over HTTP.
   Operators must use one of the Horizon-native methods.
 
@@ -211,8 +211,8 @@ depends on them.
 - Structured audit events that never log raw tokens, whole `AuthInfo` objects,
   or full JWT payloads.
 - An operator must not be able to turn OAuth on until the contract 6 bridge
-  exists. Until then, a configuration that sets it up must fail startup rather
-  than half work.
+  exists. Until then, any OAuth configuration must cause a startup failure. The
+  server must not start with incomplete OAuth support.
 
 ## References
 

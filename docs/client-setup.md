@@ -1,6 +1,6 @@
 # Client setup
 
-Connect your large language model (LLM) client to Horizon MCP. Each section gives the configuration for one client. Read [Client compatibility](#client-compatibility) first, because the server needs a client that speaks MCP revision 2026-07-28.
+Connect your large language model (LLM) client to Horizon MCP. Read [Client compatibility](#client-compatibility) first, because the server needs a client that speaks MCP revision 2026-07-28.
 
 ## Client compatibility
 
@@ -232,7 +232,7 @@ HORIZON_API_ID = "your-api-id"
 HORIZON_API_KEY = "your-api-key"
 ```
 
-In the **Codex Desktop app**, you can also add the server through **Settings > MCP** and follow the GUI prompts.
+In the **Codex Desktop app**, you can also add the server through **Settings > MCP**. Follow the GUI prompts.
 
 Or add the server from the command line:
 
@@ -286,7 +286,7 @@ For the standalone binary, use this block instead:
 
 ## MCP Inspector (debugging and exploration)
 
-Set the credentials in the environment and start the inspector:
+Set the credentials in the environment. Then start the inspector:
 
 ```bash
 export HORIZON_URL=https://horizon.example.com
@@ -448,7 +448,7 @@ Cursor versions have different support for environment variable interpolation.
 
 ### OpenCode
 
-OpenCode remote servers use `type: "remote"`. Turn off automatic OAuth for Horizon's API-key mode and read the two headers from environment variables:
+OpenCode remote servers use `type: "remote"`. For Horizon's API-key mode, turn off automatic OAuth. Read the two headers from environment variables:
 
 ```json
 {
