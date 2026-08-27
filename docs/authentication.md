@@ -98,10 +98,10 @@ authentication method. See
 [Service-account JWT renewal](#service-account-jwt-renewal) for the pinned mode
 and the fallback mode.
 
-## HTTP authentication whitelist
+## HTTP authentication allowlist
 
-`HORIZON_HTTP_AUTH_METHODS` is a whitelist of accepted authentication methods.
-Separate the values with a comma or with a pipe. The server stores the whitelist
+`HORIZON_HTTP_AUTH_METHODS` is an allowlist of accepted authentication methods.
+Separate the values with a comma or with a pipe. The server stores the allowlist
 as this bit mask:
 
 - `api-key = 0b001`
@@ -133,7 +133,7 @@ a fallback:
 
 - A request with no credential.
 - A request with an incomplete credential pair.
-- A request with a credential type that is not in the whitelist.
+- A request with a credential type that is not on the allowlist.
 - A request with more than one complete credential type.
 
 Every `401` response includes a `WWW-Authenticate` header. The value is
@@ -160,18 +160,18 @@ aggregate. If a request exceeds either limit, the server answers with HTTP 429.
 A Horizon `401` or `403` that is not a CSRF rejection retires the cached
 credential:
 
-- The client tries to re-authenticate one time first, unless the
+- The Horizon client tries to re-authenticate one time first, unless the
   re-authentication backoff suppresses this try.
 - When the `401` or `403` reaches the end of the authentication-retry path of
-  the client, the server retires the cached credential immediately. The next
-  request revalidates against Horizon.
+  the Horizon client, the server retires the cached credential immediately. The
+  next request revalidates against Horizon.
 - A CSRF-token rejection uses a separate retry path and does not retire the
   credential.
 
 TTL expiry, LRU eviction, invalidation and shutdown remove a record from reuse
-immediately. The client closure and the authentication cleanup wait until every
-request that holds the record releases its lease. A later request never gets a
-retired record. It revalidates a fresh record instead.
+immediately. The Horizon client closure and the authentication cleanup wait
+until every request that holds the record releases its lease. A later request
+never gets a retired record. It revalidates a fresh record instead.
 
 Cache shutdown waits for the outstanding leases. The HTTP server applies its
 configured graceful-shutdown timeout as the process-level bound.
@@ -426,7 +426,7 @@ server to a loopback address.
 | `HORIZON_CLIENT_CERT` / `HORIZON_CLIENT_KEY`              | Stdio PEM mTLS      |                     | Environment-owned stdio certificate credential; Node only                               |
 | `HORIZON_CLIENT_PFX`                                      | Stdio PFX mTLS      |                     | Environment-owned stdio certificate bundle; Node only                                   |
 | `HORIZON_TRANSPORT`                                       | No                  | `stdio`             | `stdio` or `http`                                                                       |
-| `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe whitelist of `api-key`, `mtls`, and `service`                                |
+| `HORIZON_HTTP_AUTH_METHODS`                               | HTTP                | `api-key`           | Comma/pipe allowlist of `api-key`, `mtls`, and `service`                                |
 | `HORIZON_HTTP_TLS_CERT` / `HORIZON_HTTP_TLS_KEY`          | Direct inbound mTLS |                     | MCP listener certificate and key                                                        |
 | `HORIZON_INBOUND_CERT_HEADER`                             | Ingress mTLS        |                     | Trusted ingress certificate header                                                      |
 | `HORIZON_TRUSTED_PROXY`                                   | Ingress mTLS        |                     | Direct peer IP or IPv4 CIDR allowed to set that header                                  |

@@ -151,7 +151,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `delete_datasource`      | mutating-destructive | Delete a datasource (requires name confirmation)       |
 | `test_datasource`        | read-only            | Test a datasource config against a context dictionary  |
 
-## Triggers and credentials (6 tools)
+## Triggers (6 tools)
 
 | Tool                       | Safety               | Description                                                       |
 | -------------------------- | -------------------- | ----------------------------------------------------------------- |
@@ -166,8 +166,8 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 
 ## Configuration (129 tools)
 
-These tools do CRUD on Horizon configuration objects. The contracts come from
-the Horizon source. For the contract of one object, see `docs/audit/`.
+These tools do CRUD on Horizon configuration objects. Every tool contract comes
+from the Horizon source, not from inference.
 
 Every object family has the read tools `list_*` and `get_*`. A family that
 supports mutation adds `create_*`, `update_*` and `delete_*`. Mandatory Horizon
