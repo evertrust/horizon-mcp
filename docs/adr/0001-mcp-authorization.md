@@ -25,7 +25,7 @@ authorization server:
 - RFC 9207 `iss` validation (client `MUST`)
 - `application_type` in Dynamic Client Registration (client)
 - credentials keyed by issuer (client)
-- the deprecation of DCR in favour of Client ID Metadata Documents (AS and
+- the deprecation of DCR in favor of Client ID Metadata Documents (AS and
   client)
 
 The resource-server obligations have not changed since revision 2025-06-18. They
@@ -94,24 +94,71 @@ not name that server in its audience claim.
 
 Today `X-API-TOKEN` is a Horizon token. The client sends it, and
 `ServiceAccountAuthProvider.getHeaders()` (`src/auth/service-account.ts`)
-forwards it unchanged. This falls outside the OAuth access-token rule, because
-`X-API-TOKEN` is an upstream credential and not an MCP access token. The risk
-has the same shape, so the design must decide contract 4 below and not assume it.
+forwards it unchanged. `X-API-TOKEN` is an upstream Horizon credential, not an
+MCP access token, so the rule does not apply literally. The risk is the same
+shape, so contract 4 must decide this explicitly rather than treat it as
+settled.
 
 ## Contracts that must be fixed before any implementation
 
 After an authorization server issues tokens that depend on a contract, that
 contract cannot change.
 
-| #   | Contract                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Why it cannot be deferred                       |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| 1   | **Canonical resource URI.** One function must produce the URI for the PRM `resource` field, the client's OAuth `resource` parameter, audience comparison, and `resource_metadata` derivation. It must derive the URI from `config.publicEndpoint` (`src/http/config.ts`), not from the bare origin. The URI must use HTTPS outside loopback and carry no userinfo, query, or fragment. It must use a lowercase scheme and host, keep a non-root path and a non-default port, and end without a trailing slash. | A change invalidates every token already issued |
-| 2   | **Pinned authorization-server issuer.** The server must discover and validate the issuer at startup. The issuer must be entirely independent of Horizon service-account renewal.                                                                                                                                                                                                                                                                                                                               | It determines who can mint tokens               |
-| 3   | **Scope taxonomy and the tool/resource authorization matrix.** The design must choose one coarse `mcp` scope for the whole enabled surface, or named read, write, and domain scopes. It must state how a scope hierarchy expands. It must state if an unauthorized tool stays visible in `tools/list`.                                                                                                                                                                                                         | It appears in the PRM and in every challenge    |
-| 4   | **Coexistence policy.** OAuth must be mutually exclusive with pass-through, live on a separate endpoint, or run as dual auth with an explicit identity binding.                                                                                                                                                                                                                                                                                                                                                | It decides if OAuth is bypassable               |
-| 5   | **Principal key.** The key must be an HMAC of `(issuer, clientId, tenant, subject)`. Do not use the raw Bearer token, because it rotates. Do not use `sub` alone, because it collides across issuers.                                                                                                                                                                                                                                                                                                          | Rate limiting and audit both key on it          |
-| 6   | **Bridge policy.** The bridge from an MCP principal to a Horizon identity must use token exchange, impersonation, or credential lookup. It must have at least one deny-safe default.                                                                                                                                                                                                                                                                                                                           | It determines what a token actually authorizes  |
-| 7   | **Audit model, token format, and revocation posture.** The design must state if the server supports RFC 8705 certificate-bound tokens.                                                                                                                                                                                                                                                                                                                                                                         | It drives the PRM flags and the logging design  |
+### Contract 1: canonical resource URI
+
+One function must produce the URI for the PRM `resource` field, the client's
+OAuth `resource` parameter, audience comparison, and `resource_metadata`
+derivation. It must derive the URI from `config.publicEndpoint`
+(`src/http/config.ts`), not from the bare origin. The URI must use HTTPS outside
+loopback and carry no userinfo, query, or fragment. It must use a lowercase
+scheme and host, keep a non-root path and a non-default port, and end without a
+trailing slash.
+
+**Why it must come first:** a change invalidates every token already issued.
+
+### Contract 2: pinned authorization-server issuer
+
+The server must discover and validate the issuer at startup. The issuer must be
+entirely independent of Horizon service-account renewal.
+
+**Why it must come first:** it determines who can mint tokens.
+
+### Contract 3: scope taxonomy and the tool/resource authorization matrix
+
+The design must choose one coarse `mcp` scope for the whole enabled surface, or
+named read, write, and domain scopes. It must state how a scope hierarchy
+expands. It must state if an unauthorized tool stays visible in `tools/list`.
+
+**Why it must come first:** it appears in the PRM and in every challenge.
+
+### Contract 4: coexistence policy
+
+OAuth must be mutually exclusive with pass-through, live on a separate endpoint,
+or run as dual auth with an explicit identity binding.
+
+**Why it must come first:** it decides if OAuth is bypassable.
+
+### Contract 5: principal key
+
+The key must be an HMAC of `(issuer, clientId, tenant, subject)`. Do not use the
+raw Bearer token, because it rotates. Do not use `sub` alone, because it
+collides across issuers.
+
+**Why it must come first:** rate limiting and audit both key on it.
+
+### Contract 6: bridge policy
+
+The bridge from an MCP principal to a Horizon identity must use token exchange,
+impersonation, or credential lookup. It must have at least one deny-safe
+default.
+
+**Why it must come first:** it determines what a token actually authorizes.
+
+### Contract 7: audit model, token format, and revocation posture
+
+The design must state if the server supports RFC 8705 certificate-bound tokens.
+
+**Why it must come first:** it drives the PRM flags and the logging design.
 
 ### Contract 6 cannot be satisfied against Horizon 2.10
 

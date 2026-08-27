@@ -27,8 +27,8 @@ Every PR runs the checks in the table below. Every PR also runs commitlint on
 the commit range. Each commit message must be a one-liner in the
 `type: description` form. The header must stay under 100 characters.
 
-The hosted docs-inventory step is informational, because docs.evertrust.fr
-publishes independently. Every other CI step in the table blocks the PR.
+The hosted docs-inventory step is the only non-blocking step in GitHub Actions,
+because docs.evertrust.fr publishes independently.
 
 Run the stricter full sequence on your machine before you push:
 

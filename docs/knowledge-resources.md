@@ -10,11 +10,11 @@ MCP clients can read these resources to ground their tool choice and their paylo
 
 Some MCP clients have weak MCP resource support or none. Those clients can read the same content through the `read_knowledge` tool in the `docs` toolset:
 
-- Pass a `topic` slug, for example `query-languages`.
-- Pass a `section` when you need one part of a guide.
+- Pass a `topic` slug, for example `query-languages`. The `topic` slug is the segment after `horizon://knowledge/`.
+- Pass a `section` when you need one part of a guide. The `section` slug is the segment after the topic.
 - Page through a long guide with `max_chars` and `offset`.
 
-A tool description that references a `horizon://knowledge/*` URI always resolves this way.
+If a tool description points to a `horizon://knowledge/*` URI, you can always read that content with `read_knowledge` instead.
 
 | Resource                  | URI                                             | Contents                                                                                                     |
 | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |

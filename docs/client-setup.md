@@ -30,9 +30,11 @@ curl -s -X POST https://mcp.example.com/mcp \
         "io.modelcontextprotocol/clientCapabilities":{}}}}'
 ```
 
+The `Mcp-Method` header names the method for the transport. Send it with the same value as the body `method`. The server rejects a mismatch. The probe also needs a valid credential, because the server authenticates every request.
+
 A healthy server returns its capabilities and instructions. If a request names any other revision, the server answers with an error that lists the revisions it does support.
 
-The MCP endpoint accepts `POST` only. Any other HTTP method gets a `405` response with an `Allow: POST` header. If the body sets `params._meta["io.modelcontextprotocol/protocolVersion"]` to a string but omits the `MCP-Protocol-Version` header, the server returns `400` with JSON-RPC error code `-32020`. The error says that the body claims a protocol version but the required header is absent. The curl example above sends the header and names the same revision in both places.
+If the body sets `params._meta["io.modelcontextprotocol/protocolVersion"]` to a string but omits the `MCP-Protocol-Version` header, the server returns `400` with JSON-RPC error code `-32020`. The error says that the body claims a protocol version but the required header is absent. The curl example above sends the header and names the same revision in both places.
 
 ## Reduce the tool surface (recommended)
 
@@ -69,125 +71,130 @@ Suggested presets:
 
 A read-only `lifecycle,docs,assist` server registers about 41 tools. This configuration cuts the context use by about 80 percent.
 
+The stdio recipes below set the credentials in the client `env` block. Leave `HORIZON_TRANSPORT` unset: the default is `stdio`.
+
 ## Claude Desktop
 
 1. Open `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%\Claude\claude_desktop_config.json` (Windows).
 2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "<your-api-id>",
-        "HORIZON_API_KEY": "<your-api-key>"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "<your-api-id>",
+           "HORIZON_API_KEY": "<your-api-key>"
+         }
+       }
+     }
+   }
+   ```
 
-For the standalone binary, use this block instead:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "<your-api-id>",
-        "HORIZON_API_KEY": "<your-api-key>"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "<your-api-id>",
+           "HORIZON_API_KEY": "<your-api-key>"
+         }
+       }
+     }
+   }
+   ```
 
 3. Restart Claude Desktop. The Horizon tools appear in the tools panel.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Claude Code
 
 1. Create `.mcp.json` in your project root.
 2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-For the standalone binary, use this block instead:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
 3. Start Claude Code from that directory. The server makes the 222 tools available immediately.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Cursor
 
 1. Create `.cursor/mcp.json` in your project root. For global access, create `~/.cursor/mcp.json` instead.
 2. Add the `horizon` server:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "bunx",
-      "args": ["@evertrust/horizon-mcp"],
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "bunx",
+         "args": ["@evertrust/horizon-mcp"],
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
-For the standalone binary, use this block instead:
+   For the standalone binary, use this block instead:
 
-```json
-{
-  "mcpServers": {
-    "horizon": {
-      "command": "/path/to/horizon-mcp",
-      "env": {
-        "HORIZON_URL": "https://horizon.example.com",
-        "HORIZON_API_ID": "your-api-id",
-        "HORIZON_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
+   ```json
+   {
+     "mcpServers": {
+       "horizon": {
+         "command": "/path/to/horizon-mcp",
+         "env": {
+           "HORIZON_URL": "https://horizon.example.com",
+           "HORIZON_API_ID": "your-api-id",
+           "HORIZON_API_KEY": "your-api-key"
+         }
+       }
+     }
+   }
+   ```
 
 3. Restart Cursor. The Horizon tools appear in Cursor's MCP tools panel.
+4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Codex (CLI and Desktop app)
 
@@ -298,6 +305,12 @@ bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 
 This command opens the MCP Inspector in a browser. The inspector shows all tools and knowledge resources.
 
+## Verify the connection
+
+After you restart the client, ask it to call `whoami`. A successful answer contains the Horizon `identity` object with your `identifier`, the `permissions` list, and the `teams` list. Horizon returns `teams: null` for a principal in no team.
+
+If the call fails, the error comes from Horizon or from the credential, not from the MCP connection. Read [Authentication](authentication.md) next.
+
 ## Connect through streamable HTTP
 
 The previous examples start Horizon MCP as a local stdio process. You can also run the server with the **streamable HTTP** transport.
@@ -313,6 +326,8 @@ For example:
 ```
 https://horizon.example.com/mcp
 ```
+
+The endpoint accepts `POST` only. Any other HTTP method gets a `405` response with an `Allow: POST` header.
 
 The server accepts one or more methods from `HORIZON_HTTP_AUTH_METHODS`:
 
@@ -444,7 +459,7 @@ For `service`, create `.cursor/mcp.json` with the headers that the method needs:
 
 For `api-key`, add `X-API-ID` and `X-API-KEY` to the remote server `headers` object.
 
-Cursor versions have different support for environment variable interpolation.
+Cursor versions have different support for environment variable interpolation. If your Cursor version does not interpolate environment variables, write literal header values and restrict access to the file.
 
 ### OpenCode
 

@@ -52,7 +52,8 @@ HORIZON_SERVICE_ACCOUNT=automation-account
 HORIZON_API_TOKEN=initial-jwt
 ```
 
-If you pin exactly one issuer, stdio can mint the first token at startup:
+Stdio can also start without `HORIZON_API_TOKEN` and mint the first token. See
+[Service-account JWT renewal](#service-account-jwt-renewal) for the conditions:
 
 ```bash
 HORIZON_SERVICE_ACCOUNT=automation-account
@@ -76,10 +77,10 @@ In both modes, Horizon owns the JWKS retrieval and the signature verification.
 The server only forwards `X-API-SVA` and `X-API-TOKEN`, and it does not verify
 the JWT signature itself. It forwards the initial pair unchanged unless pinned
 renewal is necessary. In discovery fallback mode, the server does not trust the
-token-controlled `iss` claim or `exp` claim until Horizon accepts the token
-during lazy initialization.
+token-controlled `iss` claim or `exp` claim until Horizon accepts the token on
+the first Horizon request.
 
-For automatic renewal, configure the OAuth `client_credentials` tuple:
+For automatic renewal, configure the OAuth renewal settings:
 
 ```bash
 HORIZON_OAUTH_CLIENT_ID=oauth-client
@@ -101,15 +102,8 @@ and the fallback mode.
 ## HTTP authentication allowlist
 
 `HORIZON_HTTP_AUTH_METHODS` is an allowlist of accepted authentication methods.
-Separate the values with a comma or with a pipe. The server stores the allowlist
-as this bit mask:
-
-- `api-key = 0b001`
-- `mtls = 0b010`
-- `service = 0b100`
-
-You can combine the values with binary OR (`|`). Both values below enable
-`api-key` and `service`:
+The accepted names are `api-key`, `mtls` and `service`. Separate the values with
+a comma or with a pipe. Both spellings below enable `api-key` and `service`:
 
 ```bash
 HORIZON_TRANSPORT=http
@@ -121,6 +115,10 @@ HORIZON_HTTP_AUTH_METHODS=api-key,service
 The default value is `api-key`. The server no longer supports the singular
 `HORIZON_HTTP_AUTH_MODE` variable. If you set the old variable, the server stops
 during HTTP startup. The error message gives the new variable name.
+
+> Note: Do not confuse `HORIZON_HTTP_AUTH_MODE` with `HORIZON_AUTH_MODE`. The
+> server only logs a deprecation warning for `HORIZON_AUTH_MODE`, but
+> `HORIZON_HTTP_AUTH_MODE` stops HTTP startup.
 
 | Method    | Caller credential                                            | Horizon forwarding                               |
 | --------- | ------------------------------------------------------------ | ------------------------------------------------ |
@@ -142,6 +140,8 @@ Every `401` response includes a `WWW-Authenticate` header. The value is
 credential type. The caller does not need to read the server configuration.
 
 ### Credential cache lifecycle
+
+You do not need to tune this. Read it if you debug a stale-credential symptom.
 
 Under Node, the HTTP server caches validated credentials by fingerprint. Each
 admitted request holds a lease on its cached Horizon client.
@@ -182,7 +182,7 @@ Horizon JWKS service-account authentication needs a JSON Web Token (JWT) on each
 Horizon request. Both transports support it:
 
 - Stdio reads the service-account settings from environment variables.
-- HTTP reads a complete service-account pair, and an optional renewal tuple,
+- HTTP reads a complete service-account pair, and optional renewal settings,
   from the request headers.
 
 In stdio mode, the server loads the service-account name from its environment.
@@ -258,10 +258,9 @@ If you configure the allowlist, the `iss` value of a presented JWT must match an
 own-property key of the map exactly. If it does not match, the server refuses
 the renewal, and the error names the configured issuers.
 
-If stdio starts without a JWT and the map contains exactly one issuer, the
-server selects that entry directly and mints the first token. If the map
-contains no entry or more than one entry, the startup settings validation needs
-`HORIZON_API_TOKEN`.
+A map with exactly one issuer is also the condition for the startup mint
+described above. With no entry, or with more than one entry, the startup
+settings validation needs `HORIZON_API_TOKEN`.
 
 The token endpoint and the authentication method come only from the operator
 configuration. As a result, pinned mode can renew an expired or rejected token
@@ -344,8 +343,8 @@ that must survive a rotation.
 During renewal, the server checks the issuer only to block a renewed token from
 a different issuer. This check does not preserve identity.
 
-If stdio omits the renewal tuple, or if an HTTP caller omits the OAuth headers,
-the server forwards the JWT but cannot renew it.
+If stdio omits the renewal settings, or if an HTTP caller omits the OAuth
+headers, the server forwards the JWT but cannot renew it.
 
 ### API-key forwarding
 
