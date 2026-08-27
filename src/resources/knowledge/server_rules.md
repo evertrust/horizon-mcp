@@ -16,7 +16,7 @@ tool. Never invent a name on the user's behalf.
 ## 2. Ownership queries
 
 When the user asks about "my certificates" or "certificates I own", call
-`whoami` first to get the principal identifier and team list, then run an
+`whoami` first to get `identity.identifier` and the `teams` list, then run an
 HCQL query that covers both:
 
 ```
@@ -142,3 +142,18 @@ If the docs tool returns a version-detection warning, tell the user that the
 connected Horizon instance could not reliably expose its version and that
 the result fell back to the latest indexed docs. Use the warning instead of
 pretending the version match is exact.
+
+---
+
+## Service-account identity and durable ownership
+
+When `whoami` reports a service-account principal, interpret its
+`identity.identifier` as
+token-specific. Horizon uses `<name>-<sha256(jwt).take(16)>` without a mapping
+and `<name>-<hash16>-<mapped-value>` with `identifierMapping`. The hash segment
+is always present, so either form changes when the JWT rotates.
+
+Treat `identifierMapping` only as claim-derived context, never as a stable
+identity mechanism. For certificates or other objects whose ownership must
+survive token rotation, select team-based ownership instead of ownership by the
+service-account identifier.

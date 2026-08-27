@@ -1,31 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  firstId,
-  jsonRpcErrorBody,
-  messagesOf,
-  methodsOf,
-  validateInitialize,
-} from '../../src/http/jsonrpc.js';
+import { firstId, jsonRpcErrorBody } from '../../src/http/jsonrpc.js';
 
-describe('messagesOf', () => {
-  it('wraps a single object', () => {
-    expect(messagesOf({ method: 'x' })).toEqual([{ method: 'x' }]);
+describe('firstId input normalization', () => {
+  it('reads an id from a single object', () => {
+    expect(firstId({ id: 7, method: 'x' })).toBe(7);
   });
-  it('passes an array through', () => {
-    expect(messagesOf([{ method: 'a' }, { method: 'b' }])).toHaveLength(2);
+  it('reads the first id in a batch', () => {
+    expect(
+      firstId([
+        { id: 'a', method: 'a' },
+        { id: 'b', method: 'b' },
+      ]),
+    ).toBe('a');
   });
-  it('treats null/undefined as empty', () => {
-    expect(messagesOf(undefined)).toEqual([]);
-    expect(messagesOf(null)).toEqual([]);
-  });
-});
-
-describe('methodsOf', () => {
-  it('extracts methods, ignoring non-method entries', () => {
-    expect(methodsOf([{ method: 'tools/call' }, { id: 1 }])).toEqual([
-      'tools/call',
-    ]);
+  it('treats null and undefined as empty', () => {
+    expect(firstId(undefined)).toBeNull();
+    expect(firstId(null)).toBeNull();
   });
 });
 
@@ -35,26 +26,6 @@ describe('firstId', () => {
   });
   it('returns null when there is no id', () => {
     expect(firstId({ method: 'x' })).toBeNull();
-  });
-});
-
-describe('validateInitialize', () => {
-  it('accepts a single initialize message', () => {
-    expect(validateInitialize({ method: 'initialize', id: 1 }).ok).toBe(true);
-  });
-  it('rejects an empty body', () => {
-    expect(validateInitialize(undefined).ok).toBe(false);
-  });
-  it('rejects a batch', () => {
-    expect(
-      validateInitialize([
-        { method: 'initialize', id: 1 },
-        { method: 'initialize', id: 2 },
-      ]).ok,
-    ).toBe(false);
-  });
-  it('rejects a first message that is not initialize', () => {
-    expect(validateInitialize({ method: 'tools/list', id: 1 }).ok).toBe(false);
   });
 });
 

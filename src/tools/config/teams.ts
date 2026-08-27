@@ -14,7 +14,7 @@
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
  * Strip server-populated fields (_id, scim) before PUT.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -101,6 +101,34 @@ function buildTeamBody(args: {
   return o;
 }
 
+const CREATE_TEAMS_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'Team name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_]+ (no dots or spaces).',
+    ),
+  description: descriptionSchema.optional(),
+  contact: contactSchema.optional(),
+  webhook: webhookSchema.optional(),
+  managers: managersSchema.optional(),
+  display_name: displayNameSchema.optional(),
+});
+
+const UPDATE_TEAMS_SCHEMA = z.object({
+  name: z.string().describe('Team name to update (immutable key).'),
+  description: descriptionSchema.optional(),
+  contact: contactSchema.optional(),
+  webhook: webhookSchema.optional(),
+  managers: managersSchema.optional(),
+  display_name: displayNameSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["webhook","contact"].',
+    ),
+});
+
 export function registerTeamTools(
   server: McpServer,
   client: HorizonClient,
@@ -115,37 +143,13 @@ export function registerTeamTools(
       'Create an RBAC team. Teams own certificates, requests, profiles and ' +
       'scheduled tasks, and group principals for authorization.',
     mandatoryFields: ['name'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Team name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_]+ (no dots or spaces).',
-        ),
-      description: descriptionSchema.optional(),
-      contact: contactSchema.optional(),
-      webhook: webhookSchema.optional(),
-      managers: managersSchema.optional(),
-      display_name: displayNameSchema.optional(),
-    }),
+    inputSchema: CREATE_TEAMS_SCHEMA,
     buildPayload: (args) => buildTeamBody(args),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing team.',
-    inputSchema: z.object({
-      name: z.string().describe('Team name to update (immutable key).'),
-      description: descriptionSchema.optional(),
-      contact: contactSchema.optional(),
-      webhook: webhookSchema.optional(),
-      managers: managersSchema.optional(),
-      display_name: displayNameSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["webhook","contact"].',
-        ),
-    }),
+    inputSchema: UPDATE_TEAMS_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildTeamBody(rest);

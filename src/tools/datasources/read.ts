@@ -1,7 +1,7 @@
 /**
  * Read-only datasource tools: list_datasources and get_datasource.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -16,6 +16,39 @@ import {
   validateDsType,
 } from './shared.js';
 
+const LIST_DATASOURCES_CONFIG = {
+  description:
+    'List external datasources with optional filtering.\n\n Ref: horizon://knowledge/datasources.' +
+    'Safety tier: read-only\n' +
+    'create_rest_datasource, test_datasource.',
+  inputSchema: z.object({
+    max_items: z
+      .number()
+      .int()
+      .positive()
+      .max(100)
+      .default(MAX_LIST_ITEMS)
+      .describe('Maximum items to return (default 50).'),
+    name_contains: z
+      .string()
+      .optional()
+      .describe('Case-insensitive substring filter on datasource name.'),
+    ds_type: z
+      .string()
+      .optional()
+      .describe('Filter by datasource type: "dns", "ldap", or "rest".'),
+  }),
+};
+
+const GET_DATASOURCE_CONFIG = {
+  description:
+    'Get a single datasource by name.\n\n Ref: horizon://knowledge/datasources.' +
+    'Safety tier: read-only\n',
+  inputSchema: z.object({
+    name: z.string().describe('Exact datasource name.'),
+  }),
+};
+
 export function registerReadDatasourceTools(
   server: McpServer,
   client: HorizonClient,
@@ -23,29 +56,7 @@ export function registerReadDatasourceTools(
   registerTool(
     server,
     'list_datasources',
-    {
-      description:
-        'List external datasources with optional filtering.\n\n Ref: horizon://knowledge/datasources.' +
-        'Safety tier: read-only\n' +
-        'create_rest_datasource, test_datasource.',
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(MAX_LIST_ITEMS)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe('Case-insensitive substring filter on datasource name.'),
-        ds_type: z
-          .string()
-          .optional()
-          .describe('Filter by datasource type: "dns", "ldap", or "rest".'),
-      }),
-    },
+    LIST_DATASOURCES_CONFIG,
     async ({ max_items, name_contains, ds_type }) => {
       if (ds_type !== undefined) {
         const err = validateDsType(ds_type);
@@ -72,14 +83,7 @@ export function registerReadDatasourceTools(
   registerTool(
     server,
     'get_datasource',
-    {
-      description:
-        'Get a single datasource by name.\n\n Ref: horizon://knowledge/datasources.' +
-        'Safety tier: read-only\n',
-      inputSchema: z.object({
-        name: z.string().describe('Exact datasource name.'),
-      }),
-    },
+    GET_DATASOURCE_CONFIG,
     async ({ name }) => {
       const result = await client.get(`${DS_BASE}/${encodePathSegment(name)}`);
       return {

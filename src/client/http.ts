@@ -10,80 +10,27 @@ import type { ZodType } from 'zod';
 import type { AuthProvider } from '../auth/base.js';
 import { getLogger } from '../logging.js';
 import {
+  RETRYABLE_ENDPOINTS,
+  connectionCauseCode,
+  isConnectionError,
+  positiveSeconds,
+  readJsonBounded,
+  versionCompatibilityLog,
+} from './client-helpers.js';
+import {
   HorizonCsrfError,
   HorizonError,
   HorizonResponseValidationError,
   parseErrorResponse,
 } from './errors.js';
+import { composeWithTimeout } from './request-signal.js';
 import { withRetry } from './retry.js';
 
 const logger = getLogger('horizon_mcp.client');
 
-// PUT/DELETE endpoints verified as idempotent - initially empty
-const RETRYABLE_ENDPOINTS = new Set<string>();
-
-// Defense-in-depth cap on response bodies the client will parse.
-const MAX_RESPONSE_BYTES = 10 * 1024 * 1024;
-
 // Rate-limit boundaries for the auto re-auth path on 401/403.
 const REAUTH_MIN_INTERVAL_MS = 5 * 60 * 1000;
 const REAUTH_MAX_INTERVAL_MS = 30 * 60 * 1000;
-
-// Connection-error cause codes we know how to classify.
-const CONNECTION_CAUSE_CODES = new Set([
-  'ECONNREFUSED',
-  'ENOTFOUND',
-  'ETIMEDOUT',
-  'ECONNRESET',
-  'EHOSTUNREACH',
-  'UND_ERR_CONNECT_TIMEOUT',
-]);
-
-/**
- * Read the `cause.code` chain commonly produced by undici/Node fetch
- * connection errors (the actual TCP/DNS failure is nested as `err.cause`).
- */
-function getCauseCode(err: unknown): string | undefined {
-  if (err && typeof err === 'object' && 'cause' in err) {
-    const cause = (err as { cause?: unknown }).cause;
-    if (cause && typeof cause === 'object' && 'code' in cause) {
-      return (cause as { code?: string }).code;
-    }
-  }
-  return undefined;
-}
-
-/**
- * Bound JSON.parse to MAX_RESPONSE_BYTES. Throws HorizonError(0) if the
- * Content-Length header (or the buffered text) exceeds the limit.
- */
-async function readJsonBounded<T>(
-  resp: Response,
-  path: string,
-): Promise<T | Record<string, never>> {
-  const contentLength = resp.headers.get('content-length');
-  if (contentLength) {
-    const declared = Number.parseInt(contentLength, 10);
-    if (Number.isFinite(declared) && declared > MAX_RESPONSE_BYTES) {
-      throw new HorizonError(0, {
-        message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (Content-Length: ${declared})`,
-        remediation:
-          'Use a paginated endpoint or narrow the query to reduce payload size.',
-      });
-    }
-  }
-
-  const text = await resp.text();
-  if (text.length > MAX_RESPONSE_BYTES) {
-    throw new HorizonError(0, {
-      message: `Response from ${path} exceeds ${MAX_RESPONSE_BYTES} bytes (received: ${text.length})`,
-      remediation:
-        'Use a paginated endpoint or narrow the query to reduce payload size.',
-    });
-  }
-  if (!text) return {} as Record<string, never>;
-  return JSON.parse(text) as T;
-}
 
 /**
  * Common per-request options accepted by the public verb helpers.
@@ -104,17 +51,29 @@ export interface MultipartPart {
   data: Buffer | string;
 }
 
+export interface HorizonClientOptions {
+  timeout?: number;
+  exportTimeout?: number;
+  verifySsl: boolean;
+  testedVersions?: readonly string[];
+  warnVersions?: readonly string[];
+  onAuthReject?: () => void;
+}
+
 export class HorizonClient {
   private readonly _baseUrl: string;
   private readonly _auth: AuthProvider;
   private readonly _timeout: number;
+  /** CSV export request budget in seconds, usable directly as the timeout request option. */
   readonly exportTimeout: number;
   private readonly _agent: Agent;
   private readonly _testedVersions: readonly string[];
   private readonly _warnVersions: readonly string[];
+  private readonly _onAuthReject?: () => void;
   private _csrfToken: string | undefined;
   private _initialized = false;
   private _initPromise: Promise<void> | null = null;
+  private _authRejectNoted = false;
 
   // Rate-limit state for the 401 -> re-auth path.
   private _lastReauthAt: number | null = null;
@@ -127,20 +86,19 @@ export class HorizonClient {
   constructor(
     baseUrl: string,
     auth: AuthProvider,
-    options: {
-      timeout: number;
-      exportTimeout: number;
-      verifySsl: boolean;
-      testedVersions?: readonly string[];
-      warnVersions?: readonly string[];
-    },
+    options: HorizonClientOptions,
   ) {
     this._baseUrl = baseUrl.replace(/\/+$/, '');
     this._auth = auth;
-    this._timeout = options.timeout * 1000;
-    this.exportTimeout = options.exportTimeout * 1000;
+    this._timeout = positiveSeconds('timeout', options.timeout, 30) * 1000;
+    this.exportTimeout = positiveSeconds(
+      'exportTimeout',
+      options.exportTimeout,
+      120,
+    );
     this._testedVersions = options.testedVersions ?? [];
     this._warnVersions = options.warnVersions ?? [];
+    this._onAuthReject = options.onAuthReject;
 
     // Build undici Agent with TLS connect options
     const authConnect = auth.getDispatcherOptions();
@@ -308,7 +266,7 @@ export class HorizonClient {
       headers,
       body: formData,
       dispatcher: this._agent,
-      signal: AbortSignal.timeout(this._timeout),
+      signal: composeWithTimeout(this._timeout),
     } as UndiciRequestInit);
 
     const durationMs = Math.round(performance.now() - start);
@@ -338,7 +296,11 @@ export class HorizonClient {
   }
 
   async close(): Promise<void> {
-    await this._agent.close();
+    if (typeof this._agent.close === 'function') {
+      // Bun's built-in undici shim exposes Agent without a close() method.
+      // Node's installed undici Agent still needs graceful shutdown.
+      await this._agent.close();
+    }
   }
 
   // -- CSRF -----------------------------------------------------------------
@@ -368,7 +330,7 @@ export class HorizonClient {
         method: 'GET',
         headers,
         dispatcher: this._agent,
-        signal: AbortSignal.timeout(this._timeout),
+        signal: composeWithTimeout(this._timeout),
       });
       if (resp.status === 200) {
         const data = (await resp.json()) as Record<string, unknown>;
@@ -397,7 +359,10 @@ export class HorizonClient {
   private async _ensureInitialized(): Promise<void> {
     if (this._initialized) return;
     if (!this._initPromise) {
-      this._initPromise = this._doLazyInit();
+      this._initPromise = this._doLazyInit().catch((err: unknown) => {
+        this._initPromise = null;
+        throw err;
+      });
     }
     await this._initPromise;
   }
@@ -446,7 +411,7 @@ export class HorizonClient {
           method: 'GET',
           headers,
           dispatcher: this._agent,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         },
       );
     } catch (err) {
@@ -488,27 +453,17 @@ export class HorizonClient {
 
     // 4. Log version compatibility.
     if (this.horizonVersion) {
-      this._logVersionCompatibility(this.horizonVersion);
-    }
-  }
-
-  private _logVersionCompatibility(version: string): void {
-    // Extract major.minor from version string
-    const match = version.match(/^(\d+\.\d+)/);
-    if (!match) return;
-    const majorMinor = match[1]!;
-
-    if (this._testedVersions.includes(majorMinor)) {
-      logger.info(`Horizon version ${version} (tested - full compatibility)`);
-    } else if (this._warnVersions.includes(majorMinor)) {
-      logger.warning(
-        `Horizon version ${version} - partially tested, some features may not work as expected`,
+      const compatibility = versionCompatibilityLog(
+        this.horizonVersion,
+        this._testedVersions,
+        this._warnVersions,
       );
-    } else {
-      logger.warning(
-        `Horizon version ${version} - untested, proceed with caution`,
-      );
+      if (compatibility) {
+        logger[compatibility.level](compatibility.message);
+      }
     }
+
+    if (!strict) this._auth.markValidated();
   }
 
   // -- Internal request pipeline --------------------------------------------
@@ -535,7 +490,7 @@ export class HorizonClient {
       method,
       headers,
       dispatcher: this._agent,
-      signal: AbortSignal.timeout(timeoutMs),
+      signal: composeWithTimeout(timeoutMs),
     };
     if (opts?.body) {
       fetchOpts.body = opts.body;
@@ -548,14 +503,8 @@ export class HorizonClient {
     try {
       resp = await this._doRequest(method, fullUrl, fetchOpts, path);
     } catch (err) {
-      const causeCode = getCauseCode(err);
-      const isConnectionError =
-        (causeCode !== undefined && CONNECTION_CAUSE_CODES.has(causeCode)) ||
-        // Fallback when cause.code is unavailable (older runtimes / test mocks).
-        (causeCode === undefined &&
-          err instanceof TypeError &&
-          String(err).includes('fetch'));
-      if (isConnectionError) {
+      const causeCode = connectionCauseCode(err);
+      if (isConnectionError(err)) {
         throw new HorizonError(0, {
           message: `Connection to ${this._baseUrl} failed${
             causeCode ? ` (${causeCode})` : ''
@@ -598,7 +547,7 @@ export class HorizonClient {
         headers['Csrf-Token'] = this._csrfToken;
       }
       fetchOpts.headers = headers;
-      fetchOpts.signal = AbortSignal.timeout(timeoutMs);
+      fetchOpts.signal = composeWithTimeout(timeoutMs);
       resp = await undiciFetch(fullUrl, fetchOpts);
       if (resp.status >= 400) {
         throw parseErrorResponse(resp.status, await resp.text());
@@ -625,6 +574,7 @@ export class HorizonClient {
         );
         // Return the 401/403 to the caller for normal error handling.
         if (resp.status >= 400) {
+          this._noteAuthReject();
           throw parseErrorResponse(resp.status, await resp.text());
         }
         return resp;
@@ -655,10 +605,21 @@ export class HorizonClient {
     }
 
     if (resp.status >= 400) {
+      if (resp.status === 401 || resp.status === 403) this._noteAuthReject();
       throw parseErrorResponse(resp.status, await resp.text());
     }
 
     return resp;
+  }
+
+  private _noteAuthReject(): void {
+    if (this._authRejectNoted) return;
+    this._authRejectNoted = true;
+    try {
+      this._onAuthReject?.();
+    } catch {
+      // The upstream authentication error remains the surfaced failure.
+    }
   }
 
   private async _doRequest(
@@ -674,7 +635,7 @@ export class HorizonClient {
       return withRetry(() =>
         undiciFetch(url, {
           ...fetchOpts,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         }),
       );
     }
@@ -689,7 +650,7 @@ export class HorizonClient {
       return withRetry(() =>
         undiciFetch(url, {
           ...fetchOpts,
-          signal: AbortSignal.timeout(this._timeout),
+          signal: composeWithTimeout(this._timeout),
         }),
       );
     }

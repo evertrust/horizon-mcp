@@ -5,7 +5,7 @@
  *   - update_datasource
  *   - delete_datasource
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -24,6 +24,96 @@ import {
   validateRecordTypes,
 } from './shared.js';
 
+const UPDATE_DATASOURCE_CONFIG = {
+  description:
+    'Update an existing datasource (GET -> strip -> merge -> PUT).\n\n Ref: horizon://knowledge/datasources.' +
+    'Safety tier: mutating-safe\n' +
+    'Parameters are type-specific - only set fields relevant to the datasource ' +
+    'type (dns, ldap, or rest). Irrelevant fields are ignored.\n\n' +
+    'IMPORTANT: The datasource name and type cannot be changed after creation.\n\n',
+  inputSchema: z.object({
+    name: z.string().describe('Datasource name to update (cannot be changed).'),
+    display_name: localizedNameSchema,
+    description: z.string().optional().describe('New description.'),
+    host: z.string().optional().describe('(DNS) New DNS server IP.'),
+    port: z.number().int().optional().describe('(DNS/LDAP) New port number.'),
+    timeout: z.string().optional().describe('New timeout in duration format.'),
+    lookup: z.string().optional().describe('(DNS) New lookup TemplateString.'),
+    record_types: z
+      .array(z.string())
+      .optional()
+      .describe('(DNS) New record type filter.'),
+    hostname: z.string().optional().describe('(LDAP) New LDAP server URL.'),
+    credentials: z
+      .string()
+      .optional()
+      .describe('(LDAP/REST) New credentials name.'),
+    base_dn: z
+      .string()
+      .optional()
+      .describe('(LDAP) New base DN TemplateString.'),
+    filter: z
+      .string()
+      .optional()
+      .describe('(LDAP) New search filter TemplateString.'),
+    secure: z.boolean().optional().describe('(LDAP) New secure flag.'),
+    disable_hostname_validation: z
+      .boolean()
+      .optional()
+      .describe('(LDAP) New hostname validation flag.'),
+    attributes: dsAttributeSchema,
+    limit: z.number().int().optional().describe('(LDAP) New result limit.'),
+    follow_referrals: z
+      .boolean()
+      .optional()
+      .describe('(LDAP) New referral traversal flag.'),
+    method: z.string().optional().describe('(REST) New HTTP method.'),
+    url: z
+      .string()
+      .optional()
+      .describe('(REST) New endpoint URL TemplateString.'),
+    authentication_type: z
+      .string()
+      .optional()
+      .describe('(REST) New auth type.'),
+    headers: z
+      .array(z.object({ name: z.string(), value: z.string() }))
+      .optional()
+      .describe('(REST) New HTTP headers.'),
+    payload_type: z
+      .string()
+      .optional()
+      .describe('(REST) New payload format hint.'),
+    payload: z
+      .string()
+      .optional()
+      .describe('(REST) New request body TemplateString.'),
+    expected_http_codes: z
+      .array(z.number().int())
+      .optional()
+      .describe('(REST) New success HTTP codes.'),
+    proxy: z.string().optional().describe('(LDAP/REST) New proxy name.'),
+    clear_fields: z
+      .array(z.string())
+      .optional()
+      .describe('Top-level field names to explicitly set to null.'),
+  }),
+};
+
+const DELETE_DATASOURCE_CONFIG = {
+  description:
+    'Delete a datasource. Requires name confirmation.\n\n Ref: horizon://knowledge/datasources.' +
+    'A datasource cannot be deleted if it is still referenced by any ' +
+    "profile's dsFlow.\n\n" +
+    'Safety tier: mutating-destructive\n',
+  inputSchema: z.object({
+    name: z.string().describe('Datasource name to delete.'),
+    expected_name: z
+      .string()
+      .describe('Must exactly match name as a deletion safeguard.'),
+  }),
+};
+
 export function registerMutateDatasourceTools(
   server: McpServer,
   client: HorizonClient,
@@ -31,93 +121,7 @@ export function registerMutateDatasourceTools(
   registerTool(
     server,
     'update_datasource',
-    {
-      description:
-        'Update an existing datasource (GET -> strip -> merge -> PUT).\n\n Ref: horizon://knowledge/datasources.' +
-        'Safety tier: mutating-safe\n' +
-        'Parameters are type-specific - only set fields relevant to the datasource ' +
-        'type (dns, ldap, or rest). Irrelevant fields are ignored.\n\n' +
-        'IMPORTANT: The datasource name and type cannot be changed after creation.\n\n',
-      inputSchema: z.object({
-        name: z
-          .string()
-          .describe('Datasource name to update (cannot be changed).'),
-        display_name: localizedNameSchema,
-        description: z.string().optional().describe('New description.'),
-        host: z.string().optional().describe('(DNS) New DNS server IP.'),
-        port: z
-          .number()
-          .int()
-          .optional()
-          .describe('(DNS/LDAP) New port number.'),
-        timeout: z
-          .string()
-          .optional()
-          .describe('New timeout in duration format.'),
-        lookup: z
-          .string()
-          .optional()
-          .describe('(DNS) New lookup TemplateString.'),
-        record_types: z
-          .array(z.string())
-          .optional()
-          .describe('(DNS) New record type filter.'),
-        hostname: z.string().optional().describe('(LDAP) New LDAP server URL.'),
-        credentials: z
-          .string()
-          .optional()
-          .describe('(LDAP/REST) New credentials name.'),
-        base_dn: z
-          .string()
-          .optional()
-          .describe('(LDAP) New base DN TemplateString.'),
-        filter: z
-          .string()
-          .optional()
-          .describe('(LDAP) New search filter TemplateString.'),
-        secure: z.boolean().optional().describe('(LDAP) New secure flag.'),
-        disable_hostname_validation: z
-          .boolean()
-          .optional()
-          .describe('(LDAP) New hostname validation flag.'),
-        attributes: dsAttributeSchema,
-        limit: z.number().int().optional().describe('(LDAP) New result limit.'),
-        follow_referrals: z
-          .boolean()
-          .optional()
-          .describe('(LDAP) New referral traversal flag.'),
-        method: z.string().optional().describe('(REST) New HTTP method.'),
-        url: z
-          .string()
-          .optional()
-          .describe('(REST) New endpoint URL TemplateString.'),
-        authentication_type: z
-          .string()
-          .optional()
-          .describe('(REST) New auth type.'),
-        headers: z
-          .array(z.object({ name: z.string(), value: z.string() }))
-          .optional()
-          .describe('(REST) New HTTP headers.'),
-        payload_type: z
-          .string()
-          .optional()
-          .describe('(REST) New payload format hint.'),
-        payload: z
-          .string()
-          .optional()
-          .describe('(REST) New request body TemplateString.'),
-        expected_http_codes: z
-          .array(z.number().int())
-          .optional()
-          .describe('(REST) New success HTTP codes.'),
-        proxy: z.string().optional().describe('(LDAP/REST) New proxy name.'),
-        clear_fields: z
-          .array(z.string())
-          .optional()
-          .describe('Top-level field names to explicitly set to null.'),
-      }),
-    },
+    UPDATE_DATASOURCE_CONFIG,
     async ({
       name,
       display_name,
@@ -220,19 +224,7 @@ export function registerMutateDatasourceTools(
   registerTool(
     server,
     'delete_datasource',
-    {
-      description:
-        'Delete a datasource. Requires name confirmation.\n\n Ref: horizon://knowledge/datasources.' +
-        'A datasource cannot be deleted if it is still referenced by any ' +
-        "profile's dsFlow.\n\n" +
-        'Safety tier: mutating-destructive\n',
-      inputSchema: z.object({
-        name: z.string().describe('Datasource name to delete.'),
-        expected_name: z
-          .string()
-          .describe('Must exactly match name as a deletion safeguard.'),
-      }),
-    },
+    DELETE_DATASOURCE_CONFIG,
     async ({ name, expected_name }) => {
       deleteGuard(name, expected_name);
       await client.delete(`${DS_BASE}/${encodePathSegment(name)}`);

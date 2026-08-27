@@ -10,9 +10,8 @@
  *   6. Full tool invocation with mock client via MCP protocol
  *   7. Query validity (well-formed HQL from showcase inputs)
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -398,7 +397,7 @@ describe('Tool invocation via MCP', () => {
       request: vi.fn(),
       close: vi.fn(),
       fetchCsrfToken: vi.fn(),
-      exportTimeout: 120000,
+      exportTimeout: 120,
       principalName: undefined,
       horizonVersion: undefined,
     };
@@ -602,7 +601,7 @@ describe('Oversized input guard', () => {
       request: vi.fn(),
       close: vi.fn(),
       fetchCsrfToken: vi.fn(),
-      exportTimeout: 120000,
+      exportTimeout: 120,
       principalName: undefined,
       horizonVersion: undefined,
     };

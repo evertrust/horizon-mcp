@@ -5,7 +5,7 @@
  * `src/tools/config/`) into the MCP server. Each family is generated from a
  * source-grounded contract under `docs/audit/<object>.contract.json`.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 
 import type { HorizonClient } from '../../client/http.js';
 import { registerArchiveTools } from './archives.js';

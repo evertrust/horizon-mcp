@@ -8,7 +8,7 @@
  * Route: /api/v1/proxy/httpproxies. Update PUTs the COLLECTION root (body-keyed
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -52,6 +52,46 @@ const credentialsSchema = z
     'Name of an existing `password` credentials object (PROXY target) for Basic auth. Must pre-exist.',
   );
 
+const CREATE_HTTP_PROXY_OPTS = {
+  description:
+    'Create an HTTP proxy configuration used for outbound HTTP by CAs, PKI ' +
+    'connectors, third-party connectors, datasources, identity providers, ' +
+    'certificate profiles (ACME), and triggers.',
+  mandatoryFields: ['name', 'host', 'port'],
+  inputSchema: z.object({
+    name: nameSchema,
+    host: hostSchema,
+    port: portSchema,
+    credentials: credentialsSchema.optional(),
+  }),
+  buildPayload: ({ name, host, port, credentials }) => {
+    const body: Record<string, unknown> = { name, host, port };
+    if (credentials !== undefined) body['credentials'] = credentials;
+    return body;
+  },
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_HTTP_PROXY_OPTS = {
+  description: 'Update an existing HTTP proxy configuration.',
+  inputSchema: z.object({
+    name: z.string().describe('Proxy name to update (immutable key).'),
+    host: hostSchema.optional(),
+    port: portSchema.optional(),
+    credentials: credentialsSchema.optional(),
+    clear_fields: z
+      .array(z.string())
+      .optional()
+      .describe('Top-level fields to explicitly null, e.g. ["credentials"].'),
+  }),
+  buildOverrides: ({ host, port, credentials }) => {
+    const o: Record<string, unknown> = {};
+    if (host !== undefined) o['host'] = host;
+    if (port !== undefined) o['port'] = port;
+    if (credentials !== undefined) o['credentials'] = credentials;
+    return o;
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerHttpProxyTools(
   server: McpServer,
   client: HorizonClient,
@@ -61,45 +101,9 @@ export function registerHttpProxyTools(
     getDescription: 'Get a single HTTP proxy configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create an HTTP proxy configuration used for outbound HTTP by CAs, PKI ' +
-      'connectors, third-party connectors, datasources, identity providers, ' +
-      'certificate profiles (ACME), and triggers.',
-    mandatoryFields: ['name', 'host', 'port'],
-    inputSchema: z.object({
-      name: nameSchema,
-      host: hostSchema,
-      port: portSchema,
-      credentials: credentialsSchema.optional(),
-    }),
-    buildPayload: ({ name, host, port, credentials }) => {
-      const body: Record<string, unknown> = { name, host, port };
-      if (credentials !== undefined) body['credentials'] = credentials;
-      return body;
-    },
-  });
+  registerCreateTool(server, client, SPEC, CREATE_HTTP_PROXY_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing HTTP proxy configuration.',
-    inputSchema: z.object({
-      name: z.string().describe('Proxy name to update (immutable key).'),
-      host: hostSchema.optional(),
-      port: portSchema.optional(),
-      credentials: credentialsSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["credentials"].'),
-    }),
-    buildOverrides: ({ host, port, credentials }) => {
-      const o: Record<string, unknown> = {};
-      if (host !== undefined) o['host'] = host;
-      if (port !== undefined) o['port'] = port;
-      if (credentials !== undefined) o['credentials'] = credentials;
-      return o;
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_HTTP_PROXY_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete an HTTP proxy configuration.',

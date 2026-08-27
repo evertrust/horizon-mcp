@@ -19,7 +19,7 @@
  *   - type=certificate -> requires archiveKeys; optional filter (HCQL).
  *   - type=event        -> requires before (epoch ms).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -145,19 +145,28 @@ const configSchema = z
       'those as their own parameters.',
   );
 
+const CREATE_ARCHIVES_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  filename: filenameSchema,
+  config: configSchema.optional(),
+});
+
+const ARCHIVE_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['name', 'type', 'filename'],
+  jsonSchema: archiveRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerArchiveTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['name', 'type', 'filename'],
-    jsonSchema: archiveRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, ARCHIVE_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription: 'List archives.',
@@ -173,12 +182,7 @@ export function registerArchiveTools(
       'before a given instant (requires CLM, PKI or DCV license). ' +
       'Create-and-delete only: there is no update.',
     mandatoryFields: ['name', 'type', 'filename'],
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      filename: filenameSchema,
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_ARCHIVES_SCHEMA,
     buildPayload: (args) => buildArchiveBody(args),
   });
 

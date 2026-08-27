@@ -7,11 +7,41 @@
  * Knowledge resources:
  *   - horizon://knowledge/query-languages
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
 import { registerTool } from '../register.js';
+
+const VALIDATE_HQL_CONFIG = {
+  description:
+    'Validate a Horizon query (HCQL/HRQL/HEQL/HDQL) by running a minimal ' +
+    'search (pageSize=1). Returns {valid, query_type, count?, has_more?, ' +
+    'error?}. Field names must be lowercase. ' +
+    'Full reference: horizon://knowledge/query-languages.',
+  inputSchema: z.object({
+    dialect: z
+      .enum(['hcql', 'hrql', 'heql', 'hdql'])
+      .describe(
+        'Query dialect: hcql (certificates), hrql (requests), heql ' +
+          '(events), hdql (discovery events).',
+      ),
+    query: z.string().describe('Query expression to validate.'),
+  }),
+};
+
+const DESCRIBE_QUERY_FIELDS_CONFIG = {
+  description:
+    'Discover available fields and syntax for Horizon query languages.\n\n' +
+    'Returns field metadata, supported operators, date formats, and ' +
+    'example queries for the specified query language type. This is a ' +
+    'local tool that does not make any API calls.',
+  inputSchema: z.object({
+    query_type: z
+      .string()
+      .describe('Query language type - one of: hcql, hrql, heql, hdql.'),
+  }),
+};
 
 // ---------------------------------------------------------------------------
 // Field metadata - pre-built from known Horizon source fields
@@ -317,22 +347,7 @@ export function registerQueryTools(
   registerTool(
     server,
     'validate_hql',
-    {
-      description:
-        'Validate a Horizon query (HCQL/HRQL/HEQL/HDQL) by running a minimal ' +
-        'search (pageSize=1). Returns {valid, query_type, count?, has_more?, ' +
-        'error?}. Field names must be lowercase. ' +
-        'Full reference: horizon://knowledge/query-languages.',
-      inputSchema: z.object({
-        dialect: z
-          .enum(['hcql', 'hrql', 'heql', 'hdql'])
-          .describe(
-            'Query dialect: hcql (certificates), hrql (requests), heql ' +
-              '(events), hdql (discovery events).',
-          ),
-        query: z.string().describe('Query expression to validate.'),
-      }),
-    },
+    VALIDATE_HQL_CONFIG,
     async ({ dialect, query }) => validateQuery(dialect, query),
   );
 
@@ -363,18 +378,7 @@ export function registerQueryTools(
   registerTool(
     server,
     'describe_query_fields',
-    {
-      description:
-        'Discover available fields and syntax for Horizon query languages.\n\n' +
-        'Returns field metadata, supported operators, date formats, and ' +
-        'example queries for the specified query language type. This is a ' +
-        'local tool that does not make any API calls.',
-      inputSchema: z.object({
-        query_type: z
-          .string()
-          .describe('Query language type - one of: hcql, hrql, heql, hdql.'),
-      }),
-    },
+    DESCRIBE_QUERY_FIELDS_CONFIG,
     async ({ query_type }) => {
       const normalized = query_type.trim().toLowerCase();
       const metadata = QUERY_METADATA[normalized];

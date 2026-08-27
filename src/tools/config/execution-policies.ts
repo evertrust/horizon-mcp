@@ -18,7 +18,7 @@
  * objects (authoritative Scala Json.format[TimeRange] object form, not the
  * OpenAPI single-string shape).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -133,6 +133,48 @@ function buildExecutionPolicyBody(args: {
   return o;
 }
 
+const CREATE_EXECUTION_POLICIES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe(
+      'Execution policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+    ),
+  description: descriptionSchema.optional(),
+  authorized_periods: authorizedPeriodsSchema.optional(),
+  forbidden_periods: forbiddenPeriodsSchema.optional(),
+});
+
+const UPDATE_EXECUTION_POLICIES_SCHEMA = z.object({
+  name: z.string().describe('Execution policy name to update (immutable key).'),
+  description: descriptionSchema.optional(),
+  authorized_periods: authorizedPeriodsSchema.optional(),
+  forbidden_periods: forbiddenPeriodsSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["description","authorizedPeriods"].',
+    ),
+});
+
+const CREATE_EXECUTION_POLICY_OPTS = {
+  description:
+    'Create an execution policy (time-window constraints that gate when ' +
+    'automation policies are allowed to run).',
+  mandatoryFields: ['name'],
+  inputSchema: CREATE_EXECUTION_POLICIES_SCHEMA,
+  buildPayload: (args) => buildExecutionPolicyBody(args),
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_EXECUTION_POLICY_OPTS = {
+  description: 'Update an existing execution policy configuration.',
+  inputSchema: UPDATE_EXECUTION_POLICIES_SCHEMA,
+  buildOverrides: (args) => {
+    const { name: _name, ...rest } = args;
+    return buildExecutionPolicyBody(rest);
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerExecutionPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -142,45 +184,9 @@ export function registerExecutionPolicyTools(
     getDescription: 'Get a single execution policy configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create an execution policy (time-window constraints that gate when ' +
-      'automation policies are allowed to run).',
-    mandatoryFields: ['name'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Execution policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
-        ),
-      description: descriptionSchema.optional(),
-      authorized_periods: authorizedPeriodsSchema.optional(),
-      forbidden_periods: forbiddenPeriodsSchema.optional(),
-    }),
-    buildPayload: (args) => buildExecutionPolicyBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_EXECUTION_POLICY_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing execution policy configuration.',
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe('Execution policy name to update (immutable key).'),
-      description: descriptionSchema.optional(),
-      authorized_periods: authorizedPeriodsSchema.optional(),
-      forbidden_periods: forbiddenPeriodsSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["description","authorizedPeriods"].',
-        ),
-    }),
-    buildOverrides: (args) => {
-      const { name: _name, ...rest } = args;
-      return buildExecutionPolicyBody(rest);
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_EXECUTION_POLICY_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete an execution policy configuration.',

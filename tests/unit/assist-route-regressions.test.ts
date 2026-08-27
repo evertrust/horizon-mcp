@@ -1,6 +1,5 @@
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
@@ -21,7 +20,7 @@ function createMockClient() {
     request: vi.fn().mockResolvedValue(new Response()),
     close: vi.fn().mockResolvedValue(undefined),
     fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };
@@ -162,6 +161,28 @@ describe('System assist route regressions', () => {
     expect(parsed['ruleset']).toEqual({ name: 'tls-ruleset' });
     expect(parsed['explanation']).toEqual({ passed: true });
     expect(parsed['evaluation']).toEqual({ passed: true });
+  });
+
+  it('documents rotation-variant service-account identifiers without changing the whoami schema', async () => {
+    const tools = (await client.listTools()).tools;
+    const whoami = tools.find((tool) => tool.name === 'whoami');
+
+    expect(whoami?.description).toContain('<name>-<sha256(jwt).take(16)>');
+    expect(whoami?.description).toContain('<name>-<hash16>-<mapped-value>');
+    expect(whoami?.description).toContain(
+      'identifierMapping adds claim-derived context and does not create a stable identity',
+    );
+    expect(whoami?.description).toContain('team-based ownership');
+    expect(Object.keys(whoami?.outputSchema?.properties ?? {}).sort()).toEqual([
+      '_horizonVersion',
+      'customDashboards',
+      'identity',
+      'permissions',
+      'preferences',
+      'roles',
+      'teamInfos',
+      'teams',
+    ]);
   });
 });
 

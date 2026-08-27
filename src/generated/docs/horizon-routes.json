@@ -1,7 +1,7 @@
 {
-  "generatedAt": "2026-04-13T15:31:23.254Z",
+  "generatedAt": "2026-08-25T15:22:37.997Z",
   "sourceRoot": "../horizon",
-  "routeCount": 262,
+  "routeCount": 294,
   "routes": [
     {
       "method": "GET",
@@ -372,6 +372,116 @@
       "method": "GET",
       "path": "/api/v1/datasources/{name}",
       "sourceFile": "../horizon/conf/api.datasource.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/lifecycle/events/{policy}",
+      "sourceFile": "../horizon/conf/api.dcv.lifecycle.events.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/lifecycle/events/{policy}/{domain}",
+      "sourceFile": "../horizon/conf/api.dcv.lifecycle.events.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/lifecycle/policies",
+      "sourceFile": "../horizon/conf/api.dcv.policy.lifecycle.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/lifecycle/policies/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.policy.lifecycle.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/lifecycle/policies/{name}/cancel",
+      "sourceFile": "../horizon/conf/api.dcv.policy.lifecycle.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/lifecycle/policies/{name}/run",
+      "sourceFile": "../horizon/conf/api.dcv.policy.lifecycle.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/lifecycle/policies/{name}/run/{domain}",
+      "sourceFile": "../horizon/conf/api.dcv.policy.lifecycle.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/policies",
+      "sourceFile": "../horizon/conf/api.dcv.policy.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/policies",
+      "sourceFile": "../horizon/conf/api.dcv.policy.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/dcv/policies",
+      "sourceFile": "../horizon/conf/api.dcv.policy.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/dcv/policies/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/policies/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.policy.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/providers",
+      "sourceFile": "../horizon/conf/api.dcv.provider.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/providers",
+      "sourceFile": "../horizon/conf/api.dcv.provider.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/dcv/providers",
+      "sourceFile": "../horizon/conf/api.dcv.provider.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/dcv/providers/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.provider.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/providers/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.provider.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/provisioners",
+      "sourceFile": "../horizon/conf/api.dcv.provisioner.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/dcv/provisioners",
+      "sourceFile": "../horizon/conf/api.dcv.provisioner.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/dcv/provisioners",
+      "sourceFile": "../horizon/conf/api.dcv.provisioner.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/dcv/provisioners/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.provisioner.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dcv/provisioners/{name}",
+      "sourceFile": "../horizon/conf/api.dcv.provisioner.routes"
     },
     {
       "method": "GET",
@@ -1040,6 +1150,31 @@
     },
     {
       "method": "GET",
+      "path": "/api/v1/security/service-accounts",
+      "sourceFile": "../horizon/conf/api.security.service.accounts.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/security/service-accounts",
+      "sourceFile": "../horizon/conf/api.security.service.accounts.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/security/service-accounts",
+      "sourceFile": "../horizon/conf/api.security.service.accounts.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/security/service-accounts/{name}",
+      "sourceFile": "../horizon/conf/api.security.service.accounts.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/security/service-accounts/{name}",
+      "sourceFile": "../horizon/conf/api.security.service.accounts.routes"
+    },
+    {
+      "method": "GET",
       "path": "/api/v1/security/teams",
       "sourceFile": "../horizon/conf/api.security.team.routes"
     },
@@ -1177,6 +1312,31 @@
       "method": "GET",
       "path": "/api/v1/system/storages/{name}",
       "sourceFile": "../horizon/conf/api.system.storages.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/terms-of-services",
+      "sourceFile": "../horizon/conf/api.system.tos.routes"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/system/terms-of-services",
+      "sourceFile": "../horizon/conf/api.system.tos.routes"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/system/terms-of-services",
+      "sourceFile": "../horizon/conf/api.system.tos.routes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/system/terms-of-services/{name}",
+      "sourceFile": "../horizon/conf/api.system.tos.routes"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/system/terms-of-services/{name}",
+      "sourceFile": "../horizon/conf/api.system.tos.routes"
     },
     {
       "method": "DELETE",

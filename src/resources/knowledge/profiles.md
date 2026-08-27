@@ -46,6 +46,39 @@ These fields appear on every managed profile regardless of protocol module:
 
 ---
 
+## WebRA Auto-Renewal Policy
+
+`autoRenewalPolicy` controls auto-renew on WebRA certificates.
+
+`default` applies to new certificates; `editable` allows a certificate's value
+to change through the WebRA `update` workflow. Adding a missing policy
+bulk-sets existing certificates to its new `default`; removing it disables
+auto-renew on all profile certificates; changing an existing policy leaves
+existing certificate flags unchanged. This is per-certificate renewal, not the
+trust-chain automation-policy renewal in `automation.md`.
+
+---
+
+## Terms of Service Mapping
+
+WebRA, SCEP, and EST profiles use top-level `termsOfService` to reference a
+Terms of Service object's immutable `name`, not inline text:
+
+```json
+{
+  "termsOfService": "corporate-enrollment-terms"
+}
+```
+
+Use `list_terms_of_services`, `get_terms_of_service`,
+`create_terms_of_service`, `update_terms_of_service`, and
+`delete_terms_of_service`; deletion fails while any profile references it.
+This mapping is only for `webra`, `scep`, and `est`, unlike ACME's
+`requireTermsOfService` boolean, which governs account agreement and does not
+reference a Terms of Service object.
+
+---
+
 ## Certificate Template Structure
 
 The `certificateTemplate` object defines the _defaults_ for certificates

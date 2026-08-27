@@ -20,7 +20,7 @@
  * [_id, tenant, host, status, lastExecutionDate, lastCompletionDate, detail,
  * executionId] (audited).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -242,70 +242,81 @@ const configSchema = z
       'parameters.',
   );
 
+const CREATE_SCHEDULED_TASKS_SCHEMA = z.object({
+  type: typeSchema,
+  name: nameSchema,
+  cron: cronSchema,
+  enabled: enabledSchema,
+  report_type: reportTypeSchema.optional(),
+  config: configSchema.optional(),
+});
+
+const UPDATE_SCHEDULED_TASKS_SCHEMA = z.object({
+  type: typeSchema,
+  name: z.string().describe('Task name to update (immutable lookup key).'),
+  cron: cronSchema,
+  enabled: enabledSchema,
+  report_type: reportTypeSchema.optional(),
+  config: configSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["hqlQuery","description"].',
+    ),
+});
+
+const CREATE_SCHEDULED_TASK_OPTS = {
+  description:
+    'Create a scheduled task (third-party connector run or a scheduled HQL ' +
+    'email report). Polymorphic: call describe_scheduled_task_schema first to ' +
+    'learn the required `config` fields for the chosen type/reportType.',
+  mandatoryFields: ['type', 'name', 'cron', 'enabled'],
+  inputSchema: CREATE_SCHEDULED_TASKS_SCHEMA,
+  buildPayload: (args: z.infer<typeof CREATE_SCHEDULED_TASKS_SCHEMA>) =>
+    buildScheduledTaskBody(args),
+};
+
+const UPDATE_SCHEDULED_TASK_OPTS = {
+  description:
+    'Update an existing scheduled task. The submitted subtype must match the ' +
+    'stored one (cannot convert thirdparty<->report or attachment<->link).',
+  inputSchema: UPDATE_SCHEDULED_TASKS_SCHEMA,
+  buildOverrides: (args: z.infer<typeof UPDATE_SCHEDULED_TASKS_SCHEMA>) =>
+    buildScheduledTaskBody({
+      type: args.type,
+      name: args.name,
+      cron: args.cron,
+      enabled: args.enabled,
+      report_type: args.report_type,
+      config: args.config,
+    }),
+};
+
+const SCHEDULED_TASK_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: ['type', 'name', 'cron', 'enabled'],
+  jsonSchema: scheduledTaskRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerScheduledTaskTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: ['type', 'name', 'cron', 'enabled'],
-    jsonSchema: scheduledTaskRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, SCHEDULED_TASK_DESCRIBE_INFO);
 
   registerReadTools(server, client, SPEC, {
     listDescription: 'List scheduled tasks.',
     getDescription: 'Get a single scheduled task by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a scheduled task (third-party connector run or a scheduled HQL ' +
-      'email report). Polymorphic: call describe_scheduled_task_schema first to ' +
-      'learn the required `config` fields for the chosen type/reportType.',
-    mandatoryFields: ['type', 'name', 'cron', 'enabled'],
-    inputSchema: z.object({
-      type: typeSchema,
-      name: nameSchema,
-      cron: cronSchema,
-      enabled: enabledSchema,
-      report_type: reportTypeSchema.optional(),
-      config: configSchema.optional(),
-    }),
-    buildPayload: (args) => buildScheduledTaskBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_SCHEDULED_TASK_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing scheduled task. The submitted subtype must match the ' +
-      'stored one (cannot convert thirdparty<->report or attachment<->link).',
-    inputSchema: z.object({
-      type: typeSchema,
-      name: z.string().describe('Task name to update (immutable lookup key).'),
-      cron: cronSchema,
-      enabled: enabledSchema,
-      report_type: reportTypeSchema.optional(),
-      config: configSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["hqlQuery","description"].',
-        ),
-    }),
-    buildOverrides: (args) =>
-      buildScheduledTaskBody({
-        type: args.type,
-        name: args.name,
-        cron: args.cron,
-        enabled: args.enabled,
-        report_type: args.report_type,
-        config: args.config,
-      }),
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_SCHEDULED_TASK_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a scheduled task.',

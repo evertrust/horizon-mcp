@@ -1,4 +1,5 @@
 import { getLogger } from '../logging.js';
+import { currentRequestSignal } from './request-signal.js';
 
 const logger = getLogger('horizon_mcp.client.retry');
 
@@ -22,10 +23,12 @@ export async function withRetry(
   const maxAttempts = opts.maxAttempts ?? 3;
   const baseDelayMs = opts.baseDelayMs ?? 1000;
   const maxDelayMs = opts.maxDelayMs ?? 10000;
+  const signal = currentRequestSignal();
 
   let lastError: unknown;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    signal?.throwIfAborted();
     try {
       const response = await fn();
 
@@ -65,8 +68,9 @@ export async function withRetry(
       logger.info(
         `Retryable status ${response.status} (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms`,
       );
-      await sleep(delayMs);
+      await sleep(delayMs, signal);
     } catch (err) {
+      if (isAbortError(err) || signal?.aborted) throw err;
       lastError = err;
       if (attempt === maxAttempts) break;
 
@@ -77,13 +81,38 @@ export async function withRetry(
       logger.info(
         `Connection error (attempt ${attempt}/${maxAttempts}), retrying in ${delayMs}ms: ${err}`,
       );
-      await sleep(delayMs);
+      await sleep(delayMs, signal);
     }
   }
 
   throw lastError;
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function isAbortError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'name' in err &&
+    (err as { name?: unknown }).name === 'AbortError'
+  );
+}
+
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  if (!signal) return new Promise((resolve) => setTimeout(resolve, ms));
+  signal.throwIfAborted();
+  const abortSignal = signal;
+
+  return new Promise((resolve, reject) => {
+    function onAbort() {
+      clearTimeout(timeout);
+      abortSignal.removeEventListener('abort', onAbort);
+      reject(abortSignal.reason);
+    }
+    const timeout = setTimeout(() => {
+      abortSignal.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    abortSignal.addEventListener('abort', onAbort, { once: true });
+    if (abortSignal.aborted) onAbort();
+  });
 }

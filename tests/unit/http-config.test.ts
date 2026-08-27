@@ -18,6 +18,28 @@ function build(env: Record<string, string | undefined>) {
 }
 
 describe('buildHttpConfig', () => {
+  describe('response budget', () => {
+    it('requires the SSE duration to exceed the export timeout', () => {
+      expect(() =>
+        build({
+          HORIZON_SSE_MAX_DURATION: '7',
+          HORIZON_EXPORT_TIMEOUT: '7',
+        }),
+      ).toThrow(
+        /HORIZON_SSE_MAX_DURATION.*HORIZON_EXPORT_TIMEOUT|HORIZON_EXPORT_TIMEOUT.*HORIZON_SSE_MAX_DURATION/,
+      );
+    });
+
+    it('accepts an SSE duration above the export timeout', () => {
+      expect(() =>
+        build({
+          HORIZON_SSE_MAX_DURATION: '8',
+          HORIZON_EXPORT_TIMEOUT: '7',
+        }),
+      ).not.toThrow();
+    });
+  });
+
   describe('host derivation', () => {
     it('derives loopback hosts for the bound port when nothing is set', () => {
       const cfg = build({});
@@ -261,6 +283,21 @@ describe('buildHttpConfig', () => {
       ).toThrow(/header/i);
     });
 
+    it.each([
+      'X-OAUTH-CLIENT-ID',
+      'X-OAUTH-CLIENT-SECRET',
+      'X-OAUTH-SCOPE',
+      'X-OAUTH-AUDIENCE',
+      'Proxy-Authorization',
+    ])('rejects reserved inbound certificate header %s', (header) => {
+      expect(() =>
+        mtls({
+          HORIZON_INBOUND_CERT_HEADER: header,
+          HORIZON_TRUSTED_PROXY: '10.0.0.0/8',
+        }),
+      ).toThrow(new RegExp(`HORIZON_INBOUND_CERT_HEADER.*${header}`, 'i'));
+    });
+
     it('rejects an invalid header token', () => {
       expect(() =>
         mtls({
@@ -313,6 +350,24 @@ describe('buildHttpConfig', () => {
 
     it('allows HORIZON_ALLOW_PRIVATE_TLS_PROBE unset', () => {
       expect(() => build({})).not.toThrow();
+    });
+  });
+
+  describe('removed session settings', () => {
+    // MCP 2026-07-28 removed protocol sessions. These must fail closed rather
+    // than let an existing deployment believe a session limit still applies.
+    it.each([
+      ['HORIZON_MAX_SESSIONS', '8', 'HORIZON_MAX_CONCURRENT_REQUESTS'],
+      ['HORIZON_SESSION_IDLE_TTL', '300', 'HORIZON_CREDENTIAL_CACHE_TTL'],
+      ['HORIZON_SESSION_ABS_TTL', '3600', 'HORIZON_CREDENTIAL_CACHE_TTL'],
+    ])('rejects %s and names its replacement', (name, value, replacement) => {
+      expect(() => build({ [name]: value })).toThrow(replacement);
+    });
+
+    it('rejects HORIZON_INIT_RATE_LIMIT, which has nothing left to limit', () => {
+      expect(() => build({ HORIZON_INIT_RATE_LIMIT: '5' })).toThrow(
+        /no longer supported/,
+      );
     });
   });
 });

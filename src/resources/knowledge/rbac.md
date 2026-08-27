@@ -53,7 +53,7 @@ role, or via wildcard implication.
 
 ---
 
-## Permission Catalog (36 Patterns)
+## Permission Catalog (37 Patterns)
 
 ### Certificate Permissions (9)
 
@@ -89,17 +89,30 @@ Scope = object name or `*`.
 | `configuration:grading:{scope}`     | Manage security grading policies and rulesets |
 | `configuration:passwords:{scope}`   | Manage password policies                      |
 
-### Security Permissions (5)
+### Security Permissions (6)
 
 Control the RBAC system itself. Scope = object name or `*`.
 
-| Permission Pattern             | Description                                      |
-| ------------------------------ | ------------------------------------------------ |
-| `security:roles:{scope}`       | Manage roles (create, update, delete, list)      |
-| `security:teams:{scope}`       | Manage teams                                     |
-| `security:principals:{scope}`  | Manage user principals (assign roles/teams)      |
-| `security:idps:{scope}`        | Manage identity provider configurations          |
-| `security:credentials:{scope}` | Manage stored credentials (keystores, passwords) |
+| Permission Pattern                    | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| `security:roles:{scope}`              | Manage roles (create, update, delete, list)      |
+| `security:teams:{scope}`              | Manage teams                                     |
+| `security:principals:{scope}`         | Manage user principals (assign roles/teams)      |
+| `security:idps:{scope}`               | Manage identity provider configurations          |
+| `security:credentials:{scope}`        | Manage stored credentials (keystores, passwords) |
+| `access-management:service-account:*` | Manage service accounts (create, update, delete) |
+
+### Service-account management
+
+Use `list_service_accounts` and `get_service_account` for audit access. Creating,
+updating, or deleting a service account requires
+`access-management:service-account:*` manage access.
+
+Service accounts authenticate workloads from an external JWT issuer. Grant only
+the roles and permissions explicitly required by the workload. For static JWKS,
+`trustConfig.jwks` is supplied as a JSON string when creating or updating an
+account. Horizon GET responses may represent that field as an object, so the
+update tool re-serializes it during its GET-merge-PUT cycle.
 
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign
@@ -305,6 +318,26 @@ levels (workflows knowledge).
 
 ---
 
+## X.509 Client-Authentication Identity Mapping
+
+When a client authenticates with an X.509 certificate, Horizon selects its
+trusted CA and evaluates that CA's TemplateString mappings:
+
+| CA field            | Default TemplateString             | Result                          |
+| ------------------- | ---------------------------------- | ------------------------------- |
+| `identifierMapping` | `{{certificate.dn}}`               | Required principal identifier   |
+| `nameMapping`       | `{{certificate.subject.cn.1}}`     | Optional principal display name |
+| `emailMapping`      | `{{certificate.san.rfc822name.1}}` | Optional principal email        |
+
+Set these fields through `create_ca` or `update_ca` using the corresponding
+snake_case inputs: `identifier_mapping`, `name_mapping`, and `email_mapping`.
+The `identifierMapping` is the required anchor: if it does not evaluate for a
+certificate, Horizon fails the entire client-auth identity computation. Name
+and email mappings may independently evaluate to no value without substituting
+an identifier.
+
+---
+
 ## Role Workflow Guidance
 
 When setting up access for a new use case, follow this workflow:
@@ -414,3 +447,22 @@ Create two roles to enforce four-eyes principle:
   "permissions": ["certificates:approve:TLS-Internal", "certificates:search:TLS-Internal"]
 }
 ```
+
+---
+
+## Service-Account Identity Across Token Rotation
+
+For a service account authenticated with a JWT, Horizon builds the principal
+identifier from the configured service-account name and the presented token:
+
+- Without `identifierMapping`: `<name>-<sha256(jwt).take(16)>`
+- With `identifierMapping`: `<name>-<hash16>-<mapped-value>`
+
+The 16-character hash segment is always present. Because it is derived from the
+JWT, rotating the token changes the principal identifier in both configurations.
+`identifierMapping` appends claim-derived context; it does not replace the hash
+or create a stable identity.
+
+Do not rely on the service-account identifier as a durable certificate owner.
+Use team-based ownership for certificates and other ownership relationships
+that must remain valid after token rotation.

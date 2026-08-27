@@ -14,7 +14,7 @@
  * false (matching Scala) and is ALWAYS sent explicitly on create, so it is not
  * listed as a mandatory field the model must ask the user about.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -74,6 +74,57 @@ function buildPkiQueueBody(args: {
   return o;
 }
 
+const CREATE_PKI_QUEUES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('PKI queue name. Immutable primary key, must not already exist.'),
+  size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
+  cluster_wide: z
+    .boolean()
+    .default(false)
+    .describe(
+      'Optional: whether the queue is shared cluster-wide. Defaults to ' +
+        'false (matching Horizon) and is always sent on create, so you ' +
+        'need not ask the user unless they want it cluster-wide.',
+    ),
+  description: descriptionSchema.optional(),
+  throttle_duration: throttleDurationSchema.optional(),
+  throttle_parallelism: throttleParallelismSchema.optional(),
+});
+
+const UPDATE_PKI_QUEUES_SCHEMA = z.object({
+  name: z.string().describe('PKI queue name to update (immutable key).'),
+  size: z.number().int().optional(),
+  cluster_wide: z.boolean().optional(),
+  description: descriptionSchema.optional(),
+  throttle_duration: throttleDurationSchema.optional(),
+  throttle_parallelism: throttleParallelismSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["description","throttleDuration"].',
+    ),
+});
+
+const CREATE_PKI_QUEUE_OPTS = {
+  description:
+    'Create a PKI queue used to throttle and bound concurrent PKI connector ' +
+    'operations.',
+  mandatoryFields: ['name', 'size'],
+  inputSchema: CREATE_PKI_QUEUES_SCHEMA,
+  buildPayload: (args) => buildPkiQueueBody(args),
+} satisfies Parameters<typeof registerCreateTool>[3];
+
+const UPDATE_PKI_QUEUE_OPTS = {
+  description: 'Update an existing PKI queue configuration.',
+  inputSchema: UPDATE_PKI_QUEUES_SCHEMA,
+  buildOverrides: (args) => {
+    const { name: _name, ...rest } = args;
+    return buildPkiQueueBody(rest);
+  },
+} satisfies Parameters<typeof registerUpdateTool>[3];
+
 export function registerPkiQueueTools(
   server: McpServer,
   client: HorizonClient,
@@ -83,54 +134,9 @@ export function registerPkiQueueTools(
     getDescription: 'Get a single PKI queue configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a PKI queue used to throttle and bound concurrent PKI connector ' +
-      'operations.',
-    mandatoryFields: ['name', 'size'],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'PKI queue name. Immutable primary key, must not already exist.',
-        ),
-      size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
-      cluster_wide: z
-        .boolean()
-        .default(false)
-        .describe(
-          'Optional: whether the queue is shared cluster-wide. Defaults to ' +
-            'false (matching Horizon) and is always sent on create, so you ' +
-            'need not ask the user unless they want it cluster-wide.',
-        ),
-      description: descriptionSchema.optional(),
-      throttle_duration: throttleDurationSchema.optional(),
-      throttle_parallelism: throttleParallelismSchema.optional(),
-    }),
-    buildPayload: (args) => buildPkiQueueBody(args),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_PKI_QUEUE_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing PKI queue configuration.',
-    inputSchema: z.object({
-      name: z.string().describe('PKI queue name to update (immutable key).'),
-      size: z.number().int().optional(),
-      cluster_wide: z.boolean().optional(),
-      description: descriptionSchema.optional(),
-      throttle_duration: throttleDurationSchema.optional(),
-      throttle_parallelism: throttleParallelismSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["description","throttleDuration"].',
-        ),
-    }),
-    buildOverrides: (args) => {
-      const { name: _name, ...rest } = args;
-      return buildPkiQueueBody(rest);
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_PKI_QUEUE_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a PKI queue configuration.',

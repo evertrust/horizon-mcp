@@ -23,7 +23,7 @@
  * All contracts here are derived from the source-grounded audit under
  * `docs/audit/<object>.contract.json` + `<object>.schema.json`.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { HorizonError } from '../../client/errors.js';
@@ -131,6 +131,10 @@ export async function getStripMergePutExplicit(
   overrides: Record<string, unknown>,
   clearFields?: string[],
   immutable?: { immutableKeys?: readonly string[]; idField?: string },
+  normalizeCurrent?: (
+    current: Record<string, unknown>,
+  ) => Record<string, unknown>,
+  validateMergedBody?: (body: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
   const current = await client.get<Record<string, unknown>>(getPath);
   // The update is a full-replace seeded from this GET; bail if it is not a
@@ -166,15 +170,17 @@ export async function getStripMergePutExplicit(
         'Remove these fields - they are fixed at creation. Recreate the object to change them.',
     });
   }
+  const normalizedCurrent = normalizeCurrent?.(current) ?? current;
   const strip = new Set(stripFields);
   const payload: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(current)) {
+  for (const [k, v] of Object.entries(normalizedCurrent)) {
     if (!strip.has(k)) payload[k] = v;
   }
   for (const f of clearFields ?? []) payload[f] = null;
   for (const [k, v] of Object.entries(overrides)) {
     if (v !== undefined) payload[k] = v;
   }
+  validateMergedBody?.(payload);
   return client.put<Record<string, unknown>>(putPath, payload);
 }
 
@@ -195,6 +201,76 @@ export function normalizeItems(data: unknown): Record<string, unknown>[] {
 // Read tools (list + get)
 // ---------------------------------------------------------------------------
 
+/**
+ * Tool configs are rebuilt on every `registerXxxTools` call, and under MCP
+ * 2026-07-28 the server factory runs once per HTTP request. Building the Zod
+ * schemas is 64% of that cost, so cache each config the first time its spec is
+ * seen and reuse it for every later instance. Safe because a config depends
+ * only on its `spec`, which is an immutable module-scope constant, and because
+ * nothing downstream mutates the object. Only the handler closures, which
+ * capture the per-request `HorizonClient`, are rebuilt.
+ */
+function buildListConfig(spec: ConfigSpec, listDescription: string) {
+  return {
+    description: `${listDescription}\nSafety tier: read-only${refFooter(spec)}`,
+    inputSchema: z.object({
+      max_items: z
+        .number()
+        .int()
+        .positive()
+        .max(100)
+        .default(MAX_LIST_ITEMS)
+        .describe('Maximum items to return (default 50).'),
+      name_contains: z
+        .string()
+        .optional()
+        .describe(
+          `Case-insensitive substring filter on ${spec.idField ?? 'name'}.`,
+        ),
+    }),
+  };
+}
+
+function buildGetConfig(
+  spec: ConfigSpec,
+  idField: string,
+  getDescription?: string,
+) {
+  return {
+    description:
+      `${getDescription ?? `Get a single ${spec.label} by ${idField}.`}` +
+      `\nSafety tier: read-only${refFooter(spec)}`,
+    inputSchema: z.object({
+      [idField]: z.string().describe(`Exact ${spec.label} ${idField}.`),
+    }),
+  };
+}
+
+interface ReadConfigs {
+  list: ReturnType<typeof buildListConfig>;
+  get?: ReturnType<typeof buildGetConfig>;
+}
+
+const readToolConfigs = new WeakMap<ConfigSpec, ReadConfigs>();
+
+function readConfigsFor(
+  spec: ConfigSpec,
+  opts: { listDescription: string; getDescription?: string },
+): ReadConfigs {
+  const cached = readToolConfigs.get(spec);
+  if (cached) return cached;
+
+  const built: ReadConfigs = {
+    list: buildListConfig(spec, opts.listDescription),
+  };
+  if (spec.routeItem && spec.idField) {
+    built.get = buildGetConfig(spec, spec.idField, opts.getDescription);
+  }
+
+  readToolConfigs.set(spec, built);
+  return built;
+}
+
 export function registerReadTools(
   server: McpServer,
   client: HorizonClient,
@@ -203,27 +279,12 @@ export function registerReadTools(
     listDescription: '',
   },
 ): void {
+  const configs = readConfigsFor(spec, opts);
+
   registerTool(
     server,
     `list_${spec.nounPlural}`,
-    {
-      description: `${opts.listDescription}\nSafety tier: read-only${refFooter(spec)}`,
-      inputSchema: z.object({
-        max_items: z
-          .number()
-          .int()
-          .positive()
-          .max(100)
-          .default(MAX_LIST_ITEMS)
-          .describe('Maximum items to return (default 50).'),
-        name_contains: z
-          .string()
-          .optional()
-          .describe(
-            `Case-insensitive substring filter on ${spec.idField ?? 'name'}.`,
-          ),
-      }),
-    },
+    configs.list,
     async ({ max_items, name_contains }) => {
       const data = await client.get<unknown>(spec.routeCollection);
       // Filter on this object's actual primary-key field (not always "name" -
@@ -239,19 +300,12 @@ export function registerReadTools(
     },
   );
 
-  if (spec.routeItem && spec.idField) {
+  if (configs.get && spec.idField) {
     const idField = spec.idField;
     registerTool(
       server,
       `get_${spec.noun}`,
-      {
-        description:
-          `${opts.getDescription ?? `Get a single ${spec.label} by ${idField}.`}` +
-          `\nSafety tier: read-only${refFooter(spec)}`,
-        inputSchema: z.object({
-          [idField]: z.string().describe(`Exact ${spec.label} ${idField}.`),
-        }),
-      },
+      configs.get,
       async (args: Record<string, unknown>) => {
         const id = String(args[idField]);
         const result = await client.get(itemPath(spec, id));
@@ -325,6 +379,11 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     inputSchema: S;
     buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
     preValidate?: (args: z.infer<S>) => string | undefined;
+    /** Normalizes a GET-only representation before the merged PUT. */
+    normalizeCurrent?: (
+      current: Record<string, unknown>,
+    ) => Record<string, unknown>;
+    validateMergedBody?: (body: Record<string, unknown>) => void;
   },
 ): void {
   const idField = spec.idField ?? 'name';
@@ -333,9 +392,10 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     `update_${spec.noun}`,
     {
       description:
-        `${opts.description}\nSafety tier: mutating-safe\n` +
-        `Update is GET -> strip server fields -> merge -> PUT (full-replace: omitted ` +
-        `optional fields are reset). ${immutableNote(spec)}${refFooter(spec)}`,
+        `${opts.description}\nSafety tier: mutating-destructive\n` +
+        `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
+        `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
+        `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
       inputSchema: opts.inputSchema,
       // Config update is a full-replace PUT that can reset omitted fields and
       // overwrite permissions, so it is destructive despite the update_ prefix
@@ -378,6 +438,8 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
         overrides,
         clearFields,
         { immutableKeys: spec.immutableKeys, idField },
+        opts.normalizeCurrent,
+        opts.validateMergedBody,
       );
       return text(
         buildMutateResponse({
@@ -395,6 +457,30 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
 // Delete tool
 // ---------------------------------------------------------------------------
 
+function buildDeleteConfig(
+  spec: ConfigSpec,
+  idField: string,
+  opts: { description: string; deleteConstraints?: string },
+) {
+  return {
+    description:
+      `${opts.description}\nSafety tier: mutating-destructive\n` +
+      `Requires ${idField} confirmation via expected_${idField}.` +
+      `${opts.deleteConstraints ? `\n${opts.deleteConstraints}` : ''}${refFooter(spec)}`,
+    inputSchema: z.object({
+      [idField]: z.string().describe(`${spec.label} ${idField} to delete.`),
+      [`expected_${idField}`]: z
+        .string()
+        .describe(`Must exactly match ${idField} as a deletion safeguard.`),
+    }),
+  };
+}
+
+const deleteToolConfigs = new WeakMap<
+  ConfigSpec,
+  ReturnType<typeof buildDeleteConfig>
+>();
+
 export function registerDeleteTool(
   server: McpServer,
   client: HorizonClient,
@@ -402,21 +488,15 @@ export function registerDeleteTool(
   opts: { description: string; deleteConstraints?: string },
 ): void {
   const idField = spec.idField ?? 'name';
+  let config = deleteToolConfigs.get(spec);
+  if (!config) {
+    config = buildDeleteConfig(spec, idField, opts);
+    deleteToolConfigs.set(spec, config);
+  }
   registerTool(
     server,
     `delete_${spec.noun}`,
-    {
-      description:
-        `${opts.description}\nSafety tier: mutating-destructive\n` +
-        `Requires ${idField} confirmation via expected_${idField}.` +
-        `${opts.deleteConstraints ? `\n${opts.deleteConstraints}` : ''}${refFooter(spec)}`,
-      inputSchema: z.object({
-        [idField]: z.string().describe(`${spec.label} ${idField} to delete.`),
-        [`expected_${idField}`]: z
-          .string()
-          .describe(`Must exactly match ${idField} as a deletion safeguard.`),
-      }),
-    },
+    config,
     async (args: Record<string, unknown>) => {
       const id = String(args[idField]);
       const expected = String(args[`expected_${idField}`]);
@@ -437,37 +517,21 @@ export function registerDeleteTool(
 // Membership subroutes (roles, teams): list / add / remove members
 // ---------------------------------------------------------------------------
 
-export function registerMembershipTools(
-  server: McpServer,
-  client: HorizonClient,
-  opts: {
-    noun: string;
-    label: string;
-    routeBase: string;
-    knowledgeRef?: string;
-  },
-): void {
+function buildMembershipConfigs(opts: {
+  noun: string;
+  label: string;
+  routeBase: string;
+  knowledgeRef?: string;
+}) {
   const foot = opts.knowledgeRef ? `\n\nRef: ${opts.knowledgeRef}.` : '';
-  const membersPath = (name: string) =>
-    `${opts.routeBase}/${encodePathSegment(name)}/members`;
-
-  registerTool(
-    server,
-    `list_${opts.noun}_members`,
-    {
+  return {
+    list: {
       description: `List the member identifiers of a ${opts.label}.\nSafety tier: read-only${foot}`,
       inputSchema: z.object({
         name: z.string().describe(`${opts.label} name.`),
       }),
     },
-    async ({ name }) =>
-      text(JSON.stringify(await client.get(membersPath(name)))),
-  );
-
-  registerTool(
-    server,
-    `add_${opts.noun}_members`,
-    {
+    add: {
       description:
         `Add member identifiers to a ${opts.label}. Non-existing identifiers are ` +
         `created server-side.\nSafety tier: mutating-safe\n` +
@@ -480,6 +544,58 @@ export function registerMembershipTools(
           .describe('Principal identifiers to add.'),
       }),
     },
+    remove: {
+      description:
+        `Remove member identifiers from a ${opts.label}.\nSafety tier: mutating-destructive\n` +
+        `MANDATORY: name and identifiers. Ask the user for the identifiers - never infer them.${foot}`,
+      inputSchema: z.object({
+        name: z.string().describe(`${opts.label} name.`),
+        identifiers: z
+          .array(z.string())
+          .min(1)
+          .describe('Principal identifiers to remove.'),
+      }),
+    },
+  };
+}
+
+// Callers pass a fresh object literal, so key the cache on the stable noun
+// rather than on identity.
+const membershipConfigs = new Map<
+  string,
+  ReturnType<typeof buildMembershipConfigs>
+>();
+
+export function registerMembershipTools(
+  server: McpServer,
+  client: HorizonClient,
+  opts: {
+    noun: string;
+    label: string;
+    routeBase: string;
+    knowledgeRef?: string;
+  },
+): void {
+  let configs = membershipConfigs.get(opts.noun);
+  if (!configs) {
+    configs = buildMembershipConfigs(opts);
+    membershipConfigs.set(opts.noun, configs);
+  }
+  const membersPath = (name: string) =>
+    `${opts.routeBase}/${encodePathSegment(name)}/members`;
+
+  registerTool(
+    server,
+    `list_${opts.noun}_members`,
+    configs.list,
+    async ({ name }) =>
+      text(JSON.stringify(await client.get(membersPath(name)))),
+  );
+
+  registerTool(
+    server,
+    `add_${opts.noun}_members`,
+    configs.add,
     async ({ name, identifiers }) => {
       const result = await client.post(membersPath(name), identifiers);
       return text(
@@ -496,18 +612,7 @@ export function registerMembershipTools(
   registerTool(
     server,
     `remove_${opts.noun}_members`,
-    {
-      description:
-        `Remove member identifiers from a ${opts.label}.\nSafety tier: mutating-destructive\n` +
-        `MANDATORY: name and identifiers. Ask the user for the identifiers - never infer them.${foot}`,
-      inputSchema: z.object({
-        name: z.string().describe(`${opts.label} name.`),
-        identifiers: z
-          .array(z.string())
-          .min(1)
-          .describe('Principal identifiers to remove.'),
-      }),
-    },
+    configs.remove,
     async ({ name, identifiers }) => {
       await client.deleteWithBody(membersPath(name), identifiers);
       return text(
@@ -538,31 +643,45 @@ export interface ComplexSchemaInfo {
   readonly knowledgeRef?: string;
 }
 
+function buildDescribeSchemaConfig(info: ComplexSchemaInfo) {
+  const foot = info.knowledgeRef ? `\n\nRef: ${info.knowledgeRef}.` : '';
+  return {
+    description:
+      `Return the exact request structure for ${info.label} (subtypes, mandatory ` +
+      `fields, enums, full JSON Schema). Call this BEFORE create_${info.noun} or ` +
+      `update_${info.noun} so the body matches what Horizon expects - never guess ` +
+      `the structure.\nSafety tier: read-only${foot}`,
+    inputSchema: z.object({
+      subtype: z
+        .string()
+        .optional()
+        .describe(
+          info.discriminatorField
+            ? `Optional ${info.discriminatorField} to narrow the schema to one subtype.`
+            : 'Optional subtype to narrow the schema.',
+        ),
+    }),
+  };
+}
+
+const describeSchemaConfigs = new WeakMap<
+  ComplexSchemaInfo,
+  ReturnType<typeof buildDescribeSchemaConfig>
+>();
+
 export function registerDescribeSchemaTool(
   server: McpServer,
   info: ComplexSchemaInfo,
 ): void {
-  const foot = info.knowledgeRef ? `\n\nRef: ${info.knowledgeRef}.` : '';
+  let config = describeSchemaConfigs.get(info);
+  if (!config) {
+    config = buildDescribeSchemaConfig(info);
+    describeSchemaConfigs.set(info, config);
+  }
   registerTool(
     server,
     `describe_${info.noun}_schema`,
-    {
-      description:
-        `Return the exact request structure for ${info.label} (subtypes, mandatory ` +
-        `fields, enums, full JSON Schema). Call this BEFORE create_${info.noun} or ` +
-        `update_${info.noun} so the body matches what Horizon expects - never guess ` +
-        `the structure.\nSafety tier: read-only${foot}`,
-      inputSchema: z.object({
-        subtype: z
-          .string()
-          .optional()
-          .describe(
-            info.discriminatorField
-              ? `Optional ${info.discriminatorField} to narrow the schema to one subtype.`
-              : 'Optional subtype to narrow the schema.',
-          ),
-      }),
-    },
+    config,
     async ({ subtype }) =>
       text(
         JSON.stringify({

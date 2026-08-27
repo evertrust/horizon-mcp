@@ -7,11 +7,11 @@
  * update cycle (PUT on collection root, audited strip fields removed), the
  * delete safety echo, and that describe_pki_connector_schema returns the schema.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { PKIConnectorType } from '../../src/models/enums.js';
 import { registerPkiConnectorTools } from '../../src/tools/config/pki-connectors.js';
 
 function createMockClient() {
@@ -29,7 +29,7 @@ function createMockClient() {
     request: vi.fn().mockResolvedValue(new Response()),
     close: vi.fn().mockResolvedValue(undefined),
     fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };
@@ -45,6 +45,9 @@ function parse(result: unknown): Record<string, unknown> {
 }
 function isError(result: unknown): boolean {
   return (result as { isError?: boolean }).isError === true;
+}
+function errorText(result: unknown): string {
+  return (result as { content: Array<{ text: string }> }).content[0]!.text;
 }
 
 async function setup(): Promise<{ client: Client; mc: MockClient }> {
@@ -86,12 +89,21 @@ describe('describe_pki_connector_schema', () => {
     });
     const out = parse(res);
     expect(out['object']).toBe('pki_connector');
+    expect(new Set(Object.values(PKIConnectorType))).toEqual(
+      new Set(out['subtypes'] as string[]),
+    );
     expect(out['discriminatorField']).toBe('type');
     expect(out['subtypes']).toContain('stream');
     expect(out['subtypes']).toContain('integrated');
+    expect(out['subtypes']).toContain('gcp');
     const schema = out['jsonSchema'] as Record<string, unknown>;
     expect(schema).toHaveProperty('oneOf');
     expect(schema).toHaveProperty('$defs');
+    const definitions = schema['$defs'] as Record<string, unknown>;
+    expect(definitions['PositiveFiniteDuration']).toMatchObject({
+      type: 'string',
+      description: 'A positive finite duration string.',
+    });
   });
 
   it('narrows to a subtype when requested', async () => {
@@ -137,6 +149,54 @@ describe('create_pki_connector', () => {
     expect(parse(res)['status']).toBe('created');
   });
 
+  it('creates a GCP connector with every required field and an optional credential', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'gcp-issuing', type: 'gcp' });
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'gcp-issuing',
+        type: 'gcp',
+        config: {
+          projectId: 'issuing-project',
+          location: 'europe-west1',
+          caPool: 'issuing-pool',
+          certificateLifetime: '90 days',
+          credentials: 'gcp-service-account',
+        },
+      },
+    });
+
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      name: 'gcp-issuing',
+      type: 'gcp',
+      projectId: 'issuing-project',
+      location: 'europe-west1',
+      caPool: 'issuing-pool',
+      certificateLifetime: '90 days',
+      credentials: 'gcp-service-account',
+    });
+    expect(parse(res)['status']).toBe('created');
+  });
+
+  it('rejects a GCP create missing a required field and does not POST', async () => {
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'gcp-issuing',
+        type: 'gcp',
+        config: {
+          projectId: 'issuing-project',
+          location: 'europe-west1',
+          certificateLifetime: '90 days',
+        },
+      },
+    });
+
+    expect(isError(res)).toBe(true);
+    expect(errorText(res)).toContain('caPool');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
   it('rejects a missing mandatory field (type) via schema validation and does not POST', async () => {
     const res = await client.callTool({
       name: 'create_pki_connector',
@@ -172,6 +232,82 @@ describe('create_pki_connector', () => {
     expect(isError(res)).toBe(true);
     expect(mc.post).not.toHaveBeenCalled();
   });
+
+  it.each([
+    'digicert',
+    'acmeenroll',
+    'integrated',
+    'gsmssl',
+    'gsatlas',
+    'awsacmpca',
+    'certeurope',
+    'sectigo',
+    'nameshield',
+  ])('accepts retryInterval for asynchronous %s connectors', async (type) => {
+    await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: `async-${type}`,
+        type,
+        config: { retryInterval: '6 seconds' },
+      },
+    });
+
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      name: `async-${type}`,
+      type,
+      retryInterval: '6 seconds',
+    });
+  });
+
+  it.each([
+    'acmerevoke',
+    'cmp',
+    'ejbca',
+    'ejbca_rest',
+    'evtadcs',
+    'fcms',
+    'gcp',
+    'idca',
+    'metapki',
+    'nexuscm',
+    'otpki',
+    'stream',
+    'swisssign',
+  ])('rejects retryInterval for synchronous %s connectors', async (type) => {
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: `sync-${type}`,
+        type,
+        config: { retryInterval: '6 seconds' },
+      },
+    });
+
+    expect(isError(res)).toBe(true);
+    expect(errorText(res)).toContain(
+      'digicert, acmeenroll, integrated, gsmssl, gsatlas, awsacmpca, certeurope, sectigo, nameshield',
+    );
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it.each(['0 seconds', 'not a duration', 6])(
+    'rejects non-positive or malformed retryInterval values: %s',
+    async (retryInterval) => {
+      const res = await client.callTool({
+        name: 'create_pki_connector',
+        arguments: {
+          name: 'invalid-retry',
+          type: 'digicert',
+          config: { retryInterval },
+        },
+      });
+
+      expect(isError(res)).toBe(true);
+      expect(errorText(res)).toContain('positive FiniteDuration');
+      expect(mc.post).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('update_pki_connector (GET-strip-merge-PUT on collection root)', () => {

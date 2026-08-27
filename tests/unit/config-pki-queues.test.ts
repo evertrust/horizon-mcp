@@ -6,9 +6,8 @@
  * update cycle (PUT on collection root, _id + tenant stripped), and the delete
  * safety echo.
  */
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { registerPkiQueueTools } from '../../src/tools/config/pki-queues.js';
@@ -28,7 +27,7 @@ function createMockClient() {
     request: vi.fn().mockResolvedValue(new Response()),
     close: vi.fn().mockResolvedValue(undefined),
     fetchCsrfToken: vi.fn().mockResolvedValue(undefined),
-    exportTimeout: 120000,
+    exportTimeout: 120,
     principalName: undefined,
     horizonVersion: undefined,
   };

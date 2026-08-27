@@ -1,327 +1,578 @@
-import { createServer } from 'node:http';
-import { connect } from 'node:net';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { request as httpRequest } from 'node:http';
+import { describe, expect, it, vi } from 'vitest';
 
-// Mock undici (the SERVER's Horizon client). The MCP CLIENT transport uses the
-// global fetch, which is untouched, so real HTTP flows client -> server while
-// Horizon is faked. The faked whoami echoes the X-API-ID the session forwards.
-const mockFetch = vi.fn<(...args: unknown[]) => Promise<Response>>();
-
-vi.mock('undici', () => ({
-  fetch: (...args: unknown[]) => mockFetch(...args),
-  Agent: class {
-    close() {
-      return Promise.resolve();
-    }
-  },
-  FormData: class {
-    append() {}
-  },
-}));
-
-const { startHttpServer } = await import('../../src/http/server.js');
-const { buildHttpConfig } = await import('../../src/http/config.js');
-const { credentialFingerprintOf } =
-  await import('../../src/http/credentials.js');
-const { loadSettings } = await import('../../src/settings.js');
-const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
-const { StreamableHTTPClientTransport } =
-  await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
-
-function fakeResponse(status: number, body: unknown): Response {
-  const text = typeof body === 'string' ? body : JSON.stringify(body);
-  return {
-    status,
-    ok: status >= 200 && status < 300,
-    headers: new Headers(),
-    json: () =>
-      Promise.resolve(typeof body === 'string' ? JSON.parse(body) : body),
-    text: () => Promise.resolve(text),
-    clone() {
-      return fakeResponse(status, body);
-    },
-    arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)),
-  } as unknown as Response;
-}
-
-function apiIdOf(init: unknown): string | undefined {
-  const headers = (init as { headers?: Record<string, string> } | undefined)
-    ?.headers;
-  return headers?.['X-API-ID'] ?? headers?.['x-api-id'];
-}
-
-mockFetch.mockImplementation((url: unknown, init: unknown) => {
-  const u = String(url);
-  if (u.includes('/api/v1/security/csrf')) {
-    return Promise.resolve(fakeResponse(200, { token: 'csrf' }));
-  }
-  if (u.includes('/api/v1/security/principals/self')) {
-    const id = apiIdOf(init) ?? 'anonymous';
-    return Promise.resolve(
-      fakeResponse(200, {
-        identifier: id,
-        name: id,
-        _horizonVersion: '2.10.0',
-      }),
-    );
-  }
-  return Promise.resolve(fakeResponse(200, {}));
-});
-
-async function freePort(): Promise<number> {
-  return new Promise((resolve, reject) => {
-    const s = createServer();
-    s.once('error', reject);
-    s.listen(0, '127.0.0.1', () => {
-      const addr = s.address();
-      const port = typeof addr === 'object' && addr ? addr.port : 0;
-      s.close(() => resolve(port));
-    });
-  });
-}
-
-interface ServerCtx {
-  base: string;
-  handle: Awaited<ReturnType<typeof startHttpServer>>;
-}
-
-async function startApiKeyServer(
-  overrides: Record<string, string> = {},
-  serverOptions: { closeTimeoutMs?: number } = {},
-): Promise<ServerCtx> {
-  const port = await freePort();
-  const env = {
-    HORIZON_TRANSPORT: 'http',
-    HORIZON_HTTP_AUTH_METHODS: 'api-key',
-    HORIZON_URL: 'https://horizon.test',
-    HORIZON_HTTP_HOST: '127.0.0.1',
-    HORIZON_HTTP_PORT: String(port),
-    HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
-    HORIZON_VERIFY_SSL: 'false',
-    ...overrides,
-  };
-  const settings = loadSettings(env);
-  const config = buildHttpConfig(settings, env);
-  const handle = await startHttpServer(settings, config, serverOptions);
-  return { base: `http://127.0.0.1:${handle.port}/mcp`, handle };
-}
-
-function makeClient(base: string, apiId?: string, apiKey?: string) {
-  const headers: Record<string, string> = {};
-  if (apiId) headers['X-API-ID'] = apiId;
-  if (apiKey) headers['X-API-KEY'] = apiKey;
-  const transport = new StreamableHTTPClientTransport(new URL(base), {
-    requestInit: { headers },
-  });
-  const client = new Client({ name: 'itest', version: '0.0.0' });
-  return { client, transport };
-}
-
-function makeServiceClient(base: string, serviceAccount: string, jwt: string) {
-  const transport = new StreamableHTTPClientTransport(new URL(base), {
-    requestInit: {
-      headers: { 'X-API-SVA': serviceAccount, 'X-API-TOKEN': jwt },
-    },
-  });
-  const client = new Client({ name: 'itest-service', version: '0.0.0' });
-  return { client, transport };
-}
+import {
+  apiIdOf,
+  buildHttpConfig,
+  fakeResponse,
+  freePort,
+  loadSettings,
+  makeClient,
+  makeServiceClient,
+  startApiKeyServer,
+  startHttpServer,
+} from './support/http-server-fixture.js';
+import { mockFetch } from './support/mcp-harness.js';
 
 describe('HTTP server integration (api-key mode)', () => {
-  let ctx: ServerCtx;
-  const openClients: Array<{ close: () => Promise<void> }> = [];
-
-  beforeEach(async () => {
-    ctx = await startApiKeyServer();
-  });
-
-  afterEach(async () => {
-    for (const c of openClients.splice(0)) {
-      await c.close().catch(() => undefined);
-    }
-    await ctx.handle.close().catch(() => undefined);
-  });
-
-  it('completes initialize -> ready and exposes tools + knowledge resources', async () => {
-    const { client, transport } = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(client);
-    await client.connect(transport);
-
-    const tools = await client.listTools();
-    expect(tools.tools.some((t) => t.name === 'whoami')).toBe(true);
-    expect(
-      tools.tools.some((t) => t.name === 'create_certificate_profile'),
-    ).toBe(true);
-
-    const resources = await client.listResources();
-    expect(
-      resources.resources.some(
-        (r) => r.uri === 'horizon://knowledge/server-rules',
-      ),
-    ).toBe(true);
-  }, 20000);
-
-  it('isolates two concurrent sessions with distinct identities', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    const b = makeClient(ctx.base, 'bob', 'kb');
-    openClients.push(a.client, b.client);
-    await Promise.all([
-      a.client.connect(a.transport),
-      b.client.connect(b.transport),
-    ]);
-
-    const [ra, rb] = await Promise.all([
-      a.client.callTool({ name: 'whoami', arguments: {} }),
-      b.client.callTool({ name: 'whoami', arguments: {} }),
-    ]);
-
-    expect((ra.structuredContent as { identifier: string }).identifier).toBe(
-      'alice',
-    );
-    expect((rb.structuredContent as { identifier: string }).identifier).toBe(
-      'bob',
-    );
-  }, 20000);
-
-  it('rejects an initialize with no credential', async () => {
-    const { client, transport } = makeClient(ctx.base);
-    openClients.push(client);
-    await expect(client.connect(transport)).rejects.toThrow();
-  }, 20000);
-
-  it('rejects a request that replays a session id with a different credential', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    const sid = a.transport.sessionId!;
-    expect(sid).toBeTruthy();
-
-    // Forge a request: A's session id, B's credential -> must be rejected.
-    const res = await fetch(ctx.base, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'bob',
-        'X-API-KEY': 'kb',
-      },
-      body: JSON.stringify({ jsonrpc: '2.0', id: 99, method: 'tools/list' }),
-    });
-    expect(res.status).toBe(401);
-    // The transport-level error echoes the request id and uses the server-error
-    // code (-32000) rather than the generic invalid-request -32600.
-    const err = (await res.json()) as {
-      id: number;
-      error: { code: number };
-    };
-    expect(err.id).toBe(99);
-    expect(err.error.code).toBe(-32000);
-  }, 20000);
-
-  it('does not refresh idle TTL for an unauthorized GET', async () => {
-    // Register a quiet synthetic session so the MCP client's background SSE
-    // stream cannot legitimately move lastSeenAt while this assertion runs.
-    const sid = 'ttl-probe-session';
-    ctx.handle.sessions.create({
-      sessionId: sid,
-      credentialFingerprint: credentialFingerprintOf({
-        kind: 'api-key',
-        apiId: 'alice',
-        apiKey: 'ka',
-      }),
-      server: { close: async () => undefined },
-      transport: { close: async () => undefined },
-      client: { close: async () => undefined },
-      auth: { cleanup: async () => undefined },
-    });
-    const before = ctx.handle.sessions.peek(sid)!.lastSeenAt;
-
-    await new Promise((resolve) => setTimeout(resolve, 5));
-    const res = await fetch(ctx.base, {
-      method: 'GET',
-      headers: {
-        Accept: 'text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'mallory',
-        'X-API-KEY': 'wrong',
-      },
-    });
-
-    expect(res.status).toBe(401);
-    expect(ctx.handle.sessions.peek(sid)!.lastSeenAt).toBe(before);
-  }, 20000);
-
-  it('rejects a work batch whose total cost exceeds the inflight cap', async () => {
-    await ctx.handle.close();
-    ctx = await startApiKeyServer({ HORIZON_MAX_INFLIGHT_TOOLCALLS: '1' });
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    const sid = a.transport.sessionId!;
-
-    const res = await fetch(ctx.base, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json, text/event-stream',
-        'Mcp-Session-Id': sid,
-        'X-API-ID': 'alice',
-        'X-API-KEY': 'ka',
-      },
-      body: JSON.stringify([
-        {
-          jsonrpc: '2.0',
-          id: 101,
-          method: 'tools/call',
-          params: { name: 'whoami', arguments: {} },
-        },
-        {
-          jsonrpc: '2.0',
-          id: 102,
-          method: 'tools/call',
-          params: { name: 'whoami', arguments: {} },
-        },
-      ]),
-    });
-
-    expect(res.status).toBe(429);
-  }, 20000);
-
-  it('tears down all sessions on close', async () => {
-    const a = makeClient(ctx.base, 'alice', 'ka');
-    openClients.push(a.client);
-    await a.client.connect(a.transport);
-    expect(ctx.handle.sessions.size).toBe(1);
-
-    await ctx.handle.close();
-    expect(ctx.handle.sessions.size).toBe(0);
-  }, 20000);
-});
-
-describe('HTTP server integration (authentication whitelist)', () => {
-  it('forwards a caller-supplied service-account identity to Horizon', async () => {
-    const ctx = await startApiKeyServer({
-      HORIZON_HTTP_AUTH_METHODS: 'api-key,service',
-    });
-    const service = makeServiceClient(ctx.base, 'ci-service', 'signed.jwt');
+  it('serves tools and knowledge resources with no handshake', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
     try {
-      await service.client.connect(service.transport);
-      const whoami = mockFetch.mock.calls.findLast((call) =>
-        String(call[0]).includes('/api/v1/security/principals/self'),
-      );
-      const headers = (
-        whoami?.[1] as { headers?: Record<string, string> } | undefined
-      )?.headers;
-      expect(headers?.['X-API-SVA']).toBe('ci-service');
-      expect(headers?.['X-API-TOKEN']).toBe('signed.jwt');
+      await client.connect(transport);
+      const tools = await client.listTools();
+      expect(tools.tools.length).toBeGreaterThan(50);
+      const resources = await client.listResources();
+      expect(resources.resources.length).toBeGreaterThan(0);
     } finally {
-      await service.client.close().catch(() => undefined);
+      await transport.close().catch(() => undefined);
       await ctx.handle.close();
     }
   }, 20000);
 
-  it('rejects a credential method that is not enabled', async () => {
+  it('isolates two credentials, each acting as its own Horizon identity', async () => {
+    const ctx = await startApiKeyServer();
+    const a = makeClient(ctx.base, 'alice', 'k1');
+    const b = makeClient(ctx.base, 'bob', 'k2');
+    try {
+      await a.client.connect(a.transport);
+      await b.client.connect(b.transport);
+
+      const who = async (c: typeof a.client) => {
+        const r = (await c.callTool({ name: 'whoami', arguments: {} })) as {
+          content: { text: string }[];
+        };
+        return r.content[0]!.text;
+      };
+
+      expect(await who(a.client)).toContain('alice');
+      expect(await who(b.client)).toContain('bob');
+    } finally {
+      await a.transport.close().catch(() => undefined);
+      await b.transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('rejects a request with no credential', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBeGreaterThanOrEqual(400);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('includes WWW-Authenticate on a 401 for a request with no credential and no modern envelope claim', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toBe(
+        'Horizon methods="api-key"',
+      );
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('includes WWW-Authenticate on a 401 when Horizon rejects the credential during validation', async () => {
+    const ctx = await startApiKeyServer();
+    const original = mockFetch.getMockImplementation()!;
+    mockFetch.mockImplementation((url: unknown, init: unknown) => {
+      if (
+        String(url).includes('/api/v1/security/principals/self') &&
+        apiIdOf(init) === 'rejected-by-horizon'
+      ) {
+        return Promise.resolve(fakeResponse(401, { message: 'unauthorized' }));
+      }
+      return original(url, init);
+    });
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-ID': 'rejected-by-horizon',
+          'X-API-KEY': 'whatever',
+          'MCP-Protocol-Version': '2026-07-28',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(401);
+      expect(res.headers.get('www-authenticate')).toBe(
+        'Horizon methods="api-key"',
+      );
+    } finally {
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('answers 405 to GET and DELETE, the removed session operations', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      for (const method of ['GET', 'DELETE']) {
+        const res = await fetch(ctx.base, {
+          method,
+          headers: { 'X-API-ID': 'alice', 'X-API-KEY': 'k' },
+        });
+        expect(res.status).toBe(405);
+      }
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('answers 405 with Allow to an uncredentialed GET', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, { method: 'GET' }); // no credentials
+      expect(res.status).toBe(405);
+      expect(res.headers.get('allow')).toBe('POST');
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a modern-claim POST without the version header before touching credentials', async () => {
+    const ctx = await startApiKeyServer();
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      const before = probes();
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': 'nobody',
+          'X-API-KEY': 'nope', // bogus creds must NOT reach Horizon
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { code: number; data: any } };
+      expect(body.error.code).toBe(-32020);
+      expect(body.error.data.mismatch.header).toBe('(missing)');
+      expect(probes()).toBe(before);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('rejects a mismatched Host with 421 (DNS-rebinding defence)', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const body = await new Promise<string>((resolve, reject) => {
+        const req = httpRequest(
+          {
+            hostname: '127.0.0.1',
+            port: ctx.handle.port,
+            path: '/mcp',
+            method: 'POST',
+            headers: {
+              Host: 'evil.example.com',
+              'Content-Type': 'application/json',
+              Accept: 'application/json, text/event-stream',
+              'X-API-ID': 'alice',
+              'X-API-KEY': 'k',
+              'Content-Length': '2',
+            },
+          },
+          (res) => {
+            expect(res.statusCode).toBe(421);
+            const chunks: Buffer[] = [];
+            res.on('data', (c) => chunks.push(c as Buffer));
+            res.on('end', () =>
+              resolve(Buffer.concat(chunks).toString('utf8')),
+            );
+          },
+        );
+        req.on('error', reject);
+        req.end('{}');
+      });
+      expect(body).toMatch(/host/i);
+    } finally {
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('ignores Mcp-Session-Id and never echoes one back', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
+    try {
+      await client.connect(transport);
+      await client.listTools();
+
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': 'alice',
+          'X-API-KEY': 'k',
+          'Mcp-Session-Id': 'not-a-real-session',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 7,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+      expect(res.headers.get('mcp-session-id')).toBeNull();
+      expect(res.status).toBeLessThan(500);
+    } finally {
+      await transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('validates a credential against Horizon once, then serves from cache', async () => {
+    const ctx = await startApiKeyServer();
+    const { client, transport } = makeClient(ctx.base, 'alice', 'k');
+    const probes = () =>
+      mockFetch.mock.calls.filter((c) =>
+        String(c[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    try {
+      await client.connect(transport);
+      await client.listTools();
+      const afterFirst = probes();
+      await client.listTools();
+      await client.listTools();
+      // Without the credential cache each stateless request would revalidate
+      // against Horizon over the network.
+      expect(probes()).toBe(afterFirst);
+    } finally {
+      await transport.close().catch(() => undefined);
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('limits concurrent validation of distinct credentials per peer', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const ctx = await startApiKeyServer({
+      HORIZON_VALIDATION_RATE_LIMIT: '3',
+      HORIZON_RATE_LIMIT_RPS: '0',
+      HORIZON_IP_RATE_LIMIT: '0',
+    }).catch((err: unknown) => {
+      nowSpy.mockRestore();
+      throw err;
+    });
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = (index: number) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': `bogus-${index}`,
+          'X-API-KEY': `key-${index}`,
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: index,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+    try {
+      const before = probes();
+      const responses = await Promise.all(
+        Array.from({ length: 20 }, (_, index) => send(index + 1)),
+      );
+      const after = probes();
+      const probeCount = after - before;
+      const limited = responses.filter((response) => response.status === 429);
+      const succeeded = responses.filter((response) => response.status !== 429);
+
+      expect(probeCount).toBe(3);
+      expect(limited).toHaveLength(17);
+      expect(succeeded).toHaveLength(3);
+      expect(succeeded.map((response) => response.status)).toEqual(
+        Array(3).fill(200),
+      );
+      for (const response of limited) {
+        const body = (await response.json()) as { error: { code: number } };
+        expect(body.error.code).toBe(-31001);
+      }
+    } finally {
+      nowSpy.mockRestore();
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('charges one validation token for concurrent same-credential misses', async () => {
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const ctx = await startApiKeyServer({
+      HORIZON_VALIDATION_RATE_LIMIT: '1',
+      HORIZON_RATE_LIMIT_RPS: '0',
+      HORIZON_IP_RATE_LIMIT: '0',
+    }).catch((err: unknown) => {
+      nowSpy.mockRestore();
+      throw err;
+    });
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = (apiId: string, id: number) =>
+      fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': apiId,
+          'X-API-KEY': 'shared-key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': 'tools/list',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method: 'tools/list',
+          params: {
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+            },
+          },
+        }),
+      });
+
+    try {
+      const before = probes();
+      const responses = await Promise.all(
+        Array.from({ length: 6 }, (_, index) =>
+          send('shared-fresh', index + 1),
+        ),
+      );
+
+      expect(probes() - before).toBe(1);
+      expect(responses.map((response) => response.status)).toEqual(
+        Array(6).fill(200),
+      );
+
+      const distinct = await send('distinct-fresh', 7);
+      expect(distinct.status).toBe(429);
+      const body = (await distinct.json()) as { error: { code: number } };
+      expect(body.error.code).toBe(-31001);
+      expect(probes() - before).toBe(1);
+    } finally {
+      nowSpy.mockRestore();
+      await ctx.handle.close();
+    }
+  }, 30000);
+
+  it('revalidates a cached credential after Horizon rejects it', async () => {
+    const ctx = await startApiKeyServer();
+    const original = mockFetch.getMockImplementation()!;
+    const credential = 'revoked-then-restored';
+    let rejectCredential = false;
+    const probes = () =>
+      mockFetch.mock.calls.filter((call) =>
+        String(call[0]).includes('/api/v1/security/principals/self'),
+      ).length;
+    const send = async (
+      id: number,
+      method: 'tools/call' | 'tools/list',
+      params: Record<string, unknown> = {},
+      name?: string,
+    ) => {
+      const response = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json, text/event-stream',
+          'X-API-ID': credential,
+          'X-API-KEY': 'key',
+          'MCP-Protocol-Version': '2026-07-28',
+          'Mcp-Method': method,
+          ...(name === undefined ? {} : { 'Mcp-Name': name }),
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id,
+          method,
+          params: {
+            ...params,
+            _meta: {
+              'io.modelcontextprotocol/protocolVersion': '2026-07-28',
+              'io.modelcontextprotocol/clientCapabilities': {},
+              'io.modelcontextprotocol/clientInfo': {
+                name: 'auth-rejection-test',
+                version: '1.0.0',
+              },
+            },
+          },
+        }),
+      });
+      return {
+        response,
+        body: (await response.json()) as {
+          error?: { code: number };
+          result?: {
+            isError?: boolean;
+            structuredContent?: { statusCode?: number };
+          };
+        },
+      };
+    };
+
+    mockFetch.mockImplementation((url: unknown, init: unknown) => {
+      if (rejectCredential && apiIdOf(init) === credential) {
+        return Promise.resolve(
+          fakeResponse(401, {
+            error: 'SecAuth001',
+            message: 'Unauthorized',
+          }),
+        );
+      }
+      return original(url, init);
+    });
+
+    try {
+      const warm = await send(1, 'tools/list');
+      expect(warm.response.status).toBe(200);
+      const afterWarm = probes();
+
+      rejectCredential = true;
+      const rejected = await send(
+        2,
+        'tools/call',
+        { name: 'whoami', arguments: {} },
+        'whoami',
+      );
+      expect(rejected.response.status).toBe(200);
+      expect(rejected.body.error).toBeUndefined();
+      expect(rejected.body.result?.isError).toBe(true);
+      expect(rejected.body.result?.structuredContent).toMatchObject({
+        statusCode: 401,
+      });
+      const afterReject = probes();
+      expect(afterReject).toBeGreaterThan(afterWarm);
+
+      rejectCredential = false;
+      const recovered = await send(3, 'tools/list');
+      expect(recovered.response.status).toBe(200);
+      expect(probes()).toBe(afterReject + 1);
+    } finally {
+      mockFetch.mockImplementation(original);
+      await ctx.handle.close();
+    }
+  }, 30000);
+});
+
+describe('HTTP server integration (authentication whitelist)', () => {
+  it('requires X-API-TOKEN even with OAuth headers and one pinned issuer', async () => {
+    const port = await freePort();
+    const tokenUrl = 'https://oauth.example.com/token';
+    const env = {
+      HORIZON_TRANSPORT: 'http',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
+      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_HOST: '127.0.0.1',
+      HORIZON_HTTP_PORT: String(port),
+      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port}`,
+      HORIZON_OAUTH_ISSUERS: JSON.stringify({
+        'https://issuer.example.com': {
+          tokenUrl,
+          authMethod: 'client_secret_post',
+        },
+      }),
+    };
+    const settings = loadSettings(env);
+    const handle = await startHttpServer(
+      settings,
+      buildHttpConfig(settings, env),
+    );
+    const before = mockFetch.mock.calls.filter(
+      (call) => String(call[0]) === tokenUrl,
+    ).length;
+    try {
+      const response = await fetch(`http://127.0.0.1:${handle.port}/mcp`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-SVA': 'svc',
+          'X-OAUTH-CLIENT-ID': 'client',
+          'X-OAUTH-CLIENT-SECRET': 'secret',
+        },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/list',
+        }),
+      });
+      expect(response.status).toBe(401);
+      const body = (await response.json()) as {
+        error: { message: string };
+      };
+      expect(body.error.message).toBe(
+        'service authentication requires both X-API-SVA and X-API-TOKEN headers',
+      );
+      expect(
+        mockFetch.mock.calls.filter((call) => String(call[0]) === tokenUrl),
+      ).toHaveLength(before);
+    } finally {
+      await handle.close();
+    }
+  }, 20000);
+
+  it('forwards a caller-supplied service-account identity to Horizon', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
@@ -336,77 +587,62 @@ describe('HTTP server integration (authentication whitelist)', () => {
     const config = buildHttpConfig(settings, env);
     const handle = await startHttpServer(settings, config);
     const base = `http://127.0.0.1:${handle.port}/mcp`;
+    const { client, transport } = makeServiceClient(base, 'svc', 'jwt-value');
     try {
-      const res = await fetch(base, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json, text/event-stream',
-          'X-API-ID': 'sneaky',
-          'X-API-KEY': 'sneaky',
-        },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'initialize',
-          params: {
-            protocolVersion: '2025-06-18',
-            capabilities: {},
-            clientInfo: { name: 'x', version: '0' },
-          },
-        }),
+      await client.connect(transport);
+      await client.listTools();
+      const sent = mockFetch.mock.calls.some((c) => {
+        const headers = (c[1] as { headers?: Record<string, string> })?.headers;
+        return headers?.['X-API-SVA'] === 'svc';
       });
-      expect(res.status).toBe(401);
+      expect(sent).toBe(true);
     } finally {
+      await transport.close().catch(() => undefined);
       await handle.close();
     }
   }, 20000);
-});
 
-describe('HTTP server integration (no leak on a rejected initialize)', () => {
-  it('releases the admission reservation when the SDK rejects a credentialed initialize', async () => {
-    const port = await freePort();
-    const env = {
-      HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_METHODS: 'api-key',
-      HORIZON_URL: 'https://horizon.test',
-      HORIZON_HTTP_HOST: '127.0.0.1',
-      HORIZON_HTTP_PORT: String(port),
-      HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
-      HORIZON_MAX_SESSIONS: '2',
-      HORIZON_VERIFY_SSL: 'false',
-    };
-    const settings = loadSettings(env);
-    const config = buildHttpConfig(settings, env);
-    const handle = await startHttpServer(settings, config);
-    const base = `http://127.0.0.1:${handle.port}/mcp`;
+  it('rejects a credential method that is not enabled', async () => {
+    const ctx = await startApiKeyServer();
     try {
-      // Each body passes the local initialize check but fails the SDK JSON-RPC
-      // schema (no jsonrpc/id), so onsessioninitialized never fires. Send more
-      // than maxSessions: if the reservation leaked, these would exhaust the cap
-      // and the valid client below would be locked out with a 503.
-      for (let i = 0; i < 3; i++) {
-        const res = await fetch(base, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Accept: 'application/json, text/event-stream',
-            'X-API-ID': 'alice',
-            'X-API-KEY': 'ka',
-          },
-          body: JSON.stringify({ method: 'initialize' }),
-        });
-        expect(res.status).toBeGreaterThanOrEqual(400);
-      }
-      expect(handle.sessions.size).toBe(0);
-
-      // The reservations were released, so a real client still connects.
-      const a = makeClient(base, 'alice', 'ka');
-      await a.client.connect(a.transport);
-      expect(handle.sessions.size).toBe(1);
-      await a.client.close().catch(() => undefined);
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-SVA': 'svc',
+          'X-API-TOKEN': 'jwt',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBe(401);
+      const body = (await res.json()) as {
+        error: { code: number; message: string };
+      };
+      expect(body.error.code).toBe(-31003);
+      expect(body.error.message).toBe(
+        'service authentication is not accepted by this server',
+      );
     } finally {
-      await handle.close();
+      await ctx.handle.close();
+    }
+  }, 20000);
+
+  it('names the auth methods setting when Authorization is presented', async () => {
+    const ctx = await startApiKeyServer();
+    try {
+      const res = await fetch(ctx.base, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer some-oauth-token',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }),
+      });
+      expect(res.status).toBe(400);
+      const body = (await res.json()) as { error: { message: string } };
+      expect(body.error.message).toContain('HORIZON_HTTP_AUTH_METHODS');
+    } finally {
+      await ctx.handle.close();
     }
   }, 20000);
 });
@@ -440,46 +676,5 @@ describe('HTTP server integration (readyz)', () => {
     } finally {
       await handle.close();
     }
-  }, 20000);
-});
-
-describe('HTTP server integration (graceful shutdown)', () => {
-  it('resolves close() promptly despite a lingering idle keep-alive socket', async () => {
-    const ctx = await startApiKeyServer();
-    const sock = connect(ctx.handle.port, '127.0.0.1');
-    await new Promise<void>((resolve, reject) => {
-      sock.once('connect', () => resolve());
-      sock.once('error', reject);
-    });
-    try {
-      const start = Date.now();
-      await ctx.handle.close();
-      // Without closeAllConnections()/timeout, close() would hang on the idle
-      // socket until SIGKILL; the bounded drain keeps it well under the cap.
-      expect(Date.now() - start).toBeLessThan(2000);
-    } finally {
-      sock.destroy();
-    }
-  }, 20000);
-
-  it('bounds the whole shutdown when a session resource never closes', async () => {
-    const ctx = await startApiKeyServer({}, { closeTimeoutMs: 50 });
-    const never = new Promise<void>(() => undefined);
-    ctx.handle.sessions.create({
-      sessionId: 'stuck',
-      server: { close: async () => undefined },
-      transport: { close: async () => undefined },
-      client: { close: () => never },
-      auth: { cleanup: async () => undefined },
-    });
-
-    const result = await Promise.race([
-      ctx.handle.close().then(() => 'closed'),
-      new Promise<'timed-out'>((resolve) =>
-        setTimeout(() => resolve('timed-out'), 250),
-      ),
-    ]);
-
-    expect(result).toBe('closed');
   }, 20000);
 });

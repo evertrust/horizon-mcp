@@ -16,7 +16,7 @@
  * provider and provisioner must reference existing DCV provider/provisioner
  * configurations (server-validated, InvalidReferenceException otherwise).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -83,6 +83,41 @@ const provisionerSchema = z
     'Name of an existing DCV provisioner configuration (server-validated; must pre-exist).',
   );
 
+const CREATE_DCV_POLICIES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('Policy name. Immutable primary key (the update lookup key).'),
+  provider: providerSchema,
+  provisioner: provisionerSchema,
+  executionTimeout: durationSchema('Max run duration per execution (> 0)'),
+  retryDelay: durationSchema('Delay between retries (> 0)'),
+  enabled: z.boolean().describe('Whether the policy is enabled.'),
+  filter: z
+    .string()
+    .optional()
+    .describe('Optional regex; only domains matching it are processed.'),
+  renewalPolicy: renewalPolicySchema.optional(),
+  triggers: triggersSchema.optional(),
+});
+
+const UPDATE_DCV_POLICIES_SCHEMA = z.object({
+  name: z.string().describe('Policy name to update (immutable key).'),
+  provider: providerSchema.optional(),
+  provisioner: provisionerSchema.optional(),
+  executionTimeout: durationSchema('Max run duration (> 0)').optional(),
+  retryDelay: durationSchema('Delay between retries (> 0)').optional(),
+  enabled: z.boolean().optional().describe('Whether the policy is enabled.'),
+  filter: z.string().optional().describe('Optional domain-matching regex.'),
+  renewalPolicy: renewalPolicySchema.optional(),
+  triggers: triggersSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["filter","renewalPolicy","triggers"].',
+    ),
+});
+
 export function registerDcvPolicyTools(
   server: McpServer,
   client: HorizonClient,
@@ -107,24 +142,7 @@ export function registerDcvPolicyTools(
       'retryDelay',
       'enabled',
     ],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Policy name. Immutable primary key (the update lookup key).',
-        ),
-      provider: providerSchema,
-      provisioner: provisionerSchema,
-      executionTimeout: durationSchema('Max run duration per execution (> 0)'),
-      retryDelay: durationSchema('Delay between retries (> 0)'),
-      enabled: z.boolean().describe('Whether the policy is enabled.'),
-      filter: z
-        .string()
-        .optional()
-        .describe('Optional regex; only domains matching it are processed.'),
-      renewalPolicy: renewalPolicySchema.optional(),
-      triggers: triggersSchema.optional(),
-    }),
+    inputSchema: CREATE_DCV_POLICIES_SCHEMA,
     buildPayload: (args) => {
       const body: Record<string, unknown> = {
         name: args.name,
@@ -144,26 +162,7 @@ export function registerDcvPolicyTools(
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing DCV policy.',
-    inputSchema: z.object({
-      name: z.string().describe('Policy name to update (immutable key).'),
-      provider: providerSchema.optional(),
-      provisioner: provisionerSchema.optional(),
-      executionTimeout: durationSchema('Max run duration (> 0)').optional(),
-      retryDelay: durationSchema('Delay between retries (> 0)').optional(),
-      enabled: z
-        .boolean()
-        .optional()
-        .describe('Whether the policy is enabled.'),
-      filter: z.string().optional().describe('Optional domain-matching regex.'),
-      renewalPolicy: renewalPolicySchema.optional(),
-      triggers: triggersSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["filter","renewalPolicy","triggers"].',
-        ),
-    }),
+    inputSchema: UPDATE_DCV_POLICIES_SCHEMA,
     buildOverrides: (args) => {
       const o: Record<string, unknown> = {};
       if (args.provider !== undefined) o['provider'] = args.provider;

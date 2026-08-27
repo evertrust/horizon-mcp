@@ -13,7 +13,7 @@
  * Route: /api/v1/system/storages. Update PUTs the COLLECTION root (body-keyed
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -86,6 +86,50 @@ function buildStorageBody(args: {
   return o;
 }
 
+const CREATE_STORAGES_SCHEMA = z.object({
+  name: z
+    .string()
+    .describe('Storage name. Immutable primary key, regex [0-9a-zA-Z-_.]+.'),
+  timeout: z
+    .string()
+    .describe('S3 connection timeout, e.g. "30s". Mandatory, must be > 0.'),
+  force_path_style: z.boolean().describe('Force S3 path-style requests.'),
+  bucket: z.string().describe('S3 bucket to store items into.'),
+  checksum_mode: z.enum(CHECKSUM_MODES).describe('S3 checksum mode.'),
+  part_buffer_size: z
+    .string()
+    .describe(
+      'Multipart upload buffer size, e.g. "9MB". Must resolve to < 2GB.',
+    ),
+  credentials: optionalStrings.credentials.optional(),
+  role_arn: optionalStrings.role_arn.optional(),
+  region: optionalStrings.region.optional(),
+  proxy: optionalStrings.proxy.optional(),
+  endpoint: optionalStrings.endpoint.optional(),
+  description: optionalStrings.description.optional(),
+});
+
+const UPDATE_STORAGES_SCHEMA = z.object({
+  name: z.string().describe('Storage name to update (immutable key).'),
+  timeout: z.string().optional(),
+  force_path_style: z.boolean().optional(),
+  bucket: z.string().optional(),
+  checksum_mode: z.enum(CHECKSUM_MODES).optional(),
+  part_buffer_size: z.string().optional(),
+  credentials: optionalStrings.credentials.optional(),
+  role_arn: optionalStrings.role_arn.optional(),
+  region: optionalStrings.region.optional(),
+  proxy: optionalStrings.proxy.optional(),
+  endpoint: optionalStrings.endpoint.optional(),
+  description: optionalStrings.description.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe(
+      'Top-level fields to explicitly null, e.g. ["credentials","proxy"].',
+    ),
+});
+
 export function registerStorageTools(
   server: McpServer,
   client: HorizonClient,
@@ -109,55 +153,13 @@ export function registerStorageTools(
       'checksum_mode',
       'part_buffer_size',
     ],
-    inputSchema: z.object({
-      name: z
-        .string()
-        .describe(
-          'Storage name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
-        ),
-      timeout: z
-        .string()
-        .describe('S3 connection timeout, e.g. "30s". Mandatory, must be > 0.'),
-      force_path_style: z.boolean().describe('Force S3 path-style requests.'),
-      bucket: z.string().describe('S3 bucket to store items into.'),
-      checksum_mode: z.enum(CHECKSUM_MODES).describe('S3 checksum mode.'),
-      part_buffer_size: z
-        .string()
-        .describe(
-          'Multipart upload buffer size, e.g. "9MB". Must resolve to < 2GB.',
-        ),
-      credentials: optionalStrings.credentials.optional(),
-      role_arn: optionalStrings.role_arn.optional(),
-      region: optionalStrings.region.optional(),
-      proxy: optionalStrings.proxy.optional(),
-      endpoint: optionalStrings.endpoint.optional(),
-      description: optionalStrings.description.optional(),
-    }),
+    inputSchema: CREATE_STORAGES_SCHEMA,
     buildPayload: (args) => ({ type: 's3', ...buildStorageBody(args) }),
   });
 
   registerUpdateTool(server, client, SPEC, {
     description: 'Update an existing S3 storage backend configuration.',
-    inputSchema: z.object({
-      name: z.string().describe('Storage name to update (immutable key).'),
-      timeout: z.string().optional(),
-      force_path_style: z.boolean().optional(),
-      bucket: z.string().optional(),
-      checksum_mode: z.enum(CHECKSUM_MODES).optional(),
-      part_buffer_size: z.string().optional(),
-      credentials: optionalStrings.credentials.optional(),
-      role_arn: optionalStrings.role_arn.optional(),
-      region: optionalStrings.region.optional(),
-      proxy: optionalStrings.proxy.optional(),
-      endpoint: optionalStrings.endpoint.optional(),
-      description: optionalStrings.description.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe(
-          'Top-level fields to explicitly null, e.g. ["credentials","proxy"].',
-        ),
-    }),
+    inputSchema: UPDATE_STORAGES_SCHEMA,
     buildOverrides: (args) => {
       const { name: _name, ...rest } = args;
       return buildStorageBody(rest);

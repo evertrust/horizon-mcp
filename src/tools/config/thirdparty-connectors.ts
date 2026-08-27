@@ -22,7 +22,7 @@
  * Subtype rules enforced client-side (rest delegated to Horizon):
  *   - netscaler additionally requires `timeout` and `maxStoredCertificatePerHolder`.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import { HorizonError } from '../../client/errors.js';
@@ -196,6 +196,16 @@ const configParam = z
       'with the subtype FIRST to learn the required + allowed fields - never guess.',
   );
 
+const THIRDPARTY_CONNECTOR_DESCRIBE_INFO = {
+  noun: SPEC.noun,
+  label: SPEC.label,
+  discriminatorField: 'type',
+  subtypes: SUBTYPES,
+  mandatoryFields: TYPED_MANDATORY,
+  jsonSchema: thirdpartyConnectorRequestSchema,
+  schemaVersion: SCHEMA_VERSION,
+};
+
 export function registerThirdpartyConnectorTools(
   server: McpServer,
   client: HorizonClient,
@@ -206,15 +216,7 @@ export function registerThirdpartyConnectorTools(
     getDescription: 'Get a single third-party connector by name.',
   });
 
-  registerDescribeSchemaTool(server, {
-    noun: SPEC.noun,
-    label: SPEC.label,
-    discriminatorField: 'type',
-    subtypes: SUBTYPES,
-    mandatoryFields: TYPED_MANDATORY,
-    jsonSchema: thirdpartyConnectorRequestSchema,
-    schemaVersion: SCHEMA_VERSION,
-  });
+  registerDescribeSchemaTool(server, THIRDPARTY_CONNECTOR_DESCRIBE_INFO);
 
   registerTool(
     server,

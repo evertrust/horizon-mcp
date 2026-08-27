@@ -13,7 +13,7 @@
  * PUTs the COLLECTION root (body-keyed full-replace); the wrapper does GET-merge
  * so omitted fields are preserved. name is immutable; strip [_id, tenant].
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -113,19 +113,37 @@ function mergeBody(
   return body;
 }
 
+const CREATE_TRIGGERS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+});
+
+const UPDATE_TRIGGERS_SCHEMA = z.object({
+  name: nameSchema,
+  type: typeSchema,
+  config: configSchema.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
+const TRIGGER_DESCRIBE_INFO = {
+  noun: 'trigger',
+  label: 'trigger',
+  discriminatorField: 'type',
+  subtypes: TRIGGER_TYPES,
+  mandatoryFields: ['name', 'type'],
+  jsonSchema: triggerRequestSchema,
+  schemaVersion: 'triggers.request.json',
+};
+
 export function registerTriggerCrudTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
-  registerDescribeSchemaTool(server, {
-    noun: 'trigger',
-    label: 'trigger',
-    discriminatorField: 'type',
-    subtypes: TRIGGER_TYPES,
-    mandatoryFields: ['name', 'type'],
-    jsonSchema: triggerRequestSchema,
-    schemaVersion: 'triggers.request.json',
-  });
+  registerDescribeSchemaTool(server, TRIGGER_DESCRIBE_INFO);
 
   registerCreateTool(server, client, SPEC, {
     description:
@@ -139,11 +157,7 @@ export function registerTriggerCrudTools(
       'describe_trigger_schema for the chosen type first - never guess the ' +
       '`config` fields.',
     mandatoryFields: ['name', 'type'],
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-    }),
+    inputSchema: CREATE_TRIGGERS_SCHEMA,
     nextSteps:
       'A trigger runs only when bound to a certificate profile for specific ' +
       'lifecycle events. Ask the user which certificate profile(s) and which ' +
@@ -161,15 +175,7 @@ export function registerTriggerCrudTools(
       'Update an existing trigger. The subtype (type) cannot change. ' +
       'Full-replace: pass the complete `config` for the subtype (call ' +
       'describe_trigger_schema).',
-    inputSchema: z.object({
-      name: nameSchema,
-      type: typeSchema,
-      config: configSchema.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
+    inputSchema: UPDATE_TRIGGERS_SCHEMA,
     buildOverrides: ({ name, type, config }) =>
       mergeBody(name, type, config ?? {}),
   });

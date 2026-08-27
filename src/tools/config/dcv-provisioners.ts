@@ -21,7 +21,7 @@
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
  * Cannot be deleted while referenced by a DCV policy (InvalidReferenceException).
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
@@ -161,6 +161,93 @@ function buildBody(args: Record<string, unknown>): Record<string, unknown> {
   return body;
 }
 
+const CREATE_DCV_PROVISIONERS_SCHEMA = z.object({
+  name: fields.name,
+  type: fields.type,
+  ttl: fields.ttl,
+  timeout: fields.timeout,
+  endpoint: fields.endpoint.optional(),
+  credentials: fields.credentials.optional(),
+  proxy: fields.proxy.optional(),
+  delegationZone: fields.delegationZone.optional(),
+  zoneIdMappings: fields.zoneIdMappings.optional(),
+  tenantId: fields.tenantId.optional(),
+  subscriptionId: fields.subscriptionId.optional(),
+  resourceGroupName: fields.resourceGroupName.optional(),
+  authorityHost: fields.authorityHost.optional(),
+  dnsName: fields.dnsName.optional(),
+  dnsView: fields.dnsView.optional(),
+  region: fields.region.optional(),
+  roleArn: fields.roleArn.optional(),
+});
+
+const UPDATE_DCV_PROVISIONERS_SCHEMA = z.object({
+  name: fields.name,
+  type: fields.type,
+  ttl: fields.ttl.optional(),
+  timeout: fields.timeout.optional(),
+  endpoint: fields.endpoint.optional(),
+  credentials: fields.credentials.optional(),
+  proxy: fields.proxy.optional(),
+  delegationZone: fields.delegationZone.optional(),
+  zoneIdMappings: fields.zoneIdMappings.optional(),
+  tenantId: fields.tenantId.optional(),
+  subscriptionId: fields.subscriptionId.optional(),
+  resourceGroupName: fields.resourceGroupName.optional(),
+  authorityHost: fields.authorityHost.optional(),
+  dnsName: fields.dnsName.optional(),
+  dnsView: fields.dnsView.optional(),
+  region: fields.region.optional(),
+  roleArn: fields.roleArn.optional(),
+  clear_fields: z
+    .array(z.string())
+    .optional()
+    .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
+});
+
+const CREATE_DCV_PROVISIONER_OPTS = {
+  description:
+    'Create a DCV (Domain Control Validation) provisioner that writes DNS ' +
+    'challenge records to a DNS backend (cloudflare/powerdns/efficientip/' +
+    'azuredns/route53). Note: azuredns writes DNS validation records - it is ' +
+    'NOT Azure Key Vault certificate publishing (that is a third-party ' +
+    'connector, type akv). Required fields depend on type (see the type field ' +
+    'description).',
+  mandatoryFields: ['name', 'type', 'ttl', 'timeout'],
+  inputSchema: CREATE_DCV_PROVISIONERS_SCHEMA,
+  preValidate: (args: z.infer<typeof CREATE_DCV_PROVISIONERS_SCHEMA>) => {
+    const missing = missingForType(
+      args.type,
+      (f) => (args as Record<string, unknown>)[f] !== undefined,
+    );
+    if (missing.length > 0) {
+      return JSON.stringify({
+        error: `Missing mandatory field(s) for type=${args.type}: ${missing.join(', ')}. Ask the user for these - do not infer them.`,
+      });
+    }
+    return undefined;
+  },
+  buildPayload: (args: z.infer<typeof CREATE_DCV_PROVISIONERS_SCHEMA>) =>
+    buildBody(args as Record<string, unknown>),
+};
+
+const UPDATE_DCV_PROVISIONER_OPTS = {
+  description:
+    'Update an existing DCV provisioner. The submitted type must match the ' +
+    'stored one. Only supplied fields change (GET-merge full-replace).',
+  inputSchema: UPDATE_DCV_PROVISIONERS_SCHEMA,
+  buildOverrides: (args: z.infer<typeof UPDATE_DCV_PROVISIONERS_SCHEMA>) => {
+    const o: Record<string, unknown> = { type: args.type };
+    if (args.ttl !== undefined) o['ttl'] = args.ttl;
+    if (args.timeout !== undefined) o['timeout'] = args.timeout;
+    for (const k of OPTIONAL_KEYS) {
+      const v = (args as Record<string, unknown>)[k];
+      if (v !== undefined) o[k] = v;
+    }
+    return o;
+  },
+};
+
 export function registerDcvProvisionerTools(
   server: McpServer,
   client: HorizonClient,
@@ -173,87 +260,9 @@ export function registerDcvProvisionerTools(
     getDescription: 'Get a single DCV provisioner configuration by name.',
   });
 
-  registerCreateTool(server, client, SPEC, {
-    description:
-      'Create a DCV (Domain Control Validation) provisioner that writes DNS ' +
-      'challenge records to a DNS backend (cloudflare/powerdns/efficientip/' +
-      'azuredns/route53). Note: azuredns writes DNS validation records - it is ' +
-      'NOT Azure Key Vault certificate publishing (that is a third-party ' +
-      'connector, type akv). Required fields depend on type (see the type field ' +
-      'description).',
-    mandatoryFields: ['name', 'type', 'ttl', 'timeout'],
-    inputSchema: z.object({
-      name: fields.name,
-      type: fields.type,
-      ttl: fields.ttl,
-      timeout: fields.timeout,
-      endpoint: fields.endpoint.optional(),
-      credentials: fields.credentials.optional(),
-      proxy: fields.proxy.optional(),
-      delegationZone: fields.delegationZone.optional(),
-      zoneIdMappings: fields.zoneIdMappings.optional(),
-      tenantId: fields.tenantId.optional(),
-      subscriptionId: fields.subscriptionId.optional(),
-      resourceGroupName: fields.resourceGroupName.optional(),
-      authorityHost: fields.authorityHost.optional(),
-      dnsName: fields.dnsName.optional(),
-      dnsView: fields.dnsView.optional(),
-      region: fields.region.optional(),
-      roleArn: fields.roleArn.optional(),
-    }),
-    preValidate: (args) => {
-      const missing = missingForType(
-        args.type,
-        (f) => (args as Record<string, unknown>)[f] !== undefined,
-      );
-      if (missing.length > 0) {
-        return JSON.stringify({
-          error: `Missing mandatory field(s) for type=${args.type}: ${missing.join(', ')}. Ask the user for these - do not infer them.`,
-        });
-      }
-      return undefined;
-    },
-    buildPayload: (args) => buildBody(args as Record<string, unknown>),
-  });
+  registerCreateTool(server, client, SPEC, CREATE_DCV_PROVISIONER_OPTS);
 
-  registerUpdateTool(server, client, SPEC, {
-    description:
-      'Update an existing DCV provisioner. The submitted type must match the ' +
-      'stored one. Only supplied fields change (GET-merge full-replace).',
-    inputSchema: z.object({
-      name: fields.name,
-      type: fields.type,
-      ttl: fields.ttl.optional(),
-      timeout: fields.timeout.optional(),
-      endpoint: fields.endpoint.optional(),
-      credentials: fields.credentials.optional(),
-      proxy: fields.proxy.optional(),
-      delegationZone: fields.delegationZone.optional(),
-      zoneIdMappings: fields.zoneIdMappings.optional(),
-      tenantId: fields.tenantId.optional(),
-      subscriptionId: fields.subscriptionId.optional(),
-      resourceGroupName: fields.resourceGroupName.optional(),
-      authorityHost: fields.authorityHost.optional(),
-      dnsName: fields.dnsName.optional(),
-      dnsView: fields.dnsView.optional(),
-      region: fields.region.optional(),
-      roleArn: fields.roleArn.optional(),
-      clear_fields: z
-        .array(z.string())
-        .optional()
-        .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
-    }),
-    buildOverrides: (args) => {
-      const o: Record<string, unknown> = { type: args.type };
-      if (args.ttl !== undefined) o['ttl'] = args.ttl;
-      if (args.timeout !== undefined) o['timeout'] = args.timeout;
-      for (const k of OPTIONAL_KEYS) {
-        const v = (args as Record<string, unknown>)[k];
-        if (v !== undefined) o[k] = v;
-      }
-      return o;
-    },
-  });
+  registerUpdateTool(server, client, SPEC, UPDATE_DCV_PROVISIONER_OPTS);
 
   registerDeleteTool(server, client, SPEC, {
     description: 'Delete a DCV provisioner configuration.',

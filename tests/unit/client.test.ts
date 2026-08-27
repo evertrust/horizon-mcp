@@ -13,12 +13,15 @@ import {
 // ---------------------------------------------------------------------------
 
 const mockFetch = vi.fn<(...args: unknown[]) => Promise<Response>>();
+let mockAgentClose: (() => Promise<void>) | undefined = () => Promise.resolve();
 
 vi.mock('undici', () => ({
   fetch: (...args: unknown[]) => mockFetch(...args),
   Agent: class MockAgent {
-    close() {
-      return Promise.resolve();
+    close?: () => Promise<void>;
+
+    constructor() {
+      if (mockAgentClose) this.close = mockAgentClose;
     }
   },
   FormData: class MockFormData {
@@ -88,7 +91,91 @@ describe('BaseAuthDefaults', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 2. Client retry behavior
+// 2. Client option validation
+// ---------------------------------------------------------------------------
+
+describe('ClientOptions', () => {
+  const auth = new ApiKeyAuthProvider('id', 'key');
+
+  it.each([
+    ['NaN', Number.NaN],
+    ['0', 0],
+    ['-1', -1],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('rejects timeout %s', (_label, timeout) => {
+    expect(
+      () =>
+        new HorizonClient('https://horizon.test', auth, {
+          timeout,
+          exportTimeout: 120,
+          verifySsl: true,
+        }),
+    ).toThrow(
+      `Invalid timeout: expected a positive finite number, received ${timeout}`,
+    );
+  });
+
+  it.each([
+    ['NaN', Number.NaN],
+    ['0', 0],
+    ['-1', -1],
+    ['Infinity', Number.POSITIVE_INFINITY],
+  ])('rejects exportTimeout %s', (_label, exportTimeout) => {
+    expect(
+      () =>
+        new HorizonClient('https://horizon.test', auth, {
+          timeout: 30,
+          exportTimeout,
+          verifySsl: true,
+        }),
+    ).toThrow(
+      `Invalid exportTimeout: expected a positive finite number, received ${exportTimeout}`,
+    );
+  });
+
+  it('defaults timeout to 30 seconds and exportTimeout to 120 seconds', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const client = new HorizonClient('https://horizon.test', auth, {
+      verifySsl: true,
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(fakeResponse(200, []));
+
+      await client.get('/api/v1/cas');
+
+      expect(timeoutSpy).toHaveBeenCalledWith(30_000);
+      expect(client.exportTimeout).toBe(120);
+    } finally {
+      timeoutSpy.mockRestore();
+      await client.close();
+    }
+  });
+
+  it('keeps explicit valid timeout values', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 45,
+      exportTimeout: 200,
+      verifySsl: true,
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(fakeResponse(200, []));
+
+      await client.get('/api/v1/cas');
+
+      expect(timeoutSpy).toHaveBeenCalledWith(45_000);
+      expect(client.exportTimeout).toBe(200);
+    } finally {
+      timeoutSpy.mockRestore();
+      await client.close();
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3. Client retry behavior
 // ---------------------------------------------------------------------------
 
 describe('ClientRetry', () => {
@@ -153,7 +240,7 @@ describe('ClientRetry', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Client re-auth behavior
+// 4. Client re-auth behavior
 // ---------------------------------------------------------------------------
 
 /** Auth provider that tracks markAuthFailed and refreshIfNeeded calls. */
@@ -249,6 +336,69 @@ describe('ClientReauth', () => {
     await client.close();
   });
 
+  it('notifies once when repeated requests end in auth rejection', async () => {
+    const auth = new MockReauthProvider();
+    const onAuthReject = vi.fn();
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+      onAuthReject,
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(
+        fakeResponse(401, {
+          error: 'SecAuth001',
+          message: 'Unauthorized',
+        }),
+      );
+
+      await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+        HorizonError,
+      );
+      await expect(client.get('/api/v1/cas')).rejects.toBeInstanceOf(
+        HorizonError,
+      );
+
+      expect(onAuthReject).toHaveBeenCalledTimes(1);
+    } finally {
+      await client.close();
+    }
+  });
+
+  it('preserves the HorizonError when the auth rejection hook throws', async () => {
+    const auth = new MockReauthProvider();
+    const client = new HorizonClient('https://horizon.test', auth, {
+      timeout: 5,
+      exportTimeout: 120,
+      verifySsl: false,
+      onAuthReject: () => {
+        throw new Error('hook failed');
+      },
+    });
+    try {
+      (client as unknown as Record<string, boolean>)._initialized = true;
+      mockFetch.mockResolvedValue(
+        fakeResponse(401, {
+          error: 'SecAuth001',
+          message: 'Unauthorized',
+        }),
+      );
+
+      await expect(client.get('/api/v1/cas')).rejects.toSatisfy(
+        (err: HorizonError) => {
+          expect(err).toBeInstanceOf(HorizonError);
+          expect(err.statusCode).toBe(401);
+          expect(err.message).toContain('Unauthorized');
+          return true;
+        },
+      );
+    } finally {
+      await client.close();
+    }
+  });
+
   it('CSRF 403 uses CSRF path, not reauth path', async () => {
     const auth = new MockReauthProvider();
     const client = makeClient(auth);
@@ -276,7 +426,7 @@ describe('ClientReauth', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 4. Optional Zod response validation
+// 5. Optional Zod response validation
 // ---------------------------------------------------------------------------
 
 describe('ClientSchemaValidation', () => {
@@ -313,7 +463,7 @@ describe('ClientSchemaValidation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 5. Insecure TLS warning
+// 6. Insecure TLS warning
 // ---------------------------------------------------------------------------
 
 describe('ClientTlsWarning', () => {
@@ -365,7 +515,44 @@ describe('ClientTlsWarning', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 6. Multipart success-path body parsing
+// 7. Agent lifecycle
+// ---------------------------------------------------------------------------
+
+describe('ClientAgentLifecycle', () => {
+  beforeEach(() => {
+    mockAgentClose = () => Promise.resolve();
+  });
+
+  it('resolves when the runtime Agent does not implement close', async () => {
+    mockAgentClose = undefined;
+    const client = makeClient(new ApiKeyAuthProvider('id', 'key'));
+
+    await expect(client.close()).resolves.toBeUndefined();
+  });
+
+  it('awaits the runtime Agent close method exactly once', async () => {
+    let resolveClose: (() => void) | undefined;
+    const closed = new Promise<void>((resolve) => {
+      resolveClose = resolve;
+    });
+    mockAgentClose = vi.fn(() => closed);
+    const client = makeClient(new ApiKeyAuthProvider('id', 'key'));
+    let finished = false;
+    const closing = client.close().then(() => {
+      finished = true;
+    });
+
+    expect(mockAgentClose).toHaveBeenCalledOnce();
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    resolveClose?.();
+    await closing;
+    expect(mockAgentClose).toHaveBeenCalledOnce();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 8. Multipart success-path body parsing
 // ---------------------------------------------------------------------------
 
 describe('ClientMultipart', () => {
