@@ -33,7 +33,7 @@
  *
  * Tolerant create: AWS publishing is a licensed/configured feature. On a
  * standard QA instance the create may be rejected with a clean Horizon
- * validation/license error (e.g. ThirdpartyConnector*, license, region/
+ * validation/license error (e.g. THIRDPARTY-CONNECTOR-*, license, region/
  * credentials reference). We accept EITHER success (then round-trip + cleanup)
  * OR a clean ToolError surfacing such a server error - never a tool/client bug.
  */

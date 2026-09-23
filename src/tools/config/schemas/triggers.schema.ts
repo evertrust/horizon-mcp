@@ -308,8 +308,7 @@ export const triggerRequestSchema = {
       properties: {
         name: {
           type: 'string',
-          description:
-            "Immutable primary key. Must be unique.",
+          description: 'Immutable primary key. Must be unique.',
         },
         type: { type: 'string', const: 'email', enum: ['email'] },
         events: {

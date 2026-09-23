@@ -56,7 +56,7 @@ Required fields (Horizon OpenAPI):
 
 ### `intune` profile
 
-Required fields verified in Horizon OpenAPI:
+Required fields (Horizon OpenAPI):
 
 - `module: "intune"`
 - `name`
@@ -74,7 +74,7 @@ Required fields verified in Horizon OpenAPI:
 
 ### `intunepkcs` profile
 
-Required fields verified in Horizon OpenAPI:
+Required fields (Horizon OpenAPI):
 
 - `module: "intunepkcs"`
 - `name`
