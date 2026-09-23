@@ -3,18 +3,18 @@ name: Release
 on:
   workflow_run:
     workflows: ['CI checks']
-    branches: [master]
+    branches: [master, '2.x']
     types: [completed]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch }}
   cancel-in-progress: false
 
 jobs:
   release:
     name: Release
     runs-on: ubuntu-latest
-    if: github.event.workflow_run.conclusion == 'success'
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     permissions:
       contents: write
       packages: write
@@ -54,6 +54,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ github.event.workflow_run.head_branch }}
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
@@ -81,8 +82,12 @@ jobs:
       - name: Build binaries
         run: bun run build:binaries
 
+      # workflow_run always sets GITHUB_REF to the default branch, so pass the
+      # branch that CI ran on to semantic-release. Provenance is off for
+      # maintenance branches: the attestation would name the master commit.
       - name: Release
-        run: bunx semantic-release
+        run: GITHUB_REF="refs/heads/$RELEASE_BRANCH" bunx semantic-release
         env:
+          RELEASE_BRANCH: ${{ github.event.workflow_run.head_branch }}
           GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
-          NPM_CONFIG_PROVENANCE: 'true'
+          NPM_CONFIG_PROVENANCE: ${{ github.event.workflow_run.head_branch == 'master' }}
