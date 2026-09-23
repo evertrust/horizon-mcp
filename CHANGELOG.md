@@ -1,3 +1,9 @@
+## [3.0.1](https://github.com/evertrust/horizon-mcp/compare/v3.0.0...v3.0.1) (2026-09-23)
+
+### Bug Fixes
+
+* remove internal implementation references from docs, descriptions and tests ([5dc499c](https://github.com/evertrust/horizon-mcp/commit/5dc499c2326c68e11a66ede8b3681aa148dd607f))
+
 ## [3.0.0](https://github.com/evertrust/horizon-mcp/compare/v2.0.0...v3.0.0) (2026-08-27)
 
 ### ⚠ BREAKING CHANGES
