@@ -67,6 +67,9 @@ export HORIZON_E2E_API_KEY=your-api-key
 # Required only by service-account.e2e.test.ts
 export HORIZON_E2E_SVA=your-service-account-name
 export HORIZON_E2E_SVA_TOKEN=your-service-account-jwt
+
+# Optional: an existing discovery campaign for the discovery import test
+export HORIZON_E2E_DISCOVERY_CAMPAIGN=e2e-discovery-import
 bun run test:e2e
 ```
 

@@ -15,10 +15,9 @@
  *           the body `name` field); server-populated `_id` and `scim` are
  *           stripped before the PUT and the wrapper does GET-merge so omitted
  *           fields persist.
- *   members: add a throwaway identifier ("Add members to team"/"Add non
- *           existing members to team" - non-existing principals are created
- *           server-side by the add call, so no principal prerequisite is
- *           needed), list it back, remove it.
+ *   members: add a throwaway identifier (non-existing principals are
+ *           created server-side by the add call, so no principal prerequisite
+ *           is needed), list it back, remove it.
  *
  * The webhook shape matches what Horizon validates. contact is
  * server-validated as an e-mail, so we use a real-looking address.

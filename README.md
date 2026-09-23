@@ -204,14 +204,15 @@ Inbound mTLS settings, for when `HORIZON_HTTP_AUTH_METHODS` includes `mtls`:
 
 Only the test suite reads these variables. The server never reads them:
 
-| Variable                 | Used by                 | Description                                                                            |
-| ------------------------ | ----------------------- | -------------------------------------------------------------------------------------- |
-| `HORIZON_E2E_URL`        | `bun run test:e2e`      | Base URL of the Horizon instance for E2E tests.                                        |
-| `HORIZON_E2E_API_ID`     | `bun run test:e2e`      | API key identifier for API-key E2E tests.                                              |
-| `HORIZON_E2E_API_KEY`    | `bun run test:e2e`      | API key secret for API-key E2E tests.                                                  |
-| `HORIZON_E2E_SVA`        | `bun run test:e2e`      | Service-account name for the service-account authentication E2E suite.                 |
-| `HORIZON_E2E_SVA_TOKEN`  | `bun run test:e2e`      | JWT for the service-account authentication E2E suite.                                  |
-| `HORIZON_LLM_LIVE_MODEL` | `bun run test:llm:live` | Model override for the live LLM evaluation harness. The default is `claude-haiku-4-5`. |
+| Variable                         | Used by                 | Description                                                                                               |
+| -------------------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `HORIZON_E2E_URL`                | `bun run test:e2e`      | Base URL of the Horizon instance for E2E tests.                                                           |
+| `HORIZON_E2E_API_ID`             | `bun run test:e2e`      | API key identifier for API-key E2E tests.                                                                 |
+| `HORIZON_E2E_API_KEY`            | `bun run test:e2e`      | API key secret for API-key E2E tests.                                                                     |
+| `HORIZON_E2E_SVA`                | `bun run test:e2e`      | Service-account name for the service-account authentication E2E suite.                                    |
+| `HORIZON_E2E_SVA_TOKEN`          | `bun run test:e2e`      | JWT for the service-account authentication E2E suite.                                                     |
+| `HORIZON_E2E_DISCOVERY_CAMPAIGN` | `bun run test:e2e`      | Name of an existing discovery campaign for the discovery import E2E test. The test is skipped when unset. |
+| `HORIZON_LLM_LIVE_MODEL`         | `bun run test:llm:live` | Model override for the live LLM evaluation harness. The default is `claude-haiku-4-5`.                    |
 
 ## Transports
 

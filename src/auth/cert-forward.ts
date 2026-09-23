@@ -10,8 +10,9 @@ import { AuthProvider } from './base.js';
  * termination; Horizon validates the chain, revocation, and identity.
  *
  * The value is a URL-encoded PEM, mirroring nginx's `$ssl_client_escaped_cert`
- * - one of the encodings Horizon accepts. No client certificate is presented on the MCP->Horizon hop itself
- * (the cert travels as a header), so `getDispatcherOptions` stays undefined.
+ * - one of the encodings Horizon accepts. No client certificate is presented
+ * on the MCP->Horizon hop itself (the cert travels as a header), so
+ * `getDispatcherOptions` stays undefined.
  */
 export class CertForwardAuthProvider extends AuthProvider {
   private readonly _headerName: string;

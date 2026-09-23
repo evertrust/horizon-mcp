@@ -75,7 +75,7 @@ describe.skipIf(!E2E_CONFIGURED)('pki_connectors CRUD E2E (live QA)', () => {
       expect(err).toBeInstanceOf(ToolError);
       const msg = (err as ToolError).message;
       expect(msg).toMatch(
-        /PkiConnector|license|entitlement|integrated|crypto/i,
+        /PKI-CONNECTOR-|license|entitlement|integrated|crypto/i,
       );
     }
   });

@@ -11,7 +11,7 @@
  * `_id` on input and re-assigns it server-side, so it must never be sent.
  *
  * displayName and description are localized-string arrays ({lang, value}); both
- * are optional/nullable (omission yields None).
+ * are optional/nullable.
  */
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
