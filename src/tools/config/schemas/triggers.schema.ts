@@ -205,7 +205,7 @@ export const triggerRequestSchema = {
           type: 'string',
           enum: ['slack', 'teams'],
           description:
-            'Webhook target type (Teams or Slack/Mattermost). mattermost is also accepted.',
+            'Webhook target type. Use slack for Slack and Mattermost. The server also accepts mattermost.',
         },
         url: { type: 'string', description: 'The webhook URL.' },
       },
@@ -308,8 +308,7 @@ export const triggerRequestSchema = {
       properties: {
         name: {
           type: 'string',
-          description:
-            "Immutable primary key. Must be unique.",
+          description: 'Immutable primary key. Must be unique.',
         },
         type: { type: 'string', const: 'email', enum: ['email'] },
         events: {

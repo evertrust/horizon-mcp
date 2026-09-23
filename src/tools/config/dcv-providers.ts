@@ -8,7 +8,7 @@
  * because there is currently one subtype.
  *
  * "_id" and "tenant" are ignored on input. Required: name, type, endpoint,
- * credentials, timeout (timeout is mandatory). Optional: proxy.
+ * credentials, timeout. Optional: proxy.
  *
  * Route: /api/v1/dcv/providers. Update PUTs the COLLECTION root (body-keyed
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.

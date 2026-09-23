@@ -13,7 +13,7 @@
  * Common required: name, type, ttl, timeout. Common optional: proxy,
  * delegationZone, zoneIdMappings.
  *
- * `_id` and `tenant` are ignored on input; timeout is mandatory.
+ * `_id` and `tenant` are ignored on input.
  *
  * Route: /api/v1/dcv/provisioners. Update PUTs the COLLECTION root (body-keyed
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
