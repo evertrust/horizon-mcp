@@ -6,7 +6,7 @@
  *
  * Subtype: `email` (EmailNotification) - the simplest fully self-contained
  * subtype, requiring no ThirdPartyConnector / Proxy / Credentials / Label
- * dependency and no special license feature. Minimal valid payloads.
+ * dependency and no special license feature.
  *
  * Subtype fields (events, emailTemplate) are passed via the `config` arg per the
  * create_trigger / update_trigger input shape (src/tools/config/triggers.ts).

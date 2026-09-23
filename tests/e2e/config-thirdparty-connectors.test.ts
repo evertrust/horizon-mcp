@@ -56,8 +56,8 @@ describe.skipIf(!E2E_CONFIGURED)(
 
     // Unique, regex-safe name (no spaces; [0-9a-zA-Z-_.]). aws subtype.
     const name = `${E2E_PREFIX}-tpc-aws`;
-    // Optional password credential dependency (targets thirdparty + mdm),
-    // minimal valid payload. aws does NOT require it
+    // Optional password credential dependency (targets thirdparty + mdm).
+    // aws does NOT require it
     // (env fallback), so we provision it best-effort but never depend on it.
     const credsName = `${E2E_PREFIX}-tpc-creds`;
 

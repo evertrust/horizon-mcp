@@ -1,9 +1,8 @@
 /**
  * Embedded resolved request JSON Schema for PKI connectors.
  *
- * This JSON file is the embedded, resolved schema derived from the bundled
- * Horizon OpenAPI. Polymorphic union discriminated by the
- * lowercase 'type' field (21 subtypes). Surfaced verbatim through
+ * Resolved from the bundled Horizon OpenAPI. Polymorphic union discriminated
+ * by the lowercase 'type' field (21 subtypes). Surfaced verbatim through
  * describe_pki_connector_schema so the model never guesses the per-subtype
  * structure.
  *
@@ -92,8 +91,7 @@ export const pkiConnectorRequestSchema = {
     },
     ConnectorName: {
       type: 'string',
-      description:
-        'Primary key, immutable. Server validates the name format.',
+      description: 'Primary key, immutable. Server validates the name format.',
       pattern: '^[0-9a-zA-Z-_\\.]+$',
     },
     KeyType: {

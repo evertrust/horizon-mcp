@@ -2154,49 +2154,79 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         async () => {
           // 0. Verify QA campaign exists
           try {
-            const feedData = await callTool('feed_discovery_certificate', {
-              session_id: sessionId,
-              campaign_name: QA_CAMPAIGN,
-              certificate: certPem,
-              ip: '10.255.255.1',
-              hostnames: [uniqueCn],
-              tls_ports: [{ port: 443, version: 'TLSv1.3' }],
+            await callTool('get_discovery_campaign', {
+              name: QA_CAMPAIGN,
             });
-            expect(feedData['data']).toBeDefined();
-          } catch (exc) {
-            // The static test cert may fail to parse on some Horizon
-            // versions (PEM format incompatibility). The Python tests
-            // generate a fresh cert dynamically. Skip gracefully.
+          } catch {
             console.log(
-              `SKIP: feed_discovery_certificate failed (cert parse error): ${exc}`,
+              `SKIP: QA campaign '${QA_CAMPAIGN}' not found - skipping import test`,
             );
             return;
           }
-        } finally {
-          // 4. End feed session (always)
-          await callTool('end_discovery_feed_session', {
-            campaign_name: QA_CAMPAIGN,
-            session_id: sessionId,
-          });
-        }
 
-        // 5. Search for the imported certificate
-        await delay(3000);
-        const searchData = await callTool('search_certificates', {
-          query: 'dn contains "test-cert"',
-          page_size: 10,
-          with_count: true,
-        });
-        const results = (searchData['results'] ?? []) as Record<
-          string,
-          unknown
-        >[];
-        // The static cert has CN=test-cert, so we verify it was imported
-        expect(
-          results.length,
-          'Expected to find the imported certificate',
-        ).toBeGreaterThanOrEqual(1);
-      });
+          // 1. Use the static test cert (TS cannot generate on-the-fly
+          // without the cryptography lib, so we search by its known CN)
+          const certPem = TEST_CERT_PEM;
+
+          // 2. Start feed session
+          const startData = await callTool('start_discovery_feed_session', {
+            campaign_name: QA_CAMPAIGN,
+          });
+          expect(startData['data']).toBeDefined();
+          const sessionId = (startData['data'] as Record<string, unknown>)[
+            'id'
+          ] as string;
+          expect(sessionId).toBeTruthy();
+
+          const uniqueCn = `${E2E_PREFIX}-import-test.example.com`;
+
+          try {
+            // 3. Feed the certificate
+            try {
+              const feedData = await callTool('feed_discovery_certificate', {
+                session_id: sessionId,
+                campaign_name: QA_CAMPAIGN,
+                certificate: certPem,
+                ip: '10.255.255.1',
+                hostnames: [uniqueCn],
+                tls_ports: [{ port: 443, version: 'TLSv1.3' }],
+              });
+              expect(feedData['data']).toBeDefined();
+            } catch (exc) {
+              // The static test cert may fail to parse on some Horizon
+              // versions (PEM format incompatibility). The Python tests
+              // generate a fresh cert dynamically. Skip gracefully.
+              console.log(
+                `SKIP: feed_discovery_certificate failed (cert parse error): ${exc}`,
+              );
+              return;
+            }
+          } finally {
+            // 4. End feed session (always)
+            await callTool('end_discovery_feed_session', {
+              campaign_name: QA_CAMPAIGN,
+              session_id: sessionId,
+            });
+          }
+
+          // 5. Search for the imported certificate
+          await delay(3000);
+          const searchData = await callTool('search_certificates', {
+            query: 'dn contains "test-cert"',
+            page_size: 10,
+            with_count: true,
+          });
+          const results = (searchData['results'] ?? []) as Record<
+            string,
+            unknown
+          >[];
+          // The static cert has CN=test-cert, so we verify it was imported
+          expect(
+            results.length,
+            'Expected to find the imported certificate',
+          ).toBeGreaterThanOrEqual(1);
+        },
+      );
     });
   });
 });

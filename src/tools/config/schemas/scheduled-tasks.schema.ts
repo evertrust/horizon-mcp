@@ -50,7 +50,7 @@ export const scheduledTaskRequestSchema = {
     CronExpression: {
       type: 'string',
       description:
-        'Quartz cron expression. Must be a valid Quartz cron expression; invalid expressions are rejected with a parse error.',
+        'Quartz cron expression. Invalid expressions are rejected with a parse error.',
     },
     FiniteDuration: {
       type: 'string',
