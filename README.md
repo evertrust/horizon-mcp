@@ -10,6 +10,16 @@ The server lets a supported MCP client operate Horizon: Claude Desktop, Claude C
 
 PKI engineers, platform teams, and security operators can issue, renew, and revoke certificates from an integrated development environment or a chat interface. They can also search Horizon data, manage discovery, decode cryptographic data, and read the product documentation.
 
+> [!IMPORTANT]
+> **Version 3.0.0 and above requires MCP protocol revision `2026-07-28`.**
+>
+> If your MCP client does not support `2026-07-28` yet, stay on the **2.x.y** release line, which supports MCP `2025-11-25`.
+
+| Server version | MCP protocol revision |
+| -------------- | --------------------- |
+| 3.0.0 and above | `2026-07-28` |
+| 2.x.y | `2025-11-25` |
+
 ## Why knowledge-first?
 
 Horizon MCP ships both the tools and the domain knowledge to use them. The catalog holds **111 knowledge URIs**: **18 core knowledge guides**, **4 integration playbooks**, and **89 generated section resources**.
