@@ -5,6 +5,7 @@ import {
   CORE_RESOURCE_URIS,
   CURATED_RESOURCE_URIS,
 } from '../../../src/resources/catalog.js';
+import { registerAcmeTools } from '../../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../../src/tools/assist/query.js';
@@ -69,6 +70,7 @@ export function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, c);
   registerComputationTools(server, c);
   registerTranslateTools(server, c);
+  registerAcmeTools(server, c);
 }
 
 // ===================================================================
@@ -184,6 +186,20 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'create_rest_notification',
   'delete_trigger',
   'simulate_trigger',
+  // acme/ (13, Horizon 2.11+)
+  'search_acme_accounts',
+  'get_acme_account',
+  'update_acme_account_status',
+  'delete_acme_account',
+  'list_acme_orders',
+  'get_acme_order',
+  'search_acme_eabs',
+  'get_acme_eab',
+  'create_acme_eab',
+  'update_acme_eab',
+  'update_acme_eab_status',
+  'renew_acme_eab',
+  'delete_acme_eab',
 ].sort();
 
 export const REQUIRED_RESOURCE_URIS: string[] = [

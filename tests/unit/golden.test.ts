@@ -50,9 +50,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 93 tools', async () => {
+  it('registers exactly 106 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(93);
+    expect(result.tools.length).toBe(106);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -302,8 +302,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 93 tools', () => {
-    expect(toolNames.size).toBe(93);
+  it('registers exactly 106 tools', () => {
+    expect(toolNames.size).toBe(106);
   });
 
   it('excludes admin tools', () => {

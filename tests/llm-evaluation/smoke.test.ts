@@ -6,8 +6,8 @@ describe('Provider-agnostic scenario smoke tests', () => {
   it('loads tool and resource metadata without external model dependencies', async () => {
     const metadata = await loadScenarioMetadata();
 
-    // 222 total tools: 93 base tools + 129 configuration CRUD tools.
-    expect(metadata.tools.length).toBe(222);
+    // 240 total tools: 106 base tools + 134 configuration CRUD tools.
+    expect(metadata.tools.length).toBe(240);
     // 111 total resources: 18 core guides, 4 curated playbooks, 89 sections.
     expect(metadata.resources.length).toBe(111);
   });

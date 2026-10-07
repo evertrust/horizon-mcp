@@ -65,6 +65,11 @@ export interface ConfigSpec {
   readonly putOnCollection: boolean;
   /** Optional knowledge-resource reference for the description footer. */
   readonly knowledgeRef?: string;
+  /**
+   * Set when the list endpoint is a POST with a body instead of a GET on the
+   * collection route (e.g. EAB policies: POST /api/v1/acme/eab-policies/list).
+   */
+  readonly listRequest?: { readonly path: string; readonly body: unknown };
 }
 
 function refFooter(spec: ConfigSpec): string {
@@ -285,7 +290,12 @@ export function registerReadTools(
     `list_${spec.nounPlural}`,
     configs.list,
     async ({ max_items, name_contains }) => {
-      const data = await client.get<unknown>(spec.routeCollection);
+      const data = spec.listRequest
+        ? await client.post<unknown>(
+            spec.listRequest.path,
+            spec.listRequest.body,
+          )
+        : await client.get<unknown>(spec.routeCollection);
       // Filter on this object's actual primary-key field (not always "name" -
       // system configuration keys on "type").
       const field = spec.idField ?? 'name';

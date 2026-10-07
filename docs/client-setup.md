@@ -38,7 +38,7 @@ If the body sets `params._meta["io.modelcontextprotocol/protocolVersion"]` to a 
 
 ## Reduce the tool surface (recommended)
 
-The full server registers exactly 222 tools. These tools use about 45,000 to 55,000 context tokens before the first user message.
+The full server registers exactly 240 tools. These tools use about 45,000 to 55,000 context tokens before the first user message.
 
 If you do not need all domains, use these environment variables to reduce the tool set:
 
@@ -54,6 +54,7 @@ If you do not need all domains, use these environment variables to reduce the to
 - `datasources`
 - `reports`
 - `triggers`
+- `acme`
 - `docs`
 - `assist`
 - `config`
@@ -152,7 +153,7 @@ The stdio recipes below set the credentials in the client `env` block. Leave `HO
    }
    ```
 
-3. Start Claude Code from that directory. The server makes the 222 tools available immediately.
+3. Start Claude Code from that directory. The server makes the 240 tools available immediately.
 4. Verify the connection with [these steps](#verify-the-connection).
 
 ## Cursor

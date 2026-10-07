@@ -98,6 +98,7 @@ describe('createSessionServer toolset gating', () => {
     expect(names).toContain('list_datasources'); // datasources
     expect(names).toContain('list_reports'); // reports
     expect(names).toContain('list_triggers'); // triggers
+    expect(names).toContain('search_acme_accounts'); // acme
     expect(names).toContain('search_docs'); // docs
     expect(names).toContain('whoami'); // assist
     expect(names).toContain('create_certificate_profile'); // config
