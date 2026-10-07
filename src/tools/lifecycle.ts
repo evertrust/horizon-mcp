@@ -1,13 +1,13 @@
 /**
  * Lifecycle tools: certificates, requests, events, aggregation (barrel module).
  *
- * 24 MCP tools covering the full Horizon certificate lifecycle:
+ * 25 MCP tools covering the full Horizon certificate lifecycle:
  *   - Certificate search (2): search_certificates, export_certificates_csv
  *   - Certificate operations (3): get_certificate, download_certificate,
  *     set_certificate_auto_renew
- *   - Request management (8): get_request_template, submit_request,
+ *   - Request management (9): get_request_template, submit_request,
  *     approve_request, deny_request, cancel_request, search_requests,
- *     get_request, export_requests_csv
+ *     get_request, export_requests_csv, submit_webra_challenge (2.11+)
  *   - Event audit (3): search_events, get_event, export_events_csv
  *   - Aggregation (2): aggregate_certificates, aggregate_requests
  *   - DCV lifecycle (6): policy status, run/cancel, and events
@@ -19,6 +19,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import type { HorizonClient } from '../client/http.js';
 import { registerDcvLifecycleTools } from './dcv-lifecycle.js';
 import { registerCertificateTools } from './lifecycle/certificates.js';
+import { registerChallengeTools } from './lifecycle/challenge.js';
 import { registerEventTools } from './lifecycle/events.js';
 import { registerRequestTools } from './lifecycle/requests.js';
 
@@ -28,6 +29,7 @@ export function registerLifecycleTools(
 ): void {
   registerCertificateTools(server, client);
   registerRequestTools(server, client);
+  registerChallengeTools(server, client);
   registerEventTools(server, client);
   registerDcvLifecycleTools(server, client);
 }

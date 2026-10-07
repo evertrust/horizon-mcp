@@ -107,7 +107,7 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (24)
+  // lifecycle.ts (25)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -120,6 +120,7 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'search_requests',
   'get_request',
   'export_requests_csv',
+  'submit_webra_challenge',
   'search_events',
   'get_event',
   'export_events_csv',
