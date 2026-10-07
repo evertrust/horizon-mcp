@@ -6,9 +6,14 @@ timeout was subsequently raised above the tool's 120-second CSV timeout, but a
 post-fix 301/301 full run is not recorded here. This is a point-in-time QA result,
 not a blanket support guarantee for every Horizon 2.10 deployment.
 
+Horizon 2.11 run: 2026-10-07 against a Horizon 2.11 QA snapshot, for the 2.11
+suites only. `config-211-types.test.ts` passed 14 of 14 tests and
+`webra-challenge.e2e.test.ts` passed 2 of 2 tests. On Horizon 2.10, the same
+files pass their describe checks and skip their live legs.
+
 ## Suite layout (Vitest, tests/e2e/)
 
-31 test files, ~304 tests, run with `bun run test:e2e` (source `.env.local`
+39 test files, ~320 tests, run with `bun run test:e2e` (source `.env.local`
 first). Most suites use `HORIZON_E2E_URL` / `HORIZON_E2E_API_ID` /
 `HORIZON_E2E_API_KEY`; `service-account.e2e.test.ts` instead uses
 `HORIZON_E2E_URL` / `HORIZON_E2E_SVA` / `HORIZON_E2E_SVA_TOKEN`. Setup for the
@@ -18,7 +23,9 @@ helper that invokes registered MCP tools directly.
 | Area                                                                              | Files                         | Tests | Notes                                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------------------------------------------------------- | ----------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Core domains (lifecycle, search, exports, dashboards, discovery, reports, assist) | `horizon.test.ts`             | 91    | Includes CRUD lifecycles with cleanup                                                                                                                                                                                                                                                                                                                      |
-| Config CRUD domains                                                               | `config-*.test.ts` (27 files) | ~160  | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
+| Config CRUD domains                                                               | `config-*.test.ts` (28 files) | ~175  | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
+| Horizon 2.11 config types                                                         | `config-211-types.test.ts`    | 14    | FortiGate, FortiManager, PAN-OS firewall and Panorama connectors and triggers, sectigo DCV provider, ACME `excludeRootCA`. Live legs skip before 2.11                                                                                                                                                                                                      |
+| WebRA challenge                                                                   | `webra-challenge.e2e.test.ts` | 2     | Enroll on a challenge profile, consume the challenge, reject reuse (WEBRA-ENROLL-015), revoke in teardown                                                                                                                                                                                                                                                  |
 | Documentation tools                                                               | `docs.test.ts`                | 5     | search_docs, search_api_docs, get_doc_page                                                                                                                                                                                                                                                                                                                 |
 | System tools                                                                      | `system-tools.test.ts`        | 2     | whoami, license                                                                                                                                                                                                                                                                                                                                            |
 | Service-account authentication                                                    | `service-account.e2e.test.ts` | 3     | whoami identity formula, certificate search, conditional service-account list                                                                                                                                                                                                                                                                              |
@@ -30,7 +37,7 @@ left behind on the QA instance.
 
 | Tier           | File                                      | Description                                                                             |
 | -------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 18 golden scenarios: right tool picked, disallowed tools avoided, required args present |
+| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 19 golden scenarios: right tool picked, disallowed tools avoided, required args present |
 | MCP loop       | `mcp-loop.test.ts`                        | Deterministic MCP tool execution against local fixtures                                 |
 | Smoke          | `smoke.test.ts`                           | Basic integration check                                                                 |
 
@@ -48,6 +55,12 @@ unavailable.
 - Discovery import workflow: requires a pre-existing discovery campaign named
   by `HORIZON_E2E_DISCOVERY_CAMPAIGN` on the target instance; skips when the
   variable is unset or the campaign is absent.
+- `webra-challenge.e2e.test.ts`: uses `HORIZON_E2E_WEBRA_CHALLENGE_PROFILE`,
+  or else the first enabled WebRA profile in challenge mode. Skips when no
+  profile returns a challenge (for example on Horizon 2.10). Only centralized
+  key generation is tested live; decentralized mode (CSR) has unit tests only.
+- `config-211-types.test.ts`: the live legs skip when the instance is older
+  than Horizon 2.11.
 
 ## Infrastructure gaps (cannot be fully E2E-tested)
 
