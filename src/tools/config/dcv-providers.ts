@@ -4,7 +4,7 @@
  * 5 tools: list / get / create / update / delete.
  * New in Horizon 2.10. A DCV provider is the CA-side integration that issues and
  * tracks DCV challenges. The configuration is discriminated by `type`; Horizon
- * 2.10 ships "digicert" and "gs_mssl" provider types. The schemas are
+ * 2.10 supports "digicert"; "gs_mssl" requires Horizon 2.11+. The schemas are
  * discriminated by type because GlobalSign MSSL requires additional fields.
  *
  * `_id` and `tenant` are ignored on input. gs_mssl additionally requires
@@ -83,7 +83,9 @@ const CREATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
   }),
   z.object({
     name: providerNameSchema,
-    type: z.literal('gs_mssl').describe('GlobalSign MSSL DCV provider.'),
+    type: z
+      .literal('gs_mssl')
+      .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema,
     credentials: credentialsSchema,
     timeout: timeoutSchema,
@@ -106,7 +108,9 @@ const UPDATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
   }),
   z.object({
     name: providerNameSchema,
-    type: z.literal('gs_mssl').describe('GlobalSign MSSL DCV provider.'),
+    type: z
+      .literal('gs_mssl')
+      .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema.optional(),
     credentials: credentialsSchema.optional(),
     timeout: timeoutSchema.optional(),
@@ -176,7 +180,7 @@ export function registerDcvProviderTools(
     description:
       'Create a DCV (Domain Control Validation) provider: the public-CA-side ' +
       'integration that performs domain-control validation for public ' +
-      'certificates (digicert or gs_mssl). This is DCV - distinct from a PKI ' +
+      'certificates (digicert, or gs_mssl on Horizon 2.11+). This is DCV - distinct from a PKI ' +
       'connector, which issues certificates. credentials must reference an ' +
       'existing credentials object with the DCV target.',
     mandatoryFields: ['name', 'type', 'endpoint', 'credentials', 'timeout'],
@@ -187,7 +191,7 @@ export function registerDcvProviderTools(
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update an existing DCV provider configuration. The submitted type must ' +
-      'match the stored one.',
+      'match the stored one. gs_mssl requires Horizon 2.11+.',
     inputSchema: UPDATE_DCV_PROVIDERS_SCHEMA as never,
     buildOverrides: (args) =>
       buildProviderOverrides(args as UpdateDcvProviderArgs),

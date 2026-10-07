@@ -160,38 +160,50 @@ CIDR matching, array quantifiers).
 ACME (RFC 8555) profiles support automated certificate issuance via the
 ACME protocol. Horizon acts as an ACME server.
 
-| Field                    | Type     | Description                                                                            |
-| ------------------------ | -------- | -------------------------------------------------------------------------------------- |
-| `authorizationMode`      | string   | Always effectively auto -- ACME protocol handles domain validation through challenges. |
-| `challengeTypes`         | string[] | Supported ACME challenge types: `http-01`, `dns-01`, `tls-alpn-01`.                    |
-| `dns01Provider`          | object   | DNS provider configuration for `dns-01` challenges.                                    |
-| `externalAccountBinding` | boolean  | Whether EAB is required for new ACME accounts.                                         |
-| `allowWildcard`          | boolean  | Whether wildcard certificates are permitted.                                           |
-| `computationRules`       | object[] | Computation rules applied after ACME validation, before certificate issuance.          |
+Horizon 2.10 publishes these ACME-specific fields, in addition to the
+shared certificate profile fields:
 
-**Note**: ACME profiles do not use `authorizationMode` in the same way as
-WebRA. The ACME protocol itself handles domain validation through challenges.
-The `validationRuleset` field is not applicable.
+| Field                           | Type     | Description                                  |
+| ------------------------------- | -------- | -------------------------------------------- |
+| `timeout`                       | string   | Validation timeout as a finite duration.     |
+| `meta`                          | object   | ACME directory metadata.                     |
+| `authorizationMethods`          | string[] | Allowed ACME authorization methods.          |
+| `http01Port`                    | integer  | HTTP-01 validation port.                     |
+| `tlsAlpn01Port`                 | integer  | TLS-ALPN-01 validation port.                 |
+| `authorizeShortName`            | boolean  | Whether short names are allowed.             |
+| `authorizeEmptyContact`         | boolean  | Whether an empty account contact is allowed. |
+| `defaultContacts`               | string[] | Default account contacts.                    |
+| `verifyRetryCount`              | integer  | Validation retry count.                      |
+| `verifyRetryDelay`              | string   | Delay between validation attempts.           |
+| `requireTermsOfService`         | boolean  | Whether terms of service must be accepted.   |
+| `renewalPeriod`                 | string   | Optional renewal period.                     |
+| `csrDataMapping`                | object   | CSR data mapping expressions.                |
+| `maxCertificatePerHolderPolicy` | object   | Per-holder certificate limit policy.         |
+| `maxDnsName`                    | integer  | Maximum number of DNS names.                 |
+| `proxy`                         | string   | Optional HTTP proxy name.                    |
+
+**Note**: ACME profiles have no `authorizationMode` or `validationRuleset`
+field in Horizon 2.10. Use `authorizationMethods` for ACME validation.
 
 ### SCEP Module (`module: "scep"`)
 
 SCEP (Simple Certificate Enrollment Protocol) is used primarily for network
 device enrollment.
 
-| Field                   | Type     | Description                                                              |
-| ----------------------- | -------- | ------------------------------------------------------------------------ |
-| `authorizationMode`     | string   | `challenge`, `auto-validation`, `auto-validation-authorized`, or `ndes`. |
-| `validationRuleset`     | string   | Ruleset for auto-validation modes.                                       |
-| `challengePassword`     | string   | Static challenge password for SCEP clients (when mode is `challenge`).   |
-| `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).               |
-| `computationRules`      | object[] | Transformation rules applied to SCEP requests.                           |
-| `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).        |
+| Field                   | Type     | Description                                                            |
+| ----------------------- | -------- | ---------------------------------------------------------------------- |
+| `authorizationMode`     | string   | `challenge`, `authorized`, `ndes`, or `auto-validation`.               |
+| `validationRuleset`     | string   | Ruleset for auto-validation modes.                                     |
+| `challengePassword`     | string   | Static challenge password for SCEP clients (when mode is `challenge`). |
+| `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).             |
+| `computationRules`      | object[] | Transformation rules applied to SCEP requests.                         |
+| `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).      |
 
 #### SCEP Authorization Modes
 
 - **`challenge`**: Client must present a valid challenge password.
 - **`auto-validation`**: Automatic validation via ruleset.
-- **`auto-validation-authorized`**: Try rules first, fall back to manual.
+- **`authorized`**: Account with enrollment permission authorizes the request.
 - **`ndes`**: Network Device Enrollment Service mode for Microsoft NDES integration.
 
 ### EST Module (`module: "est"`)
@@ -201,7 +213,7 @@ TLS-secured enrollment.
 
 | Field                 | Type     | Description                                              |
 | --------------------- | -------- | -------------------------------------------------------- |
-| `authorizationMode`   | string   | `x509`, `auto-validation`, `auto-validation-authorized`. |
+| `authorizationMode`   | string   | `authorized`, `x509`, `challenge`, or `auto-validation`. |
 | `validationRuleset`   | string   | Ruleset for auto-validation modes.                       |
 | `computationRules`    | object[] | Transformation rules for EST requests.                   |
 | `clientCertAuth`      | boolean  | Whether to require client certificate authentication.    |
@@ -211,7 +223,8 @@ TLS-secured enrollment.
 
 - **`x509`**: Client must authenticate with a valid client certificate.
 - **`auto-validation`**: Automatic validation via ruleset.
-- **`auto-validation-authorized`**: Try rules first, fall back to manual.
+- **`authorized`**: Account with enrollment permission authorizes the request.
+- **`challenge`**: Challenge-based authorization.
 
 ### Monitored Module (`module: "monitored"`)
 
@@ -233,18 +246,18 @@ issue certificates for them.
 
 ## AuthorizationMode Summary by Module
 
-| Module     | Supported `authorizationMode` Values                                 | `validationRuleset` Required? |
-| ---------- | -------------------------------------------------------------------- | ----------------------------- |
-| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized`        | Yes for `auto-validation*`    |
-| ACME       | N/A (inherently automated via ACME challenges)                       | Never                         |
-| SCEP       | `challenge`, `auto-validation`, `auto-validation-authorized`, `ndes` | Yes for `auto-validation*`    |
-| EST        | `x509`, `auto-validation`, `auto-validation-authorized`              | Yes for `auto-validation*`    |
-| Monitored  | N/A (no enrollment)                                                  | Never                         |
-| WCCE       | Windows auto-enrollment (AD integrated)                              | Depends on configuration      |
-| CRMP       | CMP-based authorization                                              | Depends on configuration      |
-| Intune     | MDM-based authorization (Intune SCEP)                                | Depends on configuration      |
-| IntunePKCS | MDM-based authorization (Intune PKCS)                                | Depends on configuration      |
-| Jamf       | MDM-based authorization (Jamf)                                       | Depends on configuration      |
+| Module     | Supported `authorizationMode` Values                          | `validationRuleset` Required? |
+| ---------- | ------------------------------------------------------------- | ----------------------------- |
+| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized` | Yes for `auto-validation*`    |
+| ACME       | N/A (inherently automated via ACME challenges)                | Never                         |
+| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`          | Yes for `auto-validation*`    |
+| EST        | `authorized`, `x509`, `challenge`, `auto-validation`          | Yes for `auto-validation*`    |
+| Monitored  | N/A (no enrollment)                                           | Never                         |
+| WCCE       | Windows auto-enrollment (AD integrated)                       | Depends on configuration      |
+| CRMP       | CMP-based authorization                                       | Depends on configuration      |
+| Intune     | MDM-based authorization (Intune SCEP)                         | Depends on configuration      |
+| IntunePKCS | MDM-based authorization (Intune PKCS)                         | Depends on configuration      |
+| Jamf       | MDM-based authorization (Jamf)                                | Depends on configuration      |
 
 ---
 

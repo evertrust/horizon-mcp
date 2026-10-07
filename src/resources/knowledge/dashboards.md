@@ -32,24 +32,26 @@ which aggregation fields are valid in chart `fields`.
 
 ## Chart Type Catalog
 
-Horizon supports 13 chart types. Each type is suited to different
-analytical goals.
+Horizon supports 13 chart types on 2.10 and 15 on 2.11. Each type is suited
+to different analytical goals.
 
-| Chart Type       | Best For                                              |
-| ---------------- | ----------------------------------------------------- |
-| `area`           | Trends over time with volume emphasis                 |
-| `donut`          | Part-of-whole distribution (single dimension)         |
-| `heatmap`        | Density / intensity across two dimensions             |
-| `bar-horizontal` | Comparing categories when labels are long             |
-| `line`           | Trends over time with precise value tracking          |
-| `metric`         | Single KPI / headline number                          |
-| `pie`            | Similar to donut; classic proportional view           |
-| `polar`          | Radial category comparison                            |
-| `pyramid`        | Ranked funnel or tiered distribution                  |
-| `radar`          | Multi-axis profile comparison                         |
-| `table`          | Detailed tabular breakdowns                           |
-| `treemap`        | Hierarchical proportional view (e.g. grade breakdown) |
-| `bar-vertical`   | Comparing categories with short labels                |
+| Chart Type                | Best For                                              |
+| ------------------------- | ----------------------------------------------------- |
+| `area`                    | Trends over time with volume emphasis                 |
+| `donut`                   | Part-of-whole distribution (single dimension)         |
+| `heatmap`                 | Density / intensity across two dimensions             |
+| `bar-horizontal`          | Comparing categories when labels are long             |
+| `line`                    | Trends over time with precise value tracking          |
+| `metric`                  | Single KPI / headline number                          |
+| `pie`                     | Similar to donut; classic proportional view           |
+| `bar-horizontal-stacked`  | Stacked category comparison with horizontal bars      |
+| `bar-vertical-stacked`    | Stacked category comparison with vertical bars        |
+| `radar`                   | Multi-axis profile comparison                         |
+| `table`                   | Detailed tabular breakdowns                           |
+| `treemap`                 | Hierarchical proportional view (e.g. grade breakdown) |
+| `bar-vertical`            | Comparing categories with short labels                |
+| `polar` (Horizon 2.11+)   | Radial category comparison                            |
+| `pyramid` (Horizon 2.11+) | Ranked funnel or tiered distribution                  |
 
 ---
 
@@ -357,9 +359,9 @@ MCP tools handle this automatically by returning an empty list.
 
 ## Key Considerations
 
-1. **No shared dashboards**: Dashboards are strictly personal. To share a
-   dashboard configuration, export it as JSON and have another user import
-   it.
+1. **Personal dashboards**: Dashboards belong to the authenticated principal.
+   JSON export/import for sharing is a web UI feature with no dedicated API
+   route. **Available since Horizon 2.11 (Horizon 2.11+).**
 
 2. **Query validation**: Always validate `localQuery` expressions before
    saving a chart. Use search with `pageSize=1` to test the query against

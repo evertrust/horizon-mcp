@@ -255,8 +255,10 @@ Export selected configuration items by specifying which item types to include.
 POST /api/v1/system/configurations/export
 ```
 
-The request body is a `HorizonExportableItems` object with 19 named boolean
-fields controlling which configuration types to export:
+The Horizon 2.10 public API lists 20 configuration categories. The
+`HorizonExportableItems` request contains arrays of selected items, each with
+at least a `name`. The `HorizonExportItems` response contains the exported
+configuration objects:
 
 | Field                | Description                          |
 | -------------------- | ------------------------------------ |
@@ -279,6 +281,7 @@ fields controlling which configuration types to export:
 | `proxies`            | HTTP proxy configurations            |
 | `pkiQueues`          | PKI queue configurations             |
 | `scimProfiles`       | SCIM provisioning profiles           |
+| `storages`           | Storage backend configurations       |
 
 ### Import
 
@@ -311,7 +314,7 @@ backup before performing an import.
 ### Best Practice: Safe Import Workflow
 
 1. Export the current configuration as a backup:
-   `POST /api/v1/system/configurations/export` with all fields set to `true`
+   `POST /api/v1/system/configurations/export` with arrays of selected item names
 2. Review the import payload carefully
 3. Perform the import
 4. Verify critical configuration items after import

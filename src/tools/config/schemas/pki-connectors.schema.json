@@ -1001,6 +1001,7 @@
     },
     "GCPConnector": {
       "title": "GCP Certificate Authority Service",
+      "description": "Google Cloud CAS connector. Available since Horizon 2.11 (Horizon 2.11+).",
       "type": "object",
       "properties": {
         "name": {

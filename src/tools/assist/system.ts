@@ -60,7 +60,7 @@ const WHOAMI_CONFIG = {
     'identifierMapping adds claim-derived context and does not create a stable identity. ' +
     'Use team-based ownership for anything that must survive token rotation. ' +
     'For ownership queries combine the identifier and team list: ' +
-    '`owner equals "<id>" or team in ("<t1>", ...)`. ' +
+    '`owner equals "<id>" or team in ["<t1>", "<t2>"]`. ' +
     'See horizon://knowledge/server-rules and horizon://knowledge/rbac.',
   // Horizon serializes absent collections/values as `null` rather than
   // omitting them (e.g. a principal in no teams gets `teams: null`). The
