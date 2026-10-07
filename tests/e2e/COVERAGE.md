@@ -8,7 +8,7 @@ not a blanket support guarantee for every Horizon 2.10 deployment.
 
 ## Suite layout (Vitest, tests/e2e/)
 
-31 test files, ~304 tests, run with `bun run test:e2e` (source `.env.local`
+38 test files, ~317 tests, run with `bun run test:e2e` (source `.env.local`
 first). Most suites use `HORIZON_E2E_URL` / `HORIZON_E2E_API_ID` /
 `HORIZON_E2E_API_KEY`; `service-account.e2e.test.ts` instead uses
 `HORIZON_E2E_URL` / `HORIZON_E2E_SVA` / `HORIZON_E2E_SVA_TOKEN`. Setup for the
@@ -22,15 +22,19 @@ helper that invokes registered MCP tools directly.
 | Documentation tools                                                               | `docs.test.ts`                | 5     | search_docs, search_api_docs, get_doc_page                                                                                                                                                                                                                                                                                                                 |
 | System tools                                                                      | `system-tools.test.ts`        | 2     | whoami, license                                                                                                                                                                                                                                                                                                                                            |
 | Service-account authentication                                                    | `service-account.e2e.test.ts` | 3     | whoami identity formula, certificate search, conditional service-account list                                                                                                                                                                                                                                                                              |
+| ACME and EAB policies (Horizon 2.11+)                                             | `acme.e2e.test.ts`            | 13    | Read tools on existing ACME accounts, orders, and EABs (HAQL, HEABQL, paging). EAB policy and EAB lifecycle: create, renew, update, suspend, set valid, delete. Never uses `compromised` or `deactivated`. Needs a Horizon 2.11 instance.                                                                                                                  |
 
 Mutating tests follow create -> verify -> delete with teardown; nothing is
 left behind on the QA instance.
+
+`acme.e2e.test.ts` passed 13/13 on 2026-10-07 against a Horizon 2.11 QA
+instance. The ACME routes do not exist before Horizon 2.11.
 
 ## LLM evaluation (tests/llm-evaluation/)
 
 | Tier           | File                                      | Description                                                                             |
 | -------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 18 golden scenarios: right tool picked, disallowed tools avoided, required args present |
+| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 22 golden scenarios: right tool picked, disallowed tools avoided, required args present |
 | MCP loop       | `mcp-loop.test.ts`                        | Deterministic MCP tool execution against local fixtures                                 |
 | Smoke          | `smoke.test.ts`                           | Basic integration check                                                                 |
 
