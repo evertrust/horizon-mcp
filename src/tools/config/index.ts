@@ -18,6 +18,7 @@ import { registerCertificateProfileTools } from './certificate-profiles.js';
 import { registerDcvPolicyTools } from './dcv-policies.js';
 import { registerDcvProviderTools } from './dcv-providers.js';
 import { registerDcvProvisionerTools } from './dcv-provisioners.js';
+import { registerEabPolicyTools } from './eab-policies.js';
 import { registerExecutionPolicyTools } from './execution-policies.js';
 import { registerHttpProxyTools } from './http-proxies.js';
 import { registerIdentityProviderTools } from './identity-providers.js';
@@ -72,6 +73,9 @@ export function registerConfigTools(
   registerDcvProviderTools(server, client);
   registerDcvProvisionerTools(server, client);
   registerDcvPolicyTools(server, client);
+
+  // ACME External Account Binding policies (Horizon 2.11)
+  registerEabPolicyTools(server, client);
 
   // Identity & access (READ-ONLY surface)
   registerServiceAccountTools(server, client);

@@ -2,6 +2,7 @@ import { Client } from '@modelcontextprotocol/client';
 import { InMemoryTransport, McpServer } from '@modelcontextprotocol/server';
 
 import { registerAllResources } from '../../src/resources/index.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -113,6 +114,7 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, client);
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
+  registerAcmeTools(server, client);
   registerConfigTools(server, client);
 }
 
@@ -175,7 +177,7 @@ function keywordBonus(question: string, candidate: string): number {
   let score = 0;
   if (question.includes('csv') && candidate.includes('export_')) score += 20;
   if (
-    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+    /\b(count|distribution|breakdown|group|grouped|by profile|by status)\b/.test(
       question,
     ) &&
     candidate.includes('aggregate_')
@@ -183,7 +185,7 @@ function keywordBonus(question: string, candidate: string): number {
     score += 34;
   }
   if (
-    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+    /\b(count|distribution|breakdown|group|grouped|by profile|by status)\b/.test(
       question,
     ) &&
     candidate.includes('search_')

@@ -1,6 +1,6 @@
 # Tool reference
 
-The server has 222 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
+The server has 240 tools in 13 domains, and 134 of them are configuration CRUD tools. Every tool has one safety tier:
 
 - **read-only** - the tool has no side effects.
 - **mutating-safe** - the tool creates or changes data, but the server does not classify the tool as destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
@@ -24,7 +24,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `get_license_info`          | read-only | Horizon license details, quotas, feature flags                                                                                                                                      |
 | `explain_grading_policy`    | read-only | Explain policy; optionally explain a certificate against it                                                                                                                         |
 | `explain_grading_ruleset`   | read-only | Explain ruleset; optionally explain a certificate against it                                                                                                                        |
-| `validate_hql`              | read-only | Validate any Horizon search query by dialect (`hcql`, `hrql`, `heql`, or `hdql`). This is the canonical tool. The four `validate_h*ql` tools are aliases that use the same handler. |
+| `validate_hql`              | read-only | Validate any Horizon search query by dialect (`hcql`, `hrql`, `heql`, or `hdql`, and on Horizon 2.11+ `haql` or `heabql`). This is the canonical tool. The four `validate_h*ql` tools are aliases that use the same handler. |
 | `validate_hcql`             | read-only | Validate a certificate search query                                                                                                                                                 |
 | `validate_hrql`             | read-only | Validate a request search query                                                                                                                                                     |
 | `validate_heql`             | read-only | Validate an event search query                                                                                                                                                      |
@@ -166,7 +166,33 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 
 ---
 
-## Configuration (129 tools)
+## ACME (13 tools, Horizon 2.11+)
+
+These tools manage the ACME accounts, orders, and External Account Bindings (EABs) of Horizon 2.11 and later. On an older Horizon, these routes do not exist and the calls fail.
+
+`create_acme_eab` and `renew_acme_eab` return the MAC key and the MAC key ID one time only. Give them to the user immediately. Horizon does not show them again. If the user loses them, renew the EAB.
+
+The status `compromised` is final for an account, and Horizon revokes its certificates. If you set an EAB to `compromised`, Horizon compromises every account bound to the EAB.
+
+| Tool                         | Safety               | Description                                                      |
+| ---------------------------- | -------------------- | ---------------------------------------------------------------- |
+| `search_acme_accounts`       | read-only            | Search ACME accounts with HAQL                                   |
+| `get_acme_account`           | read-only            | Get an ACME account by ID                                        |
+| `update_acme_account_status` | mutating-destructive | Change the status of an ACME account                             |
+| `delete_acme_account`        | mutating-destructive | Delete an ACME account and its orders (requires ID confirmation) |
+| `list_acme_orders`           | read-only            | List the orders of an ACME account                               |
+| `get_acme_order`             | read-only            | Get an ACME order by ID                                          |
+| `search_acme_eabs`           | read-only            | Search ACME EABs with HEABQL                                     |
+| `get_acme_eab`               | read-only            | Get an ACME EAB by name (no MAC key)                             |
+| `create_acme_eab`            | mutating-safe        | Create an ACME EAB and return its one-time MAC key               |
+| `update_acme_eab`            | mutating-destructive | Update the policy and constraints of an ACME EAB                 |
+| `update_acme_eab_status`     | mutating-destructive | Change the status of an ACME EAB                                 |
+| `renew_acme_eab`             | mutating-safe        | Generate a new one-time MAC key for an ACME EAB                  |
+| `delete_acme_eab`            | mutating-destructive | Delete an ACME EAB (requires name confirmation)                  |
+
+---
+
+## Configuration (134 tools)
 
 These tools do CRUD on Horizon configuration objects. Every tool contract follows
 the Horizon API reference.
@@ -232,6 +258,14 @@ provisioner, then renews the domain validation on a schedule.
 | DCV policies                                                        | `list/get/create/update/delete_dcv_policy`      | read-only + mutating                            |
 | DCV providers (digicert/gs_mssl)                                    | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
+
+### Configuration: ACME EAB policies (5 tools, Horizon 2.11+)
+
+An EAB policy holds constraints that many EABs share. A request must satisfy the policy constraints and the EAB constraints. A policy change applies immediately to every EAB that references the policy.
+
+| Object            | Tools                                                     | Safety               |
+| ----------------- | --------------------------------------------------------- | -------------------- |
+| ACME EAB policies | `list_eab_policies` `get/create/update/delete_eab_policy` | read-only + mutating |
 
 ### Configuration: identity and access (7 tools)
 
@@ -374,6 +408,11 @@ values in the table match the annotations that MCP `tools/list` returns.
 | `create_dcv_policy`                    | mutating-safe        | Create a DCV policy                                            |
 | `update_dcv_policy`                    | mutating-destructive | Update a DCV policy                                            |
 | `delete_dcv_policy`                    | mutating-destructive | Delete a DCV policy                                            |
+| `list_eab_policies`                    | read-only            | List ACME EAB policies                                         |
+| `get_eab_policy`                       | read-only            | Get an ACME EAB policy                                         |
+| `create_eab_policy`                    | mutating-safe        | Create an ACME EAB policy                                      |
+| `update_eab_policy`                    | mutating-destructive | Update an ACME EAB policy                                      |
+| `delete_eab_policy`                    | mutating-destructive | Delete an ACME EAB policy                                      |
 | `list_service_accounts`                | read-only            | List service accounts                                          |
 | `get_service_account`                  | read-only            | Get a service account                                          |
 | `create_service_account`               | mutating-safe        | Create a service account                                       |

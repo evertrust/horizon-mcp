@@ -30,11 +30,11 @@ The server does not preload these resources and cannot guarantee that a client r
 
 ## Features
 
-- **222 tools across 12 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **240 tools across 13 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 111 registered topic URIs: 18 core guides, 4 curated playbooks, and 89 generated section resources.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. The allowlist can turn on more than one method.
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
-- **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
+- **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events). On Horizon 2.11+, `validate_hql` also accepts HAQL (ACME accounts) and HEABQL (ACME External Account Bindings).
 - **Crypto decoding**: Parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses.
   The tools return structured JSON in the chat.
 - **Destructive-operation safeguards**: `delete_*` and `flush_*` tools need an exact `expected_*` confirmation value.
@@ -45,9 +45,10 @@ Tool counts per domain:
 
 | Domain           | Tools | Highlights                                                                              |
 | ---------------- | ----: | --------------------------------------------------------------------------------------- |
-| Configuration    |   129 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
+| Configuration    |   134 | CA / profile / RBAC / DCV / EAB policy / connector / policy administration              |
 | Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
 | Lifecycle        |    24 | search and aggregate certificates, requests, events, enrollment, DCV runs               |
+| ACME             |    13 | ACME accounts, orders, and External Account Bindings (Horizon 2.11+)                    |
 | Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
 | Datasources      |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run                         |
 | Discovery        |     6 | campaign CRUD and flush                                                                 |
@@ -144,7 +145,7 @@ request. See [Authentication methods](#authentication-methods).
 | `HORIZON_LOG_LEVEL`               | No              | `INFO`              | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                                                                                                                                                                                                                                                                                          |
 | `HORIZON_TESTED_VERSIONS`         | No              | `2.10`              | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                                                                                                        |
 | `HORIZON_WARN_VERSIONS`           | No              | `2.8,2.9`           | Comma-separated list of versions that probably work. The server logs a warning when it connects to one of them.                                                                                                                                                                                                                                                                      |
-| `HORIZON_ENABLED_TOOLSETS`        | No              | (all)               | Comma-separated list of tool domains to register. A shorter list cuts the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. If you leave it unset, the server registers every toolset. An unknown name stops startup. See the mapping to the domain table below. |
+| `HORIZON_ENABLED_TOOLSETS`        | No              | (all)               | Comma-separated list of tool domains to register. A shorter list cuts the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `acme`, `docs`, `assist`, `config`. If you leave it unset, the server registers every toolset. An unknown name stops startup. See the mapping to the domain table below. |
 | `HORIZON_READ_ONLY`               | No              | `false`             | Set to `true` or `1` to register only the read-only tools. The server then skips every mutating tool (create/update/delete/submit/...) at startup.                                                                                                                                                                                                                                   |
 | `HORIZON_AUTH_MODE`               | DEPRECATED      |                     | No longer needed. The server still reads it for backward compatibility. If you set it, the server logs a warning.                                                                                                                                                                                                                                                                    |
 
@@ -599,7 +600,7 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Installation](docs/installation.md)               | Install methods, Docker, and the remote hosting checklist           |
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md)          | All 222 tools by domain with safety tiers                           |
+| [Tool reference](docs/tools-reference.md)          | All 240 tools by domain with safety tiers                           |
 | [Knowledge resources](docs/knowledge-resources.md) | 111 registered URIs: 18 core guides, 4 playbooks, 89 sections       |
 | [Development](docs/development.md)                 | Dev setup, CI gates, tests, linting                                 |
 
