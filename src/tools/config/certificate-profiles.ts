@@ -102,7 +102,10 @@ const MANDATORY_INPUT_FIELDS = [
   'crypto_policy',
 ] as const;
 
-/** Union of every top-level property key across all 11 subtypes (54 keys). */
+/**
+ * Union of every top-level property key across all 11 subtypes (56 keys).
+ * excludeRootCA and ipIdentifierConstraint are ACME keys added in Horizon 2.11.
+ */
 const KNOWN_KEYS = [
   'acmeUrl',
   'authorizationLevels',
@@ -130,8 +133,10 @@ const KNOWN_KEYS = [
   'encryptionAlgorithm',
   'enrollAuthorizedCas',
   'exchangeCertificate',
+  'excludeRootCA',
   'gradingPolicies',
   'http01Port',
+  'ipIdentifierConstraint',
   'maxCertificatePerHolderPolicy',
   'maxDnsName',
   'meta',
