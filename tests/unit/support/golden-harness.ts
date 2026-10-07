@@ -221,6 +221,7 @@ export const KNOWLEDGE_FILES: string[] = [
   'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
+  'acme.md',
 ];
 
 export const CURATED_KNOWLEDGE_FILES: string[] = [
