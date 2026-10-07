@@ -479,7 +479,7 @@ All other fields (`events`, `retries`, `runPeriod`, etc.) are
 **auto-computed** per trigger type. User-supplied values for these fields
 are silently ignored by the API.
 
-Exception: `netscaler`, `fortigate`, `fortimanager`, `panos_firewall` and
+Special case: `netscaler`, `fortigate`, `fortimanager`, `panos_firewall` and
 `panos_panorama` triggers also accept an optional `retries` (number of
 retries on error; the 2.11 docs give 1 to 15 for the firewall triggers).
 

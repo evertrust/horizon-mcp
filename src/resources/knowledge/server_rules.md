@@ -58,7 +58,7 @@ user asks for a PKCS#12, PFX, or private key:
 Do not say PKCS#12 retrieval is impossible. It is available through the
 request.
 
-Exception (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
+Special case (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
 only in the `submit_webra_challenge` response, in centralized mode, encrypted
 with the challenge as password. It is never stored and cannot be retrieved
 later, so save it from that response. In a challenge profile's enroll
