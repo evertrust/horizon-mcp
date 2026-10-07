@@ -24,8 +24,8 @@ Horizon supports these DCV provider types:
   used with the Sectigo PKI connector (which still issues the certificates).
   Fields: `endpoint` (SCM API base URL), `oauthTokenEndpoint` (defaults to
   Sectigo SSO), `credentials` (login = API client ID, password = client
-  secret), `dcvMethod` (`cname` or `txt`), optional `organizationId`,
-  `timeout`, optional proxy. `dcvMethod` applies only to domains never
+  secret), `dcvMethod` (`cname` or `txt`), `timeout`; optional `organizationId`
+  and proxy. `dcvMethod` applies only to domains never
   validated (or validated with a method Horizon cannot drive, such as
   email); a validated domain is re-validated with its own method. An order
   already in progress on Sectigo is reused. Sectigo checks pending
