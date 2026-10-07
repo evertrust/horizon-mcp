@@ -152,11 +152,19 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
       'caller wants to submit a lifecycle request and template fields are known',
     doNotUseWhen: 'the request template has not been inspected yet',
     beforeCall:
-      'call get_request_template first; for WebRA update inspect template.autoRenew',
+      'call get_request_template first; for WebRA update inspect template.autoRenew; a WebRA challenge profile returns the challenge in password.value',
   },
   approve_request: {
     useWhen: 'caller wants to approve a pending request and the id is known',
     doNotUseWhen: 'the request id is unknown or caller is only inspecting',
+  },
+  submit_webra_challenge: {
+    useWhen:
+      'caller holds a one-time WebRA challenge and wants the certificate it authorizes (Horizon 2.11+)',
+    doNotUseWhen:
+      'caller has no challenge yet or wants an EST/SCEP challenge; use submit_request',
+    beforeCall:
+      'confirm profile and key mode (keyType for centralized, csr for decentralized); the challenge works once',
   },
   deny_request: {
     useWhen: 'caller wants to deny a pending request and the id is known',

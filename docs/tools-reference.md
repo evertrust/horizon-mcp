@@ -1,6 +1,6 @@
 # Tool reference
 
-The server has 222 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
+The server has 223 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
 
 - **read-only** - the tool has no side effects.
 - **mutating-safe** - the tool creates or changes data, but the server does not classify the tool as destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
@@ -51,7 +51,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `get_doc_page`    | read-only | Fetch the indexed content of a page that a docs search tool returned. Use `max_chars` and `offset` to read it in windows. |
 | `read_knowledge`  | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support                        |
 
-## Lifecycle (24 tools)
+## Lifecycle (25 tools)
 
 | Tool                         | Safety               | Description                                                                                                                              |
 | ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -73,6 +73,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `approve_request`            | mutating-safe        | Approve a pending request                                                                                                                |
 | `deny_request`               | mutating-destructive | Deny a pending request                                                                                                                   |
 | `cancel_request`             | mutating-destructive | Cancel a pending request                                                                                                                 |
+| `submit_webra_challenge`     | mutating-safe        | Horizon 2.11+. Enroll with a one-time WebRA challenge. In centralized mode, the response holds the only copy of the PKCS#12.             |
 | `list_dcv_policy_status`     | read-only            | List DCV policy lifecycle status                                                                                                         |
 | `get_dcv_policy_status`      | read-only            | Get full DCV policy and domain status                                                                                                    |
 | `run_dcv_policy`             | mutating-safe        | Start DCV for every eligible policy domain                                                                                               |

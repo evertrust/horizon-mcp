@@ -93,6 +93,10 @@ const SUBMIT_REQUEST_CONFIG = {
     'privilegewithdrawn, aacompromise, unspecified). ' +
     'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
     'EST/SCEP enroll returns the challenge password in the response. ' +
+    'On Horizon 2.11+, a WebRA enroll on a profile whose authorizationMode is ' +
+    '"challenge" returns a one-time challenge in `password.value` (if the ' +
+    'request is pending, approve_request returns it). Give it to the user ' +
+    'once; it is consumed with submit_webra_challenge. ' +
     'For a WebRA update, template.autoRenew is the generic path for changing ' +
     'per-certificate automatic renewal. Full workflow + examples: ' +
     'horizon://knowledge/workflows.',
@@ -165,7 +169,10 @@ const APPROVE_REQUEST_CONFIG = {
     'Only pending requests can be approved. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the approval. The workflow\n' +
     'type is determined automatically from the request.\n' +
-    'If permission is denied, returns an error - do NOT retry.',
+    'If permission is denied, returns an error - do NOT retry.\n' +
+    'On Horizon 2.11+, approving a WebRA enroll on a "challenge" profile ' +
+    'returns the one-time challenge in `password.value`. Give it to the user ' +
+    'once; it is consumed with submit_webra_challenge.',
   inputSchema: z.object({
     request_id: z.string().describe('The request ID to approve.'),
   }),

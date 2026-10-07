@@ -148,6 +148,7 @@ const TITLE_OVERRIDES: Record<string, string> = {
   simulate_computation_rule: 'Simulate computation rule',
   simulate_datasource_flow: 'Simulate datasource flow',
   simulate_trigger: 'Simulate trigger',
+  submit_webra_challenge: 'Submit WebRA challenge',
 };
 
 function titleFromName(name: string): string {
