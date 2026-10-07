@@ -211,7 +211,7 @@ const typeSchema = z
   .enum(CONNECTOR_TYPES)
   .describe(
     'Connector subtype discriminator (lowercase). Determines which fields are ' +
-      'required in `config`. Cannot change after creation.',
+      'required in `config`. Cannot change after creation. gcp (Google Cloud CAS) requires Horizon 2.11+.',
   );
 
 /** Merge the typed mandatory params with the subtype config into one body. */
@@ -287,7 +287,7 @@ const CREATE_PKI_CONNECTOR_OPTS = {
     'system (use a third-party connector) and NOT the inbound device ' +
     'enrollment protocol (use a certificate profile). Polymorphic: the `type` discriminator ' +
     'selects the subtype (stream, acmeenroll, awsacmpca, digicert, ejbca, ' +
-    'integrated, ...). Active Directory Certificate Services (ADCS / Microsoft ' +
+    'integrated, ...). gcp (Google Cloud CAS) requires Horizon 2.11+. Active Directory Certificate Services (ADCS / Microsoft ' +
     'CA) is a PKI connector: use type "evtadcs" (EverTrust ADCS connector) or ' +
     'legacy "msadcs" - NOT a WCCE forest mapping. Call ' +
     'describe_pki_connector_schema for the chosen type first to learn the ' +

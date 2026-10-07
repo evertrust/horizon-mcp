@@ -49,41 +49,31 @@ where HTTP-01 is not feasible.
 
 ### Components
 
-| Object        | Type        | Purpose                      |
-| ------------- | ----------- | ---------------------------- |
-| Credential    | API key     | DNS provider API credentials |
-| PKI Connector | CA-specific | Connects to the target CA    |
-| Profile       | `acme`      | ACME enrollment with DNS-01  |
+| Object        | Type        | Purpose                            |
+| ------------- | ----------- | ---------------------------------- |
+| PKI Connector | CA-specific | Connects to the issuing CA         |
+| Profile       | `acme`      | Exposes ACME enrollment to clients |
 
 ### Configuration Flow
 
-1. Create a credential with the DNS provider API key
-2. Create a PKI connector for the target CA
-3. Create an ACME profile with:
-   - `challengeTypes: ["dns-01"]`
-   - `dns01Provider` configured with the DNS provider details
-   - `allowWildcard: true` if wildcard certificates are needed
-   - `externalAccountBinding: true` if the CA requires EAB
+1. Create a PKI connector for the target CA.
+2. Create an ACME profile with `module: "acme"`, `name`, `enabled`,
+   `pkiConnector`, and the shared required profile fields.
+3. Set `authorizationMethods` to the permitted ACME validation methods.
+4. Set `timeout`, `verifyRetryCount`, and `verifyRetryDelay` for validation.
+5. Set `authorizeShortName`, `authorizeEmptyContact`, and
+   `requireTermsOfService`. Optional fields include `defaultContacts`,
+   `maxDnsName`, `http01Port`, `tlsAlpn01Port`, and `meta`.
+
+Call `describe_certificate_profile_schema` for the complete request structure
+before creating the profile.
 
 ### DNS Provider Configuration
 
-```json
-{
-  "dns01Provider": {
-    "type": "rfc2136",
-    "configuration": {
-      "server": "ns1.example.com",
-      "zone": "example.com",
-      "keyName": "horizon-update",
-      "keyAlgorithm": "hmac-sha256",
-      "keySecret": "base64-encoded-key"
-    }
-  }
-}
-```
-
-Supported DNS-01 provider types: `rfc2136` (dynamic DNS update), `route53`
-(AWS), `cloudflare`, `azuredns`, `googledns`.
+The Horizon 2.10 ACME profile API has no `dns01Provider` configuration object.
+DNS-01 records are published by the ACME client or its DNS integration.
+Configure that integration on the client; select the permitted validation
+methods with the profile's `authorizationMethods` field.
 
 ---
 
@@ -198,26 +188,24 @@ Okta, etc.) for Horizon web UI and API access.
 
 | Object            | Type     | Purpose                |
 | ----------------- | -------- | ---------------------- |
-| Identity Provider | `openid` | OIDC IDP configuration |
+| Identity Provider | `OpenId` | OIDC IDP configuration |
 
 ### IDP Configuration
 
 ```json
 {
   "name": "corporate-oidc",
-  "type": "openid",
-  "configuration": {
-    "providerMetadataUrl": "https://login.microsoftonline.com/{tenant}/.well-known/openid-configuration",
-    "clientCredentials": {
-      "clientId": "...",
-      "clientSecret": "..."
-    },
-    "scope": "openid profile email",
-    "identifierClaim": "preferred_username",
-    "emailClaim": "email",
-    "nameClaim": "name",
-    "trustSystemCAs": true
-  }
+  "type": "OpenId",
+  "enabled": true,
+  "enabledOnUI": true,
+  "timeout": "30 seconds",
+  "providerMetadataUrl": "https://login.example.com/.well-known/openid-configuration",
+  "clientCredentials": "oidc-client-credentials",
+  "scope": "openid profile email",
+  "identifierClaim": "{{email}}",
+  "emailClaim": "{{email}}",
+  "nameClaim": "{{name}}",
+  "trustSystemCAs": true
 }
 ```
 
@@ -236,14 +224,20 @@ Restrict enrollment to OIDC-authenticated users:
 
 ### Claim Mapping
 
-OIDC token claims can be mapped to Horizon principal attributes:
+Horizon 2.10 uses claim expressions and an explicit role/team mapping:
 
-| OIDC Claim           | Horizon Attribute    |
-| -------------------- | -------------------- |
-| `preferred_username` | `principal.name`     |
-| `email`              | `principal.email`    |
-| `groups`             | Team membership      |
-| Custom claims        | Configurable mapping |
+| Public API Field          | Purpose                                                   |
+| ------------------------- | --------------------------------------------------------- |
+| `identifierClaim`         | Principal identifier expression; defaults to `{{email}}`  |
+| `emailClaim`              | Principal email expression; defaults to `{{email}}`       |
+| `nameClaim`               | Principal display name expression; defaults to `{{name}}` |
+| `mapping.extraction`      | Computation rule that extracts claim values from the JWT  |
+| `mapping.entries[].claim` | Claim value to match                                      |
+| `mapping.entries[].teams` | Team names assigned for that claim value                  |
+| `mapping.entries[].roles` | Role names assigned for that claim value                  |
+
+Team and role assignments require mapping entries; a `groups` claim alone
+is not a configured mapping.
 
 ---
 

@@ -20,7 +20,7 @@ When the user asks about "my certificates" or "certificates I own", call
 HCQL query that covers both:
 
 ```
-owner equals "<identifier>" or team in ("<team1>", "<team2>", ...)
+owner equals "<identifier>" or team in ["<team1>", "<team2>"]
 ```
 
 Querying `owner` alone misses team-owned certificates.
@@ -39,9 +39,11 @@ reference API element names, not query fields. See
 ## 4. Service discovery searches multiple fields
 
 When the user asks for certificates serving a service (tomcat, nginx, apache,
-load balancer, etc.), search `discoverydata.paths`, `discoverydata.usages`,
-and `discoverydata.hostnames` in addition to `dn` and `san`. Service hints
-often live only in the discovery metadata.
+load balancer, etc.), search `discoverydata.hostnames` in addition to `dn`
+and `san`. HCQL-searchable discovery fields are `discoverydata.ip`,
+`discoverydata.tls.version`, `discoverydata.tls.port`,
+`discoverydata.hostnames`, `discoverydata.operatingsystems`, and
+`discoverydata.sources`. Paths and usages are not HCQL-searchable.
 
 ## 5. PKCS#12 / PFX retrieval
 

@@ -122,7 +122,7 @@ metadata with no enrichment or lifecycle control.
 | `cmp`        | Certificate Management Protocol |
 | `digicert`   | DigiCert CertCentral            |
 | `ejbca`      | EJBCA                           |
-| `gcp`        | Google Cloud Platform           |
+| `gcp`        | Google Cloud CAS (2.11+)        |
 | `idca`       | IDCA                            |
 | `integrated` | Integrated CA (built-in)        |
 | `fcms`       | FCMS                            |
@@ -135,9 +135,11 @@ metadata with no enrichment or lifecycle control.
 | `sectigo`    | Sectigo                         |
 | `swisssign`  | SwissSign                       |
 
+`gcp` is **Available since Horizon 2.11 (Horizon 2.11+).**
+
 ---
 
-## Third-Party Connector Types (10)
+## Horizon 2.10 Third-Party Connector Types (10)
 
 | Type         | Target System                     |
 | ------------ | --------------------------------- |

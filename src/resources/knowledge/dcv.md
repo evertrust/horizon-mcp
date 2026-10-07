@@ -16,7 +16,7 @@ Horizon supports these DCV provider types:
 
 - `digicert`: DigiCert DCV API integration. It needs an endpoint, DCV-target
   credentials, timeout, and optionally an HTTP proxy.
-- `gs_mssl`: GlobalSign Managed SSL DCV integration. It needs an endpoint,
+- `gs_mssl`: GlobalSign Managed SSL DCV integration. **Available since Horizon 2.11 (Horizon 2.11+).** It needs an endpoint,
   password credentials, timeout, profile, defaultEmail, defaultPhone, and
   optionally an HTTP proxy.
 

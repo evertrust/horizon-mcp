@@ -73,6 +73,7 @@ export enum ThirdPartyConnectorType {
   JAMF = 'jamf',
   LDAP_PUB = 'ldappub',
   MS_AD = 'msad',
+  NETSCALER = 'netscaler',
 }
 
 export enum TriggerType {
@@ -86,6 +87,7 @@ export enum TriggerType {
   INTUNEPKCS = 'intunepkcs',
   LDAPPUB = 'ldappub',
   GCM = 'gcm',
+  NETSCALER = 'netscaler',
 }
 
 export enum CertificateFormat {
