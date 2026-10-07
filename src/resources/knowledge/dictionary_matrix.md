@@ -249,6 +249,9 @@ Available for: on*submit*_, on*cancel*_, on*approve*_, on*deny*_, on*pending*\* 
 | `request.certificate`            | Certificate in request            | Certificate sub-dict |
 | `request.team`                   | Team                              |    Team sub-dict     |
 
+On a WebRA challenge profile (Horizon 2.11+), `request.password` holds the
+generated challenge.
+
 ### Previous Certificate Dictionary
 
 Available for: on_renew only
