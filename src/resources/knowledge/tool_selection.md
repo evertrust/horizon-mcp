@@ -18,8 +18,8 @@ fully identified.
 ### Horizon Query Languages
 
 1. Use `translate_to_hql` when the user starts in natural language.
-2. Use `validate_hcql`, `validate_hrql`, `validate_heql`, or `validate_hdql` when the query must be checked before execution.
-3. Use `describe_query_fields` when the user asks which fields are available or when field names are unclear.
+2. Use `validate_hcql`, `validate_hrql`, `validate_heql`, or `validate_hdql` when the query must be checked before execution. For HAQL (ACME accounts) and HEABQL (EABs) on Horizon 2.11+, use `validate_hql` with `query_type` `haql` or `heabql`.
+3. Use `describe_query_fields` when the user asks which fields are available or when field names are unclear (it also covers `haql` and `heabql` on Horizon 2.11+).
 4. Execute with the matching `search_*` or `aggregate_*` tool after the query is ready.
 
 ### Ownership and Permissions
@@ -52,6 +52,28 @@ For Horizon docs and Horizon API docs, trust the tool's resolved version and war
 
 Use `approve_request`, `deny_request`, and `cancel_request` only when the exact
 request ID is known.
+
+WebRA challenge profiles (Horizon 2.11+): an `enroll` request returns the
+challenge in its `password` field; `submit_webra_challenge` consumes it and
+returns the certificate (and, in centralized mode, the only copy of the
+PKCS#12).
+
+## ACME (Horizon 2.11+)
+
+Check the version with `get_license_info` first. Read
+`horizon://knowledge/acme` for the object model.
+
+- Accounts: `search_acme_accounts` (HAQL), `get_acme_account`,
+  `update_acme_account_status`, `delete_acme_account`.
+- Orders of an account: `list_acme_orders`, `get_acme_order`.
+- EABs: `search_acme_eabs` (HEABQL), `get_acme_eab`, `create_acme_eab`,
+  `update_acme_eab`, `update_acme_eab_status`, `renew_acme_eab`,
+  `delete_acme_eab`. `create_acme_eab` and `renew_acme_eab` return the MAC
+  key once: give it to the user immediately.
+- EAB policies: `list_eab_policies`, `get_eab_policy`, `create_eab_policy`,
+  `update_eab_policy`, `delete_eab_policy`.
+- ACME profile options (`excludeRootCA`, `ipIdentifierConstraint`): use the
+  certificate profile tools.
 
 ## Datasources and Rules
 

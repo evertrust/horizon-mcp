@@ -370,6 +370,31 @@ platform. They are GET-only endpoints returning status summaries.
 
 ---
 
+## Upgrade Notes (Horizon 2.11)
+
+Call `get_license_info` to read the Horizon version before relying on
+2.11 behavior. Breaking changes when upgrading from 2.10:
+
+| Area           | Change since 2.11                                                                                                                                        | Action                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| LDAP connector | Verifies that the server certificate matches the configured hostname; mismatching connections fail                                                       | Fix the hostname or certificate, or set `tlsInsecure`   |
+| AWS connector  | AssumeRole `roleSessionName` is `evt-<uuid>` (was `EverTrustHorizon-Session-<uuid>`)                                                                     | Update IAM policies that match on the session name      |
+| OCSP           | Response verification enforces the `id-kp-OCSPSigning` EKU on delegated OCSP responder certificates, and fully enforces EKU requirements                 | Check delegated responder certificates carry this EKU   |
+| F5 connector   | CA chains are named after the connector prefix; on the first push they are pushed under the new name and Horizon-managed client SSL profiles are rebound | Rebind SSL profiles bound to old chains outside Horizon |
+
+Other 2.11 changes: ACME External Account Binding and ACME account/order
+management (horizon://knowledge/acme), WebRA challenge mode
+(horizon://knowledge/workflows), new connectors and triggers
+(horizon://knowledge/integrations), Sectigo and GlobalSign MSSL DCV
+providers (horizon://knowledge/dcv), service-account `Authorization: Bearer`
+and OIDC `synchronizationMode` (horizon://knowledge/rbac).
+
+New public error codes in 2.11: the ACME-, EAB-, EAB-POLICY- and ORDER-
+families (see horizon://knowledge/acme) and WEBRA-ENROLL-015 (invalid WebRA
+challenge).
+
+---
+
 ## Key Considerations
 
 1. **Archive immutability**: Archives cannot be updated after creation. Plan

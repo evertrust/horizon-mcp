@@ -210,7 +210,8 @@ expressions for quick recall.
 | `hdql` | HDQL           | Discovery event queries    |
 | `hpql` | HPQL           | Principal queries          |
 
-All type values are **lowercase**.
+All type values are **lowercase**. The Horizon 2.11 API lists no saved query
+or report type for HAQL or HEABQL (ACME accounts and EABs).
 
 ### Upsert Semantics
 

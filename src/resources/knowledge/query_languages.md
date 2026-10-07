@@ -6,13 +6,20 @@ Horizon provides five domain-specific query languages for searching different
 object types. All share the same operator syntax but have different field
 sets tailored to their domain.
 
-| Language | Full Name                      | Searches           | API Endpoint                      |
-| -------- | ------------------------------ | ------------------ | --------------------------------- |
-| **HCQL** | Horizon Certificate Query Lang | Certificates       | `/api/v1/certificates/search`     |
-| **HRQL** | Horizon Request Query Language | Requests           | `/api/v1/requests/search`         |
-| **HEQL** | Horizon Event Query Language   | Audit events       | `/api/v1/events/search`           |
-| **HDQL** | Horizon Discovery Query Lang   | Discovery results  | `/api/v1/discovery/events/search` |
-| **HPQL** | Horizon Principal Query Lang   | Principals (users) | _Reference only -- no search API_ |
+| Language   | Full Name                                   | Searches           | API Endpoint                      |
+| ---------- | ------------------------------------------- | ------------------ | --------------------------------- |
+| **HCQL**   | Horizon Certificate Query Lang              | Certificates       | `/api/v1/certificates/search`     |
+| **HRQL**   | Horizon Request Query Language              | Requests           | `/api/v1/requests/search`         |
+| **HEQL**   | Horizon Event Query Language                | Audit events       | `/api/v1/events/search`           |
+| **HDQL**   | Horizon Discovery Query Lang                | Discovery results  | `/api/v1/discovery/events/search` |
+| **HPQL**   | Horizon Principal Query Lang                | Principals (users) | _Reference only -- no search API_ |
+| **HAQL**   | ACME account query language (Horizon 2.11+) | ACME accounts      | `/api/v1/acme/accounts/search`    |
+| **HEABQL** | EAB query language (Horizon 2.11+)          | ACME EABs          | `/api/v1/acme/eab/search`         |
+
+HAQL and HEABQL (Horizon 2.11+) have their own fields: see the Searching
+section of `horizon://knowledge/acme`. Validate them with `validate_hql`
+(`query_type` `haql` or `heabql`). The rest of this guide covers the five
+other languages.
 
 ---
 
