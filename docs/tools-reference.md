@@ -230,7 +230,7 @@ provisioner, then renews the domain validation on a schedule.
 | Object                                                              | Tools                                           | Safety                                          |
 | ------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
 | DCV policies                                                        | `list/get/create/update/delete_dcv_policy`      | read-only + mutating                            |
-| DCV providers (digicert; gs_mssl requires Horizon 2.11+)            | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
+| DCV providers (digicert; gs_mssl and sectigo need Horizon 2.11+)    | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
 
 ### Configuration: identity and access (7 tools)
