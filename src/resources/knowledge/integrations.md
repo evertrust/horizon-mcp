@@ -70,10 +70,14 @@ before creating the profile.
 
 ### DNS Provider Configuration
 
-The Horizon 2.10 ACME profile API has no `dns01Provider` configuration object.
+The ACME profile API has no `dns01Provider` configuration object.
 DNS-01 records are published by the ACME client or its DNS integration.
 Configure that integration on the client; select the permitted validation
 methods with the profile's `authorizationMethods` field.
+
+Horizon 2.11+ adds External Account Binding (EAB policies and EABs), IP
+identifiers, and ACME account and order management. See
+`horizon://knowledge/acme`.
 
 ---
 
@@ -226,18 +230,21 @@ Restrict enrollment to OIDC-authenticated users:
 
 Horizon 2.10 uses claim expressions and an explicit role/team mapping:
 
-| Public API Field          | Purpose                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| `identifierClaim`         | Principal identifier expression; defaults to `{{email}}`  |
-| `emailClaim`              | Principal email expression; defaults to `{{email}}`       |
-| `nameClaim`               | Principal display name expression; defaults to `{{name}}` |
-| `mapping.extraction`      | Computation rule that extracts claim values from the JWT  |
-| `mapping.entries[].claim` | Claim value to match                                      |
-| `mapping.entries[].teams` | Team names assigned for that claim value                  |
-| `mapping.entries[].roles` | Role names assigned for that claim value                  |
+| Public API Field              | Purpose                                                     |
+| ----------------------------- | ----------------------------------------------------------- |
+| `identifierClaim`             | Principal identifier expression; defaults to `{{email}}`    |
+| `emailClaim`                  | Principal email expression; defaults to `{{email}}`         |
+| `nameClaim`                   | Principal display name expression; defaults to `{{name}}`   |
+| `mapping.extraction`          | Computation rule that extracts claim values from the JWT    |
+| `mapping.entries[].claim`     | Claim value to match                                        |
+| `mapping.entries[].teams`     | Team names assigned for that claim value                    |
+| `mapping.entries[].roles`     | Role names assigned for that claim value                    |
+| `mapping.synchronizationMode` | (Horizon 2.11+) `roles`, `teams` or `roles_teams` (default) |
 
 Team and role assignments require mapping entries; a `groups` claim alone
-is not a configured mapping.
+is not a configured mapping. `synchronizationMode` selects what the mapping
+synchronizes: the selected roles and/or teams are replaced on each login.
+Before 2.11 the field does not exist.
 
 ---
 
@@ -261,6 +268,11 @@ consumption.
 | Credential            | IAM credentials | AWS access key / role       |
 | Third-Party Connector | `aws`           | Publishes to AWS            |
 | Trigger               | `thirdparty`    | Fires on enrollment/renewal |
+
+Since Horizon 2.11, the `aws` connector sends `evt-<uuid>` as the
+`roleSessionName` of its AssumeRole requests; before 2.11 it sent
+`EverTrustHorizon-Session-<uuid>`. Update IAM policies that match on the
+session name before the upgrade.
 
 ### Google Cloud Certificate Manager
 
@@ -293,6 +305,54 @@ balancers.
 | Third-Party Connector | `f5client`     | Deploys via iControl REST API |
 | Trigger               | `thirdparty`   | Fires on enrollment/renewal   |
 
+`f5client` fields added in the Horizon 2.11 API:
+
+| Field                          | Default | Meaning                                                                                                                                   |
+| ------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `persistConfiguration`         | `false` | Save the running configuration to `bigip.conf` after each successful deployment, so it survives a reboot. Needs an admin-level F5 account |
+| `overrideProfileConfiguration` | `true`  | Override the parent profile and cipher group of the existing SSL profile on update. `false` updates only the certificate and key          |
+| `loginProvider`                | device  | F5 authentication provider used for login, for example `tmos`                                                                             |
+
+Since Horizon 2.11, the F5 connector names the CA chains it pushes after
+the connector prefix. On the first push after the upgrade, chains are pushed
+under the new name and the client SSL profiles managed by Horizon are bound
+to them. Chains pushed by earlier versions stay in place; SSL profiles bound
+to them outside of Horizon are not updated.
+
+---
+
+## Firewall Integrations (Fortinet, Palo Alto) (Horizon 2.11+)
+
+Use case: Deploy certificates and private keys on firewalls. Triggers deploy
+on enrollment and renewal. Each connector has a mandatory `prefix` that
+identifies the certificates Horizon manages. For each holder only the latest
+certificate is kept. A removal is skipped when the certificate was renamed
+or moved on the appliance. Supported versions: FortiOS 7.0+, PAN-OS 10.2+.
+
+| Connector type   | Target                                              | Credential                                                   | Specific fields                                                                                                  |
+| ---------------- | --------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `fortigate`      | One FortiGate (FortiOS REST API)                    | `raw` credential holding the REST API key                    | `vdom` (empty = global scope), optional `certificateCredentials` for mutual TLS                                  |
+| `fortimanager`   | FortiManager unit or a managed FortiGate (JSON-RPC) | `password` credential                                        | `target`: `unit` or `device`; `managedDevice` {`adom`, `device`, `vdom`, `synchronizeDevices`} only for `device` |
+| `panos_firewall` | Standalone PAN-OS firewall (XML API)                | `password` credential (admin with XML API access)            | optional `vsys`                                                                                                  |
+| `panos_panorama` | Panorama (XML API)                                  | `password` credential (admin with XML API, commit if synced) | `template`, `templateStack`, `vsys` (needs `template`), `synchronizeDevices` (default `false`)                   |
+
+All four take `hostname`, `credentials`, `prefix`, `timeout`,
+`throttleDuration`, `throttleParallelism`, optional `proxy` and
+`tlsInsecure`. `fortimanager`, `panos_firewall` and `panos_panorama` also
+require `jobRetryParameters` {`attempts`, `minBackoff`, `maxBackoff`,
+`randomFactor`}: deployments run as asynchronous jobs retried with
+exponential backoff.
+
+Removal: Fortinet connectors remove the certificate on revocation; Palo
+Alto connectors remove it on revocation or expiration. Panorama without
+`synchronizeDevices` leaves the certificate in the candidate configuration
+until an operator commits it.
+
+Triggers use the same type names (`fortigate`, `fortimanager`,
+`panos_firewall`, `panos_panorama`) with `name`, `connector` and an optional
+`retries` (1 to 15). Call `describe_thirdparty_connector_schema` and
+`describe_trigger_schema` for the full structure.
+
 ---
 
 ## LDAP Certificate Publishing
@@ -305,6 +365,38 @@ can be discovered by email clients for S/MIME or by other LDAP consumers.
 | Credential            | LDAP bind creds | Write access to the directory      |
 | Third-Party Connector | `ldappub`       | Publishes cert to LDAP user object |
 | Trigger               | `thirdparty`    | Fires on enrollment/renewal        |
+
+Since Horizon 2.11, the LDAP connector checks that the server certificate
+matches the configured hostname; a mismatch makes the connection fail after
+the upgrade. Set `tlsInsecure` on the connector to bypass the check. Before
+2.11 there is no hostname check. `createEntry` (Horizon 2.11+, default
+`false`) creates an LDAP entry, with the filter value as objectClass, when no
+entry matches.
+
+---
+
+## Google Cloud CAS PKI Connector (Horizon 2.11+)
+
+Use case: Issue certificates from a Google Cloud Certificate Authority
+Service CA pool. PKI connector type `gcp`.
+
+| Field                 | Required | Meaning                                                                                        |
+| --------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `projectId`           | yes      | GCP project of the CA pool                                                                     |
+| `location`            | yes      | CA pool location, for example `europe-west1`                                                   |
+| `caPool`              | yes      | CA pool ID; the pool picks an enabled CA at issuance                                           |
+| `certificateLifetime` | yes      | Validity applied to every certificate; no default                                              |
+| `credentials`         | no       | `raw` credential holding the service account JSON key; empty = Application Default Credentials |
+| `impersonation`       | no       | {`target`, `lifetime`}: service account to impersonate; lifetime at most 12 hours              |
+| `certificateTemplate` | no       | CAS template short name or full resource path                                                  |
+| `endpoint`            | no       | API endpoint override                                                                          |
+
+Grant the service account `roles/privateca.certificateRequester` (issue) and
+`roles/privateca.certificateManager` (revoke). The health check only lists
+certificates, so a healthy connector does not prove that enrollment works.
+Limits: subject DN keeps only CN, C, O, OU, L, ST, STREET (single-valued);
+SANs keep only DNS, URI, RFC822Name and IP address. Extensions come from the
+CA pool or template.
 
 ---
 
