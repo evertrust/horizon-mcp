@@ -203,14 +203,14 @@ before you create or update the object.
 
 ### Configuration: automation and integrations (29 tools)
 
-| Object                                | Tools                                                                                       | Safety                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Automation policies                   | `list/get/create/update/delete_automation_policy`                                           | read-only + mutating                                            |
-| Execution policies                    | `list/get/create/update/delete_execution_policy`                                            | read-only + mutating                                            |
-| Third-party connectors (subtyped)     | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating                                            |
-| HTTP proxies                          | `list/get/create/update/delete_http_proxy`                                                  | read-only + mutating                                            |
-| WCCE forest mappings                  | `list/get/create/update/delete_wcce_forest`                                                 | read-only + mutating                                            |
-| Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger`                                 | read-only + mutating (list/get/delete in Triggers domain above) |
+| Object                                                      | Tools                                                                                       | Safety                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Automation policies                                         | `list/get/create/update/delete_automation_policy`                                           | read-only + mutating                                            |
+| Execution policies                                          | `list/get/create/update/delete_execution_policy`                                            | read-only + mutating                                            |
+| Third-party connectors (15 subtypes, 4 need Horizon 2.11+)  | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating                                            |
+| HTTP proxies                                                | `list/get/create/update/delete_http_proxy`                                                  | read-only + mutating                                            |
+| WCCE forest mappings                                        | `list/get/create/update/delete_wcce_forest`                                                 | read-only + mutating                                            |
+| Triggers (CRUD gap-fill, 15 subtypes, 4 need Horizon 2.11+) | `describe_trigger_schema` `create_trigger` `update_trigger`                                 | read-only + mutating (list/get/delete in Triggers domain above) |
 
 ### Configuration: system and operations (25 tools)
 
