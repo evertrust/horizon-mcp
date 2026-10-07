@@ -10,8 +10,9 @@
  * 2.11 or later; on older versions they skip.
  *
  * The test creates the credentials it needs (raw credentials for FortiGate,
- * password credentials for the other types) and borrows the PKI connector of
- * an existing ACME profile. Nothing is left behind.
+ * password credentials for the other types). It borrows the credentials of an
+ * existing gs_mssl DCV provider and the PKI connector of an existing ACME
+ * profile. Nothing is left behind.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
@@ -148,8 +149,7 @@ describe.skipIf(!E2E_CONFIGURED)(
         type: 'password',
         login: 'example-login',
         password: { value: 'example-password' },
-        // The sectigo DCV provider also uses these credentials.
-        targets: ['thirdparty', 'dcv'],
+        targets: ['thirdparty'],
       });
       createdCreds.push(PASSWORD_CREDS);
     });
@@ -246,12 +246,22 @@ describe.skipIf(!E2E_CONFIGURED)(
 
     it('creates, reads and deletes a sectigo DCV provider', async (ctx) => {
       if (!is211) ctx.skip();
+      // Sectigo takes login and password credentials. Borrow the credentials
+      // of an existing gs_mssl provider.
+      const providers = await getHorizonClient().get<
+        Array<Record<string, unknown>>
+      >('/api/v1/dcv/providers');
+      const credentials = providers.find(
+        (p) => p['type'] === 'gs_mssl' && typeof p['credentials'] === 'string',
+      )?.['credentials'];
+      if (!credentials) ctx.skip();
+
       const name = `${E2E_PREFIX}-dcv-sectigo`;
       const created = await callTool('create_dcv_provider', {
         name,
         type: 'sectigo',
         endpoint: 'https://sectigo.example.com',
-        credentials: PASSWORD_CREDS,
+        credentials,
         timeout: '30 seconds',
         dcvMethod: 'cname',
       });
