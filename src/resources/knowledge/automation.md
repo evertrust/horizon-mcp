@@ -247,9 +247,10 @@ Create three triggers with different `runPeriod` values, all subscribing to
 
 ---
 
-## Horizon 2.10 Trigger Type Catalog (10 Types)
+## Trigger Type Catalog (11 on 2.10, 15 on 2.11)
 
-Horizon 2.10 supports 10 trigger types organized into two categories.
+Horizon 2.10 supports 11 trigger types and Horizon 2.11 supports 15,
+organized into two categories.
 
 ### Notification Triggers (3)
 
@@ -263,21 +264,26 @@ run periods.
 | `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
-### Third-Party Triggers (7)
+### Third-Party Triggers (8 on 2.10, 12 on 2.11)
 
 Third-party triggers push or remove certificates to/from external systems.
 They require a third-party connector and have minimal user-configurable
 fields -- events, retries, and runPeriod are auto-computed per type.
 
-| Type         | Description                               | Requires              |
-| ------------ | ----------------------------------------- | --------------------- |
-| `akv`        | Azure Key Vault                           | Third-party connector |
-| `aws`        | AWS Certificate Manager / Secrets Manager | Third-party connector |
-| `f5client`   | F5 BIG-IP (client certificate)            | Third-party connector |
-| `f5as3`      | F5 AS3 (Application Services 3)           | Third-party connector |
-| `intunepkcs` | Microsoft Intune PKCS                     | Third-party connector |
-| `ldappub`    | LDAP publish                              | Third-party connector |
-| `gcm`        | Google Cloud Certificate Manager          | Third-party connector |
+| Type             | Description                               | Requires              |
+| ---------------- | ----------------------------------------- | --------------------- |
+| `akv`            | Azure Key Vault                           | Third-party connector |
+| `aws`            | AWS Certificate Manager / Secrets Manager | Third-party connector |
+| `f5client`       | F5 BIG-IP (client certificate)            | Third-party connector |
+| `f5as3`          | F5 AS3 (Application Services 3)           | Third-party connector |
+| `intunepkcs`     | Microsoft Intune PKCS                     | Third-party connector |
+| `ldappub`        | LDAP publish                              | Third-party connector |
+| `gcm`            | Google Cloud Certificate Manager          | Third-party connector |
+| `netscaler`      | NetScaler ADC                             | Third-party connector |
+| `fortigate`      | FortiGate firewall (Horizon 2.11+)        | Third-party connector |
+| `fortimanager`   | FortiManager (Horizon 2.11+)              | Third-party connector |
+| `panos_firewall` | PAN-OS firewall (Horizon 2.11+)           | Third-party connector |
+| `panos_panorama` | Palo Alto Panorama (Horizon 2.11+)        | Third-party connector |
 
 ---
 
@@ -292,7 +298,7 @@ third-party triggers do not use.
 | Field      | Type         | Description                                                        |
 | ---------- | ------------ | ------------------------------------------------------------------ |
 | `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
-| `type`     | string       | One of the 10 types listed above                                   |
+| `type`     | string       | One of the types listed above                                      |
 | `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
@@ -459,7 +465,7 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 - `static` -- the webhook URL is provided directly in the `webhook` object.
 - `team` -- the webhook URL is resolved from the certificate's team configuration.
 
-### Third-Party Triggers (akv, aws, f5client, f5as3, intunepkcs, ldappub, gcm)
+### Third-Party Triggers
 
 Third-party triggers have only 3 user-configurable fields:
 
@@ -472,6 +478,10 @@ Third-party triggers have only 3 user-configurable fields:
 All other fields (`events`, `retries`, `runPeriod`, etc.) are
 **auto-computed** per trigger type. User-supplied values for these fields
 are silently ignored by the API.
+
+Exception: `netscaler`, `fortigate`, `fortimanager`, `panos_firewall` and
+`panos_panorama` triggers also accept an optional `retries` (number of
+retries on error; the 2.11 docs give 1 to 15 for the firewall triggers).
 
 ---
 
