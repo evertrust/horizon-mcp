@@ -224,4 +224,42 @@ export const TOOL_SELECTION_SCENARIOS: readonly SelectionScenario[] = [
       submit_webra_challenge: ['profile', 'challenge', 'template'],
     },
   },
+  {
+    id: 'acme-search-accounts-by-contact',
+    question:
+      'Find the ACME accounts whose contact is mailto:admin@example.com.',
+    expectedPrimaryTools: ['search_acme_accounts'],
+    primaryMaxRank: 4,
+    disallowedTools: ['search_certificates'],
+    requiredArgs: {
+      search_acme_accounts: ['query'],
+    },
+  },
+  {
+    id: 'acme-create-eab',
+    question:
+      'Create an ACME External Account Binding named web-servers-eab with the EAB policy web-servers and an HS256 MAC key.',
+    expectedPrimaryTools: ['create_acme_eab'],
+    primaryMaxRank: 4,
+    requiredArgs: {
+      create_acme_eab: ['name', 'eab_policy', 'mac_key_algorithm'],
+    },
+  },
+  {
+    id: 'acme-compromise-account',
+    question:
+      'The key of ACME account 6448d56b310000400063f014 was stolen. Mark the account as compromised.',
+    expectedPrimaryTools: ['update_acme_account_status'],
+    primaryMaxRank: 4,
+    disallowedTools: ['delete_acme_account'],
+    requiredArgs: {
+      update_acme_account_status: ['account_id', 'status'],
+    },
+  },
+  {
+    id: 'acme-list-eab-policies',
+    question: 'Which ACME EAB policies are configured in Horizon?',
+    expectedPrimaryTools: ['list_eab_policies'],
+    primaryMaxRank: 4,
+  },
 ] as const;

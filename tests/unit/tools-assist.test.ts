@@ -139,6 +139,24 @@ describe('Assist tools', () => {
       expect(parsed['count']).toBe(42);
     });
 
+    it.each([
+      ['haql', '/api/v1/acme/accounts/search'],
+      ['heabql', '/api/v1/acme/eab/search'],
+    ])('validates %s against its search route', async (dialect, route) => {
+      mockClient.post.mockResolvedValueOnce({ count: 1, hasMore: false });
+
+      const result = await client.callTool({
+        name: 'validate_hql',
+        arguments: { dialect, query: 'status equals "valid"' },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith(route, {
+        query: 'status equals "valid"',
+        pageSize: 1,
+      });
+      expect(parseToolResult(result)['valid']).toBe(true);
+    });
+
     it('detects invalid query', async () => {
       mockClient.post.mockRejectedValueOnce(
         new Error('Unexpected token at position 5'),
@@ -169,6 +187,33 @@ describe('Assist tools', () => {
       const fieldNames = fields.map((f) => f['name']);
       expect(fieldNames).toContain('dn');
       expect(mockClient.get).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['haql', ['id', 'contact', 'eab.name', 'status', 'created.at']],
+      [
+        'heabql',
+        [
+          'id',
+          'name',
+          'status',
+          'mackey.algorithm',
+          'expiration.date',
+          'created.at',
+          'eab.policy',
+          'validation.methods',
+        ],
+      ],
+    ])('returns the documented %s fields', async (queryType, names) => {
+      const result = await client.callTool({
+        name: 'describe_query_fields',
+        arguments: { query_type: queryType },
+      });
+      const parsed = parseToolResult(result);
+      const fields = parsed['fields'] as Array<Record<string, unknown>>;
+
+      expect(fields.map((f) => f['name'])).toEqual(names);
+      expect(parsed['combinators']).toEqual(['and', 'or']);
     });
 
     it('returns error for unknown type', async () => {

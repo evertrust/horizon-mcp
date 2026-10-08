@@ -528,6 +528,75 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "allowed_profiles": {
+          "description": "ACME profiles the bound accounts may use.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "description": "Free-text description.",
+          "type": "string",
+        },
+        "eab_policy": {
+          "description": "Name of an existing EAB policy (see list_eab_policies).",
+          "minLength": 1,
+          "type": "string",
+        },
+        "eab_validity_duration": {
+          "description": "EAB validity duration, for example "365 days".",
+          "pattern": "^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$",
+          "type": "string",
+        },
+        "email_constraint": {
+          "description": "Regular expression that every account contact email must match.",
+          "type": "string",
+        },
+        "identifier_constraint": {
+          "description": "Regular expression that every order identifier must match.",
+          "type": "string",
+        },
+        "mac_key_algorithm": {
+          "description": "MAC key algorithm.",
+          "enum": [
+            "HS256",
+            "HS384",
+            "HS512",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "validation_methods": {
+          "description": "Allowed challenge types.",
+          "items": {
+            "enum": [
+              "http-01",
+              "dns-01",
+              "tls-alpn-01",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "eab_policy",
+        "mac_key_algorithm",
+      ],
+      "type": "object",
+    },
+    "name": "create_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "charts": {
           "description": "List of chart objects (default: empty list for blank dashboard). Each chart: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"], "i": "1", "x": 0, "y": 0, "w": 6, "h": 4}. Recommended: start with charts=[] and use add_dashboard_chart interactively.",
           "items": {
@@ -1146,6 +1215,50 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "account_id": {
+          "description": "ACME account ID (the _id field of the account).",
+          "minLength": 1,
+          "type": "string",
+        },
+        "expected_account_id": {
+          "description": "Must exactly match account_id as a deletion safeguard.",
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+        "expected_account_id",
+      ],
+      "type": "object",
+    },
+    "name": "delete_acme_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "expected_name": {
+          "description": "Must exactly match name as a deletion safeguard.",
+          "type": "string",
+        },
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "expected_name": {
           "description": "Must exactly match name as a deletion safeguard.",
           "type": "string",
@@ -1289,7 +1402,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "query_type": {
-          "description": "Query language type - one of: hcql, hrql, heql, hdql.",
+          "description": "Query language type - one of: hcql, hrql, heql, hdql, haql, heabql.",
           "type": "string",
         },
       },
@@ -1666,6 +1779,57 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "account_id": {
+          "description": "ACME account ID (the _id field of the account).",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "order_id": {
+          "description": "ACME order ID.",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "order_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_order",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "certificate_id": {
           "description": "Certificate ID.",
           "type": "string",
@@ -1906,6 +2070,46 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "get_trigger",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "account_id": {
+          "description": "ACME account ID (the _id field of the account).",
+          "minLength": 1,
+          "type": "string",
+        },
+        "page_index": {
+          "default": 0,
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page, max 100 (default 25).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "sorted_by": {
+          "description": "Sort specification 'field:Asc' or 'field:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "description": "Include the total matching count so has_more and next_page_index are reliable. Default true.",
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "account_id",
+      ],
+      "type": "object",
+    },
+    "name": "list_acme_orders",
   },
   {
     "inputSchema": {
@@ -2238,6 +2442,37 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "eab_validity_duration": {
+          "description": "New EAB validity duration, for example "365 days". If you omit it, the renewed EAB has no expiry.",
+          "pattern": "^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$",
+          "type": "string",
+        },
+        "mac_key_algorithm": {
+          "description": "MAC key algorithm.",
+          "enum": [
+            "HS256",
+            "HS384",
+            "HS512",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "renew_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "domain": {
           "description": "Domain to validate.",
           "type": "string",
@@ -2270,6 +2505,78 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "run_dcv_policy",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "page_index": {
+          "default": 0,
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page, max 100 (default 25).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "query": {
+          "description": "HAQL query. Omit to match every account.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort specification 'field:Asc' or 'field:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "description": "Include the total matching count so has_more and next_page_index are reliable. Default true.",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "search_acme_accounts",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "page_index": {
+          "default": 0,
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "page_size": {
+          "default": 25,
+          "description": "Results per page, max 100 (default 25).",
+          "maximum": 100,
+          "minimum": 1,
+          "type": "integer",
+        },
+        "query": {
+          "description": "HEABQL query. Omit to match every EAB.",
+          "type": "string",
+        },
+        "sorted_by": {
+          "description": "Sort specification 'field:Asc' or 'field:Desc'.",
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "description": "Include the total matching count so has_more and next_page_index are reliable. Default true.",
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "search_acme_eabs",
   },
   {
     "inputSchema": {
@@ -2959,6 +3266,167 @@ Examples:
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "account_id": {
+          "description": "ACME account ID (the _id field of the account).",
+          "minLength": 1,
+          "type": "string",
+        },
+        "compromised_at": {
+          "description": "Only for status "compromised". Unix epoch time in milliseconds. Certificates issued after this date are revoked.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "compromission_reason": {
+          "description": "Only for status "compromised". Revocation reason applied to the revoked certificates.",
+          "enum": [
+            "unspecified",
+            "keycompromise",
+            "cacompromise",
+            "affiliationchange",
+            "superseded",
+            "cessationofoperation",
+          ],
+          "type": "string",
+        },
+        "status": {
+          "description": "New account status.",
+          "enum": [
+            "valid",
+            "deactivated",
+            "suspended",
+            "revoked",
+            "compromised",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+        "status",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_account_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "allowed_profiles": {
+          "description": "ACME profiles the bound accounts may use.",
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "clear_fields": {
+          "description": "Fields to remove. Text fields are left out, lists become [].",
+          "items": {
+            "enum": [
+              "description",
+              "identifierConstraint",
+              "allowedProfiles",
+              "validationMethods",
+              "emailConstraint",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "description": "Free-text description.",
+          "type": "string",
+        },
+        "eab_policy": {
+          "description": "EAB policy name.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "email_constraint": {
+          "description": "Regular expression that every account contact email must match.",
+          "type": "string",
+        },
+        "identifier_constraint": {
+          "description": "Regular expression that every order identifier must match.",
+          "type": "string",
+        },
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "validation_methods": {
+          "description": "Allowed challenge types.",
+          "items": {
+            "enum": [
+              "http-01",
+              "dns-01",
+              "tls-alpn-01",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
+        "compromised_at": {
+          "description": "Only for status "compromised". Unix epoch time in milliseconds. Certificates issued after this date are revoked.",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer",
+        },
+        "compromission_reason": {
+          "description": "Only for status "compromised". Revocation reason applied to the revoked certificates.",
+          "enum": [
+            "unspecified",
+            "keycompromise",
+            "cacompromise",
+            "affiliationchange",
+            "superseded",
+            "cessationofoperation",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "description": "EAB name.",
+          "minLength": 1,
+          "type": "string",
+        },
+        "status": {
+          "description": "New EAB status.",
+          "enum": [
+            "valid",
+            "disabled",
+            "suspended",
+            "deactivated",
+            "compromised",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "status",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_eab_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "charts": {
           "description": "New charts list (replaces existing).",
           "items": {
@@ -3494,12 +3962,14 @@ Examples:
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "dialect": {
-          "description": "Query dialect: hcql (certificates), hrql (requests), heql (events), hdql (discovery events).",
+          "description": "Query dialect: hcql (certificates), hrql (requests), heql (events), hdql (discovery events), haql (ACME accounts, Horizon 2.11+), heabql (ACME EABs, Horizon 2.11+).",
           "enum": [
             "hcql",
             "hrql",
             "heql",
             "hdql",
+            "haql",
+            "heabql",
           ],
           "type": "string",
         },

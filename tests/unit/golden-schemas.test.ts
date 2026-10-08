@@ -136,6 +136,8 @@ describe('Critical tool schema spot-checks', () => {
 
 describe('Delete tool safety-tier enumeration', () => {
   const EXPECTED_DELETE_TOOLS = [
+    'delete_acme_account',
+    'delete_acme_eab',
     'delete_dashboard',
     'delete_datasource',
     'delete_discovery_campaign',
