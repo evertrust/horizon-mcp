@@ -102,7 +102,7 @@ function accountPath(accountId: string): string {
   return `/api/v1/acme/accounts/${encodePathSegment(accountId)}`;
 }
 
-export function registerAcmeAccountTools(
+function registerAccountReadTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
@@ -132,7 +132,12 @@ export function registerAcmeAccountTools(
     async ({ account_id }) =>
       text(JSON.stringify(await client.get(accountPath(account_id)))),
   );
+}
 
+function registerAccountMutationTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'update_acme_account_status',
@@ -162,4 +167,12 @@ export function registerAcmeAccountTools(
       );
     },
   );
+}
+
+export function registerAcmeAccountTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
+  registerAccountReadTools(server, client);
+  registerAccountMutationTools(server, client);
 }

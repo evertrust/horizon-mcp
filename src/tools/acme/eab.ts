@@ -276,10 +276,30 @@ function registerEabReadTools(server: McpServer, client: HorizonClient): void {
   );
 }
 
-function registerEabMutationTools(
-  server: McpServer,
-  client: HorizonClient,
-): void {
+/**
+ * Build the full-replace EabUpdateRequest body from the stored EAB. Its fields
+ * are not nullable: cleared text fields are left out and cleared lists are [].
+ */
+function buildEabUpdateBody(
+  current: Record<string, unknown>,
+  args: Partial<Record<UpdateInput, unknown>> & { name: string },
+  cleared: readonly string[],
+): Record<string, unknown> {
+  const stored = Object.fromEntries(
+    Object.values(UPDATE_FIELDS)
+      .filter((field) => current[field] !== undefined)
+      .filter((field) => !cleared.includes(field))
+      .map((field) => [field, current[field]]),
+  );
+  const emptiedLists = Object.fromEntries(
+    cleared
+      .filter((field) => LIST_FIELDS.includes(field))
+      .map((field) => [field, []]),
+  );
+  return { ...stored, ...emptiedLists, ...mapFields(args), name: args.name };
+}
+
+function registerEabWriteTools(server: McpServer, client: HorizonClient): void {
   registerTool(
     server,
     'create_acme_eab',
@@ -307,26 +327,7 @@ function registerEabMutationTools(
       const current = await client.get<Record<string, unknown>>(
         eabPath(args.name),
       );
-      // EabUpdateRequest fields are not nullable: leave cleared text fields
-      // out and send [] for cleared lists.
-      const cleared: readonly string[] = clear_fields ?? [];
-      const stored = Object.fromEntries(
-        Object.values(UPDATE_FIELDS)
-          .filter((field) => current[field] !== undefined)
-          .filter((field) => !cleared.includes(field))
-          .map((field) => [field, current[field]]),
-      );
-      const emptiedLists = Object.fromEntries(
-        cleared
-          .filter((field) => LIST_FIELDS.includes(field))
-          .map((field) => [field, []]),
-      );
-      const body = {
-        ...stored,
-        ...emptiedLists,
-        ...mapFields(args),
-        name: args.name,
-      };
+      const body = buildEabUpdateBody(current, args, clear_fields ?? []);
       const result = await client.put(EAB_ROUTE, body);
       return text(
         JSON.stringify({
@@ -338,7 +339,12 @@ function registerEabMutationTools(
       );
     },
   );
+}
 
+function registerEabLifecycleTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'update_acme_eab_status',
@@ -387,5 +393,6 @@ export function registerAcmeEabTools(
   client: HorizonClient,
 ): void {
   registerEabReadTools(server, client);
-  registerEabMutationTools(server, client);
+  registerEabWriteTools(server, client);
+  registerEabLifecycleTools(server, client);
 }
