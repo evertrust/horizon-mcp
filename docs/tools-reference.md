@@ -174,7 +174,7 @@ These tools manage the ACME accounts, orders, and External Account Bindings (EAB
 
 `renew_acme_eab` keeps the MAC key ID and makes the previous MAC key invalid: new registrations with the old key are rejected. ACME accounts that are already bound are not affected. If you renew without a validity duration, the EAB has no expiry, even if it had one before.
 
-The status `compromised` is final for an account, and Horizon revokes its certificates. If you set an EAB to `compromised`, Horizon compromises every account bound to the EAB.
+The status `compromised` is final for an account and for an EAB. Horizon revokes the account certificates. If you set an EAB to `compromised`, Horizon also compromises every account bound to the EAB.
 
 | Tool                         | Safety               | Description                                                      |
 | ---------------------------- | -------------------- | ---------------------------------------------------------------- |

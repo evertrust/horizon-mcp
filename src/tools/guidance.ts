@@ -263,7 +263,7 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
       'caller explicitly wants to disable, suspend, deactivate, reactivate, or compromise an EAB',
     doNotUseWhen: 'caller wants to edit EAB constraints; use update_acme_eab',
     beforeCall:
-      'confirm status with the user; compromised makes every bound account compromised (final) and revokes their certificates',
+      'confirm status with the user; compromised is irreversible, compromises every bound account and revokes their certificates',
   },
   renew_acme_eab: {
     useWhen: 'caller lost the EAB MAC key or wants a new one',
