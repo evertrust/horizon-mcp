@@ -81,7 +81,7 @@ export const PAGINATION_SHAPE = {
     .min(0)
     .default(0)
     .describe(
-      'Page index (0-based). Use next_page_index from the previous response to paginate.',
+      'Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.',
     ),
   page_size: z
     .number()
@@ -103,8 +103,9 @@ export const PAGINATION_SHAPE = {
 };
 
 export const PAGINATION_NOTE =
-  'Pagination: page_index is 0-based; use next_page_index from the previous ' +
-  'response; stop when has_more is false.';
+  'Pagination: page_index is 0-based in this tool (the first page is 0), ' +
+  'like the other search tools; the tool converts it for the Horizon API. ' +
+  'Use next_page_index from the previous response; stop when has_more is false.';
 
 export function buildPagedBody(args: {
   query?: string;
@@ -113,6 +114,8 @@ export function buildPagedBody(args: {
   sorted_by?: string;
   with_count: boolean;
 }): Record<string, unknown> {
+  // The tool's page_index is 0-based; toApiPageIndex converts it as for the
+  // other Horizon search tools.
   const sortedBy = buildSortedBy(args.sorted_by);
   return {
     ...(args.query ? { query: args.query } : {}),
