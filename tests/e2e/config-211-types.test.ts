@@ -21,6 +21,7 @@ import {
   E2E_PREFIX,
   callTool,
   getHorizonClient,
+  isHorizon211OrLater,
   setupE2EStack,
 } from './setup.js';
 
@@ -89,17 +90,6 @@ function subtypeRequired(
     (d) => d.properties?.type?.const === subtype,
   );
   return def?.required ?? [];
-}
-
-/** True when GET /api/v1/licenses reports Horizon 2.11 or later. */
-async function isHorizon211OrLater(): Promise<boolean> {
-  const license =
-    await getHorizonClient().get<Record<string, unknown>>('/api/v1/licenses');
-  const version = String(license['version'] ?? '');
-  const match = /^(\d+)\.(\d+)/.exec(version);
-  if (!match) throw new Error(`Unexpected Horizon version: "${version}"`);
-  const [major, minor] = [Number(match[1]), Number(match[2])];
-  return major > 2 || (major === 2 && minor >= 11);
 }
 
 async function deleteQuietly(tool: string, name: string): Promise<void> {
