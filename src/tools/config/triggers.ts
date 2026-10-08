@@ -5,7 +5,7 @@
  * The legacy src/tools/triggers.ts already provides list_triggers, get_trigger,
  * delete_trigger, simulate_trigger, and the create_rest_notification
  * convenience tool - this module adds the GENERIC create + update that were
- * missing, covering all 11 trigger subtypes.
+ * missing, covering all 15 trigger subtypes.
  *
  * Body fields per the Horizon OpenAPI. Polymorphic union
  * discriminated by the lowercase `type` field. Route /api/v1/triggers; update
@@ -50,6 +50,11 @@ const TRIGGER_TYPES = [
   'gcm',
   'ldappub',
   'netscaler',
+  // Horizon 2.11+
+  'fortigate',
+  'fortimanager',
+  'panos_firewall',
+  'panos_panorama',
 ] as const;
 
 /** Union of every subtype's top-level property keys (from the resolved schema). */
@@ -148,7 +153,8 @@ export function registerTriggerCrudTools(
     description:
       'Create a trigger: an EVENT-DRIVEN action that fires ON certificate ' +
       'lifecycle events (email, webhook, rest, akv, f5client, f5as3, aws, ' +
-      'intunepkcs, gcm, ldappub, netscaler). A vendor-typed trigger is the event ' +
+      'intunepkcs, gcm, ldappub, netscaler, and on Horizon 2.11+ fortigate, ' +
+      'fortimanager, panos_firewall, panos_panorama). A vendor-typed trigger is the event ' +
       'HOOK - distinct from a third-party connector of the same vendor (the ' +
       'standing publish integration, create_thirdparty_connector). For a simple ' +
       'REST ' +

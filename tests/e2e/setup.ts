@@ -14,6 +14,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { HorizonClient } from '../../src/client/http.js';
 import { registerAllResources } from '../../src/resources/index.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -83,6 +84,17 @@ export function getHorizonClient(): HorizonClient {
     );
   }
   return horizonClient;
+}
+
+/** True when GET /api/v1/licenses reports Horizon 2.11 or later. */
+export async function isHorizon211OrLater(): Promise<boolean> {
+  const license =
+    await getHorizonClient().get<Record<string, unknown>>('/api/v1/licenses');
+  const version = String(license['version'] ?? '');
+  const match = /^(\d+)\.(\d+)/.exec(version);
+  if (!match) throw new Error(`Unexpected Horizon version: "${version}"`);
+  const [major, minor] = [Number(match[1]), Number(match[2])];
+  return major > 2 || (major === 2 && minor >= 11);
 }
 
 // ---------------------------------------------------------------------------
@@ -229,6 +241,7 @@ function registerAllTools(server: McpServer, client: HorizonClient): void {
   registerCryptoTools(server, client);
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
+  registerAcmeTools(server, client);
   registerConfigTools(server, client);
 }
 

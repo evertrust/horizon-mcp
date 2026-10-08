@@ -16,9 +16,23 @@ Horizon supports these DCV provider types:
 
 - `digicert`: DigiCert DCV API integration. It needs an endpoint, DCV-target
   credentials, timeout, and optionally an HTTP proxy.
-- `gs_mssl`: GlobalSign Managed SSL DCV integration. It needs an endpoint,
-  password credentials, timeout, profile, defaultEmail, defaultPhone, and
-  optionally an HTTP proxy.
+- `gs_mssl` (Horizon 2.11+): GlobalSign Managed SSL DCV integration, used
+  with the GlobalSign MSSL PKI connector. It needs an endpoint, password
+  credentials, timeout, profile, defaultEmail, defaultPhone, and optionally
+  an HTTP proxy.
+- `sectigo` (Horizon 2.11+): Sectigo Certificate Manager DCV integration,
+  used with the Sectigo PKI connector (which still issues the certificates).
+  Fields: `endpoint` (SCM API base URL), `oauthTokenEndpoint` (defaults to
+  Sectigo SSO), `credentials` (login = API client ID, password = client
+  secret), `dcvMethod` (`cname` or `txt`), `timeout`; optional `organizationId`
+  and proxy. `dcvMethod` applies only to domains never
+  validated (or validated with a method Horizon cannot drive, such as
+  email); a validated domain is re-validated with its own method. An order
+  already in progress on Sectigo is reused. Sectigo checks pending
+  validations every 5 minutes, so set the policy execution timeout
+  accordingly. Without `organizationId`, every never-validated domain of the
+  account is in scope: use the policy domain filter to limit validation and
+  license use.
 
 Credentials must be existing Horizon credentials with the DCV target. Provider
 names are immutable primary keys.

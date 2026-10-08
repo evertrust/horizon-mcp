@@ -211,7 +211,7 @@ own entry in the `discoveryData` array, keyed by IP address.
 **When to use `discoveryData` in searches:**
 
 - Find all certificates on a host: `discoverydata.ip equals "10.0.1.50"`
-- Find certs used by Tomcat: `discoverydata.usages contains "tomcat"` or `discoverydata.paths contains "tomcat"`
+- Find certs on hosts named for Tomcat: `discoverydata.hostnames contains "tomcat"`
 - Find certs exposed on port 8443: `discoverydata.tls.port equals 8443`
 - Find certs on a subnet: `discoverydata.ip matches "^10\\.0\\.1\\."`
 - Find certs with TLS 1.2: `discoverydata.tls.version equals "TLSv1.2"`
@@ -360,8 +360,10 @@ When the Horizon Client discovers a certificate, it records:
 | `usages`           | Array of strings or null - Config file paths used to find the certificate, localscan only (e.g. `["tomcat-*:8443", "/opt/tomcat/conf"]`) |
 | `tlsPorts`         | Array of TlsPort objects or null - Ports where the certificate is exposed for HTTPS (netscan only)                                       |
 
-These fields are searchable in HCQL as `discoverydata.<field>` - see the
-query languages reference for the full field list.
+HCQL supports `discoverydata.ip`, `discoverydata.hostnames`,
+`discoverydata.tls.port`, `discoverydata.tls.version`,
+`discoverydata.operatingsystems`, and `discoverydata.sources`.
+Paths and usages are returned metadata, not HCQL-searchable fields.
 
 ### Natively integrated services
 
@@ -378,9 +380,9 @@ record detailed binding information in `paths` and `usages`:
 | **HAProxy** | `/etc/haproxy/certs/frontend.pem`                    | `haproxy:443`, `/etc/haproxy/haproxy.cfg`  |
 | **IIS**     | Windows certificate store                            | `IIS:443`, `Default Web Site`              |
 
-For these services, HCQL queries should search `discoverydata.paths`,
-`discoverydata.usages`, and `discoverydata.hostnames` in addition to
-`dn` and `san` to get comprehensive results. See the "Service Discovery
+For these services, HCQL queries should search `discoverydata.hostnames`
+in addition to `dn` and `san`. Inspect returned paths and usages for
+service bindings that cannot be searched with HCQL. See the "Service Discovery
 Patterns" section in the query languages reference for ready-to-use queries.
 
 ---

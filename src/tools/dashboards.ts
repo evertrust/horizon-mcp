@@ -152,9 +152,8 @@ const ADD_DASHBOARD_CHART_CONFIG = {
         'Chart configuration object. Required fields: ' +
           '{"type": "donut", "title": "My Chart", ' +
           '"localQuery": "status is valid", "fields": ["keyType"]}. ' +
-          'Valid chart types: area, donut, heatmap, bar-horizontal, ' +
-          'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
-          'bar-vertical. ' +
+          'Chart types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, ' +
+          'bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical, polar, pyramid. ' +
           'Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). ' +
           'Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), ' +
           '"direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), ' +
@@ -178,9 +177,8 @@ const UPDATE_DASHBOARD_CHART_CONFIG = {
       .string()
       .optional()
       .describe(
-        'Chart type - area, donut, heatmap, bar-horizontal, ' +
-          'line, metric, pie, polar, pyramid, radar, table, treemap, ' +
-          'or bar-vertical.',
+        'Chart types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, ' +
+          'bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical, polar, pyramid.',
       ),
     local_query: z
       .string()

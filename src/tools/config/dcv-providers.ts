@@ -4,12 +4,13 @@
  * 5 tools: list / get / create / update / delete.
  * New in Horizon 2.10. A DCV provider is the CA-side integration that issues and
  * tracks DCV challenges. The configuration is discriminated by `type`; Horizon
- * 2.10 ships "digicert" and "gs_mssl" provider types. The schemas are
- * discriminated by type because GlobalSign MSSL requires additional fields.
+ * 2.10 supports "digicert"; "gs_mssl" and "sectigo" require Horizon 2.11+. The
+ * schemas are discriminated by type because GlobalSign MSSL and Sectigo require
+ * additional fields.
  *
  * `_id` and `tenant` are ignored on input. gs_mssl additionally requires
- * profile, defaultEmail, and defaultPhone. timeout is mandatory for both
- * types; proxy is optional.
+ * profile, defaultEmail, and defaultPhone. sectigo additionally requires
+ * dcvMethod. timeout is mandatory for all types; proxy is optional.
  *
  * Route: /api/v1/dcv/providers. Update PUTs the COLLECTION root (body-keyed
  * full-replace); the wrapper does GET-merge so omitted fields are preserved.
@@ -64,6 +65,39 @@ const defaultEmailSchema = z
 const defaultPhoneSchema = z
   .string()
   .describe('Default contact phone for GlobalSign MSSL DCV (gs_mssl).');
+const sectigoCredentialsSchema = z
+  .string()
+  .describe(
+    'Name of an existing login/password credentials object that holds the ' +
+      'Sectigo Certificate Manager API client: the OAuth client id as login ' +
+      'and the client secret as password.',
+  );
+const sectigoEndpointSchema = z
+  .string()
+  .describe(
+    'Sectigo Certificate Manager (SCM) API base URL, e.g. ' +
+      '"https://admin.enterprise.sectigo.com".',
+  );
+const oauthTokenEndpointSchema = z
+  .string()
+  .describe(
+    'OAuth token endpoint used to get a bearer token for the SCM API. ' +
+      'Optional. Default: "https://auth.sso.sectigo.com/auth/realms/apiclients/protocol/openid-connect/token".',
+  );
+const dcvMethodSchema = z
+  .enum(['cname', 'txt'])
+  .describe(
+    'DNS method used to validate a domain. It is a fallback: a domain that ' +
+      'already has a CNAME or TXT validation is validated again with its own ' +
+      'method.',
+  );
+const organizationIdSchema = z
+  .number()
+  .int()
+  .describe(
+    'Optional Sectigo organization or department id. It limits the domain ' +
+      'listing. When unset, all domains of the customer account are listed.',
+  );
 const providerNameSchema = z
   .string()
   .describe('Provider name. Immutable primary key (the update lookup key).');
@@ -83,7 +117,9 @@ const CREATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
   }),
   z.object({
     name: providerNameSchema,
-    type: z.literal('gs_mssl').describe('GlobalSign MSSL DCV provider.'),
+    type: z
+      .literal('gs_mssl')
+      .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema,
     credentials: credentialsSchema,
     timeout: timeoutSchema,
@@ -91,6 +127,19 @@ const CREATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
     profile: profileSchema,
     defaultEmail: defaultEmailSchema,
     defaultPhone: defaultPhoneSchema,
+  }),
+  z.object({
+    name: providerNameSchema,
+    type: z
+      .literal('sectigo')
+      .describe('Sectigo DCV provider (Horizon 2.11+).'),
+    endpoint: sectigoEndpointSchema,
+    credentials: sectigoCredentialsSchema,
+    timeout: timeoutSchema,
+    dcvMethod: dcvMethodSchema,
+    oauthTokenEndpoint: oauthTokenEndpointSchema.optional(),
+    organizationId: organizationIdSchema.optional(),
+    proxy: proxySchema.optional(),
   }),
 ]);
 
@@ -106,7 +155,9 @@ const UPDATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
   }),
   z.object({
     name: providerNameSchema,
-    type: z.literal('gs_mssl').describe('GlobalSign MSSL DCV provider.'),
+    type: z
+      .literal('gs_mssl')
+      .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema.optional(),
     credentials: credentialsSchema.optional(),
     timeout: timeoutSchema.optional(),
@@ -116,12 +167,33 @@ const UPDATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
     defaultPhone: defaultPhoneSchema.optional(),
     clear_fields: clearFieldsSchema,
   }),
+  z.object({
+    name: providerNameSchema,
+    type: z
+      .literal('sectigo')
+      .describe('Sectigo DCV provider (Horizon 2.11+).'),
+    endpoint: sectigoEndpointSchema.optional(),
+    credentials: sectigoCredentialsSchema.optional(),
+    timeout: timeoutSchema.optional(),
+    dcvMethod: dcvMethodSchema.optional(),
+    oauthTokenEndpoint: oauthTokenEndpointSchema.optional(),
+    organizationId: organizationIdSchema.optional(),
+    proxy: proxySchema.optional(),
+    clear_fields: clearFieldsSchema,
+  }),
 ]);
 
 type CreateDcvProviderArgs = z.infer<typeof CREATE_DCV_PROVIDERS_SCHEMA>;
 type UpdateDcvProviderArgs = z.infer<typeof UPDATE_DCV_PROVIDERS_SCHEMA>;
 
-const GS_MSSL_KEYS = ['profile', 'defaultEmail', 'defaultPhone'] as const;
+const SUBTYPE_KEYS = [
+  'profile',
+  'defaultEmail',
+  'defaultPhone',
+  'dcvMethod',
+  'oauthTokenEndpoint',
+  'organizationId',
+] as const;
 
 function addDefinedFields(
   target: Record<string, unknown>,
@@ -144,7 +216,7 @@ function buildProviderPayload(
     timeout: args.timeout,
   };
   if (args.proxy !== undefined) body['proxy'] = args.proxy;
-  addDefinedFields(body, args as Record<string, unknown>, GS_MSSL_KEYS);
+  addDefinedFields(body, args as Record<string, unknown>, SUBTYPE_KEYS);
   return body;
 }
 
@@ -157,7 +229,7 @@ function buildProviderOverrides(
     overrides['credentials'] = args.credentials;
   if (args.timeout !== undefined) overrides['timeout'] = args.timeout;
   if (args.proxy !== undefined) overrides['proxy'] = args.proxy;
-  addDefinedFields(overrides, args as Record<string, unknown>, GS_MSSL_KEYS);
+  addDefinedFields(overrides, args as Record<string, unknown>, SUBTYPE_KEYS);
   return overrides;
 }
 
@@ -176,7 +248,7 @@ export function registerDcvProviderTools(
     description:
       'Create a DCV (Domain Control Validation) provider: the public-CA-side ' +
       'integration that performs domain-control validation for public ' +
-      'certificates (digicert or gs_mssl). This is DCV - distinct from a PKI ' +
+      'certificates (digicert, or gs_mssl and sectigo on Horizon 2.11+). This is DCV - distinct from a PKI ' +
       'connector, which issues certificates. credentials must reference an ' +
       'existing credentials object with the DCV target.',
     mandatoryFields: ['name', 'type', 'endpoint', 'credentials', 'timeout'],
@@ -187,7 +259,7 @@ export function registerDcvProviderTools(
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update an existing DCV provider configuration. The submitted type must ' +
-      'match the stored one.',
+      'match the stored one. gs_mssl and sectigo require Horizon 2.11+.',
     inputSchema: UPDATE_DCV_PROVIDERS_SCHEMA as never,
     buildOverrides: (args) =>
       buildProviderOverrides(args as UpdateDcvProviderArgs),

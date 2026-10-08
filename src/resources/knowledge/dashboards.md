@@ -32,24 +32,25 @@ which aggregation fields are valid in chart `fields`.
 
 ## Chart Type Catalog
 
-Horizon supports 13 chart types. Each type is suited to different
-analytical goals.
+Each chart type is suited to different analytical goals.
 
-| Chart Type       | Best For                                              |
-| ---------------- | ----------------------------------------------------- |
-| `area`           | Trends over time with volume emphasis                 |
-| `donut`          | Part-of-whole distribution (single dimension)         |
-| `heatmap`        | Density / intensity across two dimensions             |
-| `bar-horizontal` | Comparing categories when labels are long             |
-| `line`           | Trends over time with precise value tracking          |
-| `metric`         | Single KPI / headline number                          |
-| `pie`            | Similar to donut; classic proportional view           |
-| `polar`          | Radial category comparison                            |
-| `pyramid`        | Ranked funnel or tiered distribution                  |
-| `radar`          | Multi-axis profile comparison                         |
-| `table`          | Detailed tabular breakdowns                           |
-| `treemap`        | Hierarchical proportional view (e.g. grade breakdown) |
-| `bar-vertical`   | Comparing categories with short labels                |
+| Chart Type               | Best For                                              |
+| ------------------------ | ----------------------------------------------------- |
+| `area`                   | Trends over time with volume emphasis                 |
+| `donut`                  | Part-of-whole distribution (single dimension)         |
+| `heatmap`                | Density / intensity across two dimensions             |
+| `bar-horizontal`         | Comparing categories when labels are long             |
+| `line`                   | Trends over time with precise value tracking          |
+| `metric`                 | Single KPI / headline number                          |
+| `pie`                    | Similar to donut; classic proportional view           |
+| `bar-horizontal-stacked` | Stacked category comparison with horizontal bars      |
+| `bar-vertical-stacked`   | Stacked category comparison with vertical bars        |
+| `radar`                  | Multi-axis profile comparison                         |
+| `table`                  | Detailed tabular breakdowns                           |
+| `treemap`                | Hierarchical proportional view (e.g. grade breakdown) |
+| `bar-vertical`           | Comparing categories with short labels                |
+| `polar`                  | Radial category comparison                            |
+| `pyramid`                | Ranked funnel or tiered distribution                  |
 
 ---
 
@@ -59,7 +60,7 @@ Each chart object within a dashboard has the following structure:
 
 | Field         | Type         | Description                                                 |
 | ------------- | ------------ | ----------------------------------------------------------- |
-| `type`        | str          | One of the 13 chart types listed above                      |
+| `type`        | str          | One of the chart types listed above                         |
 | `title`       | str          | Display title for the chart                                 |
 | `description` | str or None  | Optional chart description                                  |
 | `fields`      | list[str]    | groupBy dimensions for the aggregate query                  |
@@ -208,7 +209,8 @@ expressions for quick recall.
 | `hdql` | HDQL           | Discovery event queries    |
 | `hpql` | HPQL           | Principal queries          |
 
-All type values are **lowercase**.
+All type values are **lowercase**. The Horizon 2.11 API lists no saved query
+or report type for HAQL or HEABQL (ACME accounts and EABs).
 
 ### Upsert Semantics
 
@@ -357,9 +359,9 @@ MCP tools handle this automatically by returning an empty list.
 
 ## Key Considerations
 
-1. **No shared dashboards**: Dashboards are strictly personal. To share a
-   dashboard configuration, export it as JSON and have another user import
-   it.
+1. **Personal dashboards**: Dashboards belong to the authenticated principal.
+   JSON export/import for sharing is a web UI feature with no dedicated API
+   route. **Available since Horizon 2.11 (Horizon 2.11+).**
 
 2. **Query validation**: Always validate `localQuery` expressions before
    saving a chart. Use search with `pageSize=1` to test the query against
