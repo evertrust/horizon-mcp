@@ -32,26 +32,25 @@ which aggregation fields are valid in chart `fields`.
 
 ## Chart Type Catalog
 
-Horizon supports 13 chart types on 2.10 and 15 on 2.11. Each type is suited
-to different analytical goals.
+Each chart type is suited to different analytical goals.
 
-| Chart Type                | Best For                                              |
-| ------------------------- | ----------------------------------------------------- |
-| `area`                    | Trends over time with volume emphasis                 |
-| `donut`                   | Part-of-whole distribution (single dimension)         |
-| `heatmap`                 | Density / intensity across two dimensions             |
-| `bar-horizontal`          | Comparing categories when labels are long             |
-| `line`                    | Trends over time with precise value tracking          |
-| `metric`                  | Single KPI / headline number                          |
-| `pie`                     | Similar to donut; classic proportional view           |
-| `bar-horizontal-stacked`  | Stacked category comparison with horizontal bars      |
-| `bar-vertical-stacked`    | Stacked category comparison with vertical bars        |
-| `radar`                   | Multi-axis profile comparison                         |
-| `table`                   | Detailed tabular breakdowns                           |
-| `treemap`                 | Hierarchical proportional view (e.g. grade breakdown) |
-| `bar-vertical`            | Comparing categories with short labels                |
-| `polar` (Horizon 2.11+)   | Radial category comparison                            |
-| `pyramid` (Horizon 2.11+) | Ranked funnel or tiered distribution                  |
+| Chart Type               | Best For                                              |
+| ------------------------ | ----------------------------------------------------- |
+| `area`                   | Trends over time with volume emphasis                 |
+| `donut`                  | Part-of-whole distribution (single dimension)         |
+| `heatmap`                | Density / intensity across two dimensions             |
+| `bar-horizontal`         | Comparing categories when labels are long             |
+| `line`                   | Trends over time with precise value tracking          |
+| `metric`                 | Single KPI / headline number                          |
+| `pie`                    | Similar to donut; classic proportional view           |
+| `bar-horizontal-stacked` | Stacked category comparison with horizontal bars      |
+| `bar-vertical-stacked`   | Stacked category comparison with vertical bars        |
+| `radar`                  | Multi-axis profile comparison                         |
+| `table`                  | Detailed tabular breakdowns                           |
+| `treemap`                | Hierarchical proportional view (e.g. grade breakdown) |
+| `bar-vertical`           | Comparing categories with short labels                |
+| `polar`                  | Radial category comparison                            |
+| `pyramid`                | Ranked funnel or tiered distribution                  |
 
 ---
 
@@ -61,7 +60,7 @@ Each chart object within a dashboard has the following structure:
 
 | Field         | Type         | Description                                                 |
 | ------------- | ------------ | ----------------------------------------------------------- |
-| `type`        | str          | One of the 13 chart types listed above                      |
+| `type`        | str          | One of the chart types listed above                         |
 | `title`       | str          | Display title for the chart                                 |
 | `description` | str or None  | Optional chart description                                  |
 | `fields`      | list[str]    | groupBy dimensions for the aggregate query                  |
