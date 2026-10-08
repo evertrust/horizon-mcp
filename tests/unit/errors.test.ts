@@ -404,6 +404,27 @@ describe('scrubSecretFromError', () => {
     expect(original.message).toContain(SECRET);
   });
 
+  it('redacts a secret prefix left at a truncation point', () => {
+    const longSecret = 'Q7xv2Lk9pTz4';
+    const padding = 'word '.repeat(39);
+    const original = parseErrorResponse(
+      400,
+      JSON.stringify({
+        error: 'WEBRA-ENROLL-015',
+        message: `${padding}${longSecret}`,
+        detail: `${padding}${longSecret}`,
+      }),
+    );
+    // Truncation keeps only the first 5 characters of the secret.
+    expect(original.detail).toBe(`${padding}Q7xv2... [truncated]`);
+
+    const scrubbed = scrubSecretFromError(original, longSecret);
+
+    expect(scrubbed.detail).toBe(`${padding}<redacted>... [truncated]`);
+    expect(scrubbed.message).not.toContain('Q7xv2');
+    expect(scrubbed.message).toContain(`${padding}<redacted>... [truncated]`);
+  });
+
   it('returns the same error when the secret does not appear', () => {
     const original = new HorizonError(400, {
       errorCode: 'WEBRA-ENROLL-015',
