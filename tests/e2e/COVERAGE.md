@@ -27,9 +27,6 @@ helper that invokes registered MCP tools directly.
 Mutating tests follow create -> verify -> delete with teardown; nothing is
 left behind on the QA instance.
 
-`acme.e2e.test.ts` passed 13/13 on 2026-10-07 against a Horizon 2.11 QA
-instance. The ACME routes do not exist before Horizon 2.11.
-
 ## LLM evaluation (tests/llm-evaluation/)
 
 | Tier           | File                                      | Description                                                                             |
