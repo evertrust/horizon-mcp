@@ -153,6 +153,6 @@ export function registerEabPolicyTools(
   registerDeleteTool(server, client, SPEC, {
     description: `${VERSION_NOTE} Delete an ACME EAB policy.`,
     deleteConstraints:
-      'Cannot be deleted while an active EAB references it (EAB-POLICY-002).',
+      'Cannot be deleted while at least one EAB references it (EAB-POLICY-002).',
   });
 }
