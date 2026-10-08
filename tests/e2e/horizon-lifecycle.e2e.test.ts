@@ -163,7 +163,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           certificate_id: certificate['_id'],
           enabled: certificate['autoRenew'],
         });
-        expect(typeof result['id']).toBe('string');
+        expect(typeof result['_id']).toBe('string');
         expect(typeof result['status']).toBe('string');
       });
     });
