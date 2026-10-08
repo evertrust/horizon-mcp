@@ -18,7 +18,7 @@ sets tailored to their domain.
 
 HAQL and HEABQL (Horizon 2.11+) have their own fields: see the Searching
 section of `horizon://knowledge/acme`. Validate them with `validate_hql`
-(`query_type` `haql` or `heabql`). The rest of this guide covers the five
+(`dialect` `haql` or `heabql`). The rest of this guide covers the five
 other languages.
 
 ---

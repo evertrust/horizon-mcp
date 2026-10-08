@@ -224,7 +224,9 @@ with optional `credentials`, `roleArn`, `region`, `proxy`, `endpoint`, and
 `description`. `forcePathStyle` supports S3-compatible endpoints that require
 path-style addressing; `checksumMode` controls S3 checksum behavior;
 `partBufferSize` is the multipart upload buffer and must be below 2 GB;
-`roleArn` selects an AWS role to assume.
+`roleArn` selects an AWS role to assume. `create_storage` takes these as
+snake_case inputs: `force_path_style`, `checksum_mode`, `part_buffer_size`,
+`role_arn`.
 
 The global `storage` system configuration entry wires a named storage backend
 through `archiveStorage` for archive files and `magicLinkReportStorage` for
