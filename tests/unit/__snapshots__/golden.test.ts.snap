@@ -2443,7 +2443,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "eab_validity_duration": {
-          "description": "EAB validity duration, for example "365 days".",
+          "description": "New EAB validity duration, for example "365 days". If you omit it, the renewed EAB has no expiry.",
           "pattern": "^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$",
           "type": "string",
         },

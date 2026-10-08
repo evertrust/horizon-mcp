@@ -52,13 +52,14 @@ describe('ACME account and order tools', () => {
     }
   });
 
-  it('marks status changes and deletes as destructive', async () => {
+  it('marks status changes, renewal and deletes as destructive', async () => {
     const { tools } = await client.listTools();
     const byName = new Map(tools.map((t) => [t.name, t.annotations]));
     for (const name of [
       'update_acme_account_status',
       'delete_acme_account',
       'update_acme_eab_status',
+      'renew_acme_eab',
       'delete_acme_eab',
     ]) {
       expect(byName.get(name)?.destructiveHint, name).toBe(true);
