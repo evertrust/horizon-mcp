@@ -8,11 +8,13 @@
  * enrolls the certificate it authorizes. The response is returned as is:
  * in centralized mode it holds the only copy of the PKCS#12, so it must not
  * go through the mutation formatter, which redacts `pkcs12`. The HTTP client
- * logs only the method, path and status, never the body.
+ * logs only the method, path and status, never the body. Errors are returned
+ * with the submitted challenge removed from their message and detail.
  */
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
+import { HorizonError, scrubSecretFromError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import { registerTool } from '../register.js';
 
@@ -63,10 +65,18 @@ export function registerChallengeTools(
     'submit_webra_challenge',
     SUBMIT_WEBRA_CHALLENGE_CONFIG,
     async ({ profile, challenge, template }) => {
-      const result = await client.post<Record<string, unknown>>(
-        '/api/v1/challenge/submit',
-        { profile, challenge, template },
-      );
+      let result: Record<string, unknown>;
+      try {
+        result = await client.post<Record<string, unknown>>(
+          '/api/v1/challenge/submit',
+          { profile, challenge, template },
+        );
+      } catch (err) {
+        // An error body can echo the challenge: never let it reach the model.
+        throw err instanceof HorizonError
+          ? scrubSecretFromError(err, challenge)
+          : err;
+      }
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
