@@ -245,9 +245,12 @@ Client    -> submit_webra_challenge (POST /api/v1/challenge/submit) -> certifica
 ```
 
 1. Get a challenge: submit an `enroll` request on the challenge profile (or
-   use "Request a WebRA Challenge" in the RA UI). The response `password`
-   field holds the generated challenge, not a PKCS#12 password. The request
-   stays `approved` until the challenge is used.
+   use "Request a WebRA Challenge" in the RA UI). The owner, contact email
+   and team of the future certificate are set on this request. The response
+   `password` field holds the generated challenge, not a PKCS#12 password.
+   With the enroll permission, the challenge is returned at once. With only
+   the request permission, wait until an operator approves the request and
+   its status is `completed`, then read the challenge from the request.
 2. Consume it with `submit_webra_challenge`: body {`profile`, `challenge`,
    `template`}. The endpoint needs no authentication: the challenge is the
    authorization. It is single use, expires, and is bound to its profile.
