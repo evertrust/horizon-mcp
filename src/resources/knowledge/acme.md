@@ -207,7 +207,7 @@ the account, the date, and the reason with the user before the call.
 
 Horizon 2.11+: check the version with `get_license_info` first. Read-only. `list_acme_orders` lists the
 orders of one account (`account_id`; paginated with `page_index` zero-based,
-`page_size` 20 by default, optional `with_count` and `sorted_by`).
+`page_size` 25 by default, optional `with_count` and `sorted_by`).
 `get_acme_order` reads one order by `order_id`. Orders have no query
 language.
 
@@ -259,9 +259,10 @@ status in ["suspended", "deactivated"]
 eab.policy equals "internal-web" and validation.methods contains "dns-01"
 ```
 
-Search tools take `query` plus `page_index`, `page_size`, `with_count` and
-`sorted_by`; responses carry `pageIndex`, `pageSize`, `count` (with
-`with_count`) and `hasMore`. EAB search can fail with `EAB-004` (wait time
+Search tools take `query` plus `page_index` (zero-based), `page_size` (25 by
+default), `with_count` (true by default) and `sorted_by`. Responses carry
+`results`, `page_index`, `page_size`, `total` (null without `with_count`),
+`has_more` and `next_page_index`. EAB search can fail with `EAB-004` (wait time
 exceeded): narrow the query and retry.
 
 ## Error codes
