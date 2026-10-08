@@ -172,6 +172,8 @@ These tools manage the ACME accounts, orders, and External Account Bindings (EAB
 
 `create_acme_eab` and `renew_acme_eab` return the MAC key and the MAC key ID one time only. Give them to the user immediately. Horizon does not show them again. If the user loses them, renew the EAB.
 
+`renew_acme_eab` keeps the MAC key ID and makes the previous MAC key invalid: new registrations with the old key are rejected. ACME accounts that are already bound are not affected. If you renew without a validity duration, the EAB has no expiry, even if it had one before.
+
 The status `compromised` is final for an account, and Horizon revokes its certificates. If you set an EAB to `compromised`, Horizon compromises every account bound to the EAB.
 
 | Tool                         | Safety               | Description                                                      |
@@ -187,7 +189,7 @@ The status `compromised` is final for an account, and Horizon revokes its certif
 | `create_acme_eab`            | mutating-safe        | Create an ACME EAB and return its one-time MAC key               |
 | `update_acme_eab`            | mutating-destructive | Update the policy and constraints of an ACME EAB                 |
 | `update_acme_eab_status`     | mutating-destructive | Change the status of an ACME EAB                                 |
-| `renew_acme_eab`             | mutating-safe        | Generate a new one-time MAC key for an ACME EAB                  |
+| `renew_acme_eab`             | mutating-destructive | Generate a new one-time MAC key for an ACME EAB                  |
 | `delete_acme_eab`            | mutating-destructive | Delete an ACME EAB (requires name confirmation)                  |
 
 ---

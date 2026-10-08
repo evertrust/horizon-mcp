@@ -268,7 +268,8 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
   renew_acme_eab: {
     useWhen: 'caller lost the EAB MAC key or wants a new one',
     doNotUseWhen: 'caller wants a new EAB; use create_acme_eab',
-    beforeCall: 'give the one-time macKey and macKeyId to the user',
+    beforeCall:
+      'confirm with the user: the previous MAC key stops working, and without eab_validity_duration the EAB has no expiry; give the one-time macKey and macKeyId to the user',
   },
   delete_acme_eab: {
     useWhen: 'caller explicitly wants to permanently remove an ACME EAB',

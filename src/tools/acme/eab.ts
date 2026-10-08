@@ -186,15 +186,25 @@ const UPDATE_ACME_EAB_STATUS_CONFIG = {
 
 const RENEW_ACME_EAB_CONFIG = {
   description:
-    `${ACME_VERSION_NOTE} Renew an ACME EAB: Horizon generates a new MAC key. ` +
-    'The response holds the new macKey and macKeyId ONCE: give them to the ' +
-    'user immediately. Horizon will not show them again.\n' +
-    'Safety tier: mutating-safe',
+    `${ACME_VERSION_NOTE} Renew an ACME EAB: Horizon generates a new MAC key ` +
+    'and keeps the MAC key ID. The previous MAC key stops working: new ' +
+    'registrations with it are rejected. ACME accounts already bound to the ' +
+    'EAB are not affected. If you omit eab_validity_duration, the renewed EAB ' +
+    'has no expiry, even if it had one before. Confirm with the user before ' +
+    'you call this tool. The response holds the new macKey and macKeyId ' +
+    'ONCE: give them to the user immediately. Horizon will not show them ' +
+    'again.\nSafety tier: mutating-destructive',
   inputSchema: z.object({
     name: nameSchema,
     mac_key_algorithm: macKeyAlgorithmSchema.optional(),
-    eab_validity_duration: validityDurationSchema,
+    eab_validity_duration: finiteDurationSchema
+      .optional()
+      .describe(
+        'New EAB validity duration, for example "365 days". If you omit it, ' +
+          'the renewed EAB has no expiry.',
+      ),
   }),
+  annotations: { destructiveHint: true, idempotentHint: false },
 };
 
 const DELETE_ACME_EAB_CONFIG = {
