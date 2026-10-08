@@ -130,16 +130,17 @@ certificate policy OIDs and qualifiers.
 WebRA is the primary web-based enrollment protocol. It supports the richest
 set of configuration options.
 
-| Field                  | Type     | Description                                                                                        |
-| ---------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`. Controls how requests are approved. |
-| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.  |
-| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                   |
-| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                               |
-| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                         |
-| `passwordPolicy`       | object   | Password requirements for PKCS#12 download (centralized mode).                                     |
-| `notificationTemplate` | string   | Email template for enrollment notifications.                                                       |
-| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                             |
+| Field                  | Type     | Description                                                                                                     |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (Horizon 2.11+).                     |
+| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.               |
+| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                                |
+| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                                            |
+| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                                      |
+| `passwordPolicy`       | string   | (Horizon 2.11+) Password policy name used to generate challenges. Required for `challenge`, rejected otherwise. |
+| `constraints`          | object   | (Horizon 2.11+) `allowedEmailDomains` and `allowedDnsDomains` regexes. On WebRA only profile constraints apply. |
+| `notificationTemplate` | string   | Email template for enrollment notifications.                                                                    |
+| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                                          |
 
 #### WebRA Authorization Modes
 
@@ -150,6 +151,11 @@ set of configuration options.
 - **`auto-validation-authorized`**: Enrollment tries auto-validation first.
   If the rules reject the request, it falls back to the manual approval queue
   for an authorized operator.
+- **`challenge`** (Horizon 2.11+): A single-use, expiring challenge issued
+  for this profile authorizes the enrollment. The template may be empty: the
+  client then supplies the identity and the profile `constraints` are the only
+  restriction. Template identity fields are enforced. See the WebRA challenge
+  flow in horizon://knowledge/workflows.
 
 See horizon://knowledge/validation-rules for the complete validation rule
 condition syntax (operators, boolean logic, datasource references, resolvesDNS,
@@ -157,33 +163,13 @@ CIDR matching, array quantifiers).
 
 ### ACME Module (`module: "acme"`)
 
-ACME (RFC 8555) profiles support automated certificate issuance via the
-ACME protocol. Horizon acts as an ACME server.
-
-Horizon 2.10 publishes these ACME-specific fields, in addition to the
-shared certificate profile fields:
-
-| Field                           | Type     | Description                                  |
-| ------------------------------- | -------- | -------------------------------------------- |
-| `timeout`                       | string   | Validation timeout as a finite duration.     |
-| `meta`                          | object   | ACME directory metadata.                     |
-| `authorizationMethods`          | string[] | Allowed ACME authorization methods.          |
-| `http01Port`                    | integer  | HTTP-01 validation port.                     |
-| `tlsAlpn01Port`                 | integer  | TLS-ALPN-01 validation port.                 |
-| `authorizeShortName`            | boolean  | Whether short names are allowed.             |
-| `authorizeEmptyContact`         | boolean  | Whether an empty account contact is allowed. |
-| `defaultContacts`               | string[] | Default account contacts.                    |
-| `verifyRetryCount`              | integer  | Validation retry count.                      |
-| `verifyRetryDelay`              | string   | Delay between validation attempts.           |
-| `requireTermsOfService`         | boolean  | Whether terms of service must be accepted.   |
-| `renewalPeriod`                 | string   | Optional renewal period.                     |
-| `csrDataMapping`                | object   | CSR data mapping expressions.                |
-| `maxCertificatePerHolderPolicy` | object   | Per-holder certificate limit policy.         |
-| `maxDnsName`                    | integer  | Maximum number of DNS names.                 |
-| `proxy`                         | string   | Optional HTTP proxy name.                    |
-
-**Note**: ACME profiles have no `authorizationMode` or `validationRuleset`
-field in Horizon 2.10. Use `authorizationMethods` for ACME validation.
+ACME (RFC 8555) profiles make Horizon an ACME server. Fields: `timeout`,
+`meta`, `authorizationMethods`, `http01Port`, `tlsAlpn01Port`,
+`authorizeShortName`, `authorizeEmptyContact`, `defaultContacts`,
+`verifyRetryCount`, `verifyRetryDelay`, `requireTermsOfService`, `maxDnsName`,
+`proxy`; Horizon 2.11+ adds `excludeRootCA`, `ipIdentifierConstraint` and
+Require EAB. No `authorizationMode` or `validationRuleset`. Details, EAB,
+accounts and orders: horizon://knowledge/acme.
 
 ### SCEP Module (`module: "scep"`)
 
@@ -224,6 +210,8 @@ TLS-secured enrollment.
 - **`x509`**: Client must authenticate with a valid client certificate.
 - **`auto-validation`**: Automatic validation via ruleset.
 - **`authorized`**: Account with enrollment permission authorizes the request.
+  Since Horizon 2.11, `simpleenroll` in this mode also accepts client
+  certificate authentication; before 2.11 it does not.
 - **`challenge`**: Challenge-based authorization.
 
 ### Monitored Module (`module: "monitored"`)
@@ -246,18 +234,18 @@ issue certificates for them.
 
 ## AuthorizationMode Summary by Module
 
-| Module     | Supported `authorizationMode` Values                          | `validationRuleset` Required? |
-| ---------- | ------------------------------------------------------------- | ----------------------------- |
-| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized` | Yes for `auto-validation*`    |
-| ACME       | N/A (inherently automated via ACME challenges)                | Never                         |
-| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`          | Yes for `auto-validation*`    |
-| EST        | `authorized`, `x509`, `challenge`, `auto-validation`          | Yes for `auto-validation*`    |
-| Monitored  | N/A (no enrollment)                                           | Never                         |
-| WCCE       | Windows auto-enrollment (AD integrated)                       | Depends on configuration      |
-| CRMP       | CMP-based authorization                                       | Depends on configuration      |
-| Intune     | MDM-based authorization (Intune SCEP)                         | Depends on configuration      |
-| IntunePKCS | MDM-based authorization (Intune PKCS)                         | Depends on configuration      |
-| Jamf       | MDM-based authorization (Jamf)                                | Depends on configuration      |
+| Module     | Supported `authorizationMode` Values                                               | `validationRuleset` Required? |
+| ---------- | ---------------------------------------------------------------------------------- | ----------------------------- |
+| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (2.11+) | Yes for `auto-validation*`    |
+| ACME       | N/A (inherently automated via ACME challenges)                                     | Never                         |
+| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`                               | Yes for `auto-validation*`    |
+| EST        | `authorized`, `x509`, `challenge`, `auto-validation`                               | Yes for `auto-validation*`    |
+| Monitored  | N/A (no enrollment)                                                                | Never                         |
+| WCCE       | Windows auto-enrollment (AD integrated)                                            | Depends on configuration      |
+| CRMP       | CMP-based authorization                                                            | Depends on configuration      |
+| Intune     | MDM-based authorization (Intune SCEP)                                              | Depends on configuration      |
+| IntunePKCS | MDM-based authorization (Intune PKCS)                                              | Depends on configuration      |
+| Jamf       | MDM-based authorization (Jamf)                                                     | Depends on configuration      |
 
 ---
 

@@ -22,7 +22,7 @@ PKI engineers, platform teams, and security operators can issue, renew, and revo
 
 ## Why knowledge-first?
 
-Horizon MCP ships both the tools and the domain knowledge to use them. The catalog holds **111 knowledge URIs**: **18 core knowledge guides**, **4 integration playbooks**, and **89 generated section resources**.
+Horizon MCP ships both the tools and the domain knowledge to use them. The catalog holds **125 knowledge URIs**: **19 core knowledge guides**, **4 integration playbooks**, and **102 generated section resources**.
 
 These resources explain Horizon concepts and help a client pick the right tool. A client can read them before it selects a tool or builds a payload.
 
@@ -31,7 +31,7 @@ The server does not preload these resources and cannot guarantee that a client r
 ## Features
 
 - **241 tools across 13 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 111 registered topic URIs: 18 core guides, 4 curated playbooks, and 89 generated section resources.
+- **Knowledge catalog**: 125 registered topic URIs: 19 core guides, 4 curated playbooks, and 102 generated section resources.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. The allowlist can turn on more than one method.
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events). On Horizon 2.11+, `validate_hql` also accepts HAQL (ACME accounts) and HEABQL (ACME External Account Bindings).
@@ -601,7 +601,7 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
 | [Tool reference](docs/tools-reference.md)          | All 241 tools by domain with safety tiers                           |
-| [Knowledge resources](docs/knowledge-resources.md) | 111 registered URIs: 18 core guides, 4 playbooks, 89 sections       |
+| [Knowledge resources](docs/knowledge-resources.md) | 125 registered URIs: 19 core guides, 4 playbooks, 102 sections      |
 | [Development](docs/development.md)                 | Dev setup, CI gates, tests, linting                                 |
 
 ## License
