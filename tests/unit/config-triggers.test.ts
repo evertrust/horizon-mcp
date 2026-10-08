@@ -86,6 +86,25 @@ describe('trigger CRUD gap-fill', () => {
     });
   });
 
+  it('describes the DCV lifecycle events for notification configuration', async () => {
+    const result = await client.callTool({
+      name: 'describe_trigger_schema',
+      arguments: { subtype: 'email' },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    const described = JSON.parse(content[0]!.text);
+
+    expect(described.jsonSchema.$defs.TriggerEvent.enum).toEqual(
+      expect.arrayContaining([
+        'on_dcv_policy_start',
+        'on_dcv_policy_end',
+        'on_dcv_validation_success',
+        'on_dcv_validation_failure',
+        'on_dcv_validation_retry',
+      ]),
+    );
+  });
+
   it('rejects a missing discriminator (type)', async () => {
     const res = await client.callTool({
       name: 'create_trigger',

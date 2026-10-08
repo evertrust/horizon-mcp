@@ -37,7 +37,7 @@ export function registerCertificateTools(
         'Search certificates with HCQL. Lowercase fields only. Operators: ' +
         'equals, matches, contains, in, within, before, after, greater than, ' +
         'is, is not, and/or/not. Full reference: horizon://knowledge/query-languages. ' +
-        'Ownership: call whoami first, then `owner equals "<id>" or team in (...)`. ' +
+        'Ownership: call whoami first, then `owner equals "<id>" or team in ["<team1>", "<team2>"]`. ' +
         'Presets: compact (default), diagnostic, compliance. ' +
         'Pagination: page_index is 0-based; next call uses next_page_index from ' +
         'the previous response; stop when has_more is false. Always pass sorted_by ' +

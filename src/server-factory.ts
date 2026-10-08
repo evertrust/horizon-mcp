@@ -32,7 +32,7 @@ export const SERVER_INSTRUCTIONS = [
   '  registration.date). camelCase causes HQL-001. groupBy/sortedBy are',
   '  camelCase (API context).',
   '- Ownership queries: call `whoami` first; then',
-  '  `owner equals "<id>" or team in (...)`.',
+  '  `owner equals "<id>" or team in ["<team1>", "<team2>"]`.',
   '- Lifecycle: call `get_request_template` before `submit_request`.',
   "  `revocationReason` is strongly recommended for revoke; ask the user (Horizon defaults to 'unspecified').",
   '- PKCS#12 lives on the enrollment or recover request response, never on the',

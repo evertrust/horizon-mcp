@@ -137,7 +137,7 @@ metadata with no enrichment or lifecycle control.
 
 ---
 
-## Third-Party Connector Types (10)
+## Third-Party Connector Types (11)
 
 | Type         | Target System                     |
 | ------------ | --------------------------------- |
@@ -151,6 +151,7 @@ metadata with no enrichment or lifecycle control.
 | `jamf`       | Jamf Pro                          |
 | `ldappub`    | LDAP Publishing                   |
 | `msad`       | Microsoft Active Directory        |
+| `netscaler`  | NetScaler                         |
 
 ---
 

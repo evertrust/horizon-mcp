@@ -28,7 +28,7 @@ export const triggerRequestSchema = {
     TriggerEvent: {
       type: 'string',
       description:
-        'Full list of accepted trigger events (the OpenAPI Base.events enum is a subset).',
+        'Full list of accepted trigger events (the OpenAPI Base.events enum is a subset). DCV events (on_dcv_*) require Horizon 2.10+.',
       enum: [
         'on_enroll',
         'on_submit_enroll',
@@ -68,6 +68,11 @@ export const triggerRequestSchema = {
         'on_credentials_expiration',
         'on_license_usage',
         'on_dcv_license_usage',
+        'on_dcv_policy_start',
+        'on_dcv_policy_end',
+        'on_dcv_validation_success',
+        'on_dcv_validation_failure',
+        'on_dcv_validation_retry',
         'on_renew',
         'on_submit_renew',
         'on_cancel_renew',

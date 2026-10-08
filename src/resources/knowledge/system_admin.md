@@ -214,30 +214,40 @@ Export selected configuration items by specifying which item types to include.
 POST /api/v1/system/configurations/export
 ```
 
-The request body is a `HorizonExportableItems` object with 19 named boolean
-fields controlling which configuration types to export:
+The Horizon 2.10 public API lists 20 configuration categories. The
+`HorizonExportableItems` request contains arrays of selected items, each with
+at least a `name`. The `HorizonExportItems` response contains the exported
+configuration objects.
 
-| Field                | Description                          |
-| -------------------- | ------------------------------------ |
-| `cas`                | Certificate authorities              |
-| `pkiConnectors`      | PKI connector configurations         |
-| `roles`              | RBAC roles                           |
-| `teams`              | Team definitions                     |
-| `passwordPolicies`   | Password policy rules                |
-| `notifications`      | Notification templates               |
-| `datasources`        | External datasource connections      |
-| `discoveryCampaigns` | Discovery campaign definitions       |
-| `thirdParties`       | Third-party connector configurations |
-| `reports`            | Report scheduled task definitions    |
-| `triggers`           | Automation triggers                  |
-| `automations`        | Automation policy definitions        |
-| `executions`         | Execution policy definitions         |
-| `profiles`           | Certificate profile configurations   |
-| `forestMappings`     | AD forest mapping definitions        |
-| `labels`             | Certificate label definitions        |
-| `proxies`            | HTTP proxy configurations            |
-| `pkiQueues`          | PKI queue configurations             |
-| `scimProfiles`       | SCIM provisioning profiles           |
+On Horizon 2.8/2.9, the catalog has 19 categories and no `storages`.
+`storages` requires **Horizon 2.10+**. The request still uses arrays of
+selected item names on these older versions. See the public
+[2.8 export reference](https://docs.evertrust.fr/horizon/2.8/api-ref/export_export_items.html),
+[2.9 export reference](https://docs.evertrust.fr/horizon/2.9/api-ref/export_export_items.html),
+and [2.10 release notes](https://docs.evertrust.fr/horizon/2.10/release-notes/2.10.0.html).
+
+| Field                | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| `cas`                | Certificate authorities                        |
+| `pkiConnectors`      | PKI connector configurations                   |
+| `roles`              | RBAC roles                                     |
+| `teams`              | Team definitions                               |
+| `passwordPolicies`   | Password policy rules                          |
+| `notifications`      | Notification templates                         |
+| `datasources`        | External datasource connections                |
+| `discoveryCampaigns` | Discovery campaign definitions                 |
+| `thirdParties`       | Third-party connector configurations           |
+| `reports`            | Report scheduled task definitions              |
+| `triggers`           | Automation triggers                            |
+| `automations`        | Automation policy definitions                  |
+| `executions`         | Execution policy definitions                   |
+| `profiles`           | Certificate profile configurations             |
+| `forestMappings`     | AD forest mapping definitions                  |
+| `labels`             | Certificate label definitions                  |
+| `proxies`            | HTTP proxy configurations                      |
+| `pkiQueues`          | PKI queue configurations                       |
+| `scimProfiles`       | SCIM provisioning profiles                     |
+| `storages`           | Storage backend configurations (Horizon 2.10+) |
 
 ### Import
 
@@ -270,7 +280,7 @@ backup before performing an import.
 ### Best Practice: Safe Import Workflow
 
 1. Export the current configuration as a backup:
-   `POST /api/v1/system/configurations/export` with all fields set to `true`
+   `POST /api/v1/system/configurations/export` with arrays of selected item names
 2. Review the import payload carefully
 3. Perform the import
 4. Verify critical configuration items after import
