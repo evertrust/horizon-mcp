@@ -323,7 +323,8 @@ to them outside of Horizon are not updated.
 
 ## Firewall Integrations (Fortinet, Palo Alto) (Horizon 2.11+)
 
-Use case: Deploy certificates and private keys on firewalls. Triggers deploy
+Check the version with `get_license_info` first. Use case: Deploy
+certificates and private keys on firewalls. Triggers deploy
 on enrollment and renewal. Each connector has a mandatory `prefix` that
 identifies the certificates Horizon manages. For each holder only the latest
 certificate is kept. A removal is skipped when the certificate was renamed
@@ -377,7 +378,8 @@ entry matches.
 
 ## Google Cloud CAS PKI Connector (Horizon 2.11+)
 
-Use case: Issue certificates from a Google Cloud Certificate Authority
+Check the version with `get_license_info` first. Use case: Issue
+certificates from a Google Cloud Certificate Authority
 Service CA pool. PKI connector type `gcp`.
 
 | Field                 | Required | Meaning                                                                                        |
