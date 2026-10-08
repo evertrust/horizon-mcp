@@ -17,7 +17,7 @@ fully identified.
 
 ### Horizon Query Languages
 
-1. Use `translate_to_hql` when the user starts in natural language.
+1. Use `translate_to_hql` when the user starts in natural language. It drafts HCQL, HRQL, HEQL, and HDQL only. For HAQL and HEABQL, write the query from the field list, then validate it.
 2. Use `validate_hcql`, `validate_hrql`, `validate_heql`, or `validate_hdql` when the query must be checked before execution. For HAQL (ACME accounts) and HEABQL (EABs) on Horizon 2.11+, use `validate_hql` with `dialect` `haql` or `heabql`.
 3. Use `describe_query_fields` when the user asks which fields are available or when field names are unclear (it also covers `haql` and `heabql` on Horizon 2.11+).
 4. Execute with the matching `search_*` or `aggregate_*` tool after the query is ready.
