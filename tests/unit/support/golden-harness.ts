@@ -5,6 +5,7 @@ import {
   CORE_RESOURCE_URIS,
   CURATED_RESOURCE_URIS,
 } from '../../../src/resources/catalog.js';
+import { registerAcmeTools } from '../../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../../src/tools/assist/query.js';
@@ -69,6 +70,7 @@ export function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, c);
   registerComputationTools(server, c);
   registerTranslateTools(server, c);
+  registerAcmeTools(server, c);
 }
 
 // ===================================================================
@@ -107,7 +109,7 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (24)
+  // lifecycle.ts (25)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -120,6 +122,7 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'search_requests',
   'get_request',
   'export_requests_csv',
+  'submit_webra_challenge',
   'search_events',
   'get_event',
   'export_events_csv',
@@ -184,6 +187,20 @@ export const EXPECTED_TOOL_NAMES: string[] = [
   'create_rest_notification',
   'delete_trigger',
   'simulate_trigger',
+  // acme/ (13, Horizon 2.11+)
+  'search_acme_accounts',
+  'get_acme_account',
+  'update_acme_account_status',
+  'delete_acme_account',
+  'list_acme_orders',
+  'get_acme_order',
+  'search_acme_eabs',
+  'get_acme_eab',
+  'create_acme_eab',
+  'update_acme_eab',
+  'update_acme_eab_status',
+  'renew_acme_eab',
+  'delete_acme_eab',
 ].sort();
 
 export const REQUIRED_RESOURCE_URIS: string[] = [
@@ -221,6 +238,7 @@ export const KNOWLEDGE_FILES: string[] = [
   'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
+  'acme.md',
 ];
 
 export const CURATED_KNOWLEDGE_FILES: string[] = [

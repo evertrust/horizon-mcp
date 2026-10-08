@@ -86,13 +86,17 @@ const SUBMIT_REQUEST_CONFIG = {
     'completes immediately; with only the request permission the request is ' +
     'created in PENDING state and needs approve_request. Surface that status ' +
     'to the user. This can perform destructive workflows (revoke); confirm ' +
-    'with the user before submitting a revoke. For revoke, revocationReason is ' +
-    'strongly recommended - ask the user for it; Horizon defaults to ' +
+    'with the user before submitting a revoke. For a WebRA revoke, put ' +
+    'revocationReason in template; it is strongly recommended, and Horizon defaults to ' +
     "'unspecified' if omitted (keycompromise, cacompromise, affiliationchange, " +
     'superseded, cessationofoperation, certificatehold, removefromcrl, ' +
     'privilegewithdrawn, aacompromise, unspecified). ' +
     'Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. ' +
     'EST/SCEP enroll returns the challenge password in the response. ' +
+    'On Horizon 2.11+, a WebRA enroll on a profile whose authorizationMode is ' +
+    '"challenge" returns a one-time challenge in `password.value` (if the ' +
+    'request is pending, approve_request returns it). Give it to the user ' +
+    'once; it is consumed with submit_webra_challenge. ' +
     'For a WebRA update, template.autoRenew is the generic path for changing ' +
     'per-certificate automatic renewal. Full workflow + examples: ' +
     'horizon://knowledge/workflows.',
@@ -125,6 +129,7 @@ const SUBMIT_REQUEST_CONFIG = {
           '- owner: {"value": "admin-principal"}\n' +
           '- team: {"value": "infra-team"}\n' +
           '- keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.\n' +
+          '- For WebRA revoke: revocationReason: "keycompromise"\n' +
           '- csr: PEM-encoded CSR (for decentralized key generation)\n' +
           '- extensions: optional certificate extensions',
       ),
@@ -150,7 +155,6 @@ const SUBMIT_REQUEST_CONFIG = {
       .optional()
       .describe(
         'Additional workflow-specific fields merged into the payload.\n' +
-          'For revoke: {"revocationReason": "keycompromise"}.\n' +
           'For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.\n' +
           'For dry run validation: {"dryRun": true}.\n' +
           'For requester comment: {"requesterComment": "reason for request"}.',
@@ -165,7 +169,10 @@ const APPROVE_REQUEST_CONFIG = {
     'Only pending requests can be approved. Permissions are checked automatically.\n\n' +
     'Checks permissions before attempting the approval. The workflow\n' +
     'type is determined automatically from the request.\n' +
-    'If permission is denied, returns an error - do NOT retry.',
+    'If permission is denied, returns an error - do NOT retry.\n' +
+    'On Horizon 2.11+, approving a WebRA enroll on a "challenge" profile ' +
+    'returns the one-time challenge in `password.value`. Give it to the user ' +
+    'once; it is consumed with submit_webra_challenge.',
   inputSchema: z.object({
     request_id: z.string().describe('The request ID to approve.'),
   }),

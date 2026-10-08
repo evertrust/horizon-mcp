@@ -11,11 +11,17 @@ concurrency:
 
 jobs:
   refresh:
-    name: Refresh doc snapshots
+    name: Refresh doc snapshots (${{ matrix.branch }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Scheduled runs use the default branch only, so each release line is listed here.
+        branch: [master, '2.x']
     permissions:
       contents: write
       pull-requests: write
+      id-token: write
     steps:
       - name: Fetch secrets via Vault
         uses: hashicorp/vault-action@v3
@@ -37,6 +43,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
+          ref: ${{ matrix.branch }}
           token: ${{ steps.app-token.outputs.token }}
 
       - name: Setup Bun
@@ -60,12 +67,13 @@ jobs:
           fi
           git config user.name '${{ steps.app-token.outputs.app-slug }}[bot]'
           git config user.email '${{ steps.app-token.outputs.app-slug }}[bot]@users.noreply.github.com'
-          git checkout -B docs/auto-refresh
+          git checkout -B docs/auto-refresh-${{ matrix.branch }}
           git add src/generated/docs
           git commit -m "chore: refresh doc snapshots"
-          git push -f origin docs/auto-refresh
-          if [ -z "$(gh pr list --head docs/auto-refresh --state open --json number --jq '.[].number')" ]; then
+          git push -f origin docs/auto-refresh-${{ matrix.branch }}
+          if [ -z "$(gh pr list --head docs/auto-refresh-${{ matrix.branch }} --state open --json number --jq '.[].number')" ]; then
             gh pr create \
+              --base '${{ matrix.branch }}' \
               --title "chore: refresh doc snapshots" \
               --body "Automated nightly refresh: docs.evertrust.fr content drifted from the committed snapshots in src/generated/docs."
           fi

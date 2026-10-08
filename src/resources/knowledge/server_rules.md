@@ -20,7 +20,7 @@ When the user asks about "my certificates" or "certificates I own", call
 HCQL query that covers both:
 
 ```
-owner equals "<identifier>" or team in ("<team1>", "<team2>", ...)
+owner equals "<identifier>" or team in ["<team1>", "<team2>"]
 ```
 
 Querying `owner` alone misses team-owned certificates.
@@ -39,9 +39,11 @@ reference API element names, not query fields. See
 ## 4. Service discovery searches multiple fields
 
 When the user asks for certificates serving a service (tomcat, nginx, apache,
-load balancer, etc.), search `discoverydata.paths`, `discoverydata.usages`,
-and `discoverydata.hostnames` in addition to `dn` and `san`. Service hints
-often live only in the discovery metadata.
+load balancer, etc.), search `discoverydata.hostnames` in addition to `dn`
+and `san`. HCQL-searchable discovery fields are `discoverydata.ip`,
+`discoverydata.tls.version`, `discoverydata.tls.port`,
+`discoverydata.hostnames`, `discoverydata.operatingsystems`, and
+`discoverydata.sources`. Paths and usages are not HCQL-searchable.
 
 ## 5. PKCS#12 / PFX retrieval
 
@@ -56,13 +58,19 @@ user asks for a PKCS#12, PFX, or private key:
 Do not say PKCS#12 retrieval is impossible. It is available through the
 request.
 
+Special case (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
+only in the `submit_webra_challenge` response, in centralized mode, encrypted
+with the challenge as password. It is never stored and cannot be retrieved
+later, so save it from that response. In a challenge profile's enroll
+request response, `password` holds the challenge.
+
 ## 6. Lifecycle requests: inspect the template first
 
 Before calling `submit_request`, call `get_request_template` to discover
 which fields are required, editable, computed, or fixed by the profile, then
-ask the user for any missing values. For `revoke`, `revocationReason` is
-strongly recommended; ask the user for it - Horizon defaults to `unspecified`
-if omitted. For any workflow, optionally offer the user a free-text
+ask the user for any missing values. For a WebRA `revoke`, put
+`revocationReason` in `template`; it is strongly recommended, and Horizon
+defaults to `unspecified` if omitted. For any workflow, optionally offer the user a free-text
 `requesterComment` justification.
 
 The outcome of `submit_request` depends on permissions:
@@ -74,6 +82,9 @@ The outcome of `submit_request` depends on permissions:
 
 Surface the response status to the user so they know whether approval is
 still required.
+
+Since Horizon 2.11, update, renew and migrate submit only the modified
+fields: an unchanged submission creates no request.
 
 ## 7. Live exposure check
 
@@ -142,6 +153,14 @@ If the docs tool returns a version-detection warning, tell the user that the
 connected Horizon instance could not reliably expose its version and that
 the result fell back to the latest indexed docs. Use the warning instead of
 pretending the version match is exact.
+
+## 13. Check the Horizon version before 2.11 features
+
+Before using a Horizon 2.11+ feature (ACME EAB, accounts and orders, HAQL or
+HEABQL, WebRA challenge, FortiGate, FortiManager, PAN-OS or Panorama
+connectors, GCP CAS, Sectigo DCV), call `get_license_info` to read the
+Horizon version. On an older version, tell the user the feature is not
+available instead of calling the tool.
 
 ---
 

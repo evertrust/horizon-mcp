@@ -50,9 +50,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 93 tools', async () => {
+  it('registers exactly 107 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(93);
+    expect(result.tools.length).toBe(107);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -175,6 +175,7 @@ describe('Golden tests', () => {
       'download_certificate',
       'set_certificate_auto_renew',
       'submit_request',
+      'submit_webra_challenge',
       'approve_request',
       'deny_request',
       'cancel_request',
@@ -302,8 +303,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 93 tools', () => {
-    expect(toolNames.size).toBe(93);
+  it('registers exactly 107 tools', () => {
+    expect(toolNames.size).toBe(107);
   });
 
   it('excludes admin tools', () => {

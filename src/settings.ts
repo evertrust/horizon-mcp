@@ -181,7 +181,7 @@ const settingsSchema = z
     timeout: z.coerce.number().int().positive().default(30),
     exportTimeout: z.coerce.number().int().positive().default(120),
     logLevel: z.string().default('INFO'),
-    testedVersions: csvListSchema('2.10'),
+    testedVersions: csvListSchema('2.10,2.11'),
     warnVersions: csvListSchema('2.8,2.9'),
 
     // -- Toolset gating -----------------------------------------------------

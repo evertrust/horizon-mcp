@@ -2,7 +2,7 @@
  * Embedded resolved request JSON Schema for triggers.
  *
  * Resolved from the bundled OpenAPI. Polymorphic union discriminated by
- * the lowercase `type` field (11 subtypes). Surfaced verbatim through
+ * the lowercase `type` field (15 subtypes). Surfaced verbatim through
  * describe_trigger_schema so the model never guesses the per-subtype structure.
  */
 export const triggerRequestSchema = {
@@ -23,6 +23,10 @@ export const triggerRequestSchema = {
     { $ref: '#/$defs/GCMTrigger' },
     { $ref: '#/$defs/LDAPTrigger' },
     { $ref: '#/$defs/NetscalerTrigger' },
+    { $ref: '#/$defs/FortiGateTrigger' },
+    { $ref: '#/$defs/FortiManagerTrigger' },
+    { $ref: '#/$defs/PanOSFirewallTrigger' },
+    { $ref: '#/$defs/PanoramaTrigger' },
   ],
   $defs: {
     TriggerEvent: {
@@ -68,6 +72,11 @@ export const triggerRequestSchema = {
         'on_credentials_expiration',
         'on_license_usage',
         'on_dcv_license_usage',
+        'on_dcv_policy_start',
+        'on_dcv_policy_end',
+        'on_dcv_validation_success',
+        'on_dcv_validation_failure',
+        'on_dcv_validation_retry',
         'on_renew',
         'on_submit_renew',
         'on_cancel_renew',
@@ -603,6 +612,82 @@ export const triggerRequestSchema = {
         triggers: {
           allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
           nullable: true,
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    FortiGateTrigger: {
+      type: 'object',
+      title: 'Third-Party FortiGate',
+      description: 'type=fortigate. Horizon 2.11+.',
+      properties: {
+        name: { type: 'string', description: 'Immutable primary key.' },
+        type: { type: 'string', const: 'fortigate', enum: ['fortigate'] },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a fortigate third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    FortiManagerTrigger: {
+      type: 'object',
+      title: 'Third-Party FortiManager',
+      description: 'type=fortimanager. Horizon 2.11+.',
+      properties: {
+        name: { type: 'string', description: 'Immutable primary key.' },
+        type: {
+          type: 'string',
+          const: 'fortimanager',
+          enum: ['fortimanager'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a fortimanager third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    PanOSFirewallTrigger: {
+      type: 'object',
+      title: 'Third-Party PAN-OS Firewall',
+      description: 'type=panos_firewall. Horizon 2.11+.',
+      properties: {
+        name: { type: 'string', description: 'Immutable primary key.' },
+        type: {
+          type: 'string',
+          const: 'panos_firewall',
+          enum: ['panos_firewall'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a panos_firewall third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    PanoramaTrigger: {
+      type: 'object',
+      title: 'Third-Party PAN-OS Panorama',
+      description: 'type=panos_panorama. Horizon 2.11+.',
+      properties: {
+        name: { type: 'string', description: 'Immutable primary key.' },
+        type: {
+          type: 'string',
+          const: 'panos_panorama',
+          enum: ['panos_panorama'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a panos_panorama third-party connector. Dependency: must pre-exist.',
         },
       },
       required: ['name', 'type', 'connector'],

@@ -34,6 +34,12 @@ import {
   encodePathSegment,
 } from '../helpers.js';
 import { registerTool } from '../register.js';
+import {
+  type UpdateOpts,
+  assertClearable,
+  buildUpdateConfig,
+  planClear,
+} from './_scaffold-update.js';
 
 export const MAX_LIST_ITEMS = 50;
 
@@ -65,6 +71,11 @@ export interface ConfigSpec {
   readonly putOnCollection: boolean;
   /** Optional knowledge-resource reference for the description footer. */
   readonly knowledgeRef?: string;
+  /**
+   * Set when the list endpoint is a POST with a body instead of a GET on the
+   * collection route (e.g. EAB policies: POST /api/v1/acme/eab-policies/list).
+   */
+  readonly listRequest?: { readonly path: string; readonly body: unknown };
 }
 
 function refFooter(spec: ConfigSpec): string {
@@ -285,7 +296,12 @@ export function registerReadTools(
     `list_${spec.nounPlural}`,
     configs.list,
     async ({ max_items, name_contains }) => {
-      const data = await client.get<unknown>(spec.routeCollection);
+      const data = spec.listRequest
+        ? await client.post<unknown>(
+            spec.listRequest.path,
+            spec.listRequest.body,
+          )
+        : await client.get<unknown>(spec.routeCollection);
       // Filter on this object's actual primary-key field (not always "name" -
       // system configuration keys on "type").
       const field = spec.idField ?? 'name';
@@ -373,34 +389,13 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
   server: McpServer,
   client: HorizonClient,
   spec: ConfigSpec,
-  opts: {
-    description: string;
-    inputSchema: S;
-    buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
-    preValidate?: (args: z.infer<S>) => string | undefined;
-    /** Normalizes a GET-only representation before the merged PUT. */
-    normalizeCurrent?: (
-      current: Record<string, unknown>,
-    ) => Record<string, unknown>;
-    validateMergedBody?: (body: Record<string, unknown>) => void;
-  },
+  opts: UpdateOpts<S>,
 ): void {
   const idField = spec.idField ?? 'name';
   registerTool(
     server,
     `update_${spec.noun}`,
-    {
-      description:
-        `${opts.description}\nSafety tier: mutating-destructive\n` +
-        `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
-        `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
-        `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
-      inputSchema: opts.inputSchema,
-      // Config update is a full-replace PUT that can reset omitted fields and
-      // overwrite permissions, so it is destructive despite the update_ prefix
-      // the classifier treats as non-destructive by default.
-      annotations: { destructiveHint: true },
-    },
+    buildUpdateConfig(opts, `${immutableNote(spec)}${refFooter(spec)}`),
     async (args: z.infer<S>) => {
       const err = opts.preValidate?.(args);
       if (err !== undefined) return text(err);
@@ -409,35 +404,23 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
       const clearFields = (args as Record<string, unknown>)['clear_fields'] as
         | string[]
         | undefined;
-      // clear_fields nulls a field in the full-replace PUT body. Never allow
-      // nulling an immutable key or a server-managed (stripped) field.
       if (clearFields && clearFields.length > 0) {
-        const forbidden = new Set<string>([
-          ...spec.stripFields,
-          ...spec.immutableKeys,
-        ]);
-        const bad = clearFields.filter((f) => forbidden.has(f));
-        if (bad.length > 0) {
-          throw new HorizonError(422, {
-            errorCode: 'CONFIG-CLEAR-FORBIDDEN',
-            message: `clear_fields may not target immutable or server-managed fields: ${bad.join(', ')}.`,
-            remediation:
-              'Remove these from clear_fields - they cannot be nulled.',
-          });
-        }
+        assertClearable(spec, clearFields);
       }
-      const putPath = spec.putOnCollection
-        ? spec.routeCollection
-        : itemPath(spec, id);
+      const clear = planClear(
+        clearFields,
+        opts.omitClearedFields,
+        opts.normalizeCurrent,
+      );
       const result = await getStripMergePutExplicit(
         client,
         itemPath(spec, id),
-        putPath,
+        spec.putOnCollection ? spec.routeCollection : itemPath(spec, id),
         spec.stripFields,
         overrides,
-        clearFields,
+        clear.nullFields,
         { immutableKeys: spec.immutableKeys, idField },
-        opts.normalizeCurrent,
+        clear.normalizeCurrent,
         opts.validateMergedBody,
       );
       return text(

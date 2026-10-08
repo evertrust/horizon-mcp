@@ -247,9 +247,10 @@ Create three triggers with different `runPeriod` values, all subscribing to
 
 ---
 
-## Trigger Type Catalog (10 Types)
+## Trigger Type Catalog (11 on 2.10, 15 on 2.11)
 
-Horizon supports 10 trigger types organized into two categories.
+Horizon 2.10 supports 11 trigger types and Horizon 2.11 supports 15,
+organized into two categories.
 
 ### Notification Triggers (3)
 
@@ -263,21 +264,26 @@ run periods.
 | `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
-### Third-Party Triggers (7)
+### Third-Party Triggers (8 on 2.10, 12 on 2.11)
 
 Third-party triggers push or remove certificates to/from external systems.
 They require a third-party connector and have minimal user-configurable
 fields -- events, retries, and runPeriod are auto-computed per type.
 
-| Type         | Description                               | Requires              |
-| ------------ | ----------------------------------------- | --------------------- |
-| `akv`        | Azure Key Vault                           | Third-party connector |
-| `aws`        | AWS Certificate Manager / Secrets Manager | Third-party connector |
-| `f5client`   | F5 BIG-IP (client certificate)            | Third-party connector |
-| `f5as3`      | F5 AS3 (Application Services 3)           | Third-party connector |
-| `intunepkcs` | Microsoft Intune PKCS                     | Third-party connector |
-| `ldappub`    | LDAP publish                              | Third-party connector |
-| `gcm`        | Google Cloud Certificate Manager          | Third-party connector |
+| Type             | Description                               | Requires              |
+| ---------------- | ----------------------------------------- | --------------------- |
+| `akv`            | Azure Key Vault                           | Third-party connector |
+| `aws`            | AWS Certificate Manager / Secrets Manager | Third-party connector |
+| `f5client`       | F5 BIG-IP (client certificate)            | Third-party connector |
+| `f5as3`          | F5 AS3 (Application Services 3)           | Third-party connector |
+| `intunepkcs`     | Microsoft Intune PKCS                     | Third-party connector |
+| `ldappub`        | LDAP publish                              | Third-party connector |
+| `gcm`            | Google Cloud Certificate Manager          | Third-party connector |
+| `netscaler`      | NetScaler ADC                             | Third-party connector |
+| `fortigate`      | FortiGate firewall (Horizon 2.11+)        | Third-party connector |
+| `fortimanager`   | FortiManager (Horizon 2.11+)              | Third-party connector |
+| `panos_firewall` | PAN-OS firewall (Horizon 2.11+)           | Third-party connector |
+| `panos_panorama` | Palo Alto Panorama (Horizon 2.11+)        | Third-party connector |
 
 ---
 
@@ -292,7 +298,7 @@ third-party triggers do not use.
 | Field      | Type         | Description                                                        |
 | ---------- | ------------ | ------------------------------------------------------------------ |
 | `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
-| `type`     | string       | One of the 10 types listed above                                   |
+| `type`     | string       | One of the types listed above                                      |
 | `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
@@ -310,7 +316,7 @@ third-party triggers do not use.
 
 ---
 
-## Event Reference (48 Events)
+## Event Reference (59 Events)
 
 ### Workflow Events (7 workflows x 6 events = 42)
 
@@ -338,7 +344,11 @@ The 7 workflows:
 | `renew`   | `on_renew`, `on_submit_renew`, `on_cancel_renew`, `on_approve_renew`, `on_deny_renew`, `on_pending_renew`             |
 | `import`  | `on_import`, `on_submit_import`, `on_cancel_import`, `on_approve_import`, `on_deny_import`, `on_pending_import`       |
 
-### System Events (6)
+The workflow events also include `on_in_progress_enroll`,
+`on_in_progress_renew`, `on_failure_enroll`, `on_failure_renew`, and
+`on_failure_revoke` (47 workflow events in total).
+
+### System Events (12)
 
 | Event                       | Description                                   | Notes                                                       |
 | --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
@@ -348,6 +358,12 @@ The 7 workflows:
 | `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
 | `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
 | `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
+| `on_dcv_license_usage`      | DCV license usage event                       | DCV                                                         |
+| `on_dcv_policy_start`       | DCV policy run starts                         | DCV                                                         |
+| `on_dcv_policy_end`         | DCV policy run ends                           | DCV                                                         |
+| `on_dcv_validation_success` | Domain validation succeeds                    | DCV                                                         |
+| `on_dcv_validation_failure` | Domain validation fails                       | DCV                                                         |
+| `on_dcv_validation_retry`   | Domain validation retry                       | DCV                                                         |
 
 ---
 
@@ -449,7 +465,7 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 - `static` -- the webhook URL is provided directly in the `webhook` object.
 - `team` -- the webhook URL is resolved from the certificate's team configuration.
 
-### Third-Party Triggers (akv, aws, f5client, f5as3, intunepkcs, ldappub, gcm)
+### Third-Party Triggers
 
 Third-party triggers have only 3 user-configurable fields:
 
@@ -462,6 +478,10 @@ Third-party triggers have only 3 user-configurable fields:
 All other fields (`events`, `retries`, `runPeriod`, etc.) are
 **auto-computed** per trigger type. User-supplied values for these fields
 are silently ignored by the API.
+
+Special case: `netscaler`, `fortigate`, `fortimanager`, `panos_firewall` and
+`panos_panorama` triggers also accept an optional `retries` (number of
+retries on error; the 2.11 docs give 1 to 15 for the firewall triggers).
 
 ---
 

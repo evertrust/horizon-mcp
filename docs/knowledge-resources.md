@@ -1,10 +1,10 @@
 # Knowledge resources
 
-The server exposes 111 registered knowledge resources at `horizon://knowledge/*`:
+The server exposes 125 registered knowledge resources at `horizon://knowledge/*`:
 
-- 18 core resource URIs backed by the main Horizon knowledge guides
+- 19 core resource URIs backed by the main Horizon knowledge guides
 - 4 curated playbooks for smaller-model usability and integration recipes
-- 89 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`)
+- 102 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`, `acme`)
 
 MCP clients can read these resources to ground their tool choice and their payload construction. The server does not guarantee that every MCP client preloads them before it calls a tool.
 
@@ -27,6 +27,7 @@ If the `docs` toolset is enabled and a tool description points to a `horizon://k
 | Dictionary Matrix         | `horizon://knowledge/dictionary-matrix`         | Certificate field dictionary and matrix reference                                                            |
 | Datasources               | `horizon://knowledge/datasources`               | DNS, LDAP, REST datasource config, multi-lookup patterns, end-to-end recipes                                 |
 | DCV                       | `horizon://knowledge/dcv`                       | DCV providers, policies, lifecycle status, and events                                                        |
+| ACME                      | `horizon://knowledge/acme`                      | ACME server, EAB policies, EABs, ACME accounts and orders, HAQL and HEABQL (Horizon 2.11 and later)          |
 | Validation Rules          | `horizon://knowledge/validation-rules`          | Auto-approval conditions, operator reference (API-verified syntax), module support matrix                    |
 | Dictionary Entries        | `horizon://knowledge/dictionary-entries`        | Alias URI for `dictionary-matrix` content                                                                    |
 | Discovery                 | `horizon://knowledge/discovery`                 | Concepts, campaigns, data structures, search patterns                                                        |
@@ -48,7 +49,7 @@ If the `docs` toolset is enabled and a tool description points to a `horizon://k
 
 ## Generated section resources
 
-For the seven longest guides, the server also registers section-level URIs. The server derives these URIs from the H2 headings. Examples:
+For the eight longest guides, the server also registers section-level URIs. The server derives these URIs from the H2 headings. Examples:
 
 - `horizon://knowledge/query-languages/ownership-patterns-hcql`
 - `horizon://knowledge/datasources/rest-datasource`
@@ -57,3 +58,4 @@ For the seven longest guides, the server also registers section-level URIs. The 
 - `horizon://knowledge/dcv/event-stream`
 - `horizon://knowledge/validation-rules/complete-workflow-recipes`
 - `horizon://knowledge/rest-notifications/real-world-examples`
+- `horizon://knowledge/acme/eab-statuses`

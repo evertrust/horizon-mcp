@@ -130,16 +130,17 @@ certificate policy OIDs and qualifiers.
 WebRA is the primary web-based enrollment protocol. It supports the richest
 set of configuration options.
 
-| Field                  | Type     | Description                                                                                        |
-| ---------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`. Controls how requests are approved. |
-| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.  |
-| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                   |
-| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                               |
-| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                         |
-| `passwordPolicy`       | object   | Password requirements for PKCS#12 download (centralized mode).                                     |
-| `notificationTemplate` | string   | Email template for enrollment notifications.                                                       |
-| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                             |
+| Field                  | Type     | Description                                                                                                     |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (Horizon 2.11+).                     |
+| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.               |
+| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                                |
+| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                                            |
+| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                                      |
+| `passwordPolicy`       | string   | (Horizon 2.11+) Password policy name used to generate challenges. Required for `challenge`, rejected otherwise. |
+| `constraints`          | object   | (Horizon 2.11+) `allowedEmailDomains` and `allowedDnsDomains` regexes. On WebRA only profile constraints apply. |
+| `notificationTemplate` | string   | Email template for enrollment notifications.                                                                    |
+| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                                          |
 
 #### WebRA Authorization Modes
 
@@ -150,6 +151,11 @@ set of configuration options.
 - **`auto-validation-authorized`**: Enrollment tries auto-validation first.
   If the rules reject the request, it falls back to the manual approval queue
   for an authorized operator.
+- **`challenge`** (Horizon 2.11+): A single-use, expiring challenge issued
+  for this profile authorizes the enrollment. The template may be empty: the
+  client then supplies the identity and the profile `constraints` are the only
+  restriction. Template identity fields are enforced. See the WebRA challenge
+  flow in horizon://knowledge/workflows.
 
 See horizon://knowledge/validation-rules for the complete validation rule
 condition syntax (operators, boolean logic, datasource references, resolvesDNS,
@@ -157,41 +163,33 @@ CIDR matching, array quantifiers).
 
 ### ACME Module (`module: "acme"`)
 
-ACME (RFC 8555) profiles support automated certificate issuance via the
-ACME protocol. Horizon acts as an ACME server.
-
-| Field                    | Type     | Description                                                                            |
-| ------------------------ | -------- | -------------------------------------------------------------------------------------- |
-| `authorizationMode`      | string   | Always effectively auto -- ACME protocol handles domain validation through challenges. |
-| `challengeTypes`         | string[] | Supported ACME challenge types: `http-01`, `dns-01`, `tls-alpn-01`.                    |
-| `dns01Provider`          | object   | DNS provider configuration for `dns-01` challenges.                                    |
-| `externalAccountBinding` | boolean  | Whether EAB is required for new ACME accounts.                                         |
-| `allowWildcard`          | boolean  | Whether wildcard certificates are permitted.                                           |
-| `computationRules`       | object[] | Computation rules applied after ACME validation, before certificate issuance.          |
-
-**Note**: ACME profiles do not use `authorizationMode` in the same way as
-WebRA. The ACME protocol itself handles domain validation through challenges.
-The `validationRuleset` field is not applicable.
+ACME (RFC 8555) profiles make Horizon an ACME server. Fields: `timeout`,
+`meta`, `authorizationMethods`, `http01Port`, `tlsAlpn01Port`,
+`authorizeShortName`, `authorizeEmptyContact`, `defaultContacts`,
+`verifyRetryCount`, `verifyRetryDelay`, `requireTermsOfService`, `maxDnsName`,
+`proxy`; Horizon 2.11+ adds `excludeRootCA`, `ipIdentifierConstraint` and
+Require EAB. No `authorizationMode` or `validationRuleset`. Details, EAB,
+accounts and orders: horizon://knowledge/acme.
 
 ### SCEP Module (`module: "scep"`)
 
 SCEP (Simple Certificate Enrollment Protocol) is used primarily for network
 device enrollment.
 
-| Field                   | Type     | Description                                                              |
-| ----------------------- | -------- | ------------------------------------------------------------------------ |
-| `authorizationMode`     | string   | `challenge`, `auto-validation`, `auto-validation-authorized`, or `ndes`. |
-| `validationRuleset`     | string   | Ruleset for auto-validation modes.                                       |
-| `challengePassword`     | string   | Static challenge password for SCEP clients (when mode is `challenge`).   |
-| `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).               |
-| `computationRules`      | object[] | Transformation rules applied to SCEP requests.                           |
-| `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).        |
+| Field                   | Type     | Description                                                            |
+| ----------------------- | -------- | ---------------------------------------------------------------------- |
+| `authorizationMode`     | string   | `challenge`, `authorized`, `ndes`, or `auto-validation`.               |
+| `validationRuleset`     | string   | Ruleset for auto-validation modes.                                     |
+| `challengePassword`     | string   | Static challenge password for SCEP clients (when mode is `challenge`). |
+| `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).             |
+| `computationRules`      | object[] | Transformation rules applied to SCEP requests.                         |
+| `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).      |
 
 #### SCEP Authorization Modes
 
 - **`challenge`**: Client must present a valid challenge password.
 - **`auto-validation`**: Automatic validation via ruleset.
-- **`auto-validation-authorized`**: Try rules first, fall back to manual.
+- **`authorized`**: Account with enrollment permission authorizes the request.
 - **`ndes`**: Network Device Enrollment Service mode for Microsoft NDES integration.
 
 ### EST Module (`module: "est"`)
@@ -201,7 +199,7 @@ TLS-secured enrollment.
 
 | Field                 | Type     | Description                                              |
 | --------------------- | -------- | -------------------------------------------------------- |
-| `authorizationMode`   | string   | `x509`, `auto-validation`, `auto-validation-authorized`. |
+| `authorizationMode`   | string   | `authorized`, `x509`, `challenge`, or `auto-validation`. |
 | `validationRuleset`   | string   | Ruleset for auto-validation modes.                       |
 | `computationRules`    | object[] | Transformation rules for EST requests.                   |
 | `clientCertAuth`      | boolean  | Whether to require client certificate authentication.    |
@@ -211,7 +209,10 @@ TLS-secured enrollment.
 
 - **`x509`**: Client must authenticate with a valid client certificate.
 - **`auto-validation`**: Automatic validation via ruleset.
-- **`auto-validation-authorized`**: Try rules first, fall back to manual.
+- **`authorized`**: Account with enrollment permission authorizes the request.
+  Since Horizon 2.11, `simpleenroll` in this mode also accepts client
+  certificate authentication; before 2.11 it does not.
+- **`challenge`**: Challenge-based authorization.
 
 ### Monitored Module (`module: "monitored"`)
 
@@ -233,18 +234,18 @@ issue certificates for them.
 
 ## AuthorizationMode Summary by Module
 
-| Module     | Supported `authorizationMode` Values                                 | `validationRuleset` Required? |
-| ---------- | -------------------------------------------------------------------- | ----------------------------- |
-| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized`        | Yes for `auto-validation*`    |
-| ACME       | N/A (inherently automated via ACME challenges)                       | Never                         |
-| SCEP       | `challenge`, `auto-validation`, `auto-validation-authorized`, `ndes` | Yes for `auto-validation*`    |
-| EST        | `x509`, `auto-validation`, `auto-validation-authorized`              | Yes for `auto-validation*`    |
-| Monitored  | N/A (no enrollment)                                                  | Never                         |
-| WCCE       | Windows auto-enrollment (AD integrated)                              | Depends on configuration      |
-| CRMP       | CMP-based authorization                                              | Depends on configuration      |
-| Intune     | MDM-based authorization (Intune SCEP)                                | Depends on configuration      |
-| IntunePKCS | MDM-based authorization (Intune PKCS)                                | Depends on configuration      |
-| Jamf       | MDM-based authorization (Jamf)                                       | Depends on configuration      |
+| Module     | Supported `authorizationMode` Values                                               | `validationRuleset` Required? |
+| ---------- | ---------------------------------------------------------------------------------- | ----------------------------- |
+| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (2.11+) | Yes for `auto-validation*`    |
+| ACME       | N/A (inherently automated via ACME challenges)                                     | Never                         |
+| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`                               | Yes for `auto-validation*`    |
+| EST        | `authorized`, `x509`, `challenge`, `auto-validation`                               | Yes for `auto-validation*`    |
+| Monitored  | N/A (no enrollment)                                                                | Never                         |
+| WCCE       | Windows auto-enrollment (AD integrated)                                            | Depends on configuration      |
+| CRMP       | CMP-based authorization                                                            | Depends on configuration      |
+| Intune     | MDM-based authorization (Intune SCEP)                                              | Depends on configuration      |
+| IntunePKCS | MDM-based authorization (Intune PKCS)                                              | Depends on configuration      |
+| Jamf       | MDM-based authorization (Jamf)                                                     | Depends on configuration      |
 
 ---
 

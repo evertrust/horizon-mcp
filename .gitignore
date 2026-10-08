@@ -7,6 +7,7 @@ package-lock.json
 # Environment
 .env
 .env.local
+.env.*.local
 
 # MCP config (local)
 .mcp.json

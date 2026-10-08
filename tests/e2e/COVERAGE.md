@@ -8,7 +8,7 @@ not a blanket support guarantee for every Horizon 2.10 deployment.
 
 ## Suite layout (Vitest, tests/e2e/)
 
-31 test files, ~304 tests, run with `bun run test:e2e` (source `.env.local`
+40 test files, ~333 tests, run with `bun run test:e2e` (source `.env.local`
 first). Most suites use `HORIZON_E2E_URL` / `HORIZON_E2E_API_ID` /
 `HORIZON_E2E_API_KEY`; `service-account.e2e.test.ts` instead uses
 `HORIZON_E2E_URL` / `HORIZON_E2E_SVA` / `HORIZON_E2E_SVA_TOKEN`. Setup for the
@@ -19,9 +19,12 @@ helper that invokes registered MCP tools directly.
 | --------------------------------------------------------------------------------- | ----------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Core domains (lifecycle, search, exports, dashboards, discovery, reports, assist) | `horizon.test.ts`             | 91    | Includes CRUD lifecycles with cleanup                                                                                                                                                                                                                                                                                                                      |
 | Config CRUD domains                                                               | `config-*.test.ts` (27 files) | ~160  | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
+| Horizon 2.11 config types                                                         | `config-211-types.test.ts`    | 14    | FortiGate, FortiManager, PAN-OS firewall and Panorama connectors and triggers, sectigo DCV provider, ACME `excludeRootCA`. Live legs skip before 2.11                                                                                                                                                                                                      |
+| WebRA challenge                                                                   | `webra-challenge.e2e.test.ts` | 2     | Centralized (PKCS#12) and CSR enrollment with a challenge, reuse rejected (WEBRA-ENROLL-015), revoke in teardown                                                                                                                                                                                                                                           |
 | Documentation tools                                                               | `docs.test.ts`                | 5     | search_docs, search_api_docs, get_doc_page                                                                                                                                                                                                                                                                                                                 |
 | System tools                                                                      | `system-tools.test.ts`        | 2     | whoami, license                                                                                                                                                                                                                                                                                                                                            |
 | Service-account authentication                                                    | `service-account.e2e.test.ts` | 3     | whoami identity formula, certificate search, conditional service-account list                                                                                                                                                                                                                                                                              |
+| ACME and EAB policies (Horizon 2.11+)                                             | `acme.e2e.test.ts`            | 13    | Read tools on existing ACME accounts, orders, and EABs (HAQL, HEABQL, paging). EAB policy and EAB lifecycle: create, renew, update, suspend, set valid, delete. Never uses `compromised` or `deactivated`. Needs a Horizon 2.11 instance.                                                                                                                  |
 
 Mutating tests follow create -> verify -> delete with teardown; nothing is
 left behind on the QA instance.
@@ -30,7 +33,7 @@ left behind on the QA instance.
 
 | Tier           | File                                      | Description                                                                             |
 | -------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 18 golden scenarios: right tool picked, disallowed tools avoided, required args present |
+| Tool selection | `tool-selection.test.ts` + `scenarios.ts` | 23 golden scenarios: right tool picked, disallowed tools avoided, required args present |
 | MCP loop       | `mcp-loop.test.ts`                        | Deterministic MCP tool execution against local fixtures                                 |
 | Smoke          | `smoke.test.ts`                           | Basic integration check                                                                 |
 
@@ -48,6 +51,14 @@ unavailable.
 - Discovery import workflow: requires a pre-existing discovery campaign named
   by `HORIZON_E2E_DISCOVERY_CAMPAIGN` on the target instance; skips when the
   variable is unset or the campaign is absent.
+- `webra-challenge.e2e.test.ts`: for each key generation mode (centralized,
+  decentralized), uses `HORIZON_E2E_WEBRA_CHALLENGE_PROFILE`, or else the first
+  enabled WebRA profile in challenge mode that allows the mode and accepts the
+  test subject. A mode skips only when no profile allows it (for example on
+  Horizon 2.10); any other enrollment error fails. The decentralized case
+  needs the `openssl` command to build its CSR.
+- `config-211-types.test.ts`: the live legs skip when the instance is older
+  than Horizon 2.11.
 
 ## Infrastructure gaps (cannot be fully E2E-tested)
 

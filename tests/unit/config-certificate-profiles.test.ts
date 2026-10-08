@@ -128,6 +128,35 @@ describe('describe_certificate_profile_schema', () => {
     expect(out['subtypes']).toContain('MonitoredProfile');
   });
 
+  it('documents the Horizon 2.11 ACME and WebRA challenge fields', async () => {
+    const { client } = await setup();
+    const out = parse(
+      await client.callTool({
+        name: 'describe_certificate_profile_schema',
+        arguments: {},
+      }),
+    );
+    const defs = (out['jsonSchema'] as Record<string, unknown>)[
+      '$defs'
+    ] as Record<
+      string,
+      { properties: Record<string, Record<string, unknown>> }
+    >;
+    expect(defs['AcmeProfile']!.properties).toHaveProperty('excludeRootCA');
+    expect(defs['AcmeProfile']!.properties).toHaveProperty(
+      'ipIdentifierConstraint',
+    );
+    expect(
+      defs['DirectoryMeta']!.properties['externalAccountRequired']![
+        'description'
+      ],
+    ).toContain('2.10 and older');
+    const webra = defs['WebRAProfile']!.properties;
+    expect(webra['authorizationMode']!['enum']).toContain('challenge');
+    expect(webra).toHaveProperty('passwordPolicy');
+    expect(webra).toHaveProperty('constraints');
+  });
+
   it('echoes the requested subtype when narrowing', async () => {
     const { client } = await setup();
     const res = await client.callTool({
@@ -272,6 +301,22 @@ describe('create_certificate_profile (typed mandatory + config mapping)', () => 
     });
     expect(isError(res)).toBe(true);
     expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts the Horizon 2.11 ACME keys excludeRootCA and ipIdentifierConstraint', async () => {
+    const res = await client.callTool({
+      name: 'create_certificate_profile',
+      arguments: mandatoryArgs({
+        module: 'acme',
+        config: { excludeRootCA: true, ipIdentifierConstraint: '10.0.0.0/8' },
+      }),
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post.mock.calls[0]![1]).toMatchObject({
+      module: 'acme',
+      excludeRootCA: true,
+      ipIdentifierConstraint: '10.0.0.0/8',
+    });
   });
 });
 

@@ -85,6 +85,68 @@ describe('trigger CRUD gap-fill', () => {
     });
   });
 
+  it('describes the DCV lifecycle events for notification configuration', async () => {
+    const result = await client.callTool({
+      name: 'describe_trigger_schema',
+      arguments: { subtype: 'email' },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    const described = JSON.parse(content[0]!.text);
+
+    expect(described.jsonSchema.$defs.TriggerEvent.enum).toEqual(
+      expect.arrayContaining([
+        'on_dcv_policy_start',
+        'on_dcv_policy_end',
+        'on_dcv_validation_success',
+        'on_dcv_validation_failure',
+        'on_dcv_validation_retry',
+      ]),
+    );
+  });
+
+  it.each(['fortigate', 'fortimanager', 'panos_firewall', 'panos_panorama'])(
+    'creates a Horizon 2.11 %s trigger bound to a connector',
+    async (type) => {
+      const res = await client.callTool({
+        name: 'create_trigger',
+        arguments: {
+          name: 't-net',
+          type,
+          config: { connector: 'net-connector', retries: 3 },
+        },
+      });
+      expect(isError(res)).toBe(false);
+      expect(mc.post).toHaveBeenCalledWith('/api/v1/triggers', {
+        connector: 'net-connector',
+        retries: 3,
+        name: 't-net',
+        type,
+      });
+    },
+  );
+
+  it('describes the Horizon 2.11 network trigger subtypes', async () => {
+    const result = await client.callTool({
+      name: 'describe_trigger_schema',
+      arguments: {},
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    const described = JSON.parse(content[0]!.text);
+    expect(described.subtypes).toEqual(
+      expect.arrayContaining([
+        'fortigate',
+        'fortimanager',
+        'panos_firewall',
+        'panos_panorama',
+      ]),
+    );
+    expect(described.jsonSchema.$defs.PanoramaTrigger.required).toEqual([
+      'name',
+      'type',
+      'connector',
+    ]);
+  });
+
   it('rejects a missing discriminator (type)', async () => {
     const res = await client.callTool({
       name: 'create_trigger',

@@ -2,17 +2,25 @@
 
 ## Overview
 
-Horizon provides five domain-specific query languages for searching different
-object types. All share the same operator syntax but have different field
-sets tailored to their domain.
+Horizon provides five domain-specific query languages before Horizon 2.11,
+and seven on Horizon 2.11 and later. Each one searches a different object
+type. All share the same operator syntax but have different field sets
+tailored to their domain.
 
-| Language | Full Name                      | Searches           | API Endpoint                      |
-| -------- | ------------------------------ | ------------------ | --------------------------------- |
-| **HCQL** | Horizon Certificate Query Lang | Certificates       | `/api/v1/certificates/search`     |
-| **HRQL** | Horizon Request Query Language | Requests           | `/api/v1/requests/search`         |
-| **HEQL** | Horizon Event Query Language   | Audit events       | `/api/v1/events/search`           |
-| **HDQL** | Horizon Discovery Query Lang   | Discovery results  | `/api/v1/discovery/events/search` |
-| **HPQL** | Horizon Principal Query Lang   | Principals (users) | _Reference only -- no search API_ |
+| Language   | Full Name                                   | Searches           | API Endpoint                      |
+| ---------- | ------------------------------------------- | ------------------ | --------------------------------- |
+| **HCQL**   | Horizon Certificate Query Lang              | Certificates       | `/api/v1/certificates/search`     |
+| **HRQL**   | Horizon Request Query Language              | Requests           | `/api/v1/requests/search`         |
+| **HEQL**   | Horizon Event Query Language                | Audit events       | `/api/v1/events/search`           |
+| **HDQL**   | Horizon Discovery Query Lang                | Discovery results  | `/api/v1/discovery/events/search` |
+| **HPQL**   | Horizon Principal Query Lang                | Principals (users) | _Reference only -- no search API_ |
+| **HAQL**   | ACME account query language (Horizon 2.11+) | ACME accounts      | `/api/v1/acme/accounts/search`    |
+| **HEABQL** | EAB query language (Horizon 2.11+)          | ACME EABs          | `/api/v1/acme/eab/search`         |
+
+HAQL and HEABQL (Horizon 2.11+) have their own fields: see the Searching
+section of `horizon://knowledge/acme`. Validate them with `validate_hql`
+(`dialect` `haql` or `heabql`). The rest of this guide covers the five
+other languages.
 
 ---
 
@@ -27,7 +35,7 @@ All five languages share these operators:
 | `equals`   | `field equals "value"`      | Exact match (case-sensitive)                           |
 | `matches`  | `field matches "regex"`     | Regular expression match                               |
 | `contains` | `field contains "sub"`      | Substring match (case-insensitive)                     |
-| `in`       | `field in ("a", "b")`       | Value is one of the listed values                      |
+| `in`       | `field in ["a", "b"]`       | Value is one of the listed values                      |
 | `within`   | `field within ["r1", "r2"]` | Match against multiple regex patterns (multi-regex OR) |
 
 **Symbolic aliases**: `=` for `equals`.
@@ -77,7 +85,7 @@ field not operator value
 ```
 dn not contains "test"              -- DN does NOT contain "test"
 profile not equals "WebRA-Prod"     -- profile is NOT "WebRA-Prod"
-module not in ("monitored", "acme") -- module is neither monitored nor acme
+module not in ["monitored", "acme"] -- module is neither monitored nor acme
 san.dnsname not matches ".*\\.dev$" -- no DNS SAN ends with .dev
 serial not exists                   -- certificate has no serial (same as not exists)
 ```
@@ -235,47 +243,45 @@ Common HCQL mistakes (WRONG → CORRECT):
 - `primaryKeyType` → `primarykeytype`
 - `certificateType` → `certificatetype`
 
-| Field                            | Type    | Description                                                                                   |
-| -------------------------------- | ------- | --------------------------------------------------------------------------------------------- |
-| `dn`                             | string  | Full distinguished name                                                                       |
-| `profile`                        | string  | Profile name                                                                                  |
-| `module`                         | string  | Module type (webra, acme, scep, est, monitored)                                               |
-| `san`                            | string  | Subject Alternative Name (any type, no sub-fields)                                            |
-| `issuer`                         | string  | Issuer distinguished name                                                                     |
-| `serial`                         | string  | Certificate serial number                                                                     |
-| `thumbprint`                     | string  | Certificate thumbprint                                                                        |
-| `publickeythumbprint`            | string  | Public key thumbprint                                                                         |
-| `keytype`                        | string  | Key algorithm (RSA, EC, etc.)                                                                 |
-| `primarykeytype`                 | string  | Primary key type (hybrid certs)                                                               |
-| `alternatekeytype`               | string  | Alternate key type (hybrid certs)                                                             |
-| `signingalgorithm`               | string  | Signature algorithm                                                                           |
-| `owner`                          | string  | Owning team name                                                                              |
-| `team`                           | string  | Team name                                                                                     |
-| `holderid`                       | string  | Certificate holder identifier (principal)                                                     |
-| `contactemail`                   | string  | Contact email address                                                                         |
-| `valid.from`                     | date    | Validity start date                                                                           |
-| `valid.until`                    | date    | Validity end date                                                                             |
-| `revocation.date`                | date    | When the certificate was revoked                                                              |
-| `revocation.reason`              | string  | Revocation reason                                                                             |
-| `purge.date`                     | date    | Scheduled purge date                                                                          |
-| `id`                             | id      | Certificate internal ID                                                                       |
-| `grade`                          | grade   | Security grade (supports lower/greater than)                                                  |
-| `grade.*`                        | grade   | Grade for specific grading policy                                                             |
-| `label.*`                        | string  | Label value (dynamic field name)                                                              |
-| `metadata.<key>`                 | string  | Certificate metadata (restricted keys - see below)                                            |
-| `discoverydata.ip`               | string  | Host IP where certificate was discovered                                                      |
-| `discoverydata.sources`          | string  | Discovery type (`localscan`, `netscan`, etc.)                                                 |
-| `discoverydata.hostnames`        | string  | Host hostnames (netscan)                                                                      |
-| `discoverydata.operatingsystems` | string  | Host OS (localscan)                                                                           |
-| `discoverydata.paths`            | string  | Certificate file path on host (localscan). E.g. `/opt/tomcat/conf/keystore.jks`               |
-| `discoverydata.usages`           | string  | Config file paths used to find the cert (localscan). E.g. `tomcat-*:8443`, `/opt/tomcat/conf` |
-| `discoverydata.tls.version`      | string  | TLS version (netscan)                                                                         |
-| `discoverydata.tls.port`         | number  | HTTPS port where cert is exposed (netscan)                                                    |
-| `discoveryinfo.campaign`         | string  | Discovery campaign name                                                                       |
-| `thirdparty.connector`           | string  | Third-party connector name                                                                    |
-| `thirdparty.id`                  | string  | Third-party external ID                                                                       |
-| `thirdparty.fingerprint`         | string  | Third-party fingerprint                                                                       |
-| `trigger.results`                | special | See trigger.results syntax above                                                              |
+| Field                            | Type    | Description                                        |
+| -------------------------------- | ------- | -------------------------------------------------- |
+| `dn`                             | string  | Full distinguished name                            |
+| `profile`                        | string  | Profile name                                       |
+| `module`                         | string  | Module type (webra, acme, scep, est, monitored)    |
+| `san`                            | string  | Subject Alternative Name (any type, no sub-fields) |
+| `issuer`                         | string  | Issuer distinguished name                          |
+| `serial`                         | string  | Certificate serial number                          |
+| `thumbprint`                     | string  | Certificate thumbprint                             |
+| `publickeythumbprint`            | string  | Public key thumbprint                              |
+| `keytype`                        | string  | Key algorithm (RSA, EC, etc.)                      |
+| `primarykeytype`                 | string  | Primary key type (hybrid certs)                    |
+| `alternatekeytype`               | string  | Alternate key type (hybrid certs)                  |
+| `signingalgorithm`               | string  | Signature algorithm                                |
+| `owner`                          | string  | Owning team name                                   |
+| `team`                           | string  | Team name                                          |
+| `holderid`                       | string  | Certificate holder identifier (principal)          |
+| `contactemail`                   | string  | Contact email address                              |
+| `valid.from`                     | date    | Validity start date                                |
+| `valid.until`                    | date    | Validity end date                                  |
+| `revocation.date`                | date    | When the certificate was revoked                   |
+| `revocation.reason`              | string  | Revocation reason                                  |
+| `purge.date`                     | date    | Scheduled purge date                               |
+| `id`                             | id      | Certificate internal ID                            |
+| `grade`                          | grade   | Security grade (supports lower/greater than)       |
+| `grade.*`                        | grade   | Grade for specific grading policy                  |
+| `label.*`                        | string  | Label value (dynamic field name)                   |
+| `metadata.<key>`                 | string  | Certificate metadata (restricted keys - see below) |
+| `discoverydata.ip`               | string  | Host IP where certificate was discovered           |
+| `discoverydata.sources`          | string  | Discovery type (`localscan`, `netscan`, etc.)      |
+| `discoverydata.hostnames`        | string  | Host hostnames (netscan)                           |
+| `discoverydata.operatingsystems` | string  | Host OS (localscan)                                |
+| `discoverydata.tls.version`      | string  | TLS version (netscan)                              |
+| `discoverydata.tls.port`         | number  | HTTPS port where cert is exposed (netscan)         |
+| `discoveryinfo.campaign`         | string  | Discovery campaign name                            |
+| `thirdparty.connector`           | string  | Third-party connector name                         |
+| `thirdparty.id`                  | string  | Third-party external ID                            |
+| `thirdparty.fingerprint`         | string  | Third-party fingerprint                            |
+| `trigger.results`                | special | See trigger.results syntax above                   |
 
 ### Allowed `metadata.<key>` Values
 
@@ -355,9 +361,6 @@ Use `san matches "^\*\."` to find wildcard certificates - NOT `san.dnsname`.
 **Trigger:** `triggerName`, `triggerType`, `triggerStatus`
 
 **PKI/CA:** `ca`, `pkiConnector`, `thirdPartyConnector`, `revocationReason`
-
-**ACME:** `acmeAccountId`, `acmeOrderId`, `acmeAuthorizationId`,
-`acmeChallengeType`, `acmeFinalize`
 
 **EST:** `estAuthorizationMode`, `estProfile`
 
@@ -763,7 +766,7 @@ owned by the user's teams.
 3. Build the combined HCQL query:
 
 ```
-owner equals "alice@example.com" or team in ("DevOps", "Network", "Active_Directory")
+owner equals "alice@example.com" or team in ["DevOps", "Network", "Active_Directory"]
 ```
 
 ### With additional filters
@@ -771,7 +774,7 @@ owner equals "alice@example.com" or team in ("DevOps", "Network", "Active_Direct
 Ownership queries combine naturally with other conditions:
 
 ```
-(owner equals "alice@example.com" or team in ("DevOps", "Network", "Active_Directory"))
+(owner equals "alice@example.com" or team in ["DevOps", "Network", "Active_Directory"])
   and status is valid
   and valid.until before 30d
 ```
@@ -793,35 +796,35 @@ When users say "my certificates", they typically mean ownership (`owner` +
 ## Service Discovery Patterns (HCQL)
 
 When searching for certificates related to a specific service or application,
-**always** search across discovery data fields in addition to DN and SAN. The
-Evertrust Horizon Client discovers certificates on hosts and records where
-they were found (file path, service binding, hostnames). These fields are
-often the most reliable way to identify which service uses a certificate.
+search discovery hostnames in addition to DN and SAN. HCQL supports the
+six discovery fields listed below. Paths and usages are returned discovery
+metadata, but cannot be searched with HCQL.
 
 ### Discovery fields to search
 
-| Field                     | What it reveals                                         |
-| ------------------------- | ------------------------------------------------------- |
-| `dn`                      | Subject DN - may contain the service hostname           |
-| `san`                     | SANs - DNS names, IPs bound to the certificate          |
-| `discoverydata.paths`     | On-disk file path (keystore, PEM, PFX location)         |
-| `discoverydata.usages`    | Service binding: port + config path used by the service |
-| `discoverydata.hostnames` | Hostnames of the machine where the cert was found       |
-| `discoverydata.sources`   | How it was found (localscan, netscan, etc.)             |
+| Field                            | What it reveals                                   |
+| -------------------------------- | ------------------------------------------------- |
+| `dn`                             | Subject DN - may contain the service hostname     |
+| `san`                            | SANs - DNS names, IPs bound to the certificate    |
+| `discoverydata.hostnames`        | Hostnames of the machine where the cert was found |
+| `discoverydata.sources`          | How it was found (localscan, netscan, etc.)       |
+| `discoverydata.ip`               | IP address where the certificate was found        |
+| `discoverydata.tls.port`         | TLS port where the certificate was found          |
+| `discoverydata.tls.version`      | Observed TLS version                              |
+| `discoverydata.operatingsystems` | Operating systems of discovery hosts              |
 
 ### Natively integrated services
 
 These services are natively integrated with the Evertrust Horizon Client.
-Their certificates are discovered with rich metadata in `paths`, `usages`,
-and `hostnames`. When a user asks about any of these services, build a
-comprehensive query that searches **all** relevant fields:
+Their certificates may include paths, usages, and hostnames in discovery
+metadata. Search DN, SAN, and discovery hostnames with HCQL. Inspect paths
+and usages in the returned certificate data when needed. A service name
+matches only when it appears in one of the searchable fields:
 
 #### Tomcat
 
 ```
 dn contains "tomcat" or san contains "tomcat"
-  or discoverydata.paths contains "tomcat"
-  or discoverydata.usages contains "tomcat"
   or discoverydata.hostnames contains "tomcat"
 ```
 
@@ -832,8 +835,6 @@ usages `["tomcat-*:8443", "/opt/tomcat/conf"]`.
 
 ```
 dn contains "apache" or san contains "apache"
-  or discoverydata.paths contains "apache"
-  or discoverydata.usages contains "apache"
   or discoverydata.hostnames contains "apache"
 ```
 
@@ -842,8 +843,6 @@ Also search for `httpd` as an alternative name:
 ```
 (dn contains "apache" or dn contains "httpd")
   or (san contains "apache" or san contains "httpd")
-  or (discoverydata.paths contains "apache" or discoverydata.paths contains "httpd")
-  or (discoverydata.usages contains "apache" or discoverydata.usages contains "httpd")
   or (discoverydata.hostnames contains "apache" or discoverydata.hostnames contains "httpd")
 ```
 
@@ -853,8 +852,6 @@ Typical discovery data: paths `["/etc/apache2/ssl/server.crt"]` or `["/etc/httpd
 
 ```
 dn contains "nginx" or san contains "nginx"
-  or discoverydata.paths contains "nginx"
-  or discoverydata.usages contains "nginx"
   or discoverydata.hostnames contains "nginx"
 ```
 
@@ -866,8 +863,6 @@ usages `["nginx:443", "/etc/nginx/conf.d"]`.
 ```
 (dn contains "wildfly" or dn contains "jboss")
   or (san contains "wildfly" or san contains "jboss")
-  or (discoverydata.paths contains "wildfly" or discoverydata.paths contains "jboss")
-  or (discoverydata.usages contains "wildfly" or discoverydata.usages contains "jboss")
   or (discoverydata.hostnames contains "wildfly" or discoverydata.hostnames contains "jboss")
 ```
 
@@ -877,8 +872,6 @@ Typical discovery data: paths `["/opt/wildfly/standalone/configuration/keystore.
 
 ```
 dn contains "haproxy" or san contains "haproxy"
-  or discoverydata.paths contains "haproxy"
-  or discoverydata.usages contains "haproxy"
   or discoverydata.hostnames contains "haproxy"
 ```
 
@@ -888,8 +881,6 @@ Typical discovery data: paths `["/etc/haproxy/certs/frontend.pem"]`.
 
 ```
 dn contains "iis" or san contains "iis"
-  or discoverydata.paths contains "iis"
-  or discoverydata.usages contains "iis"
   or discoverydata.hostnames contains "iis"
 ```
 
@@ -898,12 +889,11 @@ usages `["IIS:443", "Default Web Site"]`.
 
 ### Generic service search pattern
 
-For any service NOT in the natively-integrated list above, search at minimum
-the certificate path and discovery hostnames alongside DN and SAN:
+For any service NOT in the natively-integrated list above, search discovery
+hostnames alongside DN and SAN:
 
 ```
 dn contains "<service>" or san contains "<service>"
-  or discoverydata.paths contains "<service>"
   or discoverydata.hostnames contains "<service>"
 ```
 
@@ -912,7 +902,7 @@ dn contains "<service>" or san contains "<service>"
 Service discovery queries can be combined with other filters:
 
 ```
-(discoverydata.paths contains "tomcat" or discoverydata.usages contains "tomcat")
+(dn contains "tomcat" or san contains "tomcat" or discoverydata.hostnames contains "tomcat")
   and status is valid
   and valid.until before 30d
 ```

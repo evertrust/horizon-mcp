@@ -151,6 +151,43 @@ describe('Trigger tools', () => {
   });
 
   describe('list_triggers', () => {
+    it('accepts a netscaler filter and returns only matching triggers', async () => {
+      mockClient.get.mockResolvedValueOnce([
+        { name: 'deploy-netscaler', type: 'netscaler' },
+        { name: 'notify-email', type: 'email' },
+      ]);
+
+      const result = await client.callTool({
+        name: 'list_triggers',
+        arguments: { trigger_type: 'netscaler' },
+      });
+
+      expect(result.isError).not.toBe(true);
+      expect(parseToolResult(result)['items']).toEqual([
+        { name: 'deploy-netscaler', type: 'netscaler' },
+      ]);
+    });
+
+    it.each(['fortigate', 'fortimanager', 'panos_firewall', 'panos_panorama'])(
+      'accepts a Horizon 2.11 %s filter',
+      async (type) => {
+        mockClient.get.mockResolvedValueOnce([
+          { name: 'deploy-net', type },
+          { name: 'notify-email', type: 'email' },
+        ]);
+
+        const result = await client.callTool({
+          name: 'list_triggers',
+          arguments: { trigger_type: type },
+        });
+
+        expect(result.isError).not.toBe(true);
+        expect(parseToolResult(result)['items']).toEqual([
+          { name: 'deploy-net', type },
+        ]);
+      },
+    );
+
     it('returns triggers from a bare array response', async () => {
       mockClient.get.mockResolvedValueOnce([
         { name: 'deploy-rest', type: 'rest' },
