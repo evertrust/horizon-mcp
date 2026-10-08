@@ -3287,11 +3287,13 @@ Examples:
           "type": "array",
         },
         "clear_fields": {
-          "description": "Text fields to remove.",
+          "description": "Fields to remove. Text fields are left out, lists become [].",
           "items": {
             "enum": [
               "description",
               "identifierConstraint",
+              "allowedProfiles",
+              "validationMethods",
               "emailConstraint",
             ],
             "type": "string",

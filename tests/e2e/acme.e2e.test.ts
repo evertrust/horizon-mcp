@@ -162,6 +162,14 @@ describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
     const updated = await callTool('get_eab_policy', { name: policyName });
     expect(updated['validationMethods']).toEqual(['dns-01']);
     expect(updated['identifierConstraint']).toBe('.*\\.example\\.com');
+
+    await callTool('update_eab_policy', {
+      name: policyName,
+      clear_fields: ['identifierConstraint'],
+    });
+    const cleared = await callTool('get_eab_policy', { name: policyName });
+    expect(cleared['identifierConstraint'] ?? '').toBe('');
+    expect(cleared['validationMethods']).toEqual(['dns-01']);
   });
 
   it('creates an EAB and returns its one-time MAC key', async () => {
@@ -203,7 +211,7 @@ describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
     expect(data['macKey'] !== firstMacKey).toBe(true);
   });
 
-  it('updates the EAB description', async () => {
+  it('updates and clears the EAB description', async () => {
     await callTool('update_acme_eab', {
       name: eabName,
       description: 'MCP E2E test EAB (updated)',
@@ -211,6 +219,14 @@ describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
     const eab = await callTool('get_acme_eab', { name: eabName });
     expect(eab['description']).toBe('MCP E2E test EAB (updated)');
     expect(eab['eabPolicy']).toBe(policyName);
+
+    await callTool('update_acme_eab', {
+      name: eabName,
+      clear_fields: ['description'],
+    });
+    const cleared = await callTool('get_acme_eab', { name: eabName });
+    expect(cleared['description'] ?? '').toBe('');
+    expect(cleared['eabPolicy']).toBe(policyName);
   });
 
   it('suspends the EAB and sets it valid again', async () => {

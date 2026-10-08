@@ -6,7 +6,8 @@
  *
  * Route: /api/v1/acme/eab-policies. The list is POST /list with an empty JSON
  * body. Update PUTs the COLLECTION root (body-keyed); the wrapper does
- * GET-merge so omitted fields are preserved.
+ * GET-merge so omitted fields are preserved. The update fields are not
+ * nullable: a cleared text constraint is left out and a cleared list is [].
  */
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
@@ -57,6 +58,15 @@ const constraintShape = {
     ),
 };
 
+const CLEARABLE_FIELDS = [
+  'identifierConstraint',
+  'allowedProfiles',
+  'validationMethods',
+  'emailConstraint',
+] as const;
+
+const LIST_FIELDS: readonly string[] = ['allowedProfiles', 'validationMethods'];
+
 type ConstraintArgs = {
   identifier_constraint?: string;
   allowed_profiles?: string[];
@@ -79,6 +89,13 @@ function constraintFields(args: ConstraintArgs): Record<string, unknown> {
       emailConstraint: args.email_constraint,
     }),
   };
+}
+
+/** Cleared list constraints are sent as [] (the fields are not nullable). */
+function emptiedLists(cleared: readonly string[] = []): Record<string, []> {
+  return Object.fromEntries(
+    cleared.filter((field) => LIST_FIELDS.includes(field)).map((f) => [f, []]),
+  );
 }
 
 const CREATE_EAB_POLICY_OPTS = {
@@ -105,13 +122,19 @@ const UPDATE_EAB_POLICY_OPTS = {
       .describe('EAB policy name to update (immutable key).'),
     ...constraintShape,
     clear_fields: z
-      .array(z.string())
+      .array(z.enum(CLEARABLE_FIELDS))
       .optional()
       .describe(
-        'Top-level fields to explicitly null, e.g. ["identifierConstraint"].',
+        'Constraints to remove. A text constraint is left out and a list ' +
+          'becomes empty. An empty constraint imposes no restriction at ' +
+          'policy level.',
       ),
   }),
-  buildOverrides: (args) => constraintFields(args),
+  buildOverrides: (args: ConstraintArgs & { clear_fields?: string[] }) => ({
+    ...emptiedLists(args.clear_fields),
+    ...constraintFields(args),
+  }),
+  omitClearedFields: true,
 } satisfies Parameters<typeof registerUpdateTool>[3];
 
 export function registerEabPolicyTools(

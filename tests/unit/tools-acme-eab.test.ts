@@ -7,6 +7,7 @@
  */
 import type { Client } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
 import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import {
@@ -31,6 +32,25 @@ const EAB_FIXTURE = {
   numberOfKeyRegeneration: 0,
   macKeyAlgorithm: 'HS256',
 };
+
+/** Public EabUpdateRequest shape: only name is required, nothing is nullable. */
+const EAB_UPDATE_REQUEST = z
+  .object({
+    name: z.string(),
+    description: z.string().optional(),
+    eabPolicy: z.string().optional(),
+    identifierConstraint: z.string().optional(),
+    allowedProfiles: z.array(z.string()).optional(),
+    validationMethods: z
+      .array(z.enum(['http-01', 'dns-01', 'tls-alpn-01']))
+      .optional(),
+    emailConstraint: z.string().optional(),
+  })
+  .strict();
+
+function putBody(mc: MockClient): unknown {
+  return mc.put.mock.calls[0]![1];
+}
 
 function isError(result: unknown): boolean {
   return (result as { isError?: boolean }).isError === true;
@@ -228,6 +248,7 @@ describe('ACME EAB tools', () => {
         allowedProfiles: ['acme-web'],
         validationMethods: ['http-01'],
       });
+      expect(EAB_UPDATE_REQUEST.safeParse(putBody(mc)).success).toBe(true);
     });
 
     it('merges the stored fields with the changes', async () => {
@@ -244,13 +265,39 @@ describe('ACME EAB tools', () => {
       expect(mc.get).toHaveBeenCalledWith('/api/v1/acme/eab/web-servers-eab');
       expect(mc.put).toHaveBeenCalledWith('/api/v1/acme/eab', {
         name: 'web-servers-eab',
-        description: null,
         eabPolicy: 'web-servers',
         identifierConstraint: '.*\\.example\\.com',
         allowedProfiles: [],
         validationMethods: ['http-01'],
       });
+      expect(EAB_UPDATE_REQUEST.safeParse(putBody(mc)).success).toBe(true);
       expect(parseToolResult(result)['status']).toBe('updated');
+    });
+
+    it('leaves cleared text out and empties cleared lists', async () => {
+      mc.get.mockResolvedValueOnce({
+        ...EAB_FIXTURE,
+        emailConstraint: '.*@example\\.com',
+      });
+      await client.callTool({
+        name: 'update_acme_eab',
+        arguments: {
+          name: 'web-servers-eab',
+          clear_fields: [
+            'identifierConstraint',
+            'emailConstraint',
+            'validationMethods',
+          ],
+        },
+      });
+      expect(mc.put).toHaveBeenCalledWith('/api/v1/acme/eab', {
+        name: 'web-servers-eab',
+        description: 'Web servers',
+        eabPolicy: 'web-servers',
+        allowedProfiles: ['acme-web'],
+        validationMethods: [],
+      });
+      expect(EAB_UPDATE_REQUEST.safeParse(putBody(mc)).success).toBe(true);
     });
 
     it('rejects clearing a field that is not a text field', async () => {

@@ -7,6 +7,7 @@
  */
 import type { Client } from '@modelcontextprotocol/client';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 import { registerEabPolicyTools } from '../../src/tools/config/eab-policies.js';
 import {
@@ -22,6 +23,19 @@ const POLICY = {
   allowedProfiles: ['acme-web'],
   validationMethods: ['http-01'],
 };
+
+/** Public EabPolicyUpdateRequest shape: only name is required, nothing is nullable. */
+const EAB_POLICY_UPDATE_REQUEST = z
+  .object({
+    name: z.string(),
+    identifierConstraint: z.string().optional(),
+    allowedProfiles: z.array(z.string()).optional(),
+    validationMethods: z
+      .array(z.enum(['http-01', 'dns-01', 'tls-alpn-01']))
+      .optional(),
+    emailConstraint: z.string().optional(),
+  })
+  .strict();
 
 function isError(result: unknown): boolean {
   return (result as { isError?: boolean }).isError === true;
@@ -132,6 +146,35 @@ describe('EAB policy tools', () => {
       allowedProfiles: ['acme-web'],
       validationMethods: ['dns-01'],
     });
+    const body = mc.put.mock.calls[0]![1];
+    expect(EAB_POLICY_UPDATE_REQUEST.safeParse(body).success).toBe(true);
+  });
+
+  it('update_eab_policy leaves cleared text out and empties cleared lists', async () => {
+    mc.get.mockResolvedValueOnce(POLICY);
+    await client.callTool({
+      name: 'update_eab_policy',
+      arguments: {
+        name: 'web-servers',
+        clear_fields: ['identifierConstraint', 'validationMethods'],
+      },
+    });
+    const body = mc.put.mock.calls[0]![1];
+    expect(body).toEqual({
+      name: 'web-servers',
+      allowedProfiles: ['acme-web'],
+      validationMethods: [],
+    });
+    expect(EAB_POLICY_UPDATE_REQUEST.safeParse(body).success).toBe(true);
+  });
+
+  it('update_eab_policy rejects clearing the name', async () => {
+    const result = await client.callTool({
+      name: 'update_eab_policy',
+      arguments: { name: 'web-servers', clear_fields: ['name'] },
+    });
+    expect(isError(result)).toBe(true);
+    expect(mc.put).not.toHaveBeenCalled();
   });
 
   it('delete_eab_policy requires the name echo', async () => {
