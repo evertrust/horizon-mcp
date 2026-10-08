@@ -6,14 +6,15 @@
  * changes them. The write leg creates its own EAB policy and EAB, renews the
  * EAB, suspends it and sets it valid again, then deletes both. It never uses
  * the compromised or deactivated statuses. afterAll removes anything that is
- * left.
+ * left. On an instance older than Horizon 2.11, every test skips.
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   E2E_CONFIGURED,
   E2E_PREFIX,
   callTool,
+  isHorizon211OrLater,
   setupE2EStack,
 } from './setup.js';
 
@@ -26,10 +27,16 @@ function results(page: Row): Row[] {
 describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E', () => {
   setupE2EStack();
 
+  let is211 = false;
   let accountId = '';
   let accountWithOrders = '';
 
   beforeAll(async () => {
+    is211 = await isHorizon211OrLater();
+    if (!is211) {
+      console.warn('[acme] Skipping: the instance is older than Horizon 2.11.');
+      return;
+    }
     const page = await callTool('search_acme_accounts', { page_size: 50 });
     const accounts = results(page);
     accountId = String(accounts[0]?.['_id'] ?? '');
@@ -44,6 +51,10 @@ describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E', () => {
         break;
       }
     }
+  });
+
+  beforeEach((ctx) => {
+    if (!is211) ctx.skip();
   });
 
   it('searches ACME accounts with HAQL', async () => {
@@ -117,9 +128,19 @@ describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
 
   const policyName = `mcp-${E2E_PREFIX}-eab-policy`;
   const eabName = `mcp-${E2E_PREFIX}-eab`;
+  let is211 = false;
   let firstMacKey = '';
 
+  beforeAll(async () => {
+    is211 = await isHorizon211OrLater();
+  });
+
+  beforeEach((ctx) => {
+    if (!is211) ctx.skip();
+  });
+
   afterAll(async () => {
+    if (!is211) return;
     try {
       await callTool('delete_acme_eab', {
         name: eabName,
