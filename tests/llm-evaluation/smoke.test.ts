@@ -8,8 +8,8 @@ describe('Provider-agnostic scenario smoke tests', () => {
 
     // 241 total tools: 107 base tools + 134 configuration CRUD tools.
     expect(metadata.tools.length).toBe(241);
-    // 111 total resources: 18 core guides, 4 curated playbooks, 89 sections.
-    expect(metadata.resources.length).toBe(111);
+    // 125 total resources: 19 core guides, 4 curated playbooks, 102 sections.
+    expect(metadata.resources.length).toBe(125);
   });
 
   it('ranks documentation search above raw page fetch for configuration prompts', async () => {

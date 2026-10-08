@@ -114,6 +114,12 @@ the roles and permissions explicitly required by the workload. For static JWKS,
 account. Horizon GET responses may represent that field as an object, so the
 update tool re-serializes it during its GET-merge-PUT cycle.
 
+Clients send the service-account name in `X-API-SVA` and the JWT in
+`X-API-TOKEN`. Since Horizon 2.11, the JWT can also be sent as
+`Authorization: Bearer <JWT>`; it is validated the same way. Before 2.11,
+only `X-API-TOKEN` is accepted. Service-account authentication never creates
+a session: each request carries a valid JWT.
+
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign
 them can escalate to any permission level.
@@ -315,6 +321,13 @@ supports two IDP types:
 Profiles can restrict specific workflow actions to principals authenticated
 through specific IDPs. See the `identityProviders` field in authorization
 levels (workflows knowledge).
+
+OIDC role and team mapping: `mapping.entries[]` assign roles and teams from
+claim values. Since Horizon 2.11, `mapping.synchronizationMode` selects what
+is synchronized: `roles`, `teams` or `roles_teams` (default); the selected
+roles and/or teams are replaced on each login (manual assignments of them are
+overwritten; the other field is kept). See
+horizon://knowledge/integrations (OIDC).
 
 ---
 

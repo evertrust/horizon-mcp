@@ -1,3 +1,4 @@
+import acmeContent from './knowledge/acme.md';
 import adcsIntegrationContent from './knowledge/adcs_integration.md';
 import architectureContent from './knowledge/architecture.md';
 import automationContent from './knowledge/automation.md';
@@ -125,6 +126,14 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     uri: 'horizon://knowledge/datasources',
     description: 'Data source configuration (DNS/LDAP/REST)',
     content: datasourcesContent,
+    splitSections: true,
+  },
+  {
+    name: 'acme',
+    uri: 'horizon://knowledge/acme',
+    description:
+      'ACME server, EAB policies, EABs, ACME accounts and orders (HAQL/HEABQL)',
+    content: acmeContent,
     splitSections: true,
   },
   {
