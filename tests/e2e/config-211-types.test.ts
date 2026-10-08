@@ -91,23 +91,13 @@ function subtypeRequired(
   return def?.required ?? [];
 }
 
-/** True when the instance reports Horizon 2.11 or later. */
+/** True when GET /api/v1/licenses reports Horizon 2.11 or later. */
 async function isHorizon211OrLater(): Promise<boolean> {
-  const client = getHorizonClient();
-  let version: unknown;
-  try {
-    version = (await client.get<Record<string, unknown>>('/api/v1/licenses'))[
-      'version'
-    ];
-  } catch {
-    version = (
-      await client.get<Record<string, unknown>>(
-        '/api/v1/security/principals/self',
-      )
-    )['_horizonVersion'];
-  }
-  const match = /^(\d+)\.(\d+)/.exec(String(version ?? ''));
-  if (!match) return false;
+  const license =
+    await getHorizonClient().get<Record<string, unknown>>('/api/v1/licenses');
+  const version = String(license['version'] ?? '');
+  const match = /^(\d+)\.(\d+)/.exec(version);
+  if (!match) throw new Error(`Unexpected Horizon version: "${version}"`);
   const [major, minor] = [Number(match[1]), Number(match[2])];
   return major > 2 || (major === 2 && minor >= 11);
 }
