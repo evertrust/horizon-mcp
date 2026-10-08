@@ -132,6 +132,36 @@ describe('submit_webra_challenge', () => {
     );
   });
 
+  it('removes the submitted challenge from error text and structured content', async () => {
+    const challenge = 'echoed-one-time-challenge';
+    mockClient.post.mockRejectedValueOnce(
+      new HorizonError(400, {
+        errorCode: 'WEBRA-ENROLL-015',
+        message: `Invalid challenge ${challenge}`,
+        detail: `Challenge ${challenge} is consumed`,
+      }),
+    );
+
+    const result = await client.callTool({
+      name: 'submit_webra_challenge',
+      arguments: {
+        profile: 'webra-challenge',
+        challenge,
+        template: { keyType: 'rsa-2048' },
+      },
+    });
+
+    expect((result as ToolResult).isError).toBe(true);
+    expect(JSON.stringify(result)).not.toContain(challenge);
+    expect((result as ToolResult).content[0]!.text).toContain(
+      '[WEBRA-ENROLL-015]',
+    );
+    expect(
+      (result as { structuredContent?: Record<string, unknown> })
+        .structuredContent?.['detail'],
+    ).toBe('Challenge <redacted> is consumed');
+  });
+
   it('rejects a call without a template before any request', async () => {
     const result = await client.callTool({
       name: 'submit_webra_challenge',

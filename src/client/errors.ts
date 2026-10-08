@@ -19,6 +19,8 @@ const SENSITIVE_FIELDS = new Set([
   'hmacKey',
   'pkcs12',
   'keystore',
+  // One-time WebRA challenge (Horizon 2.11+): it authorizes an enrollment.
+  'challenge',
 ]);
 
 // Specific error codes -> remediation hints
@@ -138,6 +140,32 @@ export function redactValue(s: string): string {
   if (scrubbed.length > MAX_ERROR_FIELD_LENGTH) {
     scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + '... [truncated]';
   }
+  return scrubbed;
+}
+
+/**
+ * Return a copy of `err` with every occurrence of `secret` replaced in the
+ * message and the detail. Use it when a request carried a secret that an
+ * error body can echo back. Returns `err` itself when the secret is absent.
+ */
+export function scrubSecretFromError(
+  err: HorizonError,
+  secret: string,
+): HorizonError {
+  const hasSecret = (s: string | undefined): boolean =>
+    s !== undefined && s.includes(secret);
+  if (!secret || (!hasSecret(err.message) && !hasSecret(err.detail))) {
+    return err;
+  }
+  const scrub = (s: string): string => s.split(secret).join('<redacted>');
+  const scrubbed = new HorizonError(err.statusCode, {
+    errorCode: err.errorCode,
+    detail: err.detail === undefined ? undefined : scrub(err.detail),
+    remediation: err.remediation,
+  });
+  // The formatted message embeds the original message text, which this
+  // copy does not keep separately: carry it over with the secret removed.
+  scrubbed.message = scrub(err.message);
   return scrubbed;
 }
 
