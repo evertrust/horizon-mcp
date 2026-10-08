@@ -169,9 +169,8 @@ const UPDATE_ACME_EAB_CONFIG = {
 const UPDATE_ACME_EAB_STATUS_CONFIG = {
   description:
     `${ACME_VERSION_NOTE} Change the status of an ACME EAB. deactivated ` +
-    'deactivates all ACME accounts bound to the EAB. compromised cannot be ' +
-    'undone for the accounts: Horizon compromises all bound accounts (a final ' +
-    'account status) and revokes ' +
+    'deactivates all ACME accounts bound to the EAB. compromised is ' +
+    'irreversible: Horizon compromises all bound accounts and revokes ' +
     'their certificates issued after compromised_at, with ' +
     'compromission_reason. Confirm the EAB and the status with the user ' +
     'before you call this tool.\nSafety tier: mutating-destructive',
