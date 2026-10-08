@@ -445,6 +445,8 @@ curl -X POST "https://<HORIZON_URL>/api/v1/requests/submit" \
     "profile": "TLS-Internal",
     "module": "webra",
     "certificateId": "abc123",
-    "revocationReason": "keycompromise"
+    "template": {
+      "revocationReason": "keycompromise"
+    }
   }'
 ```
