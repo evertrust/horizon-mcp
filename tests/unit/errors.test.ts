@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { HorizonError, parseErrorResponse } from '../../src/client/errors.js';
+import {
+  HorizonError,
+  parseErrorResponse,
+  redactSensitive,
+  scrubSecretFromError,
+} from '../../src/client/errors.js';
 
 describe('HorizonError', () => {
   describe('message formatting', () => {
@@ -281,6 +286,52 @@ describe('parseErrorResponse', () => {
       expect(err.remediation).toContain('update_*');
     });
 
+    it('keeps LIC-004 in the licence family instead of treating it as already existing', () => {
+      const err = parseErrorResponse(
+        403,
+        JSON.stringify({
+          error: { code: 'LIC-004', message: 'Expired License' },
+        }),
+      );
+
+      expect(err.remediation).toContain('license');
+      expect(err.remediation).not.toContain('Already exists');
+    });
+
+    it.each([
+      ['ACME-003', 'compromised ACME account cannot change status'],
+      ['ACME-004', 'search_acme_accounts'],
+      ['ACME-005', 'still valid'],
+      ['EAB-001', 'update_acme_eab'],
+      ['EAB-002', 'search_acme_eabs'],
+      ['EAB-003', 'valid, deactivated, or suspended'],
+      ['EAB-004', 'Narrow the HEABQL query'],
+      ['EAB-POLICY-001', 'list_eab_policies'],
+      ['EAB-POLICY-002', 'still referenced'],
+      ['ORDER-001', 'list_acme_orders'],
+      ['ORDER-002', 'not final'],
+    ])('resolves %s with its ACME-specific hint', (code, hint) => {
+      const err = parseErrorResponse(
+        400,
+        JSON.stringify({ error: code, message: 'failed' }),
+      );
+
+      expect(err.remediation).toContain(hint);
+    });
+
+    it.each([
+      ['SERV-ACC-003', 'Already exists'],
+      ['SERV-ACC-004', 'Not found'],
+      ['SERV-ACC-005', 'read-only'],
+    ])('resolves %s with its service-account-specific hint', (code, hint) => {
+      const err = parseErrorResponse(
+        400,
+        JSON.stringify({ error: { code, message: 'failed' } }),
+      );
+
+      expect(err.remediation).toContain(hint);
+    });
+
     it('returns undefined remediation for unknown error codes', () => {
       const body = JSON.stringify({
         error: { code: 'UNKNOWN-999', message: 'Unknown error' },
@@ -335,5 +386,42 @@ describe('parseErrorResponse', () => {
       expect(err.statusCode).toBe(504);
       expect(err.message).toContain('Horizon API error 504');
     });
+  });
+});
+
+describe('sensitive error values', () => {
+  const SECRET = 'one-time-challenge';
+
+  it('redacts a WebRA challenge field at any depth', () => {
+    expect(
+      redactSensitive({
+        profile: 'webra-challenge',
+        challenge: SECRET,
+        request: { challenge: 'nested-challenge' },
+      }),
+    ).toEqual({
+      profile: 'webra-challenge',
+      challenge: '<redacted>',
+      request: { challenge: '<redacted>' },
+    });
+  });
+
+  it('scrubs a secret from messages, detail, and truncated prefixes', () => {
+    const padding = 'word '.repeat(39);
+    const original = parseErrorResponse(
+      400,
+      JSON.stringify({
+        error: 'WEBRA-ENROLL-015',
+        message: `Invalid challenge ${SECRET}`,
+        detail: `${padding}${SECRET}`,
+      }),
+    );
+
+    const scrubbed = scrubSecretFromError(original, SECRET);
+
+    expect(scrubbed.message).not.toContain(SECRET);
+    expect(scrubbed.detail).not.toContain(SECRET);
+    expect(scrubbed.message).toContain('Invalid challenge <redacted>');
+    expect(scrubbed.detail).toBe(`${padding}<redacted>... [truncated]`);
   });
 });
