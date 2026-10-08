@@ -1,3 +1,9 @@
+## [2.0.2](https://github.com/evertrust/horizon-mcp/compare/v2.0.1...v2.0.2) (2026-10-08)
+
+### Bug Fixes
+
+* align hql syntax, trigger types and knowledge with the public api ([#28](https://github.com/evertrust/horizon-mcp/issues/28)) ([9423c8f](https://github.com/evertrust/horizon-mcp/commit/9423c8f27d79372793b523390dca73b08a5f2aa6))
+
 ## [2.0.1](https://github.com/evertrust/horizon-mcp/compare/v2.0.0...v2.0.1) (2026-09-23)
 
 ### Bug Fixes
