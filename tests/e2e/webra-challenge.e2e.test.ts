@@ -129,13 +129,25 @@ async function enrollForMode(mode: KeyMode): Promise<Enrollment | undefined> {
   );
 }
 
-/** openssl -newkey arguments for a Horizon key type ("rsa-3072", "ec-p256"). */
+/**
+ * openssl curve name for a Horizon EC key type: "ec-secp256r1" -> "P-256",
+ * "ec-brainpoolp384r1" -> "brainpoolP384r1".
+ */
+function opensslCurve(keyType: string): string | undefined {
+  const nist = /^ec-secp(256|384|521)r1$/.exec(keyType);
+  if (nist) return `P-${nist[1]}`;
+  const brainpool = /^ec-brainpoolp(256|384|512)r1$/.exec(keyType);
+  if (brainpool) return `brainpoolP${brainpool[1]}r1`;
+  return undefined;
+}
+
+/** openssl -newkey arguments for a Horizon RSA or EC key type. */
 function newKeyArgs(keyType: string): string[] {
   const rsa = /^rsa-(\d+)$/.exec(keyType);
   if (rsa) return ['-newkey', `rsa:${rsa[1]}`];
-  const ec = /^ec-p(\d+)$/.exec(keyType);
-  if (ec) {
-    return ['-newkey', 'ec', '-pkeyopt', `ec_paramgen_curve:P-${ec[1]}`];
+  const curve = opensslCurve(keyType);
+  if (curve) {
+    return ['-newkey', 'ec', '-pkeyopt', `ec_paramgen_curve:${curve}`];
   }
   throw new Error(`No CSR recipe for key type "${keyType}"`);
 }
