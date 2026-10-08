@@ -19,6 +19,8 @@ const SENSITIVE_FIELDS = new Set([
   'hmacKey',
   'pkcs12',
   'keystore',
+  // One-time WebRA challenge (Horizon 2.11+): it authorizes an enrollment.
+  'challenge',
 ]);
 
 // Specific error codes -> remediation hints
@@ -124,6 +126,7 @@ const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
 const LONG_BASE64_RE = /[A-Za-z0-9+/=_-]{40,}/g;
 
 const MAX_ERROR_FIELD_LENGTH = 200;
+const TRUNCATION_MARKER = '... [truncated]';
 
 /**
  * Scrub PEM private keys, JWT tokens, and long base64-ish blobs from a
@@ -136,8 +139,65 @@ export function redactValue(s: string): string {
     .replace(JWT_RE, '<redacted-jwt>')
     .replace(LONG_BASE64_RE, '<redacted-blob>');
   if (scrubbed.length > MAX_ERROR_FIELD_LENGTH) {
-    scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + '... [truncated]';
+    scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + TRUNCATION_MARKER;
   }
+  return scrubbed;
+}
+
+/** Replace the longest prefix of `secret` that ends `text`. */
+function redactSecretPrefixAtEnd(text: string, secret: string): string {
+  for (let length = secret.length - 1; length > 0; length--) {
+    if (text.endsWith(secret.slice(0, length))) {
+      return text.slice(0, text.length - length) + '<redacted>';
+    }
+  }
+  return text;
+}
+
+/**
+ * Replace every full occurrence of `secret` in `text`, and the start of the
+ * secret that truncation can leave just before a TRUNCATION_MARKER.
+ */
+function redactSecret(text: string, secret: string): string {
+  const segments = text
+    .split(secret)
+    .join('<redacted>')
+    .split(TRUNCATION_MARKER);
+  return segments
+    .map((segment, index) =>
+      index < segments.length - 1
+        ? redactSecretPrefixAtEnd(segment, secret)
+        : segment,
+    )
+    .join(TRUNCATION_MARKER);
+}
+
+/**
+ * Return a copy of `err` with `secret` replaced in the message and the
+ * detail, including a secret cut short by truncation. Use it when a request
+ * carried a secret that an error body can echo back. Returns `err` itself
+ * when nothing changes.
+ */
+export function scrubSecretFromError(
+  err: HorizonError,
+  secret: string,
+): HorizonError {
+  if (!secret) return err;
+  const scrub = (s: string): string => redactSecret(s, secret);
+  if (
+    scrub(err.message) === err.message &&
+    (err.detail === undefined || scrub(err.detail) === err.detail)
+  ) {
+    return err;
+  }
+  const scrubbed = new HorizonError(err.statusCode, {
+    errorCode: err.errorCode,
+    detail: err.detail === undefined ? undefined : scrub(err.detail),
+    remediation: err.remediation,
+  });
+  // The formatted message embeds the original message text, which this
+  // copy does not keep separately: carry it over with the secret removed.
+  scrubbed.message = scrub(err.message);
   return scrubbed;
 }
 

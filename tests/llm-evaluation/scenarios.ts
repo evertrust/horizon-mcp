@@ -214,4 +214,14 @@ export const TOOL_SELECTION_SCENARIOS: readonly SelectionScenario[] = [
       create_certificate_profile: ['module', 'name'],
     },
   },
+  {
+    id: 'webra-challenge-submit',
+    question:
+      'I have a one-time WebRA challenge for the profile webra-challenge. Use it to get my certificate.',
+    expectedPrimaryTools: ['submit_webra_challenge'],
+    primaryMaxRank: 3,
+    requiredArgs: {
+      submit_webra_challenge: ['profile', 'challenge', 'template'],
+    },
+  },
 ] as const;

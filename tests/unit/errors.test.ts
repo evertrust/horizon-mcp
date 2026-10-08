@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { HorizonError, parseErrorResponse } from '../../src/client/errors.js';
+import {
+  HorizonError,
+  parseErrorResponse,
+  redactSensitive,
+  scrubSecretFromError,
+} from '../../src/client/errors.js';
 
 describe('HorizonError', () => {
   describe('message formatting', () => {
@@ -239,6 +244,20 @@ describe('parseErrorResponse', () => {
         expect(err.message).not.toContain(`value-of-${field}`);
       }
     });
+
+    it('redacts a WebRA challenge field at any depth', () => {
+      expect(
+        redactSensitive({
+          profile: 'webra-challenge',
+          challenge: 'one-time-challenge',
+          request: { challenge: 'nested-challenge' },
+        }),
+      ).toEqual({
+        profile: 'webra-challenge',
+        challenge: '<redacted>',
+        request: { challenge: '<redacted>' },
+      });
+    });
   });
 
   describe('remediation hint resolution', () => {
@@ -356,5 +375,61 @@ describe('parseErrorResponse', () => {
       expect(err.statusCode).toBe(504);
       expect(err.message).toContain('Horizon API error 504');
     });
+  });
+});
+
+describe('scrubSecretFromError', () => {
+  const SECRET = 'one-time-challenge';
+
+  it('replaces the secret in the message and the detail', () => {
+    const original = parseErrorResponse(
+      400,
+      JSON.stringify({
+        error: 'WEBRA-ENROLL-015',
+        message: `Invalid challenge ${SECRET}`,
+        detail: `Challenge ${SECRET} is consumed`,
+      }),
+    );
+
+    const scrubbed = scrubSecretFromError(original, SECRET);
+
+    expect(scrubbed).not.toBe(original);
+    expect(scrubbed).toBeInstanceOf(HorizonError);
+    expect(scrubbed.message).not.toContain(SECRET);
+    expect(scrubbed.detail).not.toContain(SECRET);
+    expect(scrubbed.message).toContain('Invalid challenge <redacted>');
+    expect(scrubbed.detail).toBe('Challenge <redacted> is consumed');
+    expect(scrubbed.statusCode).toBe(400);
+    expect(scrubbed.errorCode).toBe('WEBRA-ENROLL-015');
+    expect(original.message).toContain(SECRET);
+  });
+
+  it('redacts a secret prefix left at a truncation point', () => {
+    const longSecret = 'Q7xv2Lk9pTz4';
+    const padding = 'word '.repeat(39);
+    const original = parseErrorResponse(
+      400,
+      JSON.stringify({
+        error: 'WEBRA-ENROLL-015',
+        message: `${padding}${longSecret}`,
+        detail: `${padding}${longSecret}`,
+      }),
+    );
+    // Truncation keeps only the first 5 characters of the secret.
+    expect(original.detail).toBe(`${padding}Q7xv2... [truncated]`);
+
+    const scrubbed = scrubSecretFromError(original, longSecret);
+
+    expect(scrubbed.detail).toBe(`${padding}<redacted>... [truncated]`);
+    expect(scrubbed.message).not.toContain('Q7xv2');
+    expect(scrubbed.message).toContain(`${padding}<redacted>... [truncated]`);
+  });
+
+  it('returns the same error when the secret does not appear', () => {
+    const original = new HorizonError(400, {
+      errorCode: 'WEBRA-ENROLL-015',
+      message: 'Invalid challenge',
+    });
+    expect(scrubSecretFromError(original, SECRET)).toBe(original);
   });
 });

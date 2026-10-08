@@ -74,6 +74,10 @@ export enum ThirdPartyConnectorType {
   LDAP_PUB = 'ldappub',
   MS_AD = 'msad',
   NETSCALER = 'netscaler',
+  FORTIGATE = 'fortigate',
+  FORTIMANAGER = 'fortimanager',
+  PANOS_FIREWALL = 'panos_firewall',
+  PANOS_PANORAMA = 'panos_panorama',
 }
 
 export enum TriggerType {
@@ -88,6 +92,10 @@ export enum TriggerType {
   LDAPPUB = 'ldappub',
   GCM = 'gcm',
   NETSCALER = 'netscaler',
+  FORTIGATE = 'fortigate',
+  FORTIMANAGER = 'fortimanager',
+  PANOS_FIREWALL = 'panos_firewall',
+  PANOS_PANORAMA = 'panos_panorama',
 }
 
 export enum CertificateFormat {

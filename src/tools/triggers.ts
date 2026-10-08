@@ -47,6 +47,11 @@ const VALID_TRIGGER_TYPES = new Set([
   'ldappub',
   'gcm',
   'netscaler',
+  // Horizon 2.11+
+  'fortigate',
+  'fortimanager',
+  'panos_firewall',
+  'panos_panorama',
 ]);
 
 const VALID_AUTH_TYPES = new Set([
