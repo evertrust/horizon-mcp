@@ -64,7 +64,7 @@ The full per-tool table with safety tiers is in [docs/tools-reference.md](docs/t
 ## Prerequisites
 
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
-- An Evertrust Horizon instance (tested on 2.10, expected to work on 2.8 and 2.9)
+- An Evertrust Horizon instance (tested on 2.10 and 2.11, expected to work on 2.8 and 2.9)
 - API credentials, a service-account JWT, or a client certificate for that instance
 - An MCP client that supports protocol revision **2026-07-28**. Version 3.0.0 serves that revision only.
   Before you upgrade, check [docs/client-setup.md](docs/client-setup.md#client-compatibility). If your client is older, stay on 2.x.
@@ -143,7 +143,7 @@ request. See [Authentication methods](#authentication-methods).
 | `HORIZON_TIMEOUT`                 | No              | `30`                | HTTP request timeout in seconds for standard API calls.                                                                                                                                                                                                                                                                                                                              |
 | `HORIZON_EXPORT_TIMEOUT`          | No              | `120`               | Timeout in seconds for CSV exports and other long-running endpoints.                                                                                                                                                                                                                                                                                                                 |
 | `HORIZON_LOG_LEVEL`               | No              | `INFO`              | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                                                                                                                                                                                                                                                                                                          |
-| `HORIZON_TESTED_VERSIONS`         | No              | `2.10`              | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                                                                                                        |
+| `HORIZON_TESTED_VERSIONS`         | No              | `2.10,2.11`         | Comma-separated list of Horizon versions known to fully work with this build.                                                                                                                                                                                                                                                                                                        |
 | `HORIZON_WARN_VERSIONS`           | No              | `2.8,2.9`           | Comma-separated list of versions that probably work. The server logs a warning when it connects to one of them.                                                                                                                                                                                                                                                                      |
 | `HORIZON_ENABLED_TOOLSETS`        | No              | (all)               | Comma-separated list of tool domains to register. A shorter list cuts the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `acme`, `docs`, `assist`, `config`. If you leave it unset, the server registers every toolset. An unknown name stops startup. See the mapping to the domain table below. |
 | `HORIZON_READ_ONLY`               | No              | `false`             | Set to `true` or `1` to register only the read-only tools. The server then skips every mutating tool (create/update/delete/submit/...) at startup.                                                                                                                                                                                                                                   |
@@ -549,11 +549,12 @@ See [docs/development.md](docs/development.md) for the documentation language ru
 | Horizon version    | Status                                        |
 | ------------------ | --------------------------------------------- |
 | 2.10               | Tested (full Horizon 2.10 feature coverage)   |
+| 2.11               | Tested (includes the Horizon 2.11 features)   |
 | 2.8                | Expected to work (in `HORIZON_WARN_VERSIONS`) |
 | 2.9                | Expected to work (in `HORIZON_WARN_VERSIONS`) |
 | All other versions | Untested. Use with care                       |
 
-You can configure both version lists. By default, the server treats only version 2.10 as tested, and versions 2.8 and 2.9 as warning versions.
+You can configure both version lists. By default, the server treats versions 2.10 and 2.11 as tested, and versions 2.8 and 2.9 as warning versions.
 
 ## What is not supported
 
