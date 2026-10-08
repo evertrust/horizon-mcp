@@ -2,9 +2,10 @@
 
 ## Overview
 
-Horizon provides five domain-specific query languages for searching different
-object types. All share the same operator syntax but have different field
-sets tailored to their domain.
+Horizon provides five domain-specific query languages before Horizon 2.11,
+and seven on Horizon 2.11 and later. Each one searches a different object
+type. All share the same operator syntax but have different field sets
+tailored to their domain.
 
 | Language   | Full Name                                   | Searches           | API Endpoint                      |
 | ---------- | ------------------------------------------- | ------------------ | --------------------------------- |
