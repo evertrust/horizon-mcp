@@ -386,46 +386,94 @@ function withoutKeys(
   );
 }
 
+type NormalizeCurrent = (
+  current: Record<string, unknown>,
+) => Record<string, unknown>;
+
+type UpdateOpts<S extends z.ZodObject<z.ZodRawShape>> = {
+  description: string;
+  inputSchema: S;
+  buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
+  preValidate?: (args: z.infer<S>) => string | undefined;
+  /** Normalizes a GET-only representation before the merged PUT. */
+  normalizeCurrent?: NormalizeCurrent;
+  validateMergedBody?: (body: Record<string, unknown>) => void;
+  /**
+   * Leave clear_fields out of the PUT body instead of sending null, for
+   * APIs whose fields are not nullable. buildOverrides can still set a
+   * value for a cleared field (for example [] for a list).
+   */
+  omitClearedFields?: boolean;
+};
+
+/**
+ * clear_fields resets a field in the full-replace PUT body. Never allow
+ * clearing an immutable key or a server-managed (stripped) field.
+ */
+function assertClearable(spec: ConfigSpec, clearFields: readonly string[]) {
+  const forbidden = new Set<string>([
+    ...spec.stripFields,
+    ...spec.immutableKeys,
+  ]);
+  const bad = clearFields.filter((f) => forbidden.has(f));
+  if (bad.length > 0) {
+    throw new HorizonError(422, {
+      errorCode: 'CONFIG-CLEAR-FORBIDDEN',
+      message: `clear_fields may not target immutable or server-managed fields: ${bad.join(', ')}.`,
+      remediation: 'Remove these from clear_fields - they cannot be nulled.',
+    });
+  }
+}
+
+/**
+ * How the merge applies clear_fields: as nulls (default), or by dropping the
+ * fields from the stored object when omitClearedFields is set.
+ */
+function planClear(
+  clearFields: string[] | undefined,
+  omitClearedFields: boolean | undefined,
+  normalizeCurrent: NormalizeCurrent | undefined,
+): { nullFields?: string[]; normalizeCurrent?: NormalizeCurrent } {
+  if (omitClearedFields !== true || !clearFields || clearFields.length === 0) {
+    return { nullFields: clearFields, normalizeCurrent };
+  }
+  return {
+    normalizeCurrent: (current) =>
+      withoutKeys(normalizeCurrent?.(current) ?? current, clearFields),
+  };
+}
+
+function buildUpdateConfig<S extends z.ZodObject<z.ZodRawShape>>(
+  spec: ConfigSpec,
+  opts: UpdateOpts<S>,
+) {
+  return {
+    description:
+      `${opts.description}\nSafety tier: mutating-destructive\n` +
+      `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
+      `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
+      `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
+    inputSchema: opts.inputSchema,
+    // Config update is a full-replace PUT that can reset omitted fields and
+    // overwrite permissions, so it is destructive despite the update_ prefix
+    // the classifier treats as non-destructive by default.
+    annotations: { destructiveHint: true },
+  };
+}
+
 // ---------------------------------------------------------------------------
 
 export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
   server: McpServer,
   client: HorizonClient,
   spec: ConfigSpec,
-  opts: {
-    description: string;
-    inputSchema: S;
-    buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
-    preValidate?: (args: z.infer<S>) => string | undefined;
-    /** Normalizes a GET-only representation before the merged PUT. */
-    normalizeCurrent?: (
-      current: Record<string, unknown>,
-    ) => Record<string, unknown>;
-    validateMergedBody?: (body: Record<string, unknown>) => void;
-    /**
-     * Leave clear_fields out of the PUT body instead of sending null, for
-     * APIs whose fields are not nullable. buildOverrides can still set a
-     * value for a cleared field (for example [] for a list).
-     */
-    omitClearedFields?: boolean;
-  },
+  opts: UpdateOpts<S>,
 ): void {
   const idField = spec.idField ?? 'name';
   registerTool(
     server,
     `update_${spec.noun}`,
-    {
-      description:
-        `${opts.description}\nSafety tier: mutating-destructive\n` +
-        `Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored ` +
-        `fields not mentioned in the call are preserved by the merge; use clear_fields ` +
-        `to reset a field. ${immutableNote(spec)}${refFooter(spec)}`,
-      inputSchema: opts.inputSchema,
-      // Config update is a full-replace PUT that can reset omitted fields and
-      // overwrite permissions, so it is destructive despite the update_ prefix
-      // the classifier treats as non-destructive by default.
-      annotations: { destructiveHint: true },
-    },
+    buildUpdateConfig(spec, opts),
     async (args: z.infer<S>) => {
       const err = opts.preValidate?.(args);
       if (err !== undefined) return text(err);
@@ -434,44 +482,23 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
       const clearFields = (args as Record<string, unknown>)['clear_fields'] as
         | string[]
         | undefined;
-      // clear_fields nulls a field in the full-replace PUT body. Never allow
-      // nulling an immutable key or a server-managed (stripped) field.
       if (clearFields && clearFields.length > 0) {
-        const forbidden = new Set<string>([
-          ...spec.stripFields,
-          ...spec.immutableKeys,
-        ]);
-        const bad = clearFields.filter((f) => forbidden.has(f));
-        if (bad.length > 0) {
-          throw new HorizonError(422, {
-            errorCode: 'CONFIG-CLEAR-FORBIDDEN',
-            message: `clear_fields may not target immutable or server-managed fields: ${bad.join(', ')}.`,
-            remediation:
-              'Remove these from clear_fields - they cannot be nulled.',
-          });
-        }
+        assertClearable(spec, clearFields);
       }
-      const putPath = spec.putOnCollection
-        ? spec.routeCollection
-        : itemPath(spec, id);
-      const omitCleared = opts.omitClearedFields === true;
-      const normalizeCurrent =
-        omitCleared && clearFields && clearFields.length > 0
-          ? (current: Record<string, unknown>) =>
-              withoutKeys(
-                opts.normalizeCurrent?.(current) ?? current,
-                clearFields,
-              )
-          : opts.normalizeCurrent;
+      const clear = planClear(
+        clearFields,
+        opts.omitClearedFields,
+        opts.normalizeCurrent,
+      );
       const result = await getStripMergePutExplicit(
         client,
         itemPath(spec, id),
-        putPath,
+        spec.putOnCollection ? spec.routeCollection : itemPath(spec, id),
         spec.stripFields,
         overrides,
-        omitCleared ? undefined : clearFields,
+        clear.nullFields,
         { immutableKeys: spec.immutableKeys, idField },
-        normalizeCurrent,
+        clear.normalizeCurrent,
         opts.validateMergedBody,
       );
       return text(
