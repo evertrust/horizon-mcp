@@ -1,3 +1,25 @@
+## [3.1.0](https://github.com/evertrust/horizon-mcp/compare/v3.0.1...v3.1.0) (2026-10-08)
+
+### Features
+
+* add acme error remediation hints ([1a01b4f](https://github.com/evertrust/horizon-mcp/commit/1a01b4fa37646ccf608afcce0fe81d500c0134c1))
+* add acme, eab and eab policy tools with haql and heabql dialects ([8be1ecb](https://github.com/evertrust/horizon-mcp/commit/8be1ecbb733254689b724780dd6d5879e835518e))
+* add fortinet and pan-os connectors and triggers for horizon 2.11 ([42ce7b4](https://github.com/evertrust/horizon-mcp/commit/42ce7b40bcfcd1673acf7eeaafeffa9e9d81dfa7))
+* add horizon 2.11 acme and webra challenge profile fields ([bd8a8e6](https://github.com/evertrust/horizon-mcp/commit/bd8a8e63b30f1bd728bb01283f4c94a17b3a732a))
+* add submit_webra_challenge and document the webra challenge flow ([084c3df](https://github.com/evertrust/horizon-mcp/commit/084c3df4e6cc4e5dc413d084888c63e40bde4477))
+* add the sectigo dcv provider for horizon 2.11 ([78b33fe](https://github.com/evertrust/horizon-mcp/commit/78b33fea13e3e930d26b03b1d201bb8311dee0ce))
+* support horizon 2.11 ([#29](https://github.com/evertrust/horizon-mcp/issues/29)) ([a3f9c5b](https://github.com/evertrust/horizon-mcp/commit/a3f9c5b4156d3fdd82e7ba5edc9f2f0327283a71))
+
+### Bug Fixes
+
+* align hql syntax, trigger types and knowledge with the public api ([20fbf59](https://github.com/evertrust/horizon-mcp/commit/20fbf59053a6ee3ca75f881c47422f79d1b5456f))
+* block eab policy deletion for any referencing eab in the description ([2190d2b](https://github.com/evertrust/horizon-mcp/commit/2190d2b98b66ea91cb433f1d9c004dbe7506f1bf))
+* drop wrong 2.11 chart labels and put revocationReason in the revoke template ([3f572ec](https://github.com/evertrust/horizon-mcp/commit/3f572ecca03063dbffa5ab43f4cd2d6d8de60807))
+* mark renew_acme_eab as destructive and state its effects ([83f8b86](https://github.com/evertrust/horizon-mcp/commit/83f8b867b8b81662ef17e8c085cf676467b4d675))
+* omit cleared eab and eab policy strings instead of sending null ([f3c85b6](https://github.com/evertrust/horizon-mcp/commit/f3c85b6067ca6ac02c61db96f01d49a9688370be))
+* redact a webra challenge prefix cut short by error truncation ([c67bebe](https://github.com/evertrust/horizon-mcp/commit/c67bebe75d5fc0f6c518dc86e9e84528d8ab5151))
+* redact the webra challenge in error bodies and tool errors ([f6b249b](https://github.com/evertrust/horizon-mcp/commit/f6b249b1361e06ca9930339bc5adc316ed6111f5))
+
 ## [3.0.1](https://github.com/evertrust/horizon-mcp/compare/v3.0.0...v3.0.1) (2026-09-23)
 
 ### Bug Fixes
