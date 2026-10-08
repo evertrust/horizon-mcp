@@ -2742,6 +2742,40 @@ check get_request_template.",
     "inputSchema": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
+        "challenge": {
+          "description": "The one-time challenge. It is consumed by this call.",
+          "type": "string",
+        },
+        "profile": {
+          "description": "Name of the WebRA profile the challenge was issued on.",
+          "type": "string",
+        },
+        "template": {
+          "additionalProperties": {},
+          "description": "User data for the certificate:
+- keyType: key type for centralized generation, e.g. "rsa-2048". Mutually exclusive with csr.
+- csr: PEM CSR for decentralized enrollment. Mutually exclusive with keyType.
+- subject, sans, extensions: accepted only when the profile certificate template is empty. Otherwise the identity comes from the challenge request.
+- metadata: only the automation_policy metadata, set to a policy authorized on the profile.",
+          "propertyNames": {
+            "type": "string",
+          },
+          "type": "object",
+        },
+      },
+      "required": [
+        "profile",
+        "challenge",
+        "template",
+      ],
+      "type": "object",
+    },
+    "name": "submit_webra_challenge",
+  },
+  {
+    "inputSchema": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "properties": {
         "attributes": {
           "description": "Attributes to return. Each: {key, multi, selected}.",
           "items": {

@@ -1,6 +1,6 @@
 # Tool reference
 
-The server has 222 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
+The server has 223 tools in 12 domains, and 129 of them are configuration CRUD tools. Every tool has one safety tier:
 
 - **read-only** - the tool has no side effects.
 - **mutating-safe** - the tool creates or changes data, but the server does not classify the tool as destructive. A mutating-safe tool can still be non-idempotent, so do not retry it blindly.
@@ -51,7 +51,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `get_doc_page`    | read-only | Fetch the indexed content of a page that a docs search tool returned. Use `max_chars` and `offset` to read it in windows. |
 | `read_knowledge`  | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support                        |
 
-## Lifecycle (24 tools)
+## Lifecycle (25 tools)
 
 | Tool                         | Safety               | Description                                                                                                                              |
 | ---------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
@@ -73,6 +73,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `approve_request`            | mutating-safe        | Approve a pending request                                                                                                                |
 | `deny_request`               | mutating-destructive | Deny a pending request                                                                                                                   |
 | `cancel_request`             | mutating-destructive | Cancel a pending request                                                                                                                 |
+| `submit_webra_challenge`     | mutating-safe        | Horizon 2.11+. Enroll with a one-time WebRA challenge. In centralized mode, the response holds the only copy of the PKCS#12.             |
 | `list_dcv_policy_status`     | read-only            | List DCV policy lifecycle status                                                                                                         |
 | `get_dcv_policy_status`      | read-only            | Get full DCV policy and domain status                                                                                                    |
 | `run_dcv_policy`             | mutating-safe        | Start DCV for every eligible policy domain                                                                                               |
@@ -203,14 +204,14 @@ before you create or update the object.
 
 ### Configuration: automation and integrations (29 tools)
 
-| Object                                | Tools                                                                                       | Safety                                                          |
-| ------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| Automation policies                   | `list/get/create/update/delete_automation_policy`                                           | read-only + mutating                                            |
-| Execution policies                    | `list/get/create/update/delete_execution_policy`                                            | read-only + mutating                                            |
-| Third-party connectors (subtyped)     | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating                                            |
-| HTTP proxies                          | `list/get/create/update/delete_http_proxy`                                                  | read-only + mutating                                            |
-| WCCE forest mappings                  | `list/get/create/update/delete_wcce_forest`                                                 | read-only + mutating                                            |
-| Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger`                                 | read-only + mutating (list/get/delete in Triggers domain above) |
+| Object                                                      | Tools                                                                                       | Safety                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Automation policies                                         | `list/get/create/update/delete_automation_policy`                                           | read-only + mutating                                            |
+| Execution policies                                          | `list/get/create/update/delete_execution_policy`                                            | read-only + mutating                                            |
+| Third-party connectors (15 subtypes, 4 need Horizon 2.11+)  | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating                                            |
+| HTTP proxies                                                | `list/get/create/update/delete_http_proxy`                                                  | read-only + mutating                                            |
+| WCCE forest mappings                                        | `list/get/create/update/delete_wcce_forest`                                                 | read-only + mutating                                            |
+| Triggers (CRUD gap-fill, 15 subtypes, 4 need Horizon 2.11+) | `describe_trigger_schema` `create_trigger` `update_trigger`                                 | read-only + mutating (list/get/delete in Triggers domain above) |
 
 ### Configuration: system and operations (25 tools)
 
@@ -230,7 +231,7 @@ provisioner, then renews the domain validation on a schedule.
 | Object                                                              | Tools                                           | Safety                                          |
 | ------------------------------------------------------------------- | ----------------------------------------------- | ----------------------------------------------- |
 | DCV policies                                                        | `list/get/create/update/delete_dcv_policy`      | read-only + mutating                            |
-| DCV providers (digicert; gs_mssl requires Horizon 2.11+)            | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
+| DCV providers (digicert; gs_mssl and sectigo need Horizon 2.11+)    | `list/get/create/update/delete_dcv_provider`    | read-only + mutating                            |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
 
 ### Configuration: identity and access (7 tools)

@@ -168,6 +168,26 @@ describe('Trigger tools', () => {
       ]);
     });
 
+    it.each(['fortigate', 'fortimanager', 'panos_firewall', 'panos_panorama'])(
+      'accepts a Horizon 2.11 %s filter',
+      async (type) => {
+        mockClient.get.mockResolvedValueOnce([
+          { name: 'deploy-net', type },
+          { name: 'notify-email', type: 'email' },
+        ]);
+
+        const result = await client.callTool({
+          name: 'list_triggers',
+          arguments: { trigger_type: type },
+        });
+
+        expect(result.isError).not.toBe(true);
+        expect(parseToolResult(result)['items']).toEqual([
+          { name: 'deploy-net', type },
+        ]);
+      },
+    );
+
     it('returns triggers from a bare array response', async () => {
       mockClient.get.mockResolvedValueOnce([
         { name: 'deploy-rest', type: 'rest' },

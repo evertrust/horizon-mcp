@@ -4,8 +4,9 @@
  * 6 tools: list / get / describe_schema / create / update / delete.
  * Body fields per the Horizon OpenAPI.
  *
- * Polymorphic union discriminated by 'type' (11 subtypes: aws, akv, f5as3,
- * f5client, gcm, intune, intunepkcs, jamf, ldappub, msad, netscaler). Because
+ * Polymorphic union discriminated by 'type' (15 subtypes: aws, akv, f5as3,
+ * f5client, gcm, intune, intunepkcs, jamf, ldappub, msad, netscaler, and on
+ * Horizon 2.11+ fortigate, fortimanager, panos_firewall, panos_panorama). Because
  * the per-subtype shape diverges wildly we use the describe + validated-body
  * pattern: create/update take the universally-mandatory typed params (type,
  * name, throttle_duration) plus a `config` object carrying the exact camelCase
@@ -63,6 +64,10 @@ const SUBTYPES = [
   'ldappub',
   'msad',
   'netscaler',
+  'fortigate',
+  'fortimanager',
+  'panos_firewall',
+  'panos_panorama',
 ] as const;
 type Subtype = (typeof SUBTYPES)[number];
 
@@ -123,6 +128,22 @@ const SUBTYPE_DEF: Record<
     required: DEFS.NetscalerConnector.required,
     known: Object.keys(DEFS.NetscalerConnector.properties),
   },
+  fortigate: {
+    required: DEFS.FortiGateConnector.required,
+    known: Object.keys(DEFS.FortiGateConnector.properties),
+  },
+  fortimanager: {
+    required: DEFS.FortiManagerConnector.required,
+    known: Object.keys(DEFS.FortiManagerConnector.properties),
+  },
+  panos_firewall: {
+    required: DEFS.PanOSFirewallConnector.required,
+    known: Object.keys(DEFS.PanOSFirewallConnector.properties),
+  },
+  panos_panorama: {
+    required: DEFS.PanoramaConnector.required,
+    known: Object.keys(DEFS.PanoramaConnector.properties),
+  },
 };
 
 /** LDAP enums surfaced to assertConfigBody for the ldappub subtype. */
@@ -173,7 +194,8 @@ const subtypeParam = z
   .enum(SUBTYPES)
   .describe(
     'Connector subtype discriminator (immutable). One of: aws, akv, f5as3, ' +
-      'f5client, gcm, intune, intunepkcs, jamf, ldappub, msad, netscaler.',
+      'f5client, gcm, intune, intunepkcs, jamf, ldappub, msad, netscaler, and ' +
+      'on Horizon 2.11+ fortigate, fortimanager, panos_firewall, panos_panorama.',
   );
 const nameParam = z
   .string()
@@ -224,7 +246,8 @@ export function registerThirdpartyConnectorTools(
         'Create a third-party connector: an OUTBOUND publishing target that ' +
         'pushes ALREADY-ISSUED certificates TO an external system (AWS ACM, ' +
         'Azure Key Vault, F5, Google Cert Manager, Intune/JAMF MDM, LDAP/MSAD ' +
-        'directory, Netscaler). It does NOT issue certificates from a CA (use a ' +
+        'directory, Netscaler, and on Horizon 2.11+ FortiGate, FortiManager, ' +
+        'PAN-OS firewall, Panorama). It does NOT issue certificates from a CA (use a ' +
         'PKI connector, create_pki_connector) and is NOT how a device enrolls ' +
         '(use a certificate profile, create_certificate_profile). Polymorphic ' +
         'by `type`: the ' +

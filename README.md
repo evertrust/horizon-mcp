@@ -30,7 +30,7 @@ The server does not preload these resources and cannot guarantee that a client r
 
 ## Features
 
-- **222 tools across 12 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **223 tools across 12 domains**, each with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
 - **Knowledge catalog**: 111 registered topic URIs: 18 core guides, 4 curated playbooks, and 89 generated section resources.
 - **Three HTTP authentication methods**: Horizon API key, TLS client certificate, and JWKS service-account JWT. The allowlist can turn on more than one method.
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
@@ -47,7 +47,7 @@ Tool counts per domain:
 | ---------------- | ----: | --------------------------------------------------------------------------------------- |
 | Configuration    |   129 | CA / profile / RBAC / DCV / connector / policy administration, including 2.10 additions |
 | Assist           |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators                          |
-| Lifecycle        |    24 | search and aggregate certificates, requests, events, enrollment, DCV runs               |
+| Lifecycle        |    25 | search and aggregate certificates, requests, events, enrollment, DCV runs               |
 | Dashboards       |    12 | dashboard CRUD, charts, saved HQL queries                                               |
 | Datasources      |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run                         |
 | Discovery        |     6 | campaign CRUD and flush                                                                 |
@@ -599,7 +599,7 @@ Use one-line conventional commit messages with the `type: description` format.
 | [Installation](docs/installation.md)               | Install methods, Docker, and the remote hosting checklist           |
 | [Authentication](docs/authentication.md)           | Supported credential types with environment variable reference      |
 | [Client setup](docs/client-setup.md)               | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector |
-| [Tool reference](docs/tools-reference.md)          | All 222 tools by domain with safety tiers                           |
+| [Tool reference](docs/tools-reference.md)          | All 223 tools by domain with safety tiers                           |
 | [Knowledge resources](docs/knowledge-resources.md) | 111 registered URIs: 18 core guides, 4 playbooks, 89 sections       |
 | [Development](docs/development.md)                 | Dev setup, CI gates, tests, linting                                 |
 
