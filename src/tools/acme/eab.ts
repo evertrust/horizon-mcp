@@ -52,8 +52,12 @@ type UpdateInput = keyof typeof UPDATE_FIELDS;
 const CLEARABLE_FIELDS = [
   'description',
   'identifierConstraint',
+  'allowedProfiles',
+  'validationMethods',
   'emailConstraint',
 ] as const;
+
+const LIST_FIELDS: readonly string[] = ['allowedProfiles', 'validationMethods'];
 
 const EAB_STATUSES = [
   'valid',
@@ -147,7 +151,8 @@ const UPDATE_ACME_EAB_CONFIG = {
     `${ACME_VERSION_NOTE} Update the metadata and constraints of an ACME EAB. ` +
     'Use update_acme_eab_status to change the status and renew_acme_eab for a ' +
     'new MAC key. The tool reads the EAB first; fields you omit keep their ' +
-    'stored value. Use clear_fields to remove a text field.\n' +
+    'stored value. Use clear_fields to remove a constraint: a text field is ' +
+    'left out and a list becomes empty.\n' +
     'Safety tier: mutating-destructive',
   inputSchema: z.object({
     name: nameSchema,
@@ -156,7 +161,7 @@ const UPDATE_ACME_EAB_CONFIG = {
     clear_fields: z
       .array(z.enum(CLEARABLE_FIELDS))
       .optional()
-      .describe('Text fields to remove.'),
+      .describe('Fields to remove. Text fields are left out, lists become [].'),
   }),
   annotations: { destructiveHint: true },
 };
@@ -293,17 +298,23 @@ function registerEabMutationTools(
       const current = await client.get<Record<string, unknown>>(
         eabPath(args.name),
       );
+      // EabUpdateRequest fields are not nullable: leave cleared text fields
+      // out and send [] for cleared lists.
+      const cleared: readonly string[] = clear_fields ?? [];
       const stored = Object.fromEntries(
         Object.values(UPDATE_FIELDS)
           .filter((field) => current[field] !== undefined)
+          .filter((field) => !cleared.includes(field))
           .map((field) => [field, current[field]]),
       );
-      const cleared = Object.fromEntries(
-        (clear_fields ?? []).map((field) => [field, null]),
+      const emptiedLists = Object.fromEntries(
+        cleared
+          .filter((field) => LIST_FIELDS.includes(field))
+          .map((field) => [field, []]),
       );
       const body = {
         ...stored,
-        ...cleared,
+        ...emptiedLists,
         ...mapFields(args),
         name: args.name,
       };

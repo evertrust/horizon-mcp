@@ -377,6 +377,15 @@ export function registerCreateTool<S extends z.ZodObject<z.ZodRawShape>>(
 
 // ---------------------------------------------------------------------------
 // Update tool
+function withoutKeys(
+  data: Record<string, unknown>,
+  keys: readonly string[],
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(data).filter(([k]) => !keys.includes(k)),
+  );
+}
+
 // ---------------------------------------------------------------------------
 
 export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
@@ -393,6 +402,12 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
       current: Record<string, unknown>,
     ) => Record<string, unknown>;
     validateMergedBody?: (body: Record<string, unknown>) => void;
+    /**
+     * Leave clear_fields out of the PUT body instead of sending null, for
+     * APIs whose fields are not nullable. buildOverrides can still set a
+     * value for a cleared field (for example [] for a list).
+     */
+    omitClearedFields?: boolean;
   },
 ): void {
   const idField = spec.idField ?? 'name';
@@ -439,15 +454,24 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
       const putPath = spec.putOnCollection
         ? spec.routeCollection
         : itemPath(spec, id);
+      const omitCleared = opts.omitClearedFields === true;
+      const normalizeCurrent =
+        omitCleared && clearFields && clearFields.length > 0
+          ? (current: Record<string, unknown>) =>
+              withoutKeys(
+                opts.normalizeCurrent?.(current) ?? current,
+                clearFields,
+              )
+          : opts.normalizeCurrent;
       const result = await getStripMergePutExplicit(
         client,
         itemPath(spec, id),
         putPath,
         spec.stripFields,
         overrides,
-        clearFields,
+        omitCleared ? undefined : clearFields,
         { immutableKeys: spec.immutableKeys, idField },
-        opts.normalizeCurrent,
+        normalizeCurrent,
         opts.validateMergedBody,
       );
       return text(
