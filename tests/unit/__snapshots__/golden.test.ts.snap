@@ -305,7 +305,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "properties": {
         "chart": {
           "additionalProperties": {},
-          "description": "Chart configuration object. Required fields: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"]}. Chart types: 13 on Horizon 2.10, 15 on Horizon 2.11. Horizon 2.10 types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical. Horizon 2.11+: polar, pyramid. Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), "direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), "log" (boolean - logarithmic scale), "description" (string).",
+          "description": "Chart configuration object. Required fields: {"type": "donut", "title": "My Chart", "localQuery": "status is valid", "fields": ["keyType"]}. Chart types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical, polar, pyramid. Optional layout: "x", "y", "w", "h", "i" (grid position/size/id). Optional: "limit" (max buckets), "sortOrder" ("Asc"|"Desc"|"KeyAsc"|"KeyDesc"), "direction" ("asc"|"desc"), "colors" (["#A6ADF7", "#4D54A2", ...]), "log" (boolean - logarithmic scale), "description" (string).",
           "propertyNames": {
             "type": "string",
           },
@@ -2678,7 +2678,6 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         "data": {
           "additionalProperties": {},
           "description": "Additional workflow-specific fields merged into the payload.
-For revoke: {"revocationReason": "keycompromise"}.
 For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.
 For dry run validation: {"dryRun": true}.
 For requester comment: {"requesterComment": "reason for request"}.",
@@ -2717,6 +2716,7 @@ check get_request_template.",
 - owner: {"value": "admin-principal"}
 - team: {"value": "infra-team"}
 - keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.
+- For WebRA revoke: revocationReason: "keycompromise"
 - csr: PEM-encoded CSR (for decentralized key generation)
 - extensions: optional certificate extensions",
           "propertyNames": {
@@ -2968,7 +2968,7 @@ Examples:
           "type": "string",
         },
         "chart_type": {
-          "description": "Chart types: 13 on Horizon 2.10, 15 on Horizon 2.11. Horizon 2.10 types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical. Horizon 2.11+: polar, pyramid.",
+          "description": "Chart types: area, donut, heatmap, bar-horizontal, bar-horizontal-stacked, bar-vertical-stacked, line, metric, pie, radar, table, treemap, bar-vertical, polar, pyramid.",
           "type": "string",
         },
         "clear_fields": {

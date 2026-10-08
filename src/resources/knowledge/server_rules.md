@@ -62,9 +62,9 @@ request.
 
 Before calling `submit_request`, call `get_request_template` to discover
 which fields are required, editable, computed, or fixed by the profile, then
-ask the user for any missing values. For `revoke`, `revocationReason` is
-strongly recommended; ask the user for it - Horizon defaults to `unspecified`
-if omitted. For any workflow, optionally offer the user a free-text
+ask the user for any missing values. For a WebRA `revoke`, put
+`revocationReason` in `template`; it is strongly recommended, and Horizon
+defaults to `unspecified` if omitted. For any workflow, optionally offer the user a free-text
 `requesterComment` justification.
 
 The outcome of `submit_request` depends on permissions:

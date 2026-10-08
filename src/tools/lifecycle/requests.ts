@@ -86,8 +86,8 @@ const SUBMIT_REQUEST_CONFIG = {
     'completes immediately; with only the request permission the request is ' +
     'created in PENDING state and needs approve_request. Surface that status ' +
     'to the user. This can perform destructive workflows (revoke); confirm ' +
-    'with the user before submitting a revoke. For revoke, revocationReason is ' +
-    'strongly recommended - ask the user for it; Horizon defaults to ' +
+    'with the user before submitting a revoke. For a WebRA revoke, put ' +
+    'revocationReason in template; it is strongly recommended, and Horizon defaults to ' +
     "'unspecified' if omitted (keycompromise, cacompromise, affiliationchange, " +
     'superseded, cessationofoperation, certificatehold, removefromcrl, ' +
     'privilegewithdrawn, aacompromise, unspecified). ' +
@@ -125,6 +125,7 @@ const SUBMIT_REQUEST_CONFIG = {
           '- owner: {"value": "admin-principal"}\n' +
           '- team: {"value": "infra-team"}\n' +
           '- keyType: "rsa-2048", "rsa-3072", "ec-p256", etc.\n' +
+          '- For WebRA revoke: revocationReason: "keycompromise"\n' +
           '- csr: PEM-encoded CSR (for decentralized key generation)\n' +
           '- extensions: optional certificate extensions',
       ),
@@ -150,7 +151,6 @@ const SUBMIT_REQUEST_CONFIG = {
       .optional()
       .describe(
         'Additional workflow-specific fields merged into the payload.\n' +
-          'For revoke: {"revocationReason": "keycompromise"}.\n' +
           'For EST/SCEP with DN whitelist: {"dn": "CN=my-device"}.\n' +
           'For dry run validation: {"dryRun": true}.\n' +
           'For requester comment: {"requesterComment": "reason for request"}.',
