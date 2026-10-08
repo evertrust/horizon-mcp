@@ -247,9 +247,9 @@ Create three triggers with different `runPeriod` values, all subscribing to
 
 ---
 
-## Trigger Type Catalog (10 Types)
+## Trigger Type Catalog (11 Types)
 
-Horizon supports 10 trigger types organized into two categories.
+Horizon supports 11 trigger types organized into two categories.
 
 ### Notification Triggers (3)
 
@@ -263,7 +263,7 @@ run periods.
 | `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
-### Third-Party Triggers (7)
+### Third-Party Triggers (8)
 
 Third-party triggers push or remove certificates to/from external systems.
 They require a third-party connector and have minimal user-configurable
@@ -278,6 +278,7 @@ fields -- events, retries, and runPeriod are auto-computed per type.
 | `intunepkcs` | Microsoft Intune PKCS                     | Third-party connector |
 | `ldappub`    | LDAP publish                              | Third-party connector |
 | `gcm`        | Google Cloud Certificate Manager          | Third-party connector |
+| `netscaler`  | NetScaler                                 | Third-party connector |
 
 ---
 
@@ -310,7 +311,7 @@ third-party triggers do not use.
 
 ---
 
-## Event Reference (48 Events)
+## Event Reference (59 Events)
 
 ### Workflow Events (7 workflows x 6 events = 42)
 
@@ -338,7 +339,15 @@ The 7 workflows:
 | `renew`   | `on_renew`, `on_submit_renew`, `on_cancel_renew`, `on_approve_renew`, `on_deny_renew`, `on_pending_renew`             |
 | `import`  | `on_import`, `on_submit_import`, `on_cancel_import`, `on_approve_import`, `on_deny_import`, `on_pending_import`       |
 
-### System Events (6)
+The workflow events also include `on_in_progress_enroll`,
+`on_in_progress_renew`, `on_failure_enroll`, `on_failure_renew`, and
+`on_failure_revoke` (47 workflow events in total).
+
+### System Events (12)
+
+DCV events are **Available since Horizon 2.10 (Horizon 2.10+).**
+They are unavailable on Horizon 2.8/2.9. See the public
+[2.10 release notes](https://docs.evertrust.fr/horizon/2.10/release-notes/2.10.0.html).
 
 | Event                       | Description                                   | Notes                                                       |
 | --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
@@ -348,6 +357,12 @@ The 7 workflows:
 | `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
 | `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
 | `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
+| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                                               |
+| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                                               |
+| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                                               |
+| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                                               |
+| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                                               |
+| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                                               |
 
 ---
 

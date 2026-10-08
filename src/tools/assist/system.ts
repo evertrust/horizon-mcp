@@ -16,7 +16,7 @@ export function registerSystemTools(
       description:
         "Return the authenticated principal's identity and permissions. " +
         'For ownership queries combine the identifier and team list: ' +
-        '`owner equals "<id>" or team in ("<t1>", ...)`. ' +
+        '`owner equals "<id>" or team in ["<t1>", "<t2>"]`. ' +
         'See horizon://knowledge/query-languages for ownership patterns.',
       // Horizon serializes absent collections/values as `null` rather than
       // omitting them (e.g. a principal in no teams gets `teams: null`). The

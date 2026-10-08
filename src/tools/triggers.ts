@@ -46,6 +46,7 @@ const VALID_TRIGGER_TYPES = new Set([
   'intunepkcs',
   'ldappub',
   'gcm',
+  'netscaler',
 ]);
 
 const VALID_AUTH_TYPES = new Set([
