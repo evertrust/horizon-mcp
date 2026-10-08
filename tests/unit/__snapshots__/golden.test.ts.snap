@@ -2082,7 +2082,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "page_index": {
           "default": 0,
-          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
           "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer",
@@ -2512,7 +2512,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "properties": {
         "page_index": {
           "default": 0,
-          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
           "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer",
@@ -2548,7 +2548,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "properties": {
         "page_index": {
           "default": 0,
-          "description": "Page index (0-based). Use next_page_index from the previous response to paginate.",
+          "description": "Page index of this tool (0-based: the first page is 0). Use next_page_index from the previous response to paginate.",
           "maximum": 9007199254740991,
           "minimum": 0,
           "type": "integer",

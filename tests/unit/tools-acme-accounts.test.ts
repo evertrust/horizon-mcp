@@ -70,7 +70,7 @@ describe('ACME account and order tools', () => {
   });
 
   describe('search_acme_accounts', () => {
-    it('posts the HAQL query with a 1-based page index', async () => {
+    it('posts the HAQL query and converts the 0-based page_index', async () => {
       mc.post.mockResolvedValueOnce({
         results: [ACCOUNT_FIXTURE],
         pageIndex: 1,
@@ -231,6 +231,7 @@ describe('ACME account and order tools', () => {
         name: 'list_acme_orders',
         arguments: { account_id: ACCOUNT_ID },
       });
+      // The first page of the tool (page_index 0) is page 1 for the API.
       expect(mc.post).toHaveBeenCalledWith(
         `/api/v1/acme/orders/account/${ACCOUNT_ID}`,
         { pageIndex: 1, pageSize: 25, withCount: true },
