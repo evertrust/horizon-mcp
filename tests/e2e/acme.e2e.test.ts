@@ -1,5 +1,5 @@
 /**
- * Live-QA E2E coverage for the ACME tools and EAB policy config tools
+ * E2E coverage for the ACME tools and EAB policy config tools
  * (Horizon 2.11+).
  *
  * The read leg discovers ACME accounts and orders on the instance and never
@@ -23,7 +23,7 @@ function results(page: Row): Row[] {
   return (page['results'] as Row[] | undefined) ?? [];
 }
 
-describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E (live QA)', () => {
+describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E', () => {
   setupE2EStack();
 
   let accountId = '';
@@ -112,7 +112,7 @@ describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E (live QA)', () => {
   });
 });
 
-describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E (live QA)', () => {
+describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
   setupE2EStack();
 
   const policyName = `mcp-${E2E_PREFIX}-eab-policy`;
