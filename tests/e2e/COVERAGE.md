@@ -20,7 +20,7 @@ helper that invokes registered MCP tools directly.
 | Core domains (lifecycle, search, exports, dashboards, discovery, reports, assist) | `horizon.test.ts`             | 91    | Includes CRUD lifecycles with cleanup                                                                                                                                                                                                                                                                                                                      |
 | Config CRUD domains                                                               | `config-*.test.ts` (27 files) | ~160  | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
 | Horizon 2.11 config types                                                         | `config-211-types.test.ts`    | 14    | FortiGate, FortiManager, PAN-OS firewall and Panorama connectors and triggers, sectigo DCV provider, ACME `excludeRootCA`. Live legs skip before 2.11                                                                                                                                                                                                      |
-| WebRA challenge                                                                   | `webra-challenge.e2e.test.ts` | 2     | Enroll on a challenge profile, consume the challenge, reject reuse (WEBRA-ENROLL-015), revoke in teardown                                                                                                                                                                                                                                                  |
+| WebRA challenge                                                                   | `webra-challenge.e2e.test.ts` | 2     | Centralized (PKCS#12) and CSR enrollment with a challenge, reuse rejected (WEBRA-ENROLL-015), revoke in teardown                                                                                                                                                                                                                                           |
 | Documentation tools                                                               | `docs.test.ts`                | 5     | search_docs, search_api_docs, get_doc_page                                                                                                                                                                                                                                                                                                                 |
 | System tools                                                                      | `system-tools.test.ts`        | 2     | whoami, license                                                                                                                                                                                                                                                                                                                                            |
 | Service-account authentication                                                    | `service-account.e2e.test.ts` | 3     | whoami identity formula, certificate search, conditional service-account list                                                                                                                                                                                                                                                                              |
@@ -50,12 +50,12 @@ unavailable.
 - Discovery import workflow: requires a pre-existing discovery campaign named
   by `HORIZON_E2E_DISCOVERY_CAMPAIGN` on the target instance; skips when the
   variable is unset or the campaign is absent.
-- `webra-challenge.e2e.test.ts`: uses `HORIZON_E2E_WEBRA_CHALLENGE_PROFILE`,
-  or else the first enabled WebRA profile in challenge mode that accepts the
-  test subject. Skips only when the instance has no such profile (for example
-  on Horizon 2.10); any other enrollment error fails. The CSR (decentralized)
-  case is an explicit skip because no QA challenge profile allows decentralized
-  key generation; unit tests cover it.
+- `webra-challenge.e2e.test.ts`: for each key generation mode (centralized,
+  decentralized), uses `HORIZON_E2E_WEBRA_CHALLENGE_PROFILE`, or else the first
+  enabled WebRA profile in challenge mode that allows the mode and accepts the
+  test subject. A mode skips only when no profile allows it (for example on
+  Horizon 2.10); any other enrollment error fails. The decentralized case
+  needs the `openssl` command to build its CSR.
 - `config-211-types.test.ts`: the live legs skip when the instance is older
   than Horizon 2.11.
 
