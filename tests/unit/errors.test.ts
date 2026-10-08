@@ -311,6 +311,25 @@ describe('parseErrorResponse', () => {
     });
 
     it.each([
+      ['ACME-003', 'compromised ACME account cannot change status'],
+      ['ACME-004', 'search_acme_accounts'],
+      ['ACME-005', 'still valid'],
+      ['EAB-001', 'update_acme_eab'],
+      ['EAB-002', 'search_acme_eabs'],
+      ['EAB-003', 'valid, deactivated, or suspended'],
+      ['EAB-004', 'Narrow the HEABQL query'],
+      ['EAB-POLICY-001', 'list_eab_policies'],
+      ['EAB-POLICY-002', 'still referenced'],
+      ['ORDER-001', 'list_acme_orders'],
+      ['ORDER-002', 'not final'],
+    ])('resolves %s with its ACME-specific hint', (code, hint) => {
+      const body = JSON.stringify({ error: code, message: 'failed' });
+      const err = parseErrorResponse(400, body);
+
+      expect(err.remediation).toContain(hint);
+    });
+
+    it.each([
       ['SERV-ACC-003', 'Already exists'],
       ['SERV-ACC-004', 'Not found'],
       ['SERV-ACC-005', 'read-only'],

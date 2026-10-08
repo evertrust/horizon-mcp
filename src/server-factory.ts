@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import pkg from '../package.json';
 import type { HorizonClient } from './client/http.js';
 import { registerAllResources } from './resources/index.js';
+import { registerAcmeTools } from './tools/acme/index.js';
 import { registerComputationTools } from './tools/assist/computation.js';
 import { registerCryptoTools } from './tools/assist/crypto.js';
 import { registerQueryTools } from './tools/assist/query.js';
@@ -58,6 +59,7 @@ type ToolsetRegistrar = (server: McpServer, client: HorizonClient) => void;
  *  - `datasources`  datasource CRUD and simulation
  *  - `reports`      report generation
  *  - `triggers`     trigger/automation tools
+ *  - `acme`         ACME accounts, orders, and External Account Bindings (2.11+)
  *  - `docs`         product/API doc search, fetch, and read_knowledge
  *  - `assist`       whoami/license/HQL/crypto/computation/translate helpers
  *  - `config`       Horizon configuration-object CRUD (CAs, roles, teams, ...)
@@ -74,6 +76,7 @@ const TOOLSET_REGISTRY: Record<string, ToolsetRegistrar> = {
   datasources: registerDatasourceTools,
   reports: registerReportTools,
   triggers: registerTriggerTools,
+  acme: registerAcmeTools,
   docs: registerDocsTools,
   assist: (server, client) => {
     registerSystemTools(server, client);

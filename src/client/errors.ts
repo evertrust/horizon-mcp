@@ -41,6 +41,26 @@ const SPECIFIC_REMEDIATION: Record<string, string> = {
     'in HTTP mode, check the X-API-ID/X-API-KEY or X-API-SVA/X-API-TOKEN headers.',
   'SEC-PERM-001':
     'Insufficient permissions. Check role assignments for the authenticated principal.',
+  // ACME management (Horizon 2.11+)
+  'ACME-003':
+    'Invalid status change. A compromised ACME account cannot change status. Check the current status with get_acme_account or get_acme_eab.',
+  'ACME-004':
+    'Not found: use search_acme_accounts to find the ACME account ID.',
+  'ACME-005':
+    'An ACME account cannot be deleted while one of its certificates is still valid.',
+  'EAB-001': 'Already exists: use update_acme_eab, or choose another EAB name.',
+  'EAB-002': 'Not found: use search_acme_eabs to see available EABs.',
+  'EAB-003':
+    'An EAB cannot be deleted while an ACME account with status valid, deactivated, or suspended is bound to it.',
+  'EAB-004': 'The EAB search took too long. Narrow the HEABQL query and retry.',
+  'EAB-POLICY-001':
+    'Not found: use list_eab_policies to see available EAB policies.',
+  'EAB-POLICY-002':
+    'The EAB policy is still referenced by an EAB. Change or delete those EABs first.',
+  'ORDER-001':
+    'Not found: use list_acme_orders with the account ID to see its orders.',
+  'ORDER-002':
+    'An ACME account cannot be deleted while one of its orders is not final (pending, ready, or processing) or has a valid certificate.',
 };
 
 // Remediation depends on an error-code family, never just a numeric suffix.
