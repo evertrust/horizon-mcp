@@ -6,12 +6,6 @@ timeout was subsequently raised above the tool's 120-second CSV timeout, but a
 post-fix 301/301 full run is not recorded here. This is a point-in-time QA result,
 not a blanket support guarantee for every Horizon 2.10 deployment.
 
-Horizon 2.11 run: 2026-10-07 against a Horizon 2.11 QA snapshot, for a subset
-of suites. `config-211-types.test.ts` passed 14 of 14 tests,
-`webra-challenge.e2e.test.ts` passed 2 of 2 tests and
-`config-polymorphic-subtypes.test.ts` passed. On Horizon 2.10, the two 2.11
-files pass their describe checks and skip their live legs.
-
 ## Suite layout (Vitest, tests/e2e/)
 
 39 test files, ~320 tests, run with `bun run test:e2e` (source `.env.local`
@@ -57,9 +51,11 @@ unavailable.
   by `HORIZON_E2E_DISCOVERY_CAMPAIGN` on the target instance; skips when the
   variable is unset or the campaign is absent.
 - `webra-challenge.e2e.test.ts`: uses `HORIZON_E2E_WEBRA_CHALLENGE_PROFILE`,
-  or else the first enabled WebRA profile in challenge mode. Skips when no
-  profile returns a challenge (for example on Horizon 2.10). Only centralized
-  key generation is tested live; decentralized mode (CSR) has unit tests only.
+  or else the first enabled WebRA profile in challenge mode that accepts the
+  test subject. Skips only when the instance has no such profile (for example
+  on Horizon 2.10); any other enrollment error fails. The CSR (decentralized)
+  case is an explicit skip because no QA challenge profile allows decentralized
+  key generation; unit tests cover it.
 - `config-211-types.test.ts`: the live legs skip when the instance is older
   than Horizon 2.11.
 
