@@ -44,7 +44,7 @@ Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-re
 ## Prerequisites
 
 - [Bun](https://bun.sh/) 1.x+ (recommended) or Node.js >= 24.10
-- An Evertrust Horizon instance (tested on 2.8, expected to work on 2.7 and 2.9)
+- An Evertrust Horizon instance (tested on 2.10 and 2.11, expected to work on 2.8 and 2.9)
 - API credentials or a client certificate for that instance
 
 ## Install
@@ -116,8 +116,8 @@ In stdio mode, configure exactly one complete authentication method: API key, se
 | `HORIZON_TIMEOUT`              | No                | `30`                 | HTTP request timeout in seconds for standard API calls.                                      |
 | `HORIZON_EXPORT_TIMEOUT`       | No                | `120`                | Timeout in seconds for CSV exports and other long-running endpoints.                         |
 | `HORIZON_LOG_LEVEL`            | No                | `INFO`               | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                  |
-| `HORIZON_TESTED_VERSIONS`      | No                | `2.8`                | Comma-separated list of Horizon versions known to fully work with this build.                |
-| `HORIZON_WARN_VERSIONS`        | No                | `2.7,2.9`            | Comma-separated list of versions that are likely to work but emit a warning.                 |
+| `HORIZON_TESTED_VERSIONS`      | No                | `2.10,2.11`          | Comma-separated list of Horizon versions known to fully work with this build.                |
+| `HORIZON_WARN_VERSIONS`        | No                | `2.8,2.9`            | Comma-separated list of versions that are likely to work but emit a warning.                 |
 | `HORIZON_ENABLED_TOOLSETS`     | No                | (all)                | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`, `acme`. Unset registers every toolset; an unknown name fails startup. |
 | `HORIZON_READ_ONLY`            | No                | `false`              | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup. |
 | `HORIZON_AUTH_MODE`            | DEPRECATED        |                      | No longer required. Kept readable for backward compatibility; setting it logs a warning.     |
@@ -434,9 +434,9 @@ See [docs/development.md](docs/development.md) for environment setup, fixture ma
 
 | Horizon version | Status                                                                  |
 | --------------- | ----------------------------------------------------------------------- |
-| 2.8.5+          | Tested (full feature set including Base64/Raw computation rules)        |
-| 2.8.0-2.8.4     | Tested (Base64/Raw computation rules not available)                     |
-| 2.7             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
+| 2.10            | Tested (full Horizon 2.10 feature coverage)                             |
+| 2.11            | Tested (includes the Horizon 2.11 features)                             |
+| 2.8             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
 | 2.9             | Expected to work (in `HORIZON_WARN_VERSIONS`)                           |
 
 ## What is not supported
