@@ -18,6 +18,7 @@ import { z } from 'zod';
 
 import { HorizonError } from '../client/errors.js';
 import type { HorizonClient } from '../client/http.js';
+import { normalizeItems } from './datasources/shared.js';
 import {
   applyNameFilter,
   buildListResponse,
@@ -42,15 +43,32 @@ const CAMPAIGN_BASE = '/api/v1/discovery/campaigns';
 // boundary, so no extra runtime validator is needed beyond name shape.
 const authorizationLevelSectionSchema = z
   .object({
-    accessLevel: z.enum(['everyone', 'authenticated', 'authorized']),
-    enforcedIdentityProviders: z.array(z.string()).optional(),
+    accessLevel: z
+      .enum(['everyone', 'authenticated', 'authorized'])
+      .describe('Access level required to perform the operation.'),
+    enforcedIdentityProviders: z
+      .array(
+        z.object({
+          type: z
+            .enum(['Local', 'OpenId', 'X509', 'Pop'])
+            .describe('Identity provider type.'),
+          name: z.string().describe('Identity provider name.'),
+        }),
+      )
+      .nullable()
+      .optional()
+      .describe('Identity providers required to perform the operation.'),
   })
   .passthrough();
 
 const authorizationLevelsSchema = z
   .object({
-    search: authorizationLevelSectionSchema,
-    feed: authorizationLevelSectionSchema,
+    search: authorizationLevelSectionSchema.describe(
+      'Authorization requirements for search.',
+    ),
+    feed: authorizationLevelSectionSchema.describe(
+      'Authorization requirements for feed.',
+    ),
   })
   .passthrough();
 
@@ -99,11 +117,7 @@ export function registerDiscoveryTools(
     },
     async ({ max_items, name_contains }) => {
       const data = await client.get<unknown>(CAMPAIGN_BASE);
-      let items: Record<string, unknown>[] = Array.isArray(data)
-        ? data
-        : (((data as Record<string, unknown>)['items'] as
-            | Record<string, unknown>[]
-            | undefined) ?? [data as Record<string, unknown>]);
+      let items = normalizeItems(data);
       items = applyNameFilter(items, name_contains);
       return {
         content: [
@@ -157,13 +171,13 @@ export function registerDiscoveryTools(
         'Campaign names cannot contain dots.\n\n' +
         "authorization_levels must contain 'search' and 'feed' sections, each with:\n" +
         '  - accessLevel (required): "everyone", "authenticated", or "authorized"\n' +
-        '  - enforcedIdentityProviders (optional): list of identity provider names',
+        '  - enforcedIdentityProviders (optional): list of identity provider objects with required type (Local, OpenId, X509, Pop) and name',
       inputSchema: z.object({
         name: z.string().describe('Unique campaign name (no dots allowed).'),
         authorization_levels: authorizationLevelsSchema.describe(
           'Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. ' +
             'Valid accessLevel values: "everyone", "authenticated", "authorized". ' +
-            'Optional per-section: "enforcedIdentityProviders": ["idp-name"].',
+            'Optional per-section: "enforcedIdentityProviders": [{"type": "OpenId", "name": "example-idp"}].',
         ),
         event_on_success: z
           .boolean()

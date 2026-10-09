@@ -15,9 +15,15 @@ export function registerSystemTools(
     {
       description:
         "Return the authenticated principal's identity and permissions. " +
+        'For service accounts, the identifier is ' +
+        '`<name>-<first 16 hex chars of sha256(jwt)>`, or ' +
+        '`<name>-<hash16>-<mapped-value>` when `identifierMapping` is configured. ' +
+        'The hash segment is always present, so the identity changes when the JWT rotates; ' +
+        'identifierMapping adds claim-derived context and does not create a stable identity. ' +
+        'Use team-based ownership for anything that must survive token rotation. ' +
         'For ownership queries combine the identifier and team list: ' +
         '`owner equals "<id>" or team in ["<t1>", "<t2>"]`. ' +
-        'See horizon://knowledge/query-languages for ownership patterns.',
+        'See horizon://knowledge/server-rules and horizon://knowledge/rbac.',
       // Horizon serializes absent collections/values as `null` rather than
       // omitting them (e.g. a principal in no teams gets `teams: null`). The
       // raw response is piped straight into structuredContent, so every field

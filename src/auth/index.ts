@@ -1,17 +1,39 @@
 import { getLogger } from '../logging.js';
-import type { HorizonSettings } from '../settings.js';
+import { type HorizonSettings, assertStdioAuthSettings } from '../settings.js';
 import { ApiKeyAuthProvider } from './apikey.js';
 import { AuthProvider } from './base.js';
 import { MtlsAuthProvider } from './mtls.js';
+import { ServiceAccountAuthProvider } from './service-account.js';
 
 const logger = getLogger('horizon_mcp.auth');
 
+function createServiceAccountProvider(
+  settings: HorizonSettings,
+): ServiceAccountAuthProvider {
+  logger.info('Auth mode: Service account');
+  return new ServiceAccountAuthProvider(
+    settings.serviceAccount,
+    settings.apiToken,
+    settings.oauthClientId && settings.oauthClientSecret
+      ? {
+          clientId: settings.oauthClientId,
+          clientSecret: settings.oauthClientSecret,
+          ...(settings.oauthScope ? { scope: settings.oauthScope } : {}),
+          ...(settings.oauthAudience
+            ? { audience: settings.oauthAudience }
+            : {}),
+          ...(settings.oauthIssuers !== undefined
+            ? { issuers: settings.oauthIssuers }
+            : {}),
+        }
+      : undefined,
+  );
+}
+
 /**
  * Factory: auto-detect auth mode from which env vars are set.
- * Priority: mTLS (client cert) > API Key.
- *
  * OIDC browser (Playwright) login was removed in all transports. Configure
- * an API key or an mTLS client certificate instead.
+ * exactly one supported credential method instead.
  */
 export function createAuthProvider(settings: HorizonSettings): AuthProvider {
   if (settings.authMode) {
@@ -21,18 +43,9 @@ export function createAuthProvider(settings: HorizonSettings): AuthProvider {
     );
   }
 
-  // Priority 1: mTLS (client certificate)
+  assertStdioAuthSettings(settings);
+
   if (settings.clientCert || settings.clientPfx) {
-    if (settings.clientCert && settings.clientPfx) {
-      throw new Error(
-        'Set HORIZON_CLIENT_CERT or HORIZON_CLIENT_PFX, not both.',
-      );
-    }
-    if (settings.clientCert && !settings.clientKey) {
-      throw new Error(
-        'HORIZON_CLIENT_KEY is required when HORIZON_CLIENT_CERT is set.',
-      );
-    }
     logger.info('Auth mode: mTLS (client certificate)');
     return new MtlsAuthProvider({
       certPath: settings.clientCert,
@@ -43,21 +56,13 @@ export function createAuthProvider(settings: HorizonSettings): AuthProvider {
     });
   }
 
-  // Priority 2: API Key
-  if (settings.apiId) {
-    logger.info('Auth mode: API Key');
-    return new ApiKeyAuthProvider(settings.apiId, settings.apiKey);
-  }
+  if (settings.serviceAccount) return createServiceAccountProvider(settings);
 
-  // No credentials: fail closed. OIDC browser login has been removed.
-  throw new Error(
-    'No Horizon credentials configured. Set HORIZON_API_ID and ' +
-      'HORIZON_API_KEY for API key auth, or HORIZON_CLIENT_CERT and ' +
-      'HORIZON_CLIENT_KEY (or HORIZON_CLIENT_PFX) for mTLS. OIDC browser ' +
-      'login is no longer supported.',
-  );
+  logger.info('Auth mode: API Key');
+  return new ApiKeyAuthProvider(settings.apiId, settings.apiKey);
 }
 
 export { AuthProvider } from './base.js';
 export { ApiKeyAuthProvider } from './apikey.js';
 export { MtlsAuthProvider } from './mtls.js';
+export { ServiceAccountAuthProvider } from './service-account.js';

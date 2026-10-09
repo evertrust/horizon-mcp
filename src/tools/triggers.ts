@@ -47,6 +47,10 @@ const VALID_TRIGGER_TYPES = new Set([
   'ldappub',
   'gcm',
   'netscaler',
+  'fortigate',
+  'fortimanager',
+  'panos_firewall',
+  'panos_panorama',
 ]);
 
 const VALID_AUTH_TYPES = new Set([
@@ -388,7 +392,9 @@ export function registerTriggerTools(
       inputSchema: z.object({
         name: z
           .string()
-          .describe('Unique trigger name (immutable primary key).'),
+          .describe(
+            'Trigger name. Unique identifier; it cannot change after creation.',
+          ),
         event: z
           .string()
           .describe(
@@ -405,9 +411,7 @@ export function registerTriggerTools(
           .number()
           .int()
           .default(10)
-          .describe(
-            'Retry count on failure with exponential backoff (default 10).',
-          ),
+          .describe('Number of retries when the notification fails.'),
         run_period: z
           .string()
           .optional()
@@ -608,28 +612,26 @@ export function registerTriggerTools(
     'simulate_trigger',
     {
       description:
-        'Test-fire an existing trigger without real certificate context.\n\n Ref: horizon://knowledge/rest-notifications.' +
-        'Safety tier: read-only (executes the trigger but uses test context only)\n' +
-        'Sends a PATCH request to simulate the trigger. The trigger must already ' +
-        'exist. Horizon executes it with a synthetic test context and returns the ' +
-        'execution result.\n\n' +
-        "Use this to verify that a REST notification's sequence steps, authentication,\n" +
-        'and URL/payload templates work correctly before attaching the trigger to a\n' +
-        'production profile.\n\n' +
-        'Note: Template variables like {{certificate.serial}} will not have real\n' +
-        'values during simulation - they are filled with test/placeholder data.\n\n' +
-        'Typical workflow:\n' +
-        '    1. Create a REST notification with create_rest_notification\n' +
-        '    2. Call simulate_trigger to verify the HTTP calls succeed\n' +
-        '    3. If simulation passes, attach the trigger to a profile\n' +
-        '    4. If simulation fails, inspect errors, fix config, and retry\n\n' +
-        '    get_trigger (inspect current config).',
+        'Test-fire an existing trigger. Sends real notifications or external requests ' +
+        'and returns the execution result. Repeated calls can send repeated notifications.\n' +
+        'Safety tier: mutating-destructive\n' +
+        'Inspect the trigger with get_trigger before running this test. ' +
+        'Ref: horizon://knowledge/rest-notifications.',
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      },
       inputSchema: z.object({
         name: z.string().describe('Name of the existing trigger to simulate.'),
       }),
     },
     async ({ name }) => {
-      const result = await client.patch(TRIGGER_BASE, { name });
+      const trigger = await client.get<Record<string, unknown>>(
+        `${TRIGGER_BASE}/${encodePathSegment(name)}`,
+      );
+      const result = await client.patch(TRIGGER_BASE, { trigger });
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };

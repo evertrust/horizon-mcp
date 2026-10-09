@@ -1,7 +1,8 @@
 /**
  * Query language validation and introspection tools.
  *
- * 5 tools covering the four Horizon query languages (HCQL, HRQL, HEQL, HDQL)
+ * 6 tools covering the Horizon query languages (HCQL, HRQL, HEQL, HDQL, and
+ * on Horizon 2.11+ HAQL and HEABQL)
  * plus a local field-metadata tool for discovering available fields and syntax.
  *
  * Knowledge resources:
@@ -144,6 +145,44 @@ const HEQL_FIELDS: readonly FieldEntry[] = [
   { name: 'detail.*', type: 'string' },
 ];
 
+const EQ = 'equals, not equals';
+const TEXT_OPS = 'equals, not equals, contains, not contains, in, not in';
+
+const HAQL_FIELDS: readonly FieldEntry[] = [
+  { name: 'id', type: 'id', note: EQ },
+  { name: 'contact', type: 'string', note: `${TEXT_OPS}, exists, not exists` },
+  { name: 'eab.name', type: 'string', note: `${TEXT_OPS}, exists, not exists` },
+  { name: 'status', type: 'string', note: `${EQ}, in, not in` },
+  {
+    name: 'created.at',
+    type: 'date',
+    note: `${EQ}, before, after, not before, not after`,
+  },
+];
+
+const HEABQL_FIELDS: readonly FieldEntry[] = [
+  { name: 'id', type: 'id', note: TEXT_OPS },
+  { name: 'name', type: 'string', note: TEXT_OPS },
+  { name: 'status', type: 'string', note: TEXT_OPS },
+  { name: 'mackey.algorithm', type: 'string', note: TEXT_OPS },
+  {
+    name: 'expiration.date',
+    type: 'date',
+    note: 'equals, before, after, not before, not after, exists, not exists',
+  },
+  {
+    name: 'created.at',
+    type: 'date',
+    note: 'equals, before, after, not before, not after',
+  },
+  { name: 'eab.policy', type: 'string', note: TEXT_OPS },
+  {
+    name: 'validation.methods',
+    type: 'string',
+    note: 'exists, not exists, contains, not contains, in, not in',
+  },
+];
+
 const HDQL_FIELDS: readonly FieldEntry[] = [
   { name: 'id', type: 'id' },
   { name: 'code', type: 'string' },
@@ -245,6 +284,36 @@ export const QUERY_METADATA: Readonly<Record<string, QueryMetadata>> = {
       'campaign equals "weekly-scan" and timestamp after 7d',
     ],
   },
+  haql: {
+    query_type: 'haql',
+    description:
+      'Horizon ACME Query Language - search ACME accounts (Horizon 2.11+). Each field note lists its allowed conditions.',
+    fields: HAQL_FIELDS,
+    special_conditions: [],
+    date_formats: [],
+    combinators: ['and', 'or'],
+    supports_aggregate: false,
+    groupby_fields: [],
+    examples: [
+      'status equals "valid"',
+      'contact contains "example.com" and status in ["valid", "suspended"]',
+    ],
+  },
+  heabql: {
+    query_type: 'heabql',
+    description:
+      'Horizon External Account Binding Query Language - search ACME EABs (Horizon 2.11+). Each field note lists its allowed conditions.',
+    fields: HEABQL_FIELDS,
+    special_conditions: [],
+    date_formats: [],
+    combinators: ['and', 'or'],
+    supports_aggregate: false,
+    groupby_fields: [],
+    examples: [
+      'eab.policy equals "web-servers"',
+      'status equals "valid" and mackey.algorithm equals "HS256"',
+    ],
+  },
 };
 
 const VALID_QUERY_TYPES = Object.keys(QUERY_METADATA).sort();
@@ -258,6 +327,8 @@ const SEARCH_ENDPOINTS: Readonly<Record<string, string>> = {
   hrql: '/api/v1/requests/search',
   heql: '/api/v1/events/search',
   hdql: '/api/v1/discovery/events/search',
+  haql: '/api/v1/acme/accounts/search',
+  heabql: '/api/v1/acme/eab/search',
 };
 
 // ---------------------------------------------------------------------------
@@ -319,16 +390,18 @@ export function registerQueryTools(
     'validate_hql',
     {
       description:
-        'Validate a Horizon query (HCQL/HRQL/HEQL/HDQL) by running a minimal ' +
+        'Validate a Horizon query (HCQL/HRQL/HEQL/HDQL, and HAQL/HEABQL on ' +
+        'Horizon 2.11+) by running a minimal ' +
         'search (pageSize=1). Returns {valid, query_type, count?, has_more?, ' +
         'error?}. Field names must be lowercase. ' +
         'Full reference: horizon://knowledge/query-languages.',
       inputSchema: z.object({
         dialect: z
-          .enum(['hcql', 'hrql', 'heql', 'hdql'])
+          .enum(['hcql', 'hrql', 'heql', 'hdql', 'haql', 'heabql'])
           .describe(
             'Query dialect: hcql (certificates), hrql (requests), heql ' +
-              '(events), hdql (discovery events).',
+              '(events), hdql (discovery events), haql (ACME accounts, ' +
+              'Horizon 2.11+), heabql (ACME EABs, Horizon 2.11+).',
           ),
         query: z.string().describe('Query expression to validate.'),
       }),
@@ -372,7 +445,9 @@ export function registerQueryTools(
       inputSchema: z.object({
         query_type: z
           .string()
-          .describe('Query language type - one of: hcql, hrql, heql, hdql.'),
+          .describe(
+            'Query language type - one of: hcql, hrql, heql, hdql, haql, heabql.',
+          ),
       }),
     },
     async ({ query_type }) => {
@@ -389,7 +464,8 @@ export function registerQueryTools(
                 valid_types: VALID_QUERY_TYPES,
                 hint:
                   'Use one of: hcql (certificates), hrql (requests), ' +
-                  'heql (events), hdql (discovery).',
+                  'heql (events), hdql (discovery), haql (ACME accounts), ' +
+                  'heabql (ACME EABs).',
               }),
             },
           ],

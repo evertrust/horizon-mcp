@@ -25,6 +25,25 @@ order:
 
 ---
 
+## Asynchronous PKI Connector Enrollment (Horizon 2.10+)
+
+Check the version with `get_license_info` before using asynchronous enrollment.
+
+The following PKI connector types use asynchronous enrollment and accept a
+`retryInterval`: `digicert`, `acmeenroll`, `integrated`, `gsmssl`, `gsatlas`,
+`awsacmpca`, `certeurope`, `sectigo`, and `nameshield`. Set it to a positive
+finite duration such as `"6 seconds"` when creating or updating the connector.
+
+Horizon keeps a request in `in_progress` while it waits for an external CA.
+Find it with `search_requests`, inspect it with `get_request`, and poll for its
+completion. A request in `in_progress` can be denied or cancelled if needed.
+
+`retryInterval` is not valid for synchronous PKI connector types. Call
+`describe_pki_connector_schema` before configuring a connector to discover the
+other fields required by its subtype.
+
+---
+
 ## ACME DNS-01 Integration
 
 Use case: Automated certificate issuance for wildcard domains or domains
@@ -53,11 +72,14 @@ before creating the profile.
 
 ### DNS Provider Configuration
 
-The Horizon 2.8 and 2.10 ACME profile APIs have no `dns01Provider` configuration object.
-See the public [2.8 profile reference](https://docs.evertrust.fr/horizon/2.8/api-ref/certificate_profile_get.html).
+The ACME profile API has no `dns01Provider` configuration object.
 DNS-01 records are published by the ACME client or its DNS integration.
 Configure that integration on the client; select the permitted validation
 methods with the profile's `authorizationMethods` field.
+
+Horizon 2.11+ adds External Account Binding (EAB policies and EABs), IP
+identifiers, and ACME account and order management. See
+`horizon://knowledge/acme`.
 
 ---
 
@@ -139,19 +161,8 @@ directory. Also used for certificate publishing to AD.
    }
    ```
 
-2. Add computation rules to map LDAP attributes to certificate fields:
-   ```json
-   {
-     "computationRules": [
-       {
-         "source": "{{ ds.1.1.department }}",
-         "target": "subject.organizationalUnit"
-       },
-       { "source": "{{ ds.1.1.mail }}", "target": "subject.email" },
-       { "source": "{{ ds.1.1.displayName }}", "target": "subject.commonName" }
-     ]
-   }
-   ```
+2. Set `computationRule` on the selected `certificateTemplate` fields,
+   using the datasource dictionary entries.
 
 ### Certificate Publishing to AD
 
@@ -208,23 +219,24 @@ Restrict enrollment to OIDC-authenticated users:
 
 ### Claim Mapping
 
-Claim expressions are available on Horizon 2.8. Explicit role/team mapping
-requires **Horizon 2.9+** and is unavailable on 2.8. See the public
-[2.8 identity-provider reference](https://docs.evertrust.fr/horizon/2.8/api-ref/security_identity_provider_add.html)
-and [2.9 reference](https://docs.evertrust.fr/horizon/2.9/api-ref/security_identity_provider_add.html):
+Horizon 2.9+ uses claim expressions and an explicit role/team mapping.
+Horizon 2.8 does not support role/team mapping in the identity-provider API:
 
-| Public API Field          | Purpose                                                   |
-| ------------------------- | --------------------------------------------------------- |
-| `identifierClaim`         | Principal identifier expression; defaults to `{{email}}`  |
-| `emailClaim`              | Principal email expression; defaults to `{{email}}`       |
-| `nameClaim`               | Principal display name expression; defaults to `{{name}}` |
-| `mapping.extraction`      | Computation rule that extracts claim values from the JWT  |
-| `mapping.entries[].claim` | Claim value to match                                      |
-| `mapping.entries[].teams` | Team names assigned for that claim value                  |
-| `mapping.entries[].roles` | Role names assigned for that claim value                  |
+| Public API Field              | Purpose                                                     |
+| ----------------------------- | ----------------------------------------------------------- |
+| `identifierClaim`             | Principal identifier expression; defaults to `{{email}}`    |
+| `emailClaim`                  | Principal email expression; defaults to `{{email}}`         |
+| `nameClaim`                   | Principal display name expression; defaults to `{{name}}`   |
+| `mapping.extraction`          | Computation rule that extracts claim values from the JWT    |
+| `mapping.entries[].claim`     | Claim value to match                                        |
+| `mapping.entries[].teams`     | Team names assigned for that claim value                    |
+| `mapping.entries[].roles`     | Role names assigned for that claim value                    |
+| `mapping.synchronizationMode` | (Horizon 2.11+) `roles`, `teams` or `roles_teams` (default) |
 
 Team and role assignments require mapping entries; a `groups` claim alone
-is not a configured mapping.
+is not a configured mapping. `synchronizationMode` selects what the mapping
+synchronizes: the selected roles and/or teams are replaced on each login.
+Before 2.11 the field does not exist.
 
 ---
 
@@ -248,6 +260,11 @@ consumption.
 | Credential            | IAM credentials | AWS access key / role       |
 | Third-Party Connector | `aws`           | Publishes to AWS            |
 | Trigger               | `thirdparty`    | Fires on enrollment/renewal |
+
+Since Horizon 2.11, the `aws` connector sends `evt-<uuid>` as the
+`roleSessionName` of its AssumeRole requests; before 2.11 it sent
+`EverTrustHorizon-Session-<uuid>`. Update IAM policies that match on the
+session name before the upgrade.
 
 ### Google Cloud Certificate Manager
 
@@ -280,6 +297,55 @@ balancers.
 | Third-Party Connector | `f5client`     | Deploys via iControl REST API |
 | Trigger               | `thirdparty`   | Fires on enrollment/renewal   |
 
+`f5client` fields added in the Horizon 2.11 API:
+
+| Field                          | Default | Meaning                                                                                                                                   |
+| ------------------------------ | ------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `persistConfiguration`         | `false` | Save the running configuration to `bigip.conf` after each successful deployment, so it survives a reboot. Needs an admin-level F5 account |
+| `overrideProfileConfiguration` | `true`  | Override the parent profile and cipher group of the existing SSL profile on update. `false` updates only the certificate and key          |
+| `loginProvider`                | device  | F5 authentication provider used for login, for example `tmos`                                                                             |
+
+Since Horizon 2.11, the F5 connector names the CA chains it pushes after
+the connector prefix. On the first push after the upgrade, chains are pushed
+under the new name and the client SSL profiles managed by Horizon are bound
+to them. Chains pushed by earlier versions stay in place; SSL profiles bound
+to them outside of Horizon are not updated.
+
+---
+
+## Firewall Integrations (Fortinet, Palo Alto) (Horizon 2.11+)
+
+Check the version with `get_license_info` first. Use case: Deploy
+certificates and private keys on firewalls. Triggers deploy
+on enrollment and renewal. Each connector has a mandatory `prefix` that
+identifies the certificates Horizon manages. For each holder only the latest
+certificate is kept. A removal is skipped when the certificate was renamed
+or moved on the appliance. Supported versions: FortiOS 7.0+, PAN-OS 10.2+.
+
+| Connector type   | Target                                              | Credential                                                   | Specific fields                                                                                                  |
+| ---------------- | --------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `fortigate`      | One FortiGate (FortiOS REST API)                    | `raw` credential holding the REST API key                    | `vdom` (empty = global scope), optional `certificateCredentials` for mutual TLS                                  |
+| `fortimanager`   | FortiManager unit or a managed FortiGate (JSON-RPC) | `password` credential                                        | `target`: `unit` or `device`; `managedDevice` {`adom`, `device`, `vdom`, `synchronizeDevices`} only for `device` |
+| `panos_firewall` | Standalone PAN-OS firewall (XML API)                | `password` credential (admin with XML API access)            | optional `vsys`                                                                                                  |
+| `panos_panorama` | Panorama (XML API)                                  | `password` credential (admin with XML API, commit if synced) | `template`, `templateStack`, `vsys` (needs `template`), `synchronizeDevices` (default `false`)                   |
+
+All four take `hostname`, `credentials`, `prefix`, `timeout`,
+`throttleDuration`, `throttleParallelism`, optional `proxy` and
+`tlsInsecure`. `fortimanager`, `panos_firewall` and `panos_panorama` also
+require `jobRetryParameters` {`attempts`, `minBackoff`, `maxBackoff`,
+`randomFactor`}: deployments run as asynchronous jobs retried with
+exponential backoff.
+
+Removal: Fortinet connectors remove the certificate on revocation; Palo
+Alto connectors remove it on revocation or expiration. Panorama without
+`synchronizeDevices` leaves the certificate in the candidate configuration
+until an operator commits it.
+
+Triggers use the same type names (`fortigate`, `fortimanager`,
+`panos_firewall`, `panos_panorama`) with `name`, `connector` and an optional
+`retries` (1 to 15). Call `describe_thirdparty_connector_schema` and
+`describe_trigger_schema` for the full structure.
+
 ---
 
 ## LDAP Certificate Publishing
@@ -293,6 +359,39 @@ can be discovered by email clients for S/MIME or by other LDAP consumers.
 | Third-Party Connector | `ldappub`       | Publishes cert to LDAP user object |
 | Trigger               | `thirdparty`    | Fires on enrollment/renewal        |
 
+Since Horizon 2.11, the LDAP connector checks that the server certificate
+matches the configured hostname; a mismatch makes the connection fail after
+the upgrade. Set `tlsInsecure` on the connector to bypass the check. Before
+2.11 there is no hostname check. `createEntry` (Horizon 2.11+, default
+`false`) creates an LDAP entry, with the filter value as objectClass, when no
+entry matches.
+
+---
+
+## Google Cloud CAS PKI Connector (Horizon 2.11+)
+
+Check the version with `get_license_info` first. Use case: Issue
+certificates from a Google Cloud Certificate Authority
+Service CA pool. PKI connector type `gcp`.
+
+| Field                 | Required | Meaning                                                                                        |
+| --------------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `projectId`           | yes      | GCP project of the CA pool                                                                     |
+| `location`            | yes      | CA pool location, for example `europe-west1`                                                   |
+| `caPool`              | yes      | CA pool ID; the pool picks an enabled CA at issuance                                           |
+| `certificateLifetime` | yes      | Validity applied to every certificate; no default                                              |
+| `credentials`         | no       | `raw` credential holding the service account JSON key; empty = Application Default Credentials |
+| `impersonation`       | no       | {`target`, `lifetime`}: service account to impersonate; lifetime at most 12 hours              |
+| `certificateTemplate` | no       | CAS template short name or full resource path                                                  |
+| `endpoint`            | no       | API endpoint override                                                                          |
+
+Grant the service account `roles/privateca.certificateRequester` (issue) and
+`roles/privateca.certificateManager` (revoke). The health check only lists
+certificates, so a healthy connector does not prove that enrollment works.
+Limits: subject DN keeps only CN, C, O, OU, L, ST, STREET (single-valued);
+SANs keep only DNS, URI, RFC822Name and IP address. Extensions come from the
+CA pool or template.
+
 ---
 
 ## End-to-End Example: Internal TLS with ADCS + LDAP + Notifications
@@ -301,12 +400,12 @@ Complete setup for automated internal TLS certificate issuance:
 
 1. **Credential** "adcs-creds" -- service account for ADCS
 2. **Credential** "ldap-creds" -- LDAP bind credentials
-3. **PKI Connector** "adcs-prod" (type: `msadcs` or `evtadcs`) -- references "adcs-creds"
+3. **PKI Connector** "adcs-prod" (type: `evtadcs`) -- references "adcs-creds"
 4. **Datasource** "corp-ldap" (type: `ldap`) -- references "ldap-creds"
 5. **Profile** "TLS-Internal" (module: `webra`):
    - `pkiConnector: "adcs-prod"`
    - `dsFlow` with "corp-ldap" to enrich requests
-   - `computationRules` to map LDAP attributes to subject fields
+   - `computationRule` on certificate-template fields to map LDAP attributes
    - `authorizationMode: "auto-validation"` with validation ruleset
    - `selfPermissions.selfPopRenew: true` for automated renewal
 6. **Trigger** "notify-expiry-30d" (type: `email`) -- attach to profile
@@ -346,7 +445,7 @@ Step 2: create_rest_notification(
   ]
 )
 Step 3: Attach the trigger to a profile via the Horizon admin UI
-        or by updating the profile's triggerHooks via the API.
+        or by updating the profile's triggers via the API.
 ```
 
 ### Create an Email Notification Trigger with Attachments
@@ -376,71 +475,61 @@ Email triggers are created via the Horizon admin UI or the trigger API
 
 ### Create a Profile with Datasource Flow and Computation Rules
 
-Set up a WebRA profile that auto-populates certificate fields from an LDAP
-datasource. The datasource must exist before the profile references it.
+Set up a WebRA profile that fills certificate fields from an LDAP datasource.
+Ask the user for the immutable datasource and profile names, the existing LDAP
+credential, and the required profile policies before creation.
 
-```
-Step 1: create_datasource(name="ldap-lookup", ...)
-Step 2: create_webra_profile(
-  name="AutoDN-Profile",
-  pki_connector="my-pki",
-  certificate_template={
-    "subject": [
-      {"type": "CN", "computationRule": "{{ ds.1.1.cn }}", "mandatory": true, "editableByRequester": false},
-      {"type": "O", "value": "My Org", "mandatory": true, "editableByRequester": false},
-      {"type": "OU", "computationRule": "{{ ds.1.1.department }}", "mandatory": false}
-    ],
-    "sans": [
-      {"type": "RFC822", "computationRule": "{{ ds.1.1.email }}", "editableByRequester": false}
-    ]
-  },
-  authorization_levels={
-    "search": {"accessLevel": "authenticated"},
-    "update": {"accessLevel": "authorized"},
-    "requestUpdate": {"accessLevel": "authenticated"},
-    "approveUpdate": {"accessLevel": "authorized"},
-    "enroll": {"accessLevel": "authenticated"},
-    "approveEnroll": {"accessLevel": "authorized"}
-  },
-  ds_flow=[
-    {"ds": "ldap-lookup", "inputs": [{"key": "uid", "value": "${holderid}"}], "stopOnSuccess": true}
+1. Call `create_ldap_datasource` with `name`, `hostname`, `credentials`,
+   `base_dn`, `filter`, `secure`, and `timeout`. For example, use
+   `hostname: "ldap.example.com"`, `base_dn: "dc=example,dc=com"`, and
+   `filter: "(uid={{username}})"`. Select the attributes needed by the template.
+2. Call `simulate_datasource_flow` with
+   `flow: [{"datasource": "ldap-lookup", "inputs": {"username": "{{username}}"}}]`
+   and `context: {"username": "alice"}` to check the lookup.
+3. Call `describe_certificate_profile_schema` with `subtype: "webra"`.
+4. Call `create_certificate_profile` with `module: "webra"`, the user-supplied
+   `name`, `enabled`, `authorization_levels`, `requests_policy`,
+   `self_permissions`, and `crypto_policy`. Put subtype fields in `config`,
+   including `pkiConnector`, `certificateTemplate`, `authorizationMode`,
+   and `dsFlow`. Use the documented structures returned by the schema tool.
+
+The profile's `config.dsFlow` uses the API shape, unlike the simulation tool's
+`flow` input. For example:
+
+```json
+{
+  "dsFlow": [
+    {
+      "ds": "ldap-lookup",
+      "inputs": [{ "key": "username", "value": "{{principal.identifier}}" }],
+      "stopOnSuccess": true
+    }
   ]
-)
+}
 ```
+
+Use `{{ds.1.1.cn}}` or `{{ds.1.1.mail}}` in certificate-template computation
+rules to reference the selected LDAP attributes.
 
 ### Set Up ACME with DNS-01 and Expiry Notification
 
-Create an ACME profile for automated certificate issuance, then add a
-trigger that warns certificate contacts 30 days before expiry.
+Create an ACME profile for automated issuance, then attach an expiry trigger.
+Ask the user for the immutable profile and trigger names and required policies.
 
-```
-Step 1: list_pki_connectors → select the target CA connector
-Step 2: create_acme_profile(
-  name="acme-dns01",
-  pki_connector="my-pki",
-  certificate_template={
-    "subject": [
-      {"type": "CN", "mandatory": true, "editableByRequester": true}
-    ],
-    "sans": [
-      {"type": "DNSNAME", "editableByRequester": true, "min": 1, "max": 10}
-    ]
-  },
-  authorization_levels={
-    "search": {"accessLevel": "authenticated"},
-    "update": {"accessLevel": "authorized"},
-    "requestUpdate": {"accessLevel": "authenticated"},
-    "approveUpdate": {"accessLevel": "authorized"},
-    "enroll": {"accessLevel": "authenticated"}
-  },
-  acme_challenge_type="dns-01"
-)
-Step 3: Create an email notification via the trigger API or Horizon admin UI:
-        POST /api/v1/triggers with type="email", events=["on_expire"],
-        runPeriod="1 day", runOnRenewed=false
-Step 4: Attach the trigger to the profile via the Horizon admin UI
-        or by updating the profile's triggerHooks via the API.
-```
+1. Use `list_pki_connectors` to select the target CA connector.
+2. Call `describe_certificate_profile_schema` with `subtype: "acme"`.
+3. Call `create_certificate_profile` with `module: "acme"`, `name`, `enabled`,
+   `authorization_levels`, `requests_policy`, `self_permissions`, and
+   `crypto_policy`. Set `config.pkiConnector` to the selected connector and
+   `config.authorizationMethods` to `["dns-01"]`. Supply the remaining
+   ACME settings required by the schema, including `timeout`,
+   `authorizeShortName`, `authorizeEmptyContact`, `verifyRetryCount`,
+   `verifyRetryDelay`, and `requireTermsOfService`.
+4. Call `describe_trigger_schema` with `subtype: "email"`, then `create_trigger`
+   with `name`, `type: "email"`, and `config` containing `events: ["on_expire"]`,
+   `runPeriod: "1 day"`, `runOnRenewed: false`, and the user-supplied
+   `emailTemplate`.
+5. Attach the trigger to the profile in the Horizon administration UI.
 
 ### Create a Dashboard for Certificate Monitoring
 
@@ -499,8 +588,8 @@ Step 1: create_execution_policy(
   name="business-hours",
   description="Allow automation only during business hours",
   authorized_periods=[{
-    "weekDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
-    "timeRange": {"start": "08:00:00", "end": "18:00:00"}
+    "week_days": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+    "time_range": {"start": "08:00:00", "end": "18:00:00"}
   }]
 )
 Step 2: create_automation_policy(
@@ -519,9 +608,10 @@ Step 2: create_automation_policy(
    API and are never exposed through the MCP server. Plan credential creation
    as the first step in any integration setup.
 
-2. **Connectivity testing**: After creating connectors and datasources, use
-   the test endpoints (`simulate_datasource`, `simulate_trigger`) to verify
-   connectivity before attaching to profiles.
+2. **Connectivity testing**: Use `test_datasource` with `ds_type`, `name`,
+   the connection fields, and optional `context` to test a datasource. Use `simulate_datasource_flow` with `flow`
+   and optional `context` to test a flow. `simulate_trigger` takes `name`
+   and sends real notifications; use a test trigger and recipient.
 
 3. **Proxy routing**: If Horizon is in a DMZ or restricted network, create
    HTTP proxy objects for connectors that need to reach external services.

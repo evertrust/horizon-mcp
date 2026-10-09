@@ -65,6 +65,8 @@ export interface ConfigSpec {
   readonly putOnCollection: boolean;
   /** Optional knowledge-resource reference for the description footer. */
   readonly knowledgeRef?: string;
+  /** Optional POST request used by list endpoints that do not support GET. */
+  readonly listRequest?: { readonly path: string; readonly body: unknown };
 }
 
 function refFooter(spec: ConfigSpec): string {
@@ -99,7 +101,7 @@ function itemPath(spec: ConfigSpec, id: string): string {
 export function immutableNote(spec: ConfigSpec): string {
   const key = spec.idField ?? 'name';
   return (
-    `IMPORTANT: ${key} is an immutable primary key and cannot be changed after ` +
+    `IMPORTANT: ${key} is a unique identifier and cannot be changed after ` +
     `creation. Always ask the user for it before creating - never invent or infer it.`
   );
 }
@@ -130,6 +132,10 @@ export async function getStripMergePutExplicit(
   overrides: Record<string, unknown>,
   clearFields?: string[],
   immutable?: { immutableKeys?: readonly string[]; idField?: string },
+  normalizeCurrent?: (
+    current: Record<string, unknown>,
+  ) => Record<string, unknown>,
+  validateMergedBody?: (body: Record<string, unknown>) => void,
 ): Promise<Record<string, unknown>> {
   const current = await client.get<Record<string, unknown>>(getPath);
   // The update is a full-replace seeded from this GET; bail if it is not a
@@ -165,24 +171,30 @@ export async function getStripMergePutExplicit(
         'Remove these fields - they are fixed at creation. Recreate the object to change them.',
     });
   }
+  const normalizedCurrent = normalizeCurrent?.(current) ?? current;
   const strip = new Set(stripFields);
   const payload: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(current)) {
+  for (const [k, v] of Object.entries(normalizedCurrent)) {
     if (!strip.has(k)) payload[k] = v;
   }
   for (const f of clearFields ?? []) payload[f] = null;
   for (const [k, v] of Object.entries(overrides)) {
     if (v !== undefined) payload[k] = v;
   }
+  validateMergedBody?.(payload);
   return client.put<Record<string, unknown>>(putPath, payload);
 }
 
 export function normalizeItems(data: unknown): Record<string, unknown>[] {
-  if (data === null || data === undefined) return [];
+  if (data === null || typeof data !== 'object') return [];
   if (Array.isArray(data)) return data as Record<string, unknown>[];
   const obj = data as Record<string, unknown>;
-  if (Array.isArray(obj['items']))
-    return obj['items'] as Record<string, unknown>[];
+  if ('items' in obj) {
+    return Array.isArray(obj['items'])
+      ? (obj['items'] as Record<string, unknown>[])
+      : [];
+  }
+  if (Object.keys(obj).length === 0) return [];
   return [obj];
 }
 
@@ -220,7 +232,12 @@ export function registerReadTools(
       }),
     },
     async ({ max_items, name_contains }) => {
-      const data = await client.get<unknown>(spec.routeCollection);
+      const data = spec.listRequest
+        ? await client.post<unknown>(
+            spec.listRequest.path,
+            spec.listRequest.body,
+          )
+        : await client.get<unknown>(spec.routeCollection);
       // Filter on this object's actual primary-key field (not always "name" -
       // system configuration keys on "type").
       const field = spec.idField ?? 'name';
@@ -320,6 +337,11 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
     inputSchema: S;
     buildOverrides: (args: z.infer<S>) => Record<string, unknown>;
     preValidate?: (args: z.infer<S>) => string | undefined;
+    normalizeCurrent?: (
+      current: Record<string, unknown>,
+    ) => Record<string, unknown>;
+    validateMergedBody?: (body: Record<string, unknown>) => void;
+    omitClearedFields?: boolean;
   },
 ): void {
   const idField = spec.idField ?? 'name';
@@ -365,14 +387,30 @@ export function registerUpdateTool<S extends z.ZodObject<z.ZodRawShape>>(
       const putPath = spec.putOnCollection
         ? spec.routeCollection
         : itemPath(spec, id);
+      const omitClearedFields =
+        opts.omitClearedFields === true &&
+        clearFields &&
+        clearFields.length > 0;
+      const normalizeCurrent = omitClearedFields
+        ? (current: Record<string, unknown>) => {
+            const normalized = opts.normalizeCurrent?.(current) ?? current;
+            return Object.fromEntries(
+              Object.entries(normalized).filter(
+                ([key]) => !clearFields.includes(key),
+              ),
+            );
+          }
+        : opts.normalizeCurrent;
       const result = await getStripMergePutExplicit(
         client,
         itemPath(spec, id),
         putPath,
         spec.stripFields,
         overrides,
-        clearFields,
+        omitClearedFields ? undefined : clearFields,
         { immutableKeys: spec.immutableKeys, idField },
+        normalizeCurrent,
+        opts.validateMergedBody,
       );
       return text(
         buildMutateResponse({

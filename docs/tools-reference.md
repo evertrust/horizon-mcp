@@ -1,6 +1,6 @@
 # Tool reference
 
-212 tools across 12 domains (incl. 126 Configuration CRUD tools). Safety tiers:
+241 tools across 13 domains (incl. 134 Configuration CRUD tools). Safety tiers:
 
 - **read-only**  -  no side effects
 - **mutating-safe**  -  creates or modifies data, safe to retry
@@ -8,7 +8,7 @@
 
 ## Delete safety
 
-All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_identifier`) parameter that must exactly match the object's name. This forces the LLM to confirm what it intends to delete and prevents accidental destructive operations.
+All `delete_*` and `flush_*` tools require an `expected_name` parameter, or an object-specific `expected_<identifier>` parameter such as `expected_uuid` or `expected_account_id`. The value must exactly match the target object. This forces the LLM to confirm what it intends to delete and prevents accidental destructive operations.
 
 ---
 
@@ -20,13 +20,13 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `get_license_info` | read-only | Horizon license details, quotas, feature flags |
 | `explain_grading_policy` | read-only | Explain policy; optionally explain a certificate against it |
 | `explain_grading_ruleset` | read-only | Explain ruleset; optionally explain a certificate against it |
-| `validate_hql` | read-only | Validate any Horizon search query by dialect (hcql/hrql/heql/hdql); canonical tool, the four validate_h*ql entries are thin aliases |
+| `validate_hql` | read-only | Validate any Horizon search query by dialect (hcql/hrql/heql/hdql, and haql/heabql on Horizon 2.11+); canonical tool, the four validate_h*ql entries are thin aliases |
 | `validate_hcql` | read-only | Validate a certificate search query |
 | `validate_hrql` | read-only | Validate a request search query |
 | `validate_heql` | read-only | Validate an event search query |
 | `validate_hdql` | read-only | Validate a discovery event search query |
 | `describe_query_fields` | read-only | List available fields and syntax for a query language |
-| `translate_to_hql` | read-only | Translate natural language to an HQL query expression |
+| `translate_to_hql` | read-only | Translate natural language to an HQL query expression (HCQL, HRQL, HEQL, or HDQL only) |
 | `decode_x509` | read-only | Decode a PEM X.509 certificate |
 | `decode_csr` | read-only | Decode a PEM PKCS#10 CSR |
 | `detect_file` | read-only | Auto-detect and parse a cryptographic file (PEM, DER, PKCS#7, CRL, OCSP, TSA) |
@@ -47,7 +47,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `get_doc_page` | read-only | Fetch the indexed content for a page returned by a docs-search tool (windowed via `max_chars`/`offset`) |
 | `read_knowledge` | read-only | Read an embedded `horizon://knowledge/*` topic as a tool, for clients without MCP resource support |
 
-## Lifecycle (17 tools)
+## Lifecycle (25 tools)
 
 | Tool | Safety | Description |
 |------|--------|-------------|
@@ -56,6 +56,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `get_certificate` | read-only | Get full certificate details by ID |
 | `download_certificate` | read-only | Download PEM certificate content; use `get_request` on the enrollment request for PKCS#12 retrieval |
 | `aggregate_certificates` | read-only | Aggregate certificate counts by field |
+| `set_certificate_auto_renew` | mutating-safe | Horizon 2.10+. Set WebRA automatic renewal for one certificate when its profile allows edits |
 | `search_requests` | read-only | Search requests via HRQL |
 | `export_requests_csv` | read-only | Export requests to CSV |
 | `get_request` | read-only | Get request details by ID |
@@ -63,11 +64,18 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `search_events` | read-only | Search audit events via HEQL |
 | `get_event` | read-only | Get audit event details by ID |
 | `export_events_csv` | read-only | Export audit events to a compact CSV via paged search (max 1000 rows, default core columns + optional `detail.*` fields) |
-| `get_request_template` | read-only | Get request template for a workflow |
-| `submit_request` | mutating-safe | Submit a lifecycle request (enroll, renew, revoke, ...) |
+| `get_request_template` | read-only | Get request template for a workflow; on Horizon 2.10+, `include_terms_of_service` adds the Terms of Service |
+| `submit_request` | mutating-destructive | Submit a lifecycle request (enroll, renew, revoke, ...); destructive because it can revoke a certificate or change its state |
 | `approve_request` | mutating-safe | Approve a pending request |
-| `deny_request` | mutating-safe | Deny a pending request |
-| `cancel_request` | mutating-safe | Cancel a pending request |
+| `deny_request` | mutating-destructive | Deny a pending request |
+| `cancel_request` | mutating-destructive | Cancel a pending request |
+| `submit_webra_challenge` | mutating-safe | Horizon 2.11+. Enroll with a one-time WebRA challenge. In centralized mode, the response holds the only copy of the PKCS#12 |
+| `list_dcv_policy_status` | read-only | Horizon 2.10+. List DCV policy lifecycle status |
+| `get_dcv_policy_status` | read-only | Horizon 2.10+. Get full DCV policy and domain status |
+| `run_dcv_policy` | mutating-safe | Horizon 2.10+. Start DCV for every eligible policy domain |
+| `run_dcv_domain` | mutating-safe | Horizon 2.10+. Start DCV for one policy domain |
+| `cancel_dcv_run` | mutating-destructive | Horizon 2.10+. Cancel the whole active DCV policy run |
+| `list_dcv_events` | read-only | Horizon 2.10+. List policy or domain DCV lifecycle events |
 
 ## Dashboards (12 tools)
 
@@ -80,7 +88,7 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `delete_dashboard` | mutating-destructive | Delete a dashboard (requires name confirmation) |
 | `add_dashboard_chart` | mutating-safe | Add a chart to an existing dashboard |
 | `update_dashboard_chart` | mutating-safe | Update a single chart within a dashboard |
-| `remove_dashboard_chart` | mutating-safe | Remove a chart from a dashboard |
+| `remove_dashboard_chart` | mutating-destructive | Remove a chart from a dashboard |
 | `list_saved_queries` | read-only | List saved HQL queries |
 | `get_saved_query` | read-only | Get a saved query by name |
 | `upsert_saved_query` | mutating-safe | Create or update a saved HQL query |
@@ -151,11 +159,39 @@ All `delete_*` and `flush_*` tools require an `expected_name` (or `expected_iden
 | `get_trigger` | read-only | Get a trigger configuration by name |
 | `create_rest_notification` | mutating-safe | Create a REST notification with multi-step sequences |
 | `delete_trigger` | mutating-destructive | Delete a trigger (requires name confirmation) |
-| `simulate_trigger` | read-only | Test-fire a trigger without real certificate context |
+| `simulate_trigger` | mutating-destructive | Test-fire an existing trigger. It sends real notifications or external requests, and repeated calls send repeated notifications |
 
 ---
 
-## Configuration (126 tools)
+## ACME (13 tools, Horizon 2.11+)
+
+These tools manage the ACME accounts, orders, and External Account Bindings (EABs) of Horizon 2.11 and later. On an older Horizon, these routes do not exist and the calls fail.
+
+`create_acme_eab` and `renew_acme_eab` return the MAC key and the MAC key ID one time only. Give them to the user immediately. Horizon does not show them again. If the user loses them, renew the EAB.
+
+`renew_acme_eab` keeps the MAC key ID and makes the previous MAC key invalid: new registrations with the old key are rejected. ACME accounts that are already bound are not affected. If you renew without a validity duration, the EAB has no expiry, even if it had one before.
+
+The status `compromised` is final for an account and for an EAB. Horizon revokes the account certificates. If you set an EAB to `compromised`, Horizon also compromises every account bound to the EAB.
+
+| Tool | Safety | Description |
+|------|--------|-------------|
+| `search_acme_accounts` | read-only | Search ACME accounts with HAQL |
+| `get_acme_account` | read-only | Get an ACME account by ID |
+| `update_acme_account_status` | mutating-destructive | Change the status of an ACME account |
+| `delete_acme_account` | mutating-destructive | Delete an ACME account and its orders (requires ID confirmation) |
+| `list_acme_orders` | read-only | List the orders of an ACME account |
+| `get_acme_order` | read-only | Get an ACME order by ID |
+| `search_acme_eabs` | read-only | Search ACME EABs with HEABQL |
+| `get_acme_eab` | read-only | Get an ACME EAB by name (no MAC key) |
+| `create_acme_eab` | mutating-safe | Create an ACME EAB and return its one-time MAC key |
+| `update_acme_eab` | mutating-destructive | Update the policy and constraints of an ACME EAB |
+| `update_acme_eab_status` | mutating-destructive | Change the status of an ACME EAB |
+| `renew_acme_eab` | mutating-destructive | Generate a new one-time MAC key for an ACME EAB |
+| `delete_acme_eab` | mutating-destructive | Delete an ACME EAB (requires name confirmation) |
+
+---
+
+## Configuration (134 tools)
 
 CRUD over Horizon configuration objects. Every family has read tools (`list_*`, `get_*`);
 mutating families add `create_*`/`update_*`/`delete_*`. Mandatory fields are
@@ -172,7 +208,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | Certificate labels | `list/get/create/update/delete_certificate_label` | read-only + mutating |
 | Certificate grading policies | `list_certificate_grading_policies` `get_certificate_grading_policy` | read-only (no write API) |
 | Certificate grading rulesets | `list_certificate_grading_rulesets` `get_certificate_grading_ruleset` | read-only (no write API) |
-| PKI connectors (21 subtypes) | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector` | read-only + mutating |
+| PKI connectors (22 subtypes, gcp needs Horizon 2.11+) | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector` | read-only + mutating |
 | PKI queues | `list/get/create/update/delete_pki_queue` | read-only + mutating |
 
 ### Configuration: RBAC (22 tools)
@@ -189,12 +225,12 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 |--------|-------|--------|
 | Automation policies | `list/get/create/update/delete_automation_policy` | read-only + mutating |
 | Execution policies | `list/get/create/update/delete_execution_policy` | read-only + mutating |
-| Third-party connectors (subtyped) | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating |
+| Third-party connectors (15 subtypes, 4 need Horizon 2.11+) | `describe_thirdparty_connector_schema` `list/get/create/update/delete_thirdparty_connector` | read-only + mutating |
 | HTTP proxies | `list/get/create/update/delete_http_proxy` | read-only + mutating |
 | WCCE forest mappings | `list/get/create/update/delete_wcce_forest` | read-only + mutating |
-| Triggers (CRUD gap-fill, 11 subtypes) | `describe_trigger_schema` `create_trigger` `update_trigger` | read-only + mutating (list/get/delete in Triggers domain above) |
+| Triggers (CRUD gap-fill, 15 subtypes, 4 need Horizon 2.11+) | `describe_trigger_schema` `create_trigger` `update_trigger` | read-only + mutating (list/get/delete in Triggers domain above) |
 
-### Configuration: System & operations (20 tools)
+### Configuration: System & operations (25 tools)
 
 | Object | Tools | Safety |
 |--------|-------|--------|
@@ -204,7 +240,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | Archives (certificate / event) | `describe_archive_schema` `list/get/create/delete_archive` | read-only + mutating (no update) |
 | Terms of Service (2.10 enrollment acceptance) | `list/get/create/update/delete_terms_of_service` | read-only + mutating |
 
-### Configuration: DCV automation (15 tools, Horizon 2.10)
+### Configuration: DCV automation (15 tools, Horizon 2.10+)
 
 Domain Control Validation automation: a DCV policy binds a provider + provisioner
 and renews domain validation on a schedule.
@@ -212,15 +248,24 @@ and renews domain validation on a schedule.
 | Object | Tools | Safety |
 |--------|-------|--------|
 | DCV policies | `list/get/create/update/delete_dcv_policy` | read-only + mutating |
-| DCV providers (digicert) | `list/get/create/update/delete_dcv_provider` | read-only + mutating |
+| DCV providers (digicert; gs_mssl and sectigo need Horizon 2.11+) | `list/get/create/update/delete_dcv_provider` | read-only + mutating |
 | DCV provisioners (cloudflare/powerdns/efficientip/azuredns/route53) | `list/get/create/update/delete_dcv_provisioner` | read-only + mutating (per-type required fields) |
 
-### Configuration: Identity & access (READ-ONLY, 4 tools)
+### Configuration: ACME EAB policies (5 tools, Horizon 2.11+)
 
-Deliberately read-only: this identity/access surface is inspectable but never
-mutable via the MCP server.
+An EAB policy holds constraints that many EABs share. A request must satisfy the policy constraints and the EAB constraints. A policy change applies immediately to every EAB that references the policy.
 
 | Object | Tools | Safety |
 |--------|-------|--------|
-| Service accounts (incl. 2.10 JWKS trustConfig) | `list_service_accounts` `get_service_account` | read-only (no write tools) |
+| ACME EAB policies | `list_eab_policies` `get/create/update/delete_eab_policy` | read-only + mutating |
+
+### Configuration: Identity & access (7 tools)
+
+The identity provider tools are read-only. The service account tools do full
+CRUD for a caller that has `access-management:service-account:*`. The `list` and
+`get` service account tools also work with audit access.
+
+| Object | Tools | Safety |
+|--------|-------|--------|
+| Service accounts (incl. 2.10 JWKS trustConfig) | `list/get/create/update/delete_service_account` | read-only + mutating |
 | Identity providers (OIDC group-claim / JIT) | `list_identity_providers` `get_identity_provider` | read-only (no write tools) |

@@ -90,7 +90,12 @@ export function registerTestDatasourceTool(
           .optional()
           .describe('(REST) Auth type.'),
         headers: z
-          .array(z.object({ name: z.string(), value: z.string() }))
+          .array(
+            z.object({
+              name: z.string().describe('HTTP header name.'),
+              value: z.string().describe('HTTP header value.'),
+            }),
+          )
           .optional()
           .describe('(REST) HTTP headers.'),
         payload_type: z.string().optional().describe('(REST) Payload format.'),

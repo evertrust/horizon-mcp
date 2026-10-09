@@ -23,6 +23,12 @@ describe('DEFAULT_SENSITIVE_HEADERS', () => {
     for (const name of [
       'x-api-id',
       'x-api-key',
+      'x-api-sva',
+      'x-api-token',
+      'x-oauth-client-id',
+      'x-oauth-client-secret',
+      'x-oauth-scope',
+      'x-oauth-audience',
       'authorization',
       'proxy-authorization',
       'cookie',

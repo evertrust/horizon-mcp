@@ -1,9 +1,11 @@
+import acmeContent from './knowledge/acme.md';
 import adcsIntegrationContent from './knowledge/adcs_integration.md';
 import architectureContent from './knowledge/architecture.md';
 import automationContent from './knowledge/automation.md';
 import computationContent from './knowledge/computation_and_data_flow.md';
 import dashboardsContent from './knowledge/dashboards.md';
 import datasourcesContent from './knowledge/datasources.md';
+import dcvContent from './knowledge/dcv.md';
 import dictionaryMatrixContent from './knowledge/dictionary_matrix.md';
 import digicertIntegrationContent from './knowledge/digicert_integration.md';
 import discoveryContent from './knowledge/discovery.md';
@@ -14,6 +16,7 @@ import profilesContent from './knowledge/profiles.md';
 import queryLanguagesContent from './knowledge/query_languages.md';
 import rbacContent from './knowledge/rbac.md';
 import restNotificationsContent from './knowledge/rest_notifications.md';
+import restNotificationExamplesContent from './knowledge/rest_notifications_examples.md';
 import serverRulesContent from './knowledge/server_rules.md';
 import systemAdminContent from './knowledge/system_admin.md';
 import toolSelectionContent from './knowledge/tool_selection.md';
@@ -127,6 +130,21 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     splitSections: true,
   },
   {
+    name: 'acme',
+    uri: 'horizon://knowledge/acme',
+    description:
+      'ACME server, EAB policies, EABs, ACME accounts and orders (HAQL/HEABQL)',
+    content: acmeContent,
+    splitSections: true,
+  },
+  {
+    name: 'dcv',
+    uri: 'horizon://knowledge/dcv',
+    description: 'Domain Control Validation providers, policies, and lifecycle',
+    content: dcvContent,
+    splitSections: true,
+  },
+  {
     name: 'validation-rules',
     uri: 'horizon://knowledge/validation-rules',
     description: 'Validation rules configuration',
@@ -137,7 +155,9 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     name: 'rest-notifications',
     uri: 'horizon://knowledge/rest-notifications',
     description: 'REST notification trigger configuration',
-    content: restNotificationsContent,
+    content: [restNotificationsContent, restNotificationExamplesContent].join(
+      '\n',
+    ),
     splitSections: true,
   },
   {

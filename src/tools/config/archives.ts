@@ -119,7 +119,7 @@ function buildArchiveBody(args: {
 const nameSchema = z
   .string()
   .describe(
-    'Archive name. Immutable primary key, must be unique (ARCHIVE-004 if it already exists).',
+    'Archive name. Unique identifier; it cannot change after creation. Must be unique (ARCHIVE-004 if it already exists).',
   );
 const typeSchema = z
   .enum(ARCHIVE_TYPES)

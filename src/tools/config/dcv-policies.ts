@@ -60,11 +60,26 @@ const renewalPolicySchema = z
 
 const triggersSchema = z
   .object({
-    onDcvPolicyStart: z.array(z.string()).optional(),
-    onDcvPolicyEnd: z.array(z.string()).optional(),
-    onDcvValidationSuccess: z.array(z.string()).optional(),
-    onDcvValidationFailure: z.array(z.string()).optional(),
-    onDcvValidationRetry: z.array(z.string()).optional(),
+    onDcvPolicyStart: z
+      .array(z.string())
+      .optional()
+      .describe('Trigger names to fire when a policy run starts.'),
+    onDcvPolicyEnd: z
+      .array(z.string())
+      .optional()
+      .describe('Trigger names to fire when a policy run ends.'),
+    onDcvValidationSuccess: z
+      .array(z.string())
+      .optional()
+      .describe('Trigger names to fire when domain validation succeeds.'),
+    onDcvValidationFailure: z
+      .array(z.string())
+      .optional()
+      .describe('Trigger names to fire when domain validation fails.'),
+    onDcvValidationRetry: z
+      .array(z.string())
+      .optional()
+      .describe('Trigger names to fire when domain validation is retried.'),
   })
   .describe(
     'Optional trigger bindings: arrays of existing trigger names fired on each ' +
@@ -110,7 +125,7 @@ export function registerDcvPolicyTools(
       name: z
         .string()
         .describe(
-          'Policy name. Immutable primary key (the update lookup key).',
+          'Policy name. Unique identifier (the update lookup key); it cannot change after creation.',
         ),
       provider: providerSchema,
       provisioner: provisionerSchema,

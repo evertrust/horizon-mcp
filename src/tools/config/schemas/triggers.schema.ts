@@ -2,7 +2,7 @@
  * Embedded resolved request JSON Schema for triggers.
  *
  * Resolved from the bundled OpenAPI. Polymorphic union discriminated by
- * the lowercase `type` field (11 subtypes). Surfaced verbatim through
+ * the lowercase `type` field (15 subtypes). Surfaced verbatim through
  * describe_trigger_schema so the model never guesses the per-subtype structure.
  */
 export const triggerRequestSchema = {
@@ -10,7 +10,7 @@ export const triggerRequestSchema = {
   $id: 'https://evertrust.fr/horizon/schemas/triggers.request.json',
   title: 'Horizon Trigger (create/update request body)',
   description:
-    "Self-contained resolved JSON Schema for the request body of POST /api/v1/triggers (create) and PUT /api/v1/triggers (update). The body is a polymorphic oneOf discriminated by the 'type' field. The same body shape is used for both create and update; the object is keyed by 'name' (immutable primary key). Server-populated fields '_id' and 'tenant' are ignored on input.",
+    "Self-contained resolved JSON Schema for the request body of POST /api/v1/triggers (create) and PUT /api/v1/triggers (update). The body is a polymorphic oneOf discriminated by the 'type' field. The same body shape is used for both create and update; the object is keyed by 'name' (unique identifier that cannot change after creation). Server-populated fields '_id' and 'tenant' are ignored on input.",
   oneOf: [
     { $ref: '#/$defs/EmailNotification' },
     { $ref: '#/$defs/WebhookNotification' },
@@ -23,12 +23,16 @@ export const triggerRequestSchema = {
     { $ref: '#/$defs/GCMTrigger' },
     { $ref: '#/$defs/LDAPTrigger' },
     { $ref: '#/$defs/NetscalerTrigger' },
+    { $ref: '#/$defs/FortiGateTrigger' },
+    { $ref: '#/$defs/FortiManagerTrigger' },
+    { $ref: '#/$defs/PanOSFirewallTrigger' },
+    { $ref: '#/$defs/PanoramaTrigger' },
   ],
   $defs: {
     TriggerEvent: {
       type: 'string',
       description:
-        'Full list of accepted trigger events (the OpenAPI Base.events enum is a subset). DCV events (on_dcv_*) require Horizon 2.10+.',
+        'Full list of accepted trigger events (the OpenAPI Base.events enum is a subset). DCV events require Horizon 2.10+.',
       enum: [
         'on_enroll',
         'on_submit_enroll',
@@ -210,7 +214,7 @@ export const triggerRequestSchema = {
           type: 'string',
           enum: ['slack', 'teams'],
           description:
-            'Webhook target type. Use slack for Slack and Mattermost. The server also accepts mattermost.',
+            'Webhook target type (Teams or Slack/Mattermost). mattermost is also accepted.',
         },
         url: { type: 'string', description: 'The webhook URL.' },
       },
@@ -313,7 +317,8 @@ export const triggerRequestSchema = {
       properties: {
         name: {
           type: 'string',
-          description: 'Immutable primary key. Must be unique.',
+          description:
+            'Unique identifier; it cannot change after creation. Must be unique.',
         },
         type: { type: 'string', const: 'email', enum: ['email'] },
         events: {
@@ -374,7 +379,10 @@ export const triggerRequestSchema = {
       title: 'Webhook Notification (Groupware)',
       description: 'type=webhook.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'webhook', enum: ['webhook'] },
         events: {
           type: 'array',
@@ -417,7 +425,10 @@ export const triggerRequestSchema = {
       title: 'REST notification',
       description: 'type=rest.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'rest', enum: ['rest'] },
         events: {
           type: 'array',
@@ -455,7 +466,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party AKV',
       description: "type=akv. 'events' is server-fixed (not a client input).",
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'akv', enum: ['akv'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -475,7 +489,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party F5',
       description: 'type=f5client.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'f5client', enum: ['f5client'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -496,7 +513,10 @@ export const triggerRequestSchema = {
       description:
         "type=f5as3. NOTE: not present in the GET /api/v1/triggers 'types' query enum.",
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'f5as3', enum: ['f5as3'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -516,7 +536,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party AWS',
       description: 'type=aws.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'aws', enum: ['aws'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -536,7 +559,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party Intune PKCS',
       description: 'type=intunepkcs.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'intunepkcs', enum: ['intunepkcs'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -556,7 +582,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party GCM',
       description: 'type=gcm.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'gcm', enum: ['gcm'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -576,7 +605,10 @@ export const triggerRequestSchema = {
       title: 'Third-Party LDAP',
       description: 'type=ldappub.',
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'ldappub', enum: ['ldappub'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -597,7 +629,10 @@ export const triggerRequestSchema = {
       description:
         "type=netscaler. NOTE: not present in the GET /api/v1/triggers 'types' query enum.",
       properties: {
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         type: { type: 'string', const: 'netscaler', enum: ['netscaler'] },
         retries: { type: 'integer', format: 'int32', nullable: true },
         connector: {
@@ -608,6 +643,94 @@ export const triggerRequestSchema = {
         triggers: {
           allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
           nullable: true,
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    FortiGateTrigger: {
+      type: 'object',
+      title: 'Third-Party FortiGate',
+      description: 'type=fortigate. Horizon 2.11+.',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
+        type: { type: 'string', const: 'fortigate', enum: ['fortigate'] },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a fortigate third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    FortiManagerTrigger: {
+      type: 'object',
+      title: 'Third-Party FortiManager',
+      description: 'type=fortimanager. Horizon 2.11+.',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
+        type: {
+          type: 'string',
+          const: 'fortimanager',
+          enum: ['fortimanager'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a fortimanager third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    PanOSFirewallTrigger: {
+      type: 'object',
+      title: 'Third-Party PAN-OS Firewall',
+      description: 'type=panos_firewall. Horizon 2.11+.',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
+        type: {
+          type: 'string',
+          const: 'panos_firewall',
+          enum: ['panos_firewall'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a panos_firewall third-party connector. Dependency: must pre-exist.',
+        },
+      },
+      required: ['name', 'type', 'connector'],
+    },
+    PanoramaTrigger: {
+      type: 'object',
+      title: 'Third-Party PAN-OS Panorama',
+      description: 'type=panos_panorama. Horizon 2.11+.',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
+        type: {
+          type: 'string',
+          const: 'panos_panorama',
+          enum: ['panos_panorama'],
+        },
+        retries: { type: 'integer', format: 'int32', nullable: true },
+        connector: {
+          type: 'string',
+          description:
+            'Name of a panos_panorama third-party connector. Dependency: must pre-exist.',
         },
       },
       required: ['name', 'type', 'connector'],
