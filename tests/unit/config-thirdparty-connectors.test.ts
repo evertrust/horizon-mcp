@@ -103,6 +103,39 @@ describe('describe_thirdparty_connector_schema', () => {
     expect(defs).toHaveProperty('AWSConnector');
   });
 
+  it('lists the Horizon 2.11 network subtypes and their schemas', async () => {
+    const { client } = await setup();
+    const out = parse(
+      await client.callTool({
+        name: 'describe_thirdparty_connector_schema',
+        arguments: {},
+      }),
+    );
+    expect(out['subtypes']).toEqual(
+      expect.arrayContaining([
+        'fortigate',
+        'fortimanager',
+        'panos_firewall',
+        'panos_panorama',
+      ]),
+    );
+    const defs = (out['jsonSchema'] as Record<string, unknown>)[
+      '$defs'
+    ] as Record<string, { required?: string[] }>;
+    expect(defs['FortiManagerConnector']!.required).toContain(
+      'jobRetryParameters',
+    );
+    expect(defs['RetryParameters']!.required).toEqual([
+      'attempts',
+      'minBackoff',
+      'maxBackoff',
+      'randomFactor',
+    ]);
+    expect(defs['NetscalerConnector']!.required).not.toContain(
+      'certificateStorePath',
+    );
+  });
+
   it('echoes the requested subtype', async () => {
     const { client } = await setup();
     const res = await client.callTool({
@@ -288,6 +321,138 @@ describe('create_thirdparty_connector', () => {
     });
     expect(isError(res)).toBe(true);
     expect(structured(res)['errorCode']).toBe('CONFIG-BAD-ENUM');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it('accepts a netscaler body without certificateStorePath (optional on 2.11+)', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'ns1' });
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: {
+        type: 'netscaler',
+        name: 'ns1',
+        throttle_duration: '5 seconds',
+        config: {
+          throttleParallelism: 1,
+          timeout: '30 seconds',
+          maxStoredCertificatePerHolder: 5,
+          prefix: 'p',
+          hostname: 'ns.example.com',
+          credentials: 'ns-creds',
+        },
+      },
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post).toHaveBeenCalledOnce();
+  });
+
+  it('accepts f5client persistConfiguration', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'f5' });
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: {
+        type: 'f5client',
+        name: 'f5',
+        throttle_duration: '5 seconds',
+        config: {
+          throttleParallelism: 1,
+          maxStoredCertificatePerHolder: 2,
+          bigIPHostname: 'bigip.example.com',
+          credentials: 'f5-creds',
+          persistConfiguration: true,
+        },
+      },
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post.mock.calls[0]![1]).toMatchObject({
+      persistConfiguration: true,
+    });
+  });
+
+  const RETRY = {
+    attempts: 10,
+    minBackoff: '10 seconds',
+    maxBackoff: '60 seconds',
+    randomFactor: 0.1,
+  };
+  const NETWORK_BASE = {
+    throttleParallelism: 1,
+    timeout: '30 seconds',
+    hostname: 'fw.example.com',
+    credentials: 'fw-creds',
+    prefix: 'hrz-',
+  };
+
+  it.each([
+    ['fortigate', { ...NETWORK_BASE, vdom: 'root' }],
+    [
+      'fortimanager',
+      {
+        ...NETWORK_BASE,
+        target: 'device',
+        managedDevice: { adom: 'root', device: 'fgt-01', vdom: 'root' },
+        jobRetryParameters: RETRY,
+      },
+    ],
+    [
+      'panos_firewall',
+      { ...NETWORK_BASE, vsys: 'vsys1', jobRetryParameters: RETRY },
+    ],
+    [
+      'panos_panorama',
+      {
+        ...NETWORK_BASE,
+        templateStack: 'stack-a',
+        template: 'tpl-a',
+        synchronizeDevices: true,
+        jobRetryParameters: RETRY,
+      },
+    ],
+  ])('accepts a 2.11 %s connector body', async (type, config) => {
+    mc.post.mockResolvedValueOnce({ name: 'net1' });
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: { type, name: 'net1', throttle_duration: '5 seconds', config },
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post).toHaveBeenCalledWith(ROUTE, {
+      ...config,
+      type,
+      name: 'net1',
+      throttleDuration: '5 seconds',
+    });
+  });
+
+  it('fortimanager requires target and jobRetryParameters', async () => {
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: {
+        type: 'fortimanager',
+        name: 'fmg',
+        throttle_duration: '5 seconds',
+        config: NETWORK_BASE,
+      },
+    });
+    expect(isError(res)).toBe(true);
+    const out = structured(res);
+    expect(out['errorCode']).toBe('CONFIG-MISSING-MANDATORY');
+    expect(String(out['message'])).toContain('target');
+    expect(String(out['message'])).toContain('jobRetryParameters');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it('rejects a field of another subtype on panos_firewall', async () => {
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: {
+        type: 'panos_firewall',
+        name: 'pa',
+        throttle_duration: '5 seconds',
+        config: { ...NETWORK_BASE, jobRetryParameters: RETRY, vdom: 'root' },
+      },
+    });
+    expect(isError(res)).toBe(true);
+    expect(structured(res)['errorCode']).toBe('CONFIG-UNKNOWN-FIELD');
     expect(mc.post).not.toHaveBeenCalled();
   });
 });

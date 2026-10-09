@@ -49,7 +49,6 @@ export const encodePathSegment = (value: string): string =>
 
 const MAX_PAGE_SIZE = 100;
 const MAX_CSV_ROWS = 1000;
-const CSV_TIMEOUT = 120;
 
 // Field-level truncation limits (search results only)
 const MAX_STRING_LEN = 500;
@@ -257,17 +256,9 @@ export async function preflightRequestAction(
   requestId: string,
   permissionKey: string,
 ): Promise<Record<string, unknown>> {
-  let request: Record<string, unknown>;
-  try {
-    request = await client.get<Record<string, unknown>>(
-      `/api/v1/requests/${encodePathSegment(requestId)}`,
-    );
-  } catch (err) {
-    if (err instanceof HorizonError) {
-      return { error: err.toToolResult() };
-    }
-    return { error: String(err) };
-  }
+  const request = await client.get<Record<string, unknown>>(
+    `/api/v1/requests/${encodePathSegment(requestId)}`,
+  );
 
   const permissions = (request['permissions'] ?? {}) as Record<string, boolean>;
   if (!permissions[permissionKey]) {
@@ -286,11 +277,19 @@ export async function preflightRequestAction(
   }
 
   const status = String(request['status'] ?? '').toLowerCase();
-  if (status !== 'pending') {
+  const acceptedStatuses =
+    action === 'approve' ? ['pending'] : ['pending', 'in_progress'];
+  if (!acceptedStatuses.includes(status)) {
+    const participle =
+      action === 'approve'
+        ? 'approved'
+        : action === 'deny'
+          ? 'denied'
+          : 'cancelled';
     return {
       error:
-        `Request is not pending (current status: '${status}'). ` +
-        `Only pending requests can be ${action}d.`,
+        `Request status '${status}' cannot be ${participle}. ` +
+        `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
       request_id: requestId,
       request_status: status,
     };
@@ -426,8 +425,6 @@ export function buildExportPayload(
 // ---------------------------------------------------------------------------
 // CSV export helper
 // ---------------------------------------------------------------------------
-
-export { CSV_TIMEOUT };
 
 export function csvTruncationMetadata(csvText: string): {
   truncated: boolean;

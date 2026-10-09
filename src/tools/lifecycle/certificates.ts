@@ -1,21 +1,22 @@
 /**
  * Certificate lifecycle tools.
  *
- * 5 MCP tools:
+ * 6 MCP tools:
  *   - search_certificates
  *   - get_certificate
  *   - export_certificates_csv
  *   - download_certificate
  *   - aggregate_certificates
+ *   - set_certificate_auto_renew
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 
+import { HorizonError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import {
   CERT_PRESETS,
   CSV_EXPORT_OUTPUT_SCHEMA,
-  CSV_TIMEOUT,
   SEARCH_RESPONSE_OUTPUT_SCHEMA,
   buildExportPayload,
   buildSearchPayload,
@@ -24,6 +25,53 @@ import {
   encodePathSegment,
 } from '../helpers.js';
 import { registerTool } from '../register.js';
+
+const SET_CERTIFICATE_AUTO_RENEW_SCHEMA = z
+  .object({
+    certificate_id: z
+      .string()
+      .regex(/^[a-fA-F0-9]{24}$/, 'certificate_id must be a 24-hex value.')
+      .optional()
+      .describe('24-hex Horizon certificate ID.'),
+    certificate_pem: z
+      .string()
+      .min(1)
+      .optional()
+      .describe('PEM-encoded certificate to update.'),
+    enabled: z.boolean().describe('Whether to enable automatic renewal.'),
+  })
+  .superRefine(({ certificate_id, certificate_pem }, ctx) => {
+    if ((certificate_id === undefined) === (certificate_pem === undefined)) {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Provide exactly one of certificate_id or certificate_pem.',
+      });
+    }
+  });
+
+const AUTO_RENEW_NOT_EDITABLE_MESSAGE =
+  /\bauto[- ]?renew\b.*\b(?:is )?not editable\b/i;
+
+function isAutoRenewNotEditableError(error: HorizonError): boolean {
+  return (
+    AUTO_RENEW_NOT_EDITABLE_MESSAGE.test(error.message) ||
+    AUTO_RENEW_NOT_EDITABLE_MESSAGE.test(error.detail ?? '')
+  );
+}
+
+function autoRenewNotEditableResult(error: HorizonError) {
+  return {
+    isError: true as const,
+    content: [
+      {
+        type: 'text' as const,
+        text: JSON.stringify({
+          error: `Horizon rejected the auto-renew update: ${error.toToolResult()}. Auto-renew can only be changed when the certificate profile autoRenewalPolicy.editable is true.`,
+        }),
+      },
+    ],
+  };
+}
 
 export function registerCertificateTools(
   server: McpServer,
@@ -175,7 +223,7 @@ export function registerCertificateTools(
       const csvText = await client.postText(
         '/api/v1/certificates/csv',
         payload,
-        { timeout: CSV_TIMEOUT },
+        { timeout: client.exportTimeout / 1000 },
       );
       const metadata = csvTruncationMetadata(csvText);
       const payloadOut = { csv: csvText, ...metadata };
@@ -324,6 +372,41 @@ export function registerCertificateTools(
       return {
         content: [{ type: 'text' as const, text: JSON.stringify(result) }],
       };
+    },
+  );
+
+  registerTool(
+    server,
+    'set_certificate_auto_renew',
+    {
+      description:
+        'Set automatic renewal for one WebRA certificate (Horizon 2.10+). The certificate profile must have autoRenewalPolicy.editable set to true. Use get_request_template with workflow update and module webra to inspect the autoRenew template element when using the generic request path.',
+      inputSchema: SET_CERTIFICATE_AUTO_RENEW_SCHEMA,
+    },
+    async ({ certificate_id, certificate_pem, enabled }) => {
+      const payload: Record<string, unknown> = {
+        module: 'webra',
+        workflow: 'update',
+        template: { autoRenew: { value: enabled } },
+      };
+      if (certificate_id !== undefined)
+        payload['certificateId'] = certificate_id;
+      if (certificate_pem !== undefined)
+        payload['certificatePem'] = certificate_pem;
+
+      try {
+        const result = await client.post<Record<string, unknown>>(
+          '/api/v1/requests/submit',
+          payload,
+        );
+        return {
+          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        if (error instanceof HorizonError && isAutoRenewNotEditableError(error))
+          return autoRenewNotEditableResult(error);
+        throw error;
+      }
     },
   );
 }

@@ -3,6 +3,8 @@
  */
 import { z } from 'zod';
 
+export { normalizeItems } from '../config/_scaffold.js';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -78,12 +80,6 @@ export function validateAuthType(authType: string): string | undefined {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-export function normalizeItems(data: unknown): Record<string, unknown>[] {
-  if (Array.isArray(data)) return data as Record<string, unknown>[];
-  const obj = data as Record<string, unknown>;
-  return (obj['items'] as Record<string, unknown>[] | undefined) ?? [obj];
-}
 
 export function applyTypeFilter(
   items: Record<string, unknown>[],
