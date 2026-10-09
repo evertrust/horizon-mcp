@@ -156,14 +156,17 @@ describe('trigger CRUD gap-fill', () => {
     expect(mc.post).not.toHaveBeenCalled();
   });
 
-  it('rejects an unknown top-level config key', async () => {
-    const res = await client.callTool({
-      name: 'create_trigger',
-      arguments: { name: 't1', type: 'email', config: { bogusField: 1 } },
-    });
-    expect(isError(res)).toBe(true);
-    expect(mc.post).not.toHaveBeenCalled();
-  });
+  it.each([{ bogusField: 1 }, { triggers: {} }])(
+    'rejects an unknown top-level config key: %j',
+    async (config) => {
+      const res = await client.callTool({
+        name: 'create_trigger',
+        arguments: { name: 't1', type: 'email', config },
+      });
+      expect(isError(res)).toBe(true);
+      expect(mc.post).not.toHaveBeenCalled();
+    },
+  );
 
   it('update does GET item then PUT collection root with _id stripped', async () => {
     mc.get.mockResolvedValueOnce({

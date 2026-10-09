@@ -180,22 +180,7 @@ Requires a **Certificate** type credential (PKCS#12 store) in Horizon.
 
 ### Custom Authentication (`custom`)
 
-No auth headers are added automatically. Instead, the credential's secret
-values are injected into the template dictionary so you can use them in
-custom headers or the payload body.
-
-```json
-{
-  "authenticationType": "custom",
-  "credentials": "my-api-key",
-  "headers": [{ "name": "X-API-Key", "value": "{{credentials.key}}" }]
-}
-```
-
-**Available template variables for custom auth:**
-
-- Raw credentials: `{{credentials.key}}` (the secret value)
-- Password credentials: `{{credentials.login}}` and `{{credentials.password}}`
+Custom authentication makes credential values available in headers.
 
 **Use custom auth when:** the API requires a non-standard auth scheme (API key
 in a custom header, HMAC signature, or OAuth token in a specific format).
@@ -263,12 +248,6 @@ If the response is not valid JSON, the entire body is stored as:
 - Response indexes are **1-based** (first step = `rest.response.1`, second = `rest.response.2`)
 - Array element indexes are also **1-based** (`tags.1`, `tags.2`)
 - Nested objects use dot notation (`endpoints.activate`)
-
-### Fail-Fast Behavior
-
-If any step in the sequence fails (returns an unexpected HTTP code or a
-connection error), **all subsequent steps are skipped**. The entire
-notification is marked as failed and follows the retry policy.
 
 ### When to Use Multi-Step Sequences
 

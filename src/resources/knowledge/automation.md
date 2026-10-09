@@ -203,11 +203,10 @@ third-party triggers do not use.
 
 ### Base Fields (All Triggers)
 
-| Field      | Type         | Description                                                        |
-| ---------- | ------------ | ------------------------------------------------------------------ |
-| `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
-| `type`     | string       | One of the types listed above                                      |
-| `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
+| Field  | Type   | Description                                             |
+| ------ | ------ | ------------------------------------------------------- |
+| `name` | string | Trigger identifier (unique across the Horizon instance) |
+| `type` | string | One of the types listed above                           |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
 
@@ -261,20 +260,20 @@ The workflow events also include `on_in_progress_enroll`,
 DCV events are notification hooks and are available since Horizon 2.10. They
 do not run a DCV policy.
 
-| Event                       | Description                                   | Notes                                                       |
-| --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed`                     |
-| `on_license_expiration`     | Horizon license is approaching expiration     | Requires `runPeriod`                                        |
-| `on_credentials_expiration` | Stored credentials are approaching expiration | Requires `runPeriod`                                        |
-| `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
-| `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
-| `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
-| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                                               |
-| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                                               |
-| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                                               |
-| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                                               |
-| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                                               |
-| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                                               |
+| Event                       | Description                                   | Notes                                   |
+| --------------------------- | --------------------------------------------- | --------------------------------------- |
+| `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed` |
+| `on_license_expiration`     | Horizon license is approaching expiration     | Requires `runPeriod`                    |
+| `on_credentials_expiration` | Stored credentials are approaching expiration | Requires `runPeriod`                    |
+| `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)  |
+| `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`     |
+| `on_trigger_error`          | A trigger execution failed                    | -                                       |
+| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                           |
+| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                           |
+| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                           |
+| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                           |
+| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                           |
+| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                           |
 
 ---
 
@@ -377,10 +376,10 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 ### Third-Party Triggers
 
 Third-party triggers include `name`, `type`, and `connector`. Some subtypes
-also expose `retries` and error-trigger settings. Call `describe_trigger_schema`
+also expose `retries`. Call `describe_trigger_schema`
 for the chosen subtype and pass its documented fields in `create_trigger`'s
-`config`. The public trigger guides describe retries in case of error; for
-firewall triggers on Horizon 2.11+, the range is 1 to 15.
+`config`. Third-party triggers can retry after an error. For firewall
+triggers on Horizon 2.11+, the range is 1 to 15.
 
 ---
 

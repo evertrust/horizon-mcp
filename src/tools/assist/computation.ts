@@ -14,7 +14,7 @@ const SIMULATE_COMPUTATION_RULE_CONFIG = {
     'use what is documented in that resource.\n\n' +
     'Documented functions:\n' +
     '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
-    '  List: Filter, Slice, Sort, Split\n' +
+    '  List: Filter, Slice, Sort, Split, Unique\n' +
     '  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n' +
     '  Date: DateTimeFormat\n' +
     '  Access: Get, First, Last, Join, Match\n' +
@@ -26,7 +26,8 @@ const SIMULATE_COMPUTATION_RULE_CONFIG = {
     '  - Concat joins strings if all arguments are single values; otherwise, it combines values into an array. An empty result returns None.\n' +
     '  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n' +
     '  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n' +
-    '  - Sort alphabetically sorts a list\n\n' +
+    '  - Sort alphabetically sorts a list\n' +
+    '  - Unique removes duplicate values from a list\n\n' +
     'Two expression modes:\n\n' +
     '  computation_rule (default): Full expression language with functions.\n' +
     '    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort([[sans]])\n\n' +
