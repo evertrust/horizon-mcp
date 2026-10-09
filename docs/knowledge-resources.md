@@ -13,13 +13,13 @@ For clients with weak or missing MCP resource support, the same content is reach
 | Resource | URI | Contents |
 |----------|-----|----------|
 | Profiles | `horizon://knowledge/profiles` | Module types, field reference, authorization modes |
-| Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, 30+ built-in functions, datasource chaining |
+| Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, computation functions including `Unique`, datasource chaining                               |
 | Workflows | `horizon://knowledge/workflows` | 7 lifecycle workflows, authorization levels, request policies |
 | Query Languages | `horizon://knowledge/query-languages` | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples |
 | RBAC | `horizon://knowledge/rbac` | Permission format, 37-pattern catalog, role guidance |
 | Architecture | `horizon://knowledge/architecture` | Object model, module types, dependency order |
 | Dictionary Matrix | `horizon://knowledge/dictionary-matrix` | Certificate field dictionary and matrix reference |
-| Datasources | `horizon://knowledge/datasources` | DNS, LDAP, REST datasource config, multi-lookup patterns, end-to-end recipes |
+| Datasources | `horizon://knowledge/datasources` | DNS, LDAP, REST datasource config, output inspection, end-to-end recipes                                     |
 | DCV | `horizon://knowledge/dcv` | DCV providers, policies, lifecycle status, and events (Horizon 2.10+) |
 | ACME | `horizon://knowledge/acme` | ACME server, EAB policies, EABs, ACME accounts and orders, HAQL and HEABQL (Horizon 2.11+) |
 | Validation Rules | `horizon://knowledge/validation-rules` | Auto-approval conditions, operator reference (API-verified syntax), module support matrix |

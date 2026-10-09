@@ -372,10 +372,10 @@ export function registerTriggerTools(
         '    - proxy: Name of HTTP proxy in Horizon\n\n' +
         'Template variables available in URL, headers, and payload:\n' +
         '    - Certificate: {{certificate.pem}}, {{certificate.serial}}, {{certificate.subject.cn.1}},\n' +
-        '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, {{certificate.private_key}}, etc.\n' +
+        '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, etc.\n' +
         '    - Request: {{request.id}}, {{request.workflow}}, {{request.requester}}, etc.\n' +
         '    - Previous cert (on_renew only): {{previous.certificate.serial}}, etc.\n' +
-        '    - Credentials (custom auth): {{credentials.key}}, {{credentials.login}}, {{credentials.password}}\n' +
+        '    - Custom authentication makes credential values available in headers.\n' +
         '    - Response chaining: {{rest.response.1.field}}, {{rest.response.2.field.nested}}, etc.\n' +
         '    - Computation rules: {{Upper({{certificate.subject.cn.1}})}}, {{Base64(Raw({{certificate.pem}}))}}, etc.\n\n' +
         'See horizon://knowledge/rest-notifications for the complete dictionary reference\n' +
@@ -435,10 +435,6 @@ export function registerTriggerTools(
             'Threshold 1-100 for on_license_usage. ' +
               'MANDATORY for on_license_usage only.',
           ),
-        on_trigger_error: z
-          .array(z.string())
-          .optional()
-          .describe('Names of triggers to fire if this notification fails.'),
       }),
     },
     async ({
@@ -449,7 +445,6 @@ export function registerTriggerTools(
       run_period,
       run_on_renewed,
       licence_usage_percent,
-      on_trigger_error,
     }) => {
       const eventErr = validateEvent(event);
       if (eventErr !== undefined) {
@@ -534,9 +529,6 @@ export function registerTriggerTools(
       if (run_on_renewed !== undefined) body['runOnRenewed'] = run_on_renewed;
       if (licence_usage_percent !== undefined) {
         body['licenceUsagePercent'] = licence_usage_percent;
-      }
-      if (on_trigger_error !== undefined) {
-        body['triggers'] = { onTriggerError: on_trigger_error };
       }
 
       const result = await client.post<Record<string, unknown>>(

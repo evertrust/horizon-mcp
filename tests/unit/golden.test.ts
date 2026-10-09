@@ -780,7 +780,6 @@ describe('Knowledge field alignment', () => {
       'certificate.pem',
       'certificate.serial',
       'rest.response',
-      'credentials.key',
     ]) {
       expect(
         knowledgeText,

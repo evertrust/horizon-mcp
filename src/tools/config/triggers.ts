@@ -76,7 +76,6 @@ const KNOWN_KEYS = [
   'runPeriod',
   'sequence',
   'timeout',
-  'triggers',
   'type',
   'webhookTemplate',
 ] as const;

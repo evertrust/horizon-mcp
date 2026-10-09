@@ -860,13 +860,6 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "description": "Trigger name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
-        "on_trigger_error": {
-          "description": "Names of triggers to fire if this notification fails.",
-          "items": {
-            "type": "string",
-          },
-          "type": "array",
-        },
         "retries": {
           "default": 10,
           "description": "Number of retries when the notification fails.",
