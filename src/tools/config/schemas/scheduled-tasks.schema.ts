@@ -14,7 +14,7 @@ export const scheduledTaskRequestSchema = {
   $id: 'https://evertrust.io/horizon/schemas/scheduled_tasks.request.json',
   title: 'ScheduledTasks (create/update request body)',
   description:
-    'Request body for POST /api/v1/scheduler/tasks (create) and PUT /api/v1/scheduler/tasks (update). Polymorphic: a oneOf over three concrete subtypes discriminated first by `type` (thirdparty | report) and, for reports, by `reportType` (link_email | attachment_email). Server-populated fields (host, status, lastExecutionDate, lastCompletionDate, detail, executionId) and the internal id (_id) are ignored/stripped on write and only appear in responses. Names are the primary key and immutable.',
+    'Request body for POST /api/v1/scheduler/tasks (create) and PUT /api/v1/scheduler/tasks (update). Polymorphic: a oneOf over three concrete subtypes discriminated first by `type` (thirdparty | report) and, for reports, by `reportType` (link_email | attachment_email). Server-populated fields (host, status, lastExecutionDate, lastCompletionDate, detail, executionId) and the internal id (_id) are ignored/stripped on write and only appear in responses. Names are unique identifiers and cannot change after creation.',
   oneOf: [
     { $ref: '#/$defs/ThirdPartyScheduledTask' },
     { $ref: '#/$defs/AttachmentReportScheduledTask' },
@@ -120,7 +120,7 @@ export const scheduledTaskRequestSchema = {
         name: {
           type: 'string',
           description:
-            'Primary key. Immutable after creation (update is keyed by name).',
+            'Unique identifier; it cannot change after creation (update is keyed by name).',
         },
         cron: { $ref: '#/$defs/CronExpression' },
         enabled: { type: 'boolean' },
@@ -188,7 +188,7 @@ export const scheduledTaskRequestSchema = {
         type: { const: 'report' },
         name: {
           type: 'string',
-          description: 'Primary key. Immutable after creation.',
+          description: 'Unique identifier; it cannot change after creation.',
         },
         cron: { $ref: '#/$defs/CronExpression' },
         enabled: { type: 'boolean' },

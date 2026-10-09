@@ -128,8 +128,10 @@ const KNOWN_KEYS = [
   'encryptionAlgorithm',
   'enrollAuthorizedCas',
   'exchangeCertificate',
+  'excludeRootCA',
   'gradingPolicies',
   'http01Port',
+  'ipIdentifierConstraint',
   'maxCertificatePerHolderPolicy',
   'maxDnsName',
   'meta',
@@ -150,6 +152,7 @@ const KNOWN_KEYS = [
   'thirdPartyConnector',
   'thirdPartyDiscoverySync',
   'timeout',
+  'termsOfService',
   'tlsAlpn01Port',
   'triggers',
   'validationRuleset',
@@ -158,6 +161,17 @@ const KNOWN_KEYS = [
 ] as const;
 
 const objectRecord = z.record(z.string(), z.unknown());
+const autoRenewalPolicySchema = z.object({
+  default: z
+    .boolean()
+    .describe('Default auto-renew status for a new certificate.'),
+  editable: z
+    .boolean()
+    .describe(
+      'Whether auto-renew status can be updated on new and existing certificates.',
+    ),
+});
+const TERMS_OF_SERVICE_MODULES = ['webra', 'scep', 'est'] as const;
 
 /**
  * Merge the typed mandatory params (snake_case -> camelCase) and the free-form
@@ -171,8 +185,18 @@ function buildProfileBody(args: {
   requests_policy?: Record<string, unknown>;
   self_permissions?: Record<string, unknown>;
   crypto_policy?: Record<string, unknown>;
+  auto_renewal_policy?: { default: boolean; editable: boolean };
+  terms_of_service?: string;
   config?: Record<string, unknown>;
 }): Record<string, unknown> {
+  if (args.config?.['autoRenewalPolicy'] !== undefined)
+    throw new Error(
+      'Pass autoRenewalPolicy through the typed auto_renewal_policy field, not config.',
+    );
+  if (args.config?.['termsOfService'] !== undefined)
+    throw new Error(
+      'Pass termsOfService through the typed terms_of_service field, not config.',
+    );
   const body: Record<string, unknown> = { ...(args.config ?? {}) };
   if (args.module !== undefined) body['module'] = args.module;
   if (args.name !== undefined) body['name'] = args.name;
@@ -185,7 +209,24 @@ function buildProfileBody(args: {
     body['selfPermissions'] = args.self_permissions;
   if (args.crypto_policy !== undefined)
     body['cryptoPolicy'] = args.crypto_policy;
+  if (args.auto_renewal_policy !== undefined)
+    body['autoRenewalPolicy'] = args.auto_renewal_policy;
+  if (args.terms_of_service !== undefined)
+    body['termsOfService'] = args.terms_of_service;
   return body;
+}
+
+function assertTermsOfServiceModule(body: Record<string, unknown>): void {
+  if (
+    body['termsOfService'] !== undefined &&
+    !TERMS_OF_SERVICE_MODULES.includes(
+      body['module'] as (typeof TERMS_OF_SERVICE_MODULES)[number],
+    )
+  ) {
+    throw new Error(
+      'terms_of_service is accepted only for profile modules: webra, scep, est.',
+    );
+  }
 }
 
 function assertProfileBody(body: Record<string, unknown>): void {
@@ -194,6 +235,7 @@ function assertProfileBody(body: Record<string, unknown>): void {
     knownKeys: KNOWN_KEYS,
     enums: { module: MODULES },
   });
+  assertTermsOfServiceModule(body);
 }
 
 /**
@@ -252,7 +294,7 @@ export function registerCertificateProfileTools(
       name: z
         .string()
         .describe(
-          'Profile name. Immutable primary key. Ask the user - never invent it.',
+          'Profile name. Unique identifier; it cannot change after creation. Ask the user - never invent it.',
         ),
       enabled: z.boolean().describe('Whether the profile is enabled.'),
       authorization_levels: objectRecord.describe(
@@ -268,6 +310,20 @@ export function registerCertificateProfileTools(
       crypto_policy: objectRecord.describe(
         'Crypto policy object (key types, escrow, P12 handling).',
       ),
+      auto_renewal_policy: autoRenewalPolicySchema
+        .optional()
+        .describe(
+          'WebRA auto-renewal policy (Horizon 2.10+). If omitted, auto renewal is disabled.',
+        ),
+      terms_of_service: z
+        .string()
+        .optional()
+        .describe(
+          'Name of a Terms of Service object for webra, scep, or est profiles only ' +
+            '(Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+            'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+            'delete_terms_of_service; deletion fails while a profile references the object.',
+        ),
       config: objectRecord
         .optional()
         .describe(
@@ -306,6 +362,20 @@ export function registerCertificateProfileTools(
         .optional()
         .describe('CertificateProfileSelfPermissions object.'),
       crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
+      auto_renewal_policy: autoRenewalPolicySchema
+        .optional()
+        .describe(
+          'WebRA auto-renewal policy (Horizon 2.10+). If omitted, the existing policy is kept.',
+        ),
+      terms_of_service: z
+        .string()
+        .optional()
+        .describe(
+          'Name of a Terms of Service object for webra, scep, or est profiles only ' +
+            '(Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+            'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
+            'delete_terms_of_service; deletion fails while a profile references the object.',
+        ),
       config: objectRecord
         .optional()
         .describe(
@@ -325,6 +395,7 @@ export function registerCertificateProfileTools(
       assertProfileUpdateBody(body);
       return body;
     },
+    validateMergedBody: assertTermsOfServiceModule,
   });
 
   registerDeleteTool(server, client, SPEC, {

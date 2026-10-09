@@ -53,7 +53,7 @@ role, or via wildcard implication.
 
 ---
 
-## Permission Catalog (36 Patterns)
+## Permission Catalog (37 Patterns)
 
 ### Certificate Permissions (9)
 
@@ -89,17 +89,36 @@ Scope = object name or `*`.
 | `configuration:grading:{scope}`     | Manage security grading policies and rulesets |
 | `configuration:passwords:{scope}`   | Manage password policies                      |
 
-### Security Permissions (5)
+### Security Permissions (6)
 
 Control the RBAC system itself. Scope = object name or `*`.
 
-| Permission Pattern             | Description                                      |
-| ------------------------------ | ------------------------------------------------ |
-| `security:roles:{scope}`       | Manage roles (create, update, delete, list)      |
-| `security:teams:{scope}`       | Manage teams                                     |
-| `security:principals:{scope}`  | Manage user principals (assign roles/teams)      |
-| `security:idps:{scope}`        | Manage identity provider configurations          |
-| `security:credentials:{scope}` | Manage stored credentials (keystores, passwords) |
+| Permission Pattern                    | Description                                      |
+| ------------------------------------- | ------------------------------------------------ |
+| `security:roles:{scope}`              | Manage roles (create, update, delete, list)      |
+| `security:teams:{scope}`              | Manage teams                                     |
+| `security:principals:{scope}`         | Manage user principals (assign roles/teams)      |
+| `security:idps:{scope}`               | Manage identity provider configurations          |
+| `security:credentials:{scope}`        | Manage stored credentials (keystores, passwords) |
+| `access-management:service-account:*` | Manage service accounts (create, update, delete) |
+
+### Service-account management (Horizon 2.10+)
+
+Check the version with `get_license_info` before using service accounts.
+
+Use `list_service_accounts` and `get_service_account` for audit access. Creating,
+updating, or deleting a service account requires
+`access-management:service-account:*` manage access.
+
+Service accounts authenticate workloads from an external JWT issuer. Grant only
+the roles and permissions explicitly required by the workload. For static JWKS,
+`trustConfig.jwks` is a JSON string when creating or updating an account.
+
+Clients send the service-account name in `X-API-SVA` and the JWT in
+`X-API-TOKEN`. Since Horizon 2.11, the JWT can also be sent as
+`Authorization: Bearer <JWT>`; it is validated the same way. Before 2.11,
+only `X-API-TOKEN` is accepted. Service-account authentication never creates
+a session: each request carries a valid JWT.
 
 **Warning**: `security:roles:*` and `security:principals:*` together
 effectively grant full admin -- a user who can create roles and assign
@@ -303,6 +322,29 @@ Profiles can restrict specific workflow actions to principals authenticated
 through specific IDPs. See the `identityProviders` field in authorization
 levels (workflows knowledge).
 
+OIDC role and team mapping: `mapping.entries[]` assign roles and teams from
+claim values. Since Horizon 2.11, `mapping.synchronizationMode` selects what
+is synchronized: `roles`, `teams` or `roles_teams` (default); the selected
+roles and/or teams are replaced on each login (manual assignments of them are
+overwritten; the other field is kept). See
+horizon://knowledge/integrations (OIDC).
+
+---
+
+## X.509 Client-Authentication Identity Mapping (Horizon 2.10+)
+
+Check the version with `get_license_info` before configuring these mappings.
+Trusted client-authentication CAs expose these TemplateString mappings:
+
+| CA field            | Default TemplateString             | Result                 |
+| ------------------- | ---------------------------------- | ---------------------- |
+| `identifierMapping` | `{{certificate.dn}}`               | Principal identifier   |
+| `nameMapping`       | `{{certificate.subject.cn.1}}`     | Principal display name |
+| `emailMapping`      | `{{certificate.san.rfc822name.1}}` | Principal email        |
+
+Set these fields through `create_ca` or `update_ca` using the corresponding
+snake_case inputs: `identifier_mapping`, `name_mapping`, and `email_mapping`.
+
 ---
 
 ## Role Workflow Guidance
@@ -332,20 +374,13 @@ permissions, skip to Step 3.
 
 ### Step 3: Assign Role to Principal
 
-Use `update_principal` with the GET -> merge -> PUT pattern to add the new
-role to the principal's existing roles without overwriting:
-
-```json
-{
-  "roles": ["existing-role-1", "existing-role-2", "my-new-role"]
-}
-```
+Use the Horizon administration UI to add the role to the principal's existing
+roles. Keep the roles the principal still needs.
 
 ### Step 4: Verify
 
-Use `get_principal` to confirm the role assignment. The principal's effective
-permissions are computed server-side and include all implied permissions from
-wildcard expansion.
+Confirm the role assignment in the Horizon administration UI. For the current
+caller, use `whoami` to inspect the identity, roles, teams, and permissions.
 
 ---
 
@@ -414,3 +449,22 @@ Create two roles to enforce four-eyes principle:
   "permissions": ["certificates:approve:TLS-Internal", "certificates:search:TLS-Internal"]
 }
 ```
+
+---
+
+## Service-Account Identity Across Token Rotation
+
+For a service account authenticated with a JWT, Horizon builds the principal
+identifier from the configured service-account name and the presented token:
+
+- Without `identifierMapping`: `<name>-<first 16 hex chars of sha256(jwt)>`
+- With `identifierMapping`: `<name>-<hash16>-<mapped-value>`
+
+The 16-character hash segment is always present. Because it is derived from the
+JWT, rotating the token changes the principal identifier in both configurations.
+`identifierMapping` appends claim-derived context; it does not replace the hash
+or create a stable identity.
+
+Do not rely on the service-account identifier as a durable certificate owner.
+Use team-based ownership for certificates and other ownership relationships
+that must remain valid after token rotation.

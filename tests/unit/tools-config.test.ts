@@ -10,7 +10,14 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { z } from 'zod';
 
+import {
+  type ConfigSpec,
+  normalizeItems,
+  registerReadTools,
+  registerUpdateTool,
+} from '../../src/tools/config/_scaffold.js';
 import { registerConfigTools } from '../../src/tools/config/index.js';
 
 function createMockClient() {
@@ -302,5 +309,112 @@ describe('update immutable-override guard', () => {
     });
     expect(isError(res)).toBe(false);
     expect(mc.put).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('config scaffold extension hooks', () => {
+  const hookSpec: ConfigSpec = {
+    noun: 'hook_object',
+    nounPlural: 'hook_objects',
+    label: 'Hook object',
+    routeCollection: '/api/v1/hook-objects',
+    routeItem: '/api/v1/hook-objects/{name}',
+    idField: 'name',
+    immutableKeys: ['name'],
+    stripFields: ['_id'],
+    putOnCollection: true,
+    listRequest: { path: '/api/v1/hook-objects/list', body: { limit: 100 } },
+  };
+
+  async function setupHooks(): Promise<{ client: Client; mc: MockClient }> {
+    const server = new McpServer({ name: 'test', version: '0.0.0' });
+    const mc = createMockClient();
+    registerReadTools(
+      server,
+      mc as unknown as Parameters<typeof registerReadTools>[1],
+      hookSpec,
+    );
+    registerUpdateTool(
+      server,
+      mc as unknown as Parameters<typeof registerUpdateTool>[1],
+      hookSpec,
+      {
+        description: 'Update a hook object.',
+        inputSchema: z.object({
+          name: z.string(),
+          value: z.string().optional(),
+          clear_fields: z.array(z.string()).optional(),
+        }),
+        buildOverrides: ({ name, value }) => ({ name, value }),
+        normalizeCurrent: (current) => ({ ...current, normalized: true }),
+        validateMergedBody: (body) => {
+          if (body['value'] === 'forbidden') throw new Error('forbidden value');
+        },
+        omitClearedFields: true,
+      },
+    );
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    const client = new Client({ name: 'test-client', version: '0.0.0' });
+    await Promise.all([client.connect(ct), server.connect(st)]);
+    return { client, mc };
+  }
+
+  it('uses the configured POST list request', async () => {
+    const { client, mc } = await setupHooks();
+    mc.post.mockResolvedValueOnce({ items: [] });
+
+    await client.callTool({ name: 'list_hook_objects', arguments: {} });
+
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/hook-objects/list', {
+      limit: 100,
+    });
+    expect(mc.get).not.toHaveBeenCalled();
+  });
+
+  it('normalizes malformed list responses to an empty collection', () => {
+    expect(normalizeItems(undefined)).toEqual([]);
+    expect(normalizeItems(42)).toEqual([]);
+    expect(normalizeItems({ items: 'not-an-array' })).toEqual([]);
+    expect(normalizeItems({})).toEqual([]);
+    expect(normalizeItems({ name: 'one' })).toEqual([{ name: 'one' }]);
+  });
+
+  it('normalizes and validates the merged body while omitting cleared fields', async () => {
+    const { client, mc } = await setupHooks();
+    mc.get.mockResolvedValueOnce({
+      _id: 'internal',
+      name: 'one',
+      value: 'old',
+      clear_me: 'remove',
+    });
+    mc.put.mockResolvedValueOnce({ name: 'one' });
+
+    await client.callTool({
+      name: 'update_hook_object',
+      arguments: { name: 'one', clear_fields: ['clear_me'] },
+    });
+
+    expect(mc.put).toHaveBeenCalledWith('/api/v1/hook-objects', {
+      name: 'one',
+      value: 'old',
+      normalized: true,
+    });
+  });
+
+  it('does not PUT when the merged body fails validation', async () => {
+    const { client, mc } = await setupHooks();
+    mc.get.mockResolvedValueOnce({
+      _id: 'internal',
+      name: 'one',
+      value: 'old',
+    });
+
+    const result = await client.callTool({
+      name: 'update_hook_object',
+      arguments: { name: 'one', value: 'forbidden' },
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(mc.put).not.toHaveBeenCalled();
   });
 });

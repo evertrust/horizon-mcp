@@ -166,7 +166,7 @@ export function registerCaTools(
       name: z
         .string()
         .describe(
-          'CA name. Immutable primary key, server-validated regex [0-9a-zA-Z-_ ]+ (no leading/trailing space).',
+          'CA name. Unique identifier; it cannot change after creation. Server-validated regex [0-9a-zA-Z-_ ]+ (no leading/trailing space).',
         ),
       certificate: z
         .string()

@@ -9,11 +9,11 @@ import type { ZodType } from 'zod';
 
 import type { AuthProvider } from '../auth/base.js';
 import { getLogger } from '../logging.js';
+import { parseCredentialError } from './auth-errors.js';
 import {
   HorizonCsrfError,
   HorizonError,
   HorizonResponseValidationError,
-  parseErrorResponse,
 } from './errors.js';
 import { withRetry } from './retry.js';
 
@@ -321,7 +321,7 @@ export class HorizonClient {
     });
 
     if (resp.status >= 400) {
-      throw parseErrorResponse(resp.status, await resp.text());
+      throw await this._authError(resp.status, await resp.text());
     }
 
     return (await readJsonBounded<T>(resp, path)) as T;
@@ -338,7 +338,7 @@ export class HorizonClient {
   }
 
   async close(): Promise<void> {
-    await this._agent.close();
+    if (typeof this._agent.close === 'function') await this._agent.close();
   }
 
   // -- CSRF -----------------------------------------------------------------
@@ -397,7 +397,10 @@ export class HorizonClient {
   private async _ensureInitialized(): Promise<void> {
     if (this._initialized) return;
     if (!this._initPromise) {
-      this._initPromise = this._doLazyInit();
+      this._initPromise = this._doLazyInit().catch((err: unknown) => {
+        this._initPromise = null;
+        throw err;
+      });
     }
     await this._initPromise;
   }
@@ -462,10 +465,9 @@ export class HorizonClient {
 
     if (resp.status !== 200) {
       if (strict) {
-        // parseErrorResponse redacts secrets; the whoami body never contains
-        // the caller's credential.
+        // Remove credential values before surfacing the upstream error.
         const text = await resp.text().catch(() => '');
-        throw parseErrorResponse(resp.status, text);
+        throw await this._authError(resp.status, text);
       }
       logger.warning(
         `Whoami returned ${resp.status} - continuing without principal info`,
@@ -490,6 +492,14 @@ export class HorizonClient {
     if (this.horizonVersion) {
       this._logVersionCompatibility(this.horizonVersion);
     }
+    if (!strict) this._auth.markValidated();
+  }
+
+  private async _authError(
+    status: number,
+    body: string,
+  ): Promise<HorizonError> {
+    return parseCredentialError(status, body, await this._auth.getHeaders());
   }
 
   private _logVersionCompatibility(version: string): void {
@@ -601,7 +611,7 @@ export class HorizonClient {
       fetchOpts.signal = AbortSignal.timeout(timeoutMs);
       resp = await undiciFetch(fullUrl, fetchOpts);
       if (resp.status >= 400) {
-        throw parseErrorResponse(resp.status, await resp.text());
+        throw await this._authError(resp.status, await resp.text());
       }
       return resp;
     }
@@ -625,7 +635,7 @@ export class HorizonClient {
         );
         // Return the 401/403 to the caller for normal error handling.
         if (resp.status >= 400) {
-          throw parseErrorResponse(resp.status, await resp.text());
+          throw await this._authError(resp.status, await resp.text());
         }
         return resp;
       }
@@ -655,7 +665,7 @@ export class HorizonClient {
     }
 
     if (resp.status >= 400) {
-      throw parseErrorResponse(resp.status, await resp.text());
+      throw await this._authError(resp.status, await resp.text());
     }
 
     return resp;

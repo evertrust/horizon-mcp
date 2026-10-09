@@ -216,7 +216,9 @@ const typeSchema = z
   );
 const nameSchema = z
   .string()
-  .describe('Task name. Immutable primary key (the update lookup key).');
+  .describe(
+    'Task name. Unique identifier (the update lookup key); it cannot change after creation.',
+  );
 const cronSchema = z
   .string()
   .describe('Quartz cron expression, validated server-side.');

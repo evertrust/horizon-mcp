@@ -149,7 +149,7 @@ export function registerExecutionPolicyTools(
       name: z
         .string()
         .describe(
-          'Execution policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+          'Execution policy name. Unique identifier; it cannot change after creation. Regex [0-9a-zA-Z-_.]+.',
         ),
       description: descriptionSchema.optional(),
       authorized_periods: authorizedPeriodsSchema.optional(),

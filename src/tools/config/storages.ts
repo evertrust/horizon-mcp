@@ -111,7 +111,7 @@ export function registerStorageTools(
       name: z
         .string()
         .describe(
-          'Storage name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+          'Storage name. Unique identifier; it cannot change after creation. Regex [0-9a-zA-Z-_.]+.',
         ),
       timeout: z
         .string()
@@ -138,11 +138,20 @@ export function registerStorageTools(
     description: 'Update an existing S3 storage backend configuration.',
     inputSchema: z.object({
       name: z.string().describe('Storage name to update (immutable key).'),
-      timeout: z.string().optional(),
-      force_path_style: z.boolean().optional(),
-      bucket: z.string().optional(),
-      checksum_mode: z.enum(CHECKSUM_MODES).optional(),
-      part_buffer_size: z.string().optional(),
+      timeout: z.string().optional().describe('S3 connection timeout.'),
+      force_path_style: z
+        .boolean()
+        .optional()
+        .describe('Force S3 path-style requests.'),
+      bucket: z.string().optional().describe('S3 bucket to store items into.'),
+      checksum_mode: z
+        .enum(CHECKSUM_MODES)
+        .optional()
+        .describe('S3 checksum mode.'),
+      part_buffer_size: z
+        .string()
+        .optional()
+        .describe('Multipart upload buffer size, e.g. "9MB".'),
       credentials: optionalStrings.credentials.optional(),
       role_arn: optionalStrings.role_arn.optional(),
       region: optionalStrings.region.optional(),

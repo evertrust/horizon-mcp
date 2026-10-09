@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import pkg from '../package.json';
 import type { HorizonClient } from './client/http.js';
 import { registerAllResources } from './resources/index.js';
+import { registerAcmeTools } from './tools/acme/index.js';
 import { registerComputationTools } from './tools/assist/computation.js';
 import { registerCryptoTools } from './tools/assist/crypto.js';
 import { registerQueryTools } from './tools/assist/query.js';
@@ -31,12 +32,15 @@ export const SERVER_INSTRUCTIONS = [
   '- HQL field names are lowercase (contactemail, keytype, valid.until,',
   '  registration.date). camelCase causes HQL-001. groupBy/sortedBy are',
   '  camelCase (API context).',
+  '- HQL `in` and `not in` values must be bracketed, for example',
+  '  `status in ["valid", "revoked"]`.',
   '- Ownership queries: call `whoami` first; then',
   '  `owner equals "<id>" or team in ["<team1>", "<team2>"]`.',
   '- Lifecycle: call `get_request_template` before `submit_request`.',
   "  `revocationReason` is strongly recommended for revoke; ask the user (Horizon defaults to 'unspecified').",
-  '- PKCS#12 lives on the enrollment or recover request response, never on the',
-  '  certificate object.',
+  '- PKCS#12 lives on the enrollment or recover request response (WebRA challenge',
+  '  on 2.11+: the submit_webra_challenge response only), never on the certificate object.',
+  '- ACME accounts, EABs, and orders use the `acme` toolset.',
   '',
   'Where to look:',
   '- Full rules + workflows: horizon://knowledge/server-rules',
@@ -83,6 +87,7 @@ const TOOLSET_REGISTRY: Record<string, ToolsetRegistrar> = {
     registerTranslateTools(server, client);
   },
   config: registerConfigTools,
+  acme: registerAcmeTools,
 };
 
 /** All registered toolset names, in registration order. */

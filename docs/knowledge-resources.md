@@ -1,10 +1,10 @@
 # Knowledge resources
 
-The server exposes a generated knowledge catalog at `horizon://knowledge/*`:
+The server exposes 125 registered knowledge resources at `horizon://knowledge/*`:
 
-- 17 core resource URIs backed by the main Horizon knowledge guides
+- 19 core resource URIs backed by the main Horizon knowledge guides
 - 4 curated playbooks for smaller-model usability and integration recipes
-- generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `validation-rules`, `rest-notifications`)
+- 102 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`, `acme`)
 
 MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
 
@@ -16,12 +16,13 @@ For clients with weak or missing MCP resource support, the same content is reach
 | Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, 30+ built-in functions, datasource chaining |
 | Workflows | `horizon://knowledge/workflows` | 7 lifecycle workflows, authorization levels, request policies |
 | Query Languages | `horizon://knowledge/query-languages` | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples |
-| RBAC | `horizon://knowledge/rbac` | Permission format, 36-pattern catalog, role guidance |
+| RBAC | `horizon://knowledge/rbac` | Permission format, 37-pattern catalog, role guidance |
 | Architecture | `horizon://knowledge/architecture` | Object model, module types, dependency order |
 | Dictionary Matrix | `horizon://knowledge/dictionary-matrix` | Certificate field dictionary and matrix reference |
 | Datasources | `horizon://knowledge/datasources` | DNS, LDAP, REST datasource config, multi-lookup patterns, end-to-end recipes |
+| DCV | `horizon://knowledge/dcv` | DCV providers, policies, lifecycle status, and events (Horizon 2.10+) |
+| ACME | `horizon://knowledge/acme` | ACME server, EAB policies, EABs, ACME accounts and orders, HAQL and HEABQL (Horizon 2.11+) |
 | Validation Rules | `horizon://knowledge/validation-rules` | Auto-approval conditions, operator reference (API-verified syntax), module support matrix |
-| Dictionary Entries | `horizon://knowledge/dictionary-entries` | Alias URI for `dictionary-matrix` content |
 | Discovery | `horizon://knowledge/discovery` | Concepts, campaigns, data structures, search patterns |
 | Discovery Workflows | `horizon://knowledge/discovery-workflows` | CLI commands for netscan, localscan, netimport, importscan, localimport |
 | Automation | `horizon://knowledge/automation` | Trigger types, event hooks, execution policies |
@@ -41,11 +42,13 @@ For clients with weak or missing MCP resource support, the same content is reach
 
 ## Generated section resources
 
-For the six longest guides, the server also registers section-level URIs derived from the H2 headings. Examples:
+For the eight longest guides, the server also registers section-level URIs derived from the H2 headings. Examples:
 
 - `horizon://knowledge/query-languages/ownership-patterns-hcql`
 - `horizon://knowledge/datasources/rest-datasource`
 - `horizon://knowledge/discovery-workflows/3-net-import-netimport`
 - `horizon://knowledge/integrations/mdm-integrations-intune-jamf`
+- `horizon://knowledge/dcv/event-stream`
 - `horizon://knowledge/validation-rules/complete-workflow-recipes`
 - `horizon://knowledge/rest-notifications/real-world-examples`
+- `horizon://knowledge/acme/eab-statuses`

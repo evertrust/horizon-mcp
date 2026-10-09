@@ -83,12 +83,12 @@ interface ServerCtx {
   handle: Awaited<ReturnType<typeof startHttpServer>>;
 }
 
-async function startApiKeyServer(): Promise<ServerCtx> {
+async function startApiKeyServer(methods = 'api-key'): Promise<ServerCtx> {
   const port = await freePort();
   const env = {
     HORIZON_TRANSPORT: 'http',
-    HORIZON_HTTP_AUTH_MODE: 'api-key',
-    HORIZON_URL: 'https://horizon.test',
+    HORIZON_HTTP_AUTH_METHODS: methods,
+    HORIZON_URL: 'https://horizon.example.com',
     HORIZON_HTTP_HOST: '127.0.0.1',
     HORIZON_HTTP_PORT: String(port),
     HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
@@ -214,13 +214,13 @@ describe('HTTP server integration (api-key mode)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (service mode rejects client creds)', () => {
+describe('HTTP server integration (service method rejects API keys)', () => {
   it('rejects a client that supplies its own API key in service mode', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
-      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
+      HORIZON_URL: 'https://horizon.example.com',
       HORIZON_API_ID: 'service-acct',
       HORIZON_API_KEY: 'service-key',
       HORIZON_HTTP_HOST: '127.0.0.1',
@@ -252,7 +252,7 @@ describe('HTTP server integration (service mode rejects client creds)', () => {
           },
         }),
       });
-      expect(res.status).toBe(400);
+      expect(res.status).toBe(401);
     } finally {
       await handle.close();
     }
@@ -264,8 +264,8 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'api-key',
-      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_AUTH_METHODS: 'api-key',
+      HORIZON_URL: 'https://horizon.example.com',
       HORIZON_HTTP_HOST: '127.0.0.1',
       HORIZON_HTTP_PORT: String(port),
       HORIZON_TRUSTED_HOSTS: `127.0.0.1:${port},localhost:${port}`,
@@ -307,13 +307,13 @@ describe('HTTP server integration (no leak on a rejected initialize)', () => {
   }, 20000);
 });
 
-describe('HTTP server integration (readyz probe cache)', () => {
-  it('caches the /readyz Horizon probe in service mode', async () => {
+describe('HTTP server integration (process readiness)', () => {
+  it('reports readiness without an environment credential', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
-      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
+      HORIZON_URL: 'https://horizon.example.com',
       HORIZON_API_ID: 'svc',
       HORIZON_API_KEY: 'k',
       HORIZON_HTTP_HOST: '127.0.0.1',
@@ -335,19 +335,19 @@ describe('HTTP server integration (readyz probe cache)', () => {
       const r2 = await fetch(base);
       expect(r1.status).toBe(200);
       expect(r2.status).toBe(200);
-      // Two probes within the cache window trigger only one Horizon whoami.
-      expect(probes() - before).toBe(1);
+      // HTTP credentials come from each caller.
+      expect(probes() - before).toBe(0);
     } finally {
       await handle.close();
     }
   }, 20000);
 
-  it('single-flights a concurrent burst of /readyz probes into one Horizon call', async () => {
+  it('answers concurrent readiness requests without probing Horizon', async () => {
     const port = await freePort();
     const env = {
       HORIZON_TRANSPORT: 'http',
-      HORIZON_HTTP_AUTH_MODE: 'service',
-      HORIZON_URL: 'https://horizon.test',
+      HORIZON_HTTP_AUTH_METHODS: 'service',
+      HORIZON_URL: 'https://horizon.example.com',
       HORIZON_API_ID: 'svc',
       HORIZON_API_KEY: 'k',
       HORIZON_HTTP_HOST: '127.0.0.1',
@@ -370,8 +370,8 @@ describe('HTTP server integration (readyz probe cache)', () => {
         Array.from({ length: 5 }, () => fetch(base)),
       );
       for (const r of results) expect(r.status).toBe(200);
-      // Five simultaneous probes share a single in-flight Horizon whoami.
-      expect(probes() - before).toBe(1);
+      // Readiness does not use the environment identity.
+      expect(probes() - before).toBe(0);
     } finally {
       await handle.close();
     }
@@ -396,4 +396,138 @@ describe('HTTP server integration (graceful shutdown)', () => {
       sock.destroy();
     }
   }, 20000);
+});
+
+function serviceJwt(expiresIn: number): string {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'RS256' })}.${encode({ iss: 'https://issuer.example.com', exp: Math.floor(Date.now() / 1000) + expiresIn })}.signature`;
+}
+
+describe('HTTP service-account sessions', () => {
+  let ctx: ServerCtx;
+  let client: InstanceType<typeof Client>;
+  let transport: InstanceType<typeof StreamableHTTPClientTransport>;
+  let headers: Record<string, string>;
+  let renewed: string;
+  let idpFetch: ReturnType<typeof vi.fn>;
+  let log: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(async () => {
+    ctx = await startApiKeyServer('api-key,service');
+    headers = {
+      'X-API-SVA': 'automation',
+      'X-API-TOKEN': serviceJwt(30),
+      'X-OAUTH-CLIENT-ID': 'oauth-client',
+      'X-OAUTH-CLIENT-SECRET': 'private-oauth-secret',
+      'X-OAUTH-SCOPE': 'horizon.read',
+      'X-OAUTH-AUDIENCE': 'horizon-api',
+    };
+    renewed = serviceJwt(3600);
+    const realFetch = globalThis.fetch;
+    idpFetch = vi.fn().mockImplementation((url: unknown) =>
+      Promise.resolve(
+        new Response(
+          JSON.stringify(
+            String(url).endsWith('openid-configuration')
+              ? {
+                  issuer: 'https://issuer.example.com',
+                  token_endpoint: 'https://issuer.example.com/token',
+                }
+              : { access_token: renewed },
+          ),
+          { status: 200 },
+        ),
+      ),
+    );
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input, init) =>
+      String(input).startsWith('https://issuer.example.com')
+        ? idpFetch(input, init)
+        : realFetch(input, init),
+    );
+    log = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    transport = new StreamableHTTPClientTransport(new URL(ctx.base), {
+      requestInit: { headers },
+    });
+    client = new Client({ name: 'service-test', version: '0.0.0' });
+  });
+
+  afterEach(async () => {
+    await client?.close().catch(() => undefined);
+    await ctx?.handle.close().catch(() => undefined);
+    vi.restoreAllMocks();
+  });
+
+  it('renews after initialization and keeps the original session credential binding', async () => {
+    await client.connect(transport);
+    expect(idpFetch).not.toHaveBeenCalled();
+    const result = await client.callTool({ name: 'whoami', arguments: {} });
+    expect(result.isError).not.toBe(true);
+    expect(idpFetch).toHaveBeenCalledTimes(2);
+    const upstream = mockFetch.mock.calls.at(-1)?.[1] as {
+      headers: Record<string, string>;
+    };
+    expect(upstream.headers['X-API-TOKEN']).toBe(renewed);
+    expect(upstream.headers['X-OAUTH-CLIENT-SECRET']).toBeUndefined();
+    expect(
+      (await client.listTools()).tools.some((tool) => tool.name === 'whoami'),
+    ).toBe(true);
+    expect(log).toHaveBeenCalled();
+    for (const secret of [
+      headers['X-API-TOKEN']!,
+      headers['X-OAUTH-CLIENT-SECRET']!,
+      renewed,
+    ]) {
+      expect(JSON.stringify(log.mock.calls)).not.toContain(secret);
+    }
+    await transport.terminateSession();
+    expect(ctx.handle.sessions.size).toBe(0);
+  }, 20000);
+
+  it.each([
+    'X-API-SVA',
+    'X-API-TOKEN',
+    'X-OAUTH-CLIENT-ID',
+    'X-OAUTH-CLIENT-SECRET',
+    'X-OAUTH-SCOPE',
+    'X-OAUTH-AUDIENCE',
+  ])(
+    'rejects a changed %s on POST, GET and DELETE without using Horizon',
+    async (name) => {
+      await client.connect(transport);
+      const before = mockFetch.mock.calls.length;
+      for (const method of ['POST', 'GET', 'DELETE']) {
+        const response = await fetch(ctx.base, {
+          method,
+          headers: {
+            ...headers,
+            [name]: 'different-credential',
+            'Mcp-Session-Id': transport.sessionId!,
+            Accept: 'application/json, text/event-stream',
+            'Content-Type': 'application/json',
+          },
+          ...(method === 'POST'
+            ? {
+                body: JSON.stringify({
+                  jsonrpc: '2.0',
+                  id: 99,
+                  method: 'tools/list',
+                }),
+              }
+            : {}),
+        });
+        expect(response.status).toBe(401);
+        expect(response.headers.get('WWW-Authenticate')).toBe(
+          'Horizon methods="api-key,service"',
+        );
+        const body = await response.text();
+        expect(body).toContain('session credential does not match');
+        expect(body).not.toContain(headers['X-API-TOKEN']);
+        expect(body).not.toContain(headers['X-OAUTH-CLIENT-SECRET']);
+        expect(ctx.handle.sessions.size).toBe(1);
+      }
+      expect(mockFetch.mock.calls.length).toBe(before);
+    },
+    20000,
+  );
 });

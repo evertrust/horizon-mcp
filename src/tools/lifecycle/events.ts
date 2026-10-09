@@ -139,8 +139,7 @@ export function registerEventTools(
             'CSV columns to include, as camelCase API column names (SearchResult ' +
               'columns) - NOT the lowercase HEQL query fields. Examples: code, ' +
               'module, timestamp, status, plus detail.<key> for detail columns ' +
-              '(detail.actorId, detail.ip). Invalid names return a Horizon 500 ' +
-              'that lists the usable columns.',
+              '(detail.actorId, detail.ip).',
           ),
         sorted_by: z
           .string()

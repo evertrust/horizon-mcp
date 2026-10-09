@@ -46,7 +46,12 @@ const SPEC: ConfigSpec = {
 const WEBHOOK_TYPES = ['slack', 'teams'] as const;
 
 const localizedSchema = z
-  .array(z.object({ lang: z.string(), value: z.string() }))
+  .array(
+    z.object({
+      lang: z.string().describe('Language code, e.g. "en", "fr".'),
+      value: z.string().describe('Localized text.'),
+    }),
+  )
   .describe(
     "Array of localized strings, e.g. [{lang: 'en', value: 'PKI Operations'}].",
   );
@@ -117,7 +122,7 @@ export function registerTeamTools(
       name: z
         .string()
         .describe(
-          'Team name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_]+ (no dots or spaces).',
+          'Team name. Unique identifier; it cannot change after creation. Server-validated against regex [0-9a-zA-Z-_]+ (no dots or spaces).',
         ),
       description: descriptionSchema.optional(),
       contact: contactSchema.optional(),
@@ -172,7 +177,7 @@ export function registerTeamTools(
       description:
         'Switch a team identity: replace an existing team (previous_team) with ' +
         'another (new_team) via PATCH /api/v1/security/teams/{previousTeam}/{newTeam}. ' +
-        'Team names are immutable primary keys, so this re-homes the previous ' +
+        'Team names are unique identifiers that cannot change after creation, so this re-homes the previous ' +
         "team's members and ownership to new_team - a destructive identity change.\n" +
         'Safety tier: mutating-destructive\n' +
         'MANDATORY: previous_team and new_team. Ask the user for both - never infer ' +

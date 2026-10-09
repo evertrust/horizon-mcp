@@ -17,8 +17,11 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   CORE_RESOURCE_URIS,
   CURATED_RESOURCE_URIS,
+  getAllResources,
 } from '../../src/resources/catalog.js';
 import { registerAllResources } from '../../src/resources/index.js';
+import { createSessionServer } from '../../src/server-factory.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -80,6 +83,41 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, c);
   registerComputationTools(server, c);
   registerTranslateTools(server, c);
+  registerAcmeTools(server, c);
+}
+
+function undescribedProperties(schema: unknown, path: string): string[] {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) =>
+      undescribedProperties(item, `${path}[${index}]`),
+    );
+  }
+  if (!schema || typeof schema !== 'object') return [];
+  const node = schema as Record<string, unknown>;
+  const properties = (node['properties'] ?? {}) as Record<
+    string,
+    { description?: string }
+  >;
+  const offenders = Object.entries(properties).flatMap(([key, property]) => {
+    const fieldPath = `${path}.${key}`;
+    return [
+      ...(!property.description?.trim() ? [fieldPath] : []),
+      ...undescribedProperties(property, fieldPath),
+    ];
+  });
+  if (node['items'])
+    offenders.push(...undescribedProperties(node['items'], `${path}[]`));
+  for (const branch of ['anyOf', 'oneOf', 'allOf']) {
+    const alternatives = node[branch];
+    if (Array.isArray(alternatives)) {
+      alternatives.forEach((alternative, index) => {
+        offenders.push(
+          ...undescribedProperties(alternative, `${path}.${branch}[${index}]`),
+        );
+      });
+    }
+  }
+  return offenders;
 }
 
 // ===================================================================
@@ -118,7 +156,7 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (17)
+  // lifecycle.ts (25)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -131,11 +169,19 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'search_requests',
   'get_request',
   'export_requests_csv',
+  'submit_webra_challenge',
   'search_events',
   'get_event',
   'export_events_csv',
   'aggregate_certificates',
+  'set_certificate_auto_renew',
   'aggregate_requests',
+  'list_dcv_policy_status',
+  'get_dcv_policy_status',
+  'run_dcv_policy',
+  'run_dcv_domain',
+  'cancel_dcv_run',
+  'list_dcv_events',
   // profiles.ts (2)
   'list_profiles',
   'get_profile',
@@ -188,6 +234,20 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'create_rest_notification',
   'delete_trigger',
   'simulate_trigger',
+  // acme/ (13, Horizon 2.11+)
+  'search_acme_accounts',
+  'get_acme_account',
+  'update_acme_account_status',
+  'delete_acme_account',
+  'list_acme_orders',
+  'get_acme_order',
+  'search_acme_eabs',
+  'get_acme_eab',
+  'create_acme_eab',
+  'update_acme_eab',
+  'update_acme_eab_status',
+  'renew_acme_eab',
+  'delete_acme_eab',
 ].sort();
 
 const REQUIRED_RESOURCE_URIS: string[] = [
@@ -222,8 +282,10 @@ const KNOWLEDGE_FILES: string[] = [
   'system_admin.md',
   'discovery_workflows.md',
   'datasources.md',
+  'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
+  'acme.md',
 ];
 
 const CURATED_KNOWLEDGE_FILES: string[] = [
@@ -263,9 +325,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 86 tools', async () => {
+  it('registers exactly 107 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(86);
+    expect(result.tools.length).toBe(107);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -456,6 +518,31 @@ describe('Golden tests', () => {
     }));
     expect(schemas).toMatchSnapshot();
   });
+
+  it('advertises every input field description across all toolsets', async () => {
+    const fullServer = createSessionServer(
+      createMockClient() as Parameters<typeof createSessionServer>[0],
+    );
+    const fullClient = new Client({
+      name: 'description-test',
+      version: '0.0.0',
+    });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await Promise.all([fullClient.connect(ct), fullServer.connect(st)]);
+    try {
+      const result = await fullClient.listTools();
+      const offenders = result.tools.flatMap((tool) =>
+        undescribedProperties(tool.inputSchema, tool.name),
+      );
+      expect(
+        offenders,
+        `Missing field descriptions: ${offenders.join(', ')}`,
+      ).toEqual([]);
+    } finally {
+      await fullClient.close();
+      await fullServer.close();
+    }
+  });
 });
 
 // ===================================================================
@@ -463,6 +550,29 @@ describe('Golden tests', () => {
 // ===================================================================
 
 describe('Knowledge resource accessibility', () => {
+  it('reads every catalog resource through MCP, including generated sections', async () => {
+    const server = new McpServer({ name: 'test-resources', version: '0.0.0' });
+    registerAllResources(server);
+    const client = new Client({ name: 'test-reader', version: '0.0.0' });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(ct), server.connect(st)]);
+
+    try {
+      for (const resource of getAllResources()) {
+        const result = await client.readResource({ uri: resource.uri });
+        expect(result.contents, resource.uri).toHaveLength(1);
+        expect(result.contents[0], resource.uri).toMatchObject({
+          uri: resource.uri,
+          text: resource.content,
+        });
+        expect(resource.content.trim(), resource.uri).not.toBe('');
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it.each(KNOWLEDGE_FILES)(
     'knowledge file %s exists and has >50 lines',
     (filename) => {
@@ -686,17 +796,18 @@ describe('Knowledge field alignment', () => {
     );
     for (const concept of [
       'on_approve_enroll',
-      'pkcs12',
-      'certificate.private_key',
+      'request.password',
+      'request.certificate',
       'previous.certificate',
-      'fire-and-forget',
-      'Dictionary Availability Matrix',
+      'caller-chosen correlation key',
     ]) {
       expect(
         knowledgeText,
         `Event semantics concept '${concept}' not in rest_notifications.md`,
       ).toContain(concept);
     }
+    expect(knowledgeText).not.toContain('fire-and-forget');
+    expect(knowledgeText).not.toContain('Dictionary Availability Matrix');
   });
 
   it('rest-notifications knowledge mentions chaining patterns', () => {
@@ -917,6 +1028,8 @@ describe('Critical tool schema spot-checks', () => {
 
 describe('Delete tool safety-tier enumeration', () => {
   const EXPECTED_DELETE_TOOLS = [
+    'delete_acme_account',
+    'delete_acme_eab',
     'delete_dashboard',
     'delete_datasource',
     'delete_discovery_campaign',
@@ -978,8 +1091,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 86 tools', () => {
-    expect(toolNames.size).toBe(86);
+  it('registers exactly 107 tools', () => {
+    expect(toolNames.size).toBe(107);
   });
 
   it('excludes admin tools', () => {

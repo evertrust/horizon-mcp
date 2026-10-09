@@ -75,7 +75,9 @@ export function registerCreateDatasourceTools(
       inputSchema: z.object({
         name: z
           .string()
-          .describe('Unique datasource name (immutable primary key).'),
+          .describe(
+            'Datasource name. Unique identifier; it cannot change after creation.',
+          ),
         lookup: z
           .string()
           .describe(
@@ -209,7 +211,9 @@ export function registerCreateDatasourceTools(
       inputSchema: z.object({
         name: z
           .string()
-          .describe('Unique datasource name (immutable primary key).'),
+          .describe(
+            'Datasource name. Unique identifier; it cannot change after creation.',
+          ),
         hostname: z
           .string()
           .describe('LDAP server URL (e.g. "ldaps://ldap.corp.example.com").'),
@@ -363,7 +367,9 @@ export function registerCreateDatasourceTools(
       inputSchema: z.object({
         name: z
           .string()
-          .describe('Unique datasource name (immutable primary key).'),
+          .describe(
+            'Datasource name. Unique identifier; it cannot change after creation.',
+          ),
         method: z
           .string()
           .describe('HTTP method (GET, POST, PUT, DELETE, etc.).'),
@@ -393,7 +399,12 @@ export function registerCreateDatasourceTools(
             'Name of existing credentials. Required when authentication_type is not "noauth".',
           ),
         headers: z
-          .array(z.object({ name: z.string(), value: z.string() }))
+          .array(
+            z.object({
+              name: z.string().describe('HTTP header name.'),
+              value: z.string().describe('HTTP header value.'),
+            }),
+          )
           .optional()
           .describe('Custom HTTP headers as [{name, value}].'),
         payload_type: z

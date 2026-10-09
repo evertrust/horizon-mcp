@@ -1,0 +1,579 @@
+import { describe, expect, it, vi } from 'vitest';
+
+import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
+
+function jwt(payload: Record<string, unknown>): string {
+  const encode = (value: unknown) =>
+    Buffer.from(JSON.stringify(value)).toString('base64url');
+  return `${encode({ alg: 'RS256', typ: 'JWT' })}.${encode(payload)}.signature`;
+}
+
+function response(status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+describe('ServiceAccountAuthProvider client_credentials renewal', () => {
+  it('does not emit an empty token header before the initial mint', async () => {
+    const provider = new ServiceAccountAuthProvider('ci', '', {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://oauth.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+    });
+
+    expect(provider.needsInitialToken()).toBe(true);
+    await expect(provider.getHeaders()).rejects.toThrow(
+      'service-account token not minted yet',
+    );
+  });
+
+  it('mints an initial token from the single pinned client_secret_post endpoint', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://issuer.example.com';
+    const renewed = jwt({ iss: issuer, exp: now + 3600 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider('ci', '', {
+      clientId: 'client',
+      clientSecret: 'secret',
+      scope: 'horizon.read',
+      audience: 'horizon-api',
+      issuers: {
+        [issuer]: {
+          tokenUrl: 'https://tokens.example.com/token',
+          authMethod: 'client_secret_post',
+        },
+      },
+      fetcher,
+    });
+
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const tokenRequest = fetcher.mock.calls[0];
+    expect(tokenRequest?.[0]).toBe('https://tokens.example.com/token');
+    expect(tokenRequest?.[1]?.method).toBe('POST');
+    expect(new Headers(tokenRequest?.[1]?.headers).has('Authorization')).toBe(
+      false,
+    );
+    expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'horizon.read',
+        audience: 'horizon-api',
+        client_id: 'client',
+        client_secret: 'secret',
+      }),
+    );
+    expect(provider.needsInitialToken()).toBe(false);
+    await expect(provider.getHeaders()).resolves.toEqual({
+      'X-API-SVA': 'ci',
+      'X-API-TOKEN': renewed,
+    });
+  });
+
+  it('rejects an initial token minted by a different issuer', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      response(200, {
+        access_token: jwt({
+          iss: 'https://other.example.com',
+          exp: now + 3600,
+        }),
+      }),
+    );
+    const provider = new ServiceAccountAuthProvider('ci', '', {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+      fetcher,
+    });
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'renewed JWT issuer differs from the original issuer',
+    );
+    expect(provider.needsInitialToken()).toBe(true);
+    await expect(provider.getHeaders()).rejects.toThrow(
+      'renewed JWT issuer differs from the original issuer',
+    );
+  });
+
+  it('sanitizes an unexpected token-endpoint failure', async () => {
+    const responseSecret = 'never-log-this-network-secret';
+    const provider = new ServiceAccountAuthProvider('ci', '', {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+      fetcher: vi
+        .fn<typeof fetch>()
+        .mockRejectedValue(new Error(`upstream body: ${responseSecret}`)),
+    });
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'OAuth token request failed',
+    );
+    await expect(provider.getHeaders()).rejects.not.toThrow(responseSecret);
+  });
+
+  it.each([
+    { name: 'no issuer map', issuers: undefined },
+    {
+      name: 'two pinned issuers',
+      issuers: {
+        'https://one.example.com': {
+          tokenUrl: 'https://one.example.com/token',
+          authMethod: 'client_secret_basic' as const,
+        },
+        'https://two.example.com': {
+          tokenUrl: 'https://two.example.com/token',
+          authMethod: 'client_secret_post' as const,
+        },
+      },
+    },
+  ])('rejects an empty token with $name', ({ issuers }) => {
+    expect(
+      () =>
+        new ServiceAccountAuthProvider('ci', '', {
+          clientId: 'client',
+          clientSecret: 'secret',
+          issuers,
+        }),
+    ).toThrow(
+      'service-account authentication requires X-API-SVA and X-API-TOKEN',
+    );
+  });
+
+  it('never contacts a JWT-controlled issuer before Horizon validates the token', async () => {
+    const fetcher = vi.fn<typeof fetch>();
+    const token = jwt({
+      iss: 'https://issuer.example.com',
+      exp: Math.floor(Date.now() / 1000) - 1,
+    });
+    const provider = new ServiceAccountAuthProvider('ci', token, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      fetcher,
+    });
+
+    await provider.refreshIfNeeded();
+    expect(fetcher).not.toHaveBeenCalled();
+    expect(await provider.getHeaders()).toEqual({
+      'X-API-SVA': 'ci',
+      'X-API-TOKEN': token,
+    });
+  });
+
+  it('refuses renewal from an unlisted issuer', async () => {
+    const token = jwt({
+      iss: 'https://unlisted.example.com',
+      exp: Math.floor(Date.now() / 1000) - 1,
+    });
+    const fetcher = vi.fn<typeof fetch>();
+    const provider = new ServiceAccountAuthProvider('ci', token, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://oauth.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+        'https://login.example.com/tenant': {
+          tokenUrl: 'https://login.example.com/oauth/token',
+          authMethod: 'client_secret_post',
+        },
+      },
+      fetcher,
+    });
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'OAuth renewal refused: JWT issuer is not listed in HORIZON_OAUTH_ISSUERS',
+    );
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it.each(['toString', 'constructor', '__proto__'])(
+    'refuses renewal from prototype-named issuer %s',
+    async (issuer) => {
+      const token = jwt({
+        iss: issuer,
+        exp: Math.floor(Date.now() / 1000) - 1,
+      });
+      const fetcher = vi.fn<typeof fetch>();
+      const provider = new ServiceAccountAuthProvider('ci', token, {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          'https://issuer.example.com': {
+            tokenUrl: 'https://oauth.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+      });
+      await expect(provider.refreshIfNeeded()).rejects.toThrow(
+        'OAuth renewal refused: JWT issuer is not listed in HORIZON_OAUTH_ISSUERS',
+      );
+      expect(fetcher).not.toHaveBeenCalled();
+    },
+  );
+
+  it('uses the pinned token URL with client_secret_basic', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://issuer.example.com/tenant/';
+    const initial = jwt({ iss: issuer, exp: now + 30 });
+    const renewed = jwt({ iss: issuer, exp: now + 3600 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider('ci', initial, {
+      clientId: 'client id',
+      clientSecret: 'secret:value~',
+      scope: 'horizon.read horizon.write',
+      audience: 'horizon-api',
+      issuers: {
+        [issuer]: {
+          tokenUrl: 'https://oauth.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+      fetcher,
+      refreshSkewSeconds: 60,
+    });
+
+    provider.markValidated();
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const tokenRequest = fetcher.mock.calls[0];
+    expect(tokenRequest?.[0]).toBe('https://oauth.example.com/token');
+    expect(tokenRequest?.[1]?.method).toBe('POST');
+    expect(new Headers(tokenRequest?.[1]?.headers).get('Authorization')).toBe(
+      `Basic ${Buffer.from('client+id:secret%3Avalue%7E').toString('base64')}`,
+    );
+    expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        scope: 'horizon.read horizon.write',
+        audience: 'horizon-api',
+      }),
+    );
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('renews an expired token before validation through the pinned client_secret_post endpoint', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://idp.example.com';
+    const renewed = jwt({ iss: issuer, exp: now + 3600 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider(
+      'ci',
+      jwt({ iss: issuer, exp: now - 1 }),
+      {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          [issuer]: {
+            tokenUrl: 'https://tokens.example.com/token',
+            authMethod: 'client_secret_post',
+          },
+        },
+        fetcher,
+      },
+    );
+
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    const tokenRequest = fetcher.mock.calls[0];
+    expect(tokenRequest?.[0]).toBe('https://tokens.example.com/token');
+    expect(new Headers(tokenRequest?.[1]?.headers).has('Authorization')).toBe(
+      false,
+    );
+    expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
+      new URLSearchParams({
+        grant_type: 'client_credentials',
+        client_id: 'client',
+        client_secret: 'secret',
+      }),
+    );
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('renews after an authentication failure before validation in pinned mode', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://issuer.example.com';
+    const renewed = jwt({ iss: issuer, exp: now + 7200 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider(
+      'ci',
+      jwt({ iss: issuer, exp: now + 3600 }),
+      {
+        clientId: 'client',
+        clientSecret: 'secret',
+        issuers: {
+          [issuer]: {
+            tokenUrl: 'https://issuer.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+      },
+    );
+
+    await provider.markAuthFailed();
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('cools down after a failed pinned renewal', async () => {
+    const issuer = 'https://issuer.example.com';
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(response(503, { error: 'unavailable' }));
+    const provider = new ServiceAccountAuthProvider('ci', '', {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        [issuer]: {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+      fetcher,
+    });
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'OAuth token request failed with HTTP 503',
+    );
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    await expect(provider.getHeaders()).rejects.toThrow(
+      /OAuth token request failed with HTTP 503; next attempt after \d+ s/,
+    );
+  });
+
+  it('rejects a renewed JWT from a different issuer', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const issuer = 'https://issuer.example.com';
+    const initial = jwt({ iss: issuer, exp: now + 1 });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      response(200, {
+        access_token: jwt({
+          iss: 'https://other.example.com',
+          exp: now + 3600,
+        }),
+      }),
+    );
+    const provider = new ServiceAccountAuthProvider('ci', initial, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      issuers: {
+        [issuer]: {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_basic',
+        },
+      },
+      fetcher,
+    });
+    provider.markValidated();
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(
+      'renewed JWT issuer differs from the original issuer',
+    );
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(initial);
+  });
+
+  it('falls back to discovery when no issuer allowlist is configured', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initial = jwt({
+      iss: 'https://issuer.example.com/tenant',
+      exp: now + 30,
+    });
+    const renewed = jwt({
+      iss: 'https://issuer.example.com/tenant',
+      exp: now + 3600,
+    });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        response(200, {
+          issuer: 'https://issuer.example.com/tenant',
+          token_endpoint: 'https://issuer.example.com/oauth/token',
+          token_endpoint_auth_methods_supported: ['client_secret_basic'],
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider('ci', initial, {
+      clientId: 'client id',
+      clientSecret: 'secret:value~',
+      scope: 'horizon.read horizon.write',
+      audience: 'horizon-api',
+      fetcher,
+      refreshSkewSeconds: 60,
+    });
+
+    provider.markValidated();
+    await provider.refreshIfNeeded();
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[0]?.[0]).toBe(
+      'https://issuer.example.com/tenant/.well-known/openid-configuration',
+    );
+    const tokenRequest = fetcher.mock.calls[1];
+    expect(tokenRequest?.[0]).toBe('https://issuer.example.com/oauth/token');
+    expect(tokenRequest?.[1]?.method).toBe('POST');
+    expect(new Headers(tokenRequest?.[1]?.headers).get('Authorization')).toBe(
+      `Basic ${Buffer.from('client+id:secret%3Avalue%7E').toString('base64')}`,
+    );
+    const body = String(tokenRequest?.[1]?.body);
+    expect(new URLSearchParams(body).get('grant_type')).toBe(
+      'client_credentials',
+    );
+    expect(new URLSearchParams(body).get('scope')).toBe(
+      'horizon.read horizon.write',
+    );
+    expect(new URLSearchParams(body).get('audience')).toBe('horizon-api');
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('uses client_secret_post when discovery does not allow Basic auth', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initial = jwt({ iss: 'https://idp.example.com', exp: now + 1 });
+    const renewed = jwt({ iss: 'https://idp.example.com', exp: now + 3600 });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        response(200, {
+          issuer: 'https://idp.example.com',
+          token_endpoint: 'https://idp.example.com/token',
+          token_endpoint_auth_methods_supported: ['client_secret_post'],
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider('ci', initial, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      fetcher,
+    });
+
+    provider.markValidated();
+    await provider.refreshIfNeeded();
+
+    const tokenRequest = fetcher.mock.calls[1]?.[1];
+    expect(new Headers(tokenRequest?.headers).has('Authorization')).toBe(false);
+    const body = new URLSearchParams(String(tokenRequest?.body));
+    expect(body.get('client_id')).toBe('client');
+    expect(body.get('client_secret')).toBe('secret');
+  });
+
+  it('forces one shared renewal after Horizon rejects the current token', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const initial = jwt({
+      iss: 'https://issuer.example.com',
+      exp: now + 3600,
+    });
+    const renewed = jwt({
+      iss: 'https://issuer.example.com',
+      exp: now + 7200,
+    });
+    const fetcher = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(
+        response(200, {
+          issuer: 'https://issuer.example.com',
+          token_endpoint: 'https://issuer.example.com/token',
+          token_endpoint_auth_methods_supported: ['client_secret_basic'],
+        }),
+      )
+      .mockResolvedValueOnce(response(200, { access_token: renewed }));
+    const provider = new ServiceAccountAuthProvider('ci', initial, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      fetcher,
+    });
+    provider.markValidated();
+
+    await provider.refreshIfNeeded();
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await provider.markAuthFailed();
+    await Promise.all([
+      provider.refreshIfNeeded(),
+      provider.refreshIfNeeded(),
+      provider.refreshIfNeeded(),
+    ]);
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+  });
+
+  it('rejects insecure or cross-origin discovery metadata', async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const token = jwt({ iss: 'https://issuer.example.com', exp: now + 1 });
+    const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+      response(200, {
+        issuer: 'https://issuer.example.com',
+        token_endpoint: 'https://evil.example.com/token',
+      }),
+    );
+    const provider = new ServiceAccountAuthProvider('ci', token, {
+      clientId: 'client',
+      clientSecret: 'secret',
+      fetcher,
+    });
+    provider.markValidated();
+
+    await expect(provider.refreshIfNeeded()).rejects.toThrow(/origin|issuer/i);
+  });
+});
+
+describe('renewal error confidentiality', () => {
+  it('does not expose a secret in an untrusted fetch error with an OAuth-looking prefix', async () => {
+    const secret = 'private-client-secret';
+    const token = jwt({ iss: 'https://issuer.example.com', exp: 0 });
+    const provider = new ServiceAccountAuthProvider('automation', token, {
+      clientId: 'client',
+      clientSecret: secret,
+      issuers: {
+        'https://issuer.example.com': {
+          tokenUrl: 'https://issuer.example.com/token',
+          authMethod: 'client_secret_post',
+        },
+      },
+      fetcher: vi
+        .fn<typeof fetch>()
+        .mockRejectedValue(
+          new Error(`OAuth renewal refused: ${secret} ${token}`),
+        ),
+    });
+    const failure = await provider
+      .refreshIfNeeded()
+      .catch((error: Error) => error.message);
+    expect(failure).not.toContain(secret);
+    expect(failure).not.toContain(token);
+  });
+});

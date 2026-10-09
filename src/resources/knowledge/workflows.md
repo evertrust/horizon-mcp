@@ -37,6 +37,50 @@ Each workflow supports up to four sub-actions:
 
 ---
 
+## WebRA Update Template: `autoRenew` (Horizon 2.10+)
+
+Check the version with `get_license_info` before using automatic renewal.
+
+For a WebRA `update` workflow, the request template can include the
+per-certificate `autoRenew` element:
+
+```json
+{
+  "autoRenew": {
+    "value": true
+  }
+}
+```
+
+Call `get_request_template` for `workflow: "update"` and `module: "webra"`
+before submitting the generic request. Submit the value in
+`template.autoRenew`; Horizon accepts the change only when the profile's
+`autoRenewalPolicy.editable` is `true`. The dedicated
+`set_certificate_auto_renew` tool submits this exact update request for one
+certificate.
+
+This is WebRA per-certificate automatic renewal, not the trust-chain
+automation-policy renewal in `automation.md`. The trust-chain automation policy
+governs chain operations and does not set `template.autoRenew`.
+
+---
+
+## Renewal and Update Behavior (Horizon 2.11)
+
+- Renewal: since Horizon 2.11, a renewal reuses the initial enrollment
+  request (the certificate `requestedX509Data`: subject, SANs, extensions as
+  sent to the PKI) instead of the issued certificate, so certificates changed
+  by the CA at issuance renew as originally requested. Certificates without
+  `requestedX509Data` (enrolled earlier, imported or discovered) still renew
+  from the issued certificate. Before 2.11, renewal always starts from the
+  issued certificate.
+- Update, renew and migrate: since Horizon 2.11, only the modified fields
+  are submitted, so concurrent edits do not overwrite each other and an
+  unchanged submission creates no request. Before 2.11, the full data is
+  submitted.
+
+---
+
 ## AuthorizationLevels = WHO (28 Fields)
 
 The `authorizationLevels` object on a profile contains **28 fields**, each
@@ -174,6 +218,59 @@ Approver -> enrollApprove -> [computation rules] -> PKI connector -> certificate
 Two-step process: the requester submits a request, then a separate approver
 approves it. The requester must meet `enrollRequest` access level; the
 approver must meet `enrollApprove` access level.
+
+### Asynchronous Enrollment Flow (Horizon 2.10+)
+
+Check the version with `get_license_info` before using asynchronous enrollment.
+
+Some PKI connectors submit enrollment to an external CA that does not return
+the certificate immediately. Horizon records the request as `in_progress`
+while certificate issuance is pending. Asynchronous enrollment is available
+for WebRA enroll and renew workflows; ACME, SCEP, and EST remain synchronous.
+
+```
+Caller -> submit_request -> in_progress request -> external CA polling -> certificate issued
+                                            -> deny_request or cancel_request
+```
+
+Use `search_requests` to find requests with status `in_progress`, then
+`get_request` to inspect the full record. Poll rather than submitting another
+request. `approve_request` is only valid for `pending` requests; `deny_request`
+and `cancel_request` accept both `pending` and `in_progress` requests.
+
+### WebRA Challenge Enrollment (Horizon 2.11+)
+
+On a WebRA profile with `authorizationMode: "challenge"`, enrollment is two
+steps:
+
+```
+Requester -> enroll request on the profile -> response `password` holds the challenge
+Client    -> submit_webra_challenge (POST /api/v1/challenge/submit) -> certificate
+```
+
+1. Get a challenge: submit an `enroll` request on the challenge profile (or
+   use "Request a WebRA Challenge" in the RA UI). The owner, contact email
+   and team of the future certificate are set on this request. The response
+   `password` field holds the generated challenge, not a PKCS#12 password.
+   With the enroll permission, the challenge is returned at once. With only
+   the request permission, wait until an operator approves the request and
+   its status is `completed`, then read the challenge from the request.
+2. Consume it with `submit_webra_challenge`: body {`profile`, `challenge`,
+   `template`}. The endpoint needs no authentication: the challenge is the
+   authorization. It is single use, expires, and is bound to its profile.
+   Enrollment is always synchronous (HTTP 201).
+3. `template`: `csr` (decentralized) or `keyType` (centralized), never both.
+   `subject`, `sans` and `extensions` are accepted only when the profile
+   certificate template is empty; otherwise the identity comes from the
+   challenge. `metadata` accepts only `automation_policy`, with a policy
+   authorized on the profile.
+4. Response: `certificate` (PEM) and, in centralized mode only, `pkcs12`
+   (DER Base64, encrypted with the challenge as password). Save the bundle
+   from this response.
+
+Errors: WEBRA-ENROLL-015 (invalid challenge),
+WEBRA-ENROLL-001/009/012 and REQ-002 (400), LIC-003/004 (403),
+WEBRA-ENROLL-011 (500). The event code is `WEBRA-CHALLENGE-SUBMIT`.
 
 ### API-Specific Actions
 
@@ -385,14 +482,14 @@ inside a `template` object, NOT placed at the top level.
 
 ### Top-level fields
 
-| Field           | Required                                | Description                                              |
-| --------------- | --------------------------------------- | -------------------------------------------------------- |
-| `workflow`      | Always                                  | Lifecycle action type                                    |
-| `profile`       | Always                                  | Target profile name                                      |
-| `module`        | Always                                  | Profile module type                                      |
-| `template`      | enroll, renew                           | Certificate data (subject, SANs, labels, key type, etc.) |
-| `password`      | Centralized only                        | PKCS#12 password (omit if profile uses random mode)      |
-| `certificateId` | renew, revoke, update, recover, migrate | Existing certificate ID                                  |
+| Field           | Required                                | Description                                                                                                                            |
+| --------------- | --------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`      | Always                                  | Lifecycle action type                                                                                                                  |
+| `profile`       | Always                                  | Target profile name                                                                                                                    |
+| `module`        | Always                                  | Profile module type                                                                                                                    |
+| `template`      | enroll, renew                           | Certificate data (subject, SANs, labels, key type, etc.)                                                                               |
+| `password`      | Centralized only                        | PKCS#12 password (omit if profile uses random mode). On a WebRA challenge profile (2.11+), the response `password` holds the challenge |
+| `certificateId` | renew, revoke, update, recover, migrate | Existing certificate ID                                                                                                                |
 
 ### Template fields
 

@@ -181,14 +181,61 @@ intended - it is NOT a mistake.
 
 ## System Configuration
 
-System configuration manages global platform settings. There are three
+System configuration manages global platform settings. There are four
 configuration entry types:
 
-| Type                      | Description                                   |
-| ------------------------- | --------------------------------------------- |
-| `license`                 | License key and activation status             |
-| `internal_monitor`        | Internal monitoring and health check settings |
-| `interface_customization` | UI branding, theme, and display settings      |
+| Type                      | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `license`                 | License key and activation status                  |
+| `internal_monitor`        | Internal monitoring and health check settings      |
+| `interface_customization` | UI branding, theme, and display settings           |
+| `storage`                 | Global storage backend assignments (Horizon 2.10+) |
+
+### Announcements (Horizon 2.10+)
+
+Check the version with `get_license_info` before configuring announcements.
+
+The `interface_customization` entry's `announcements` array displays messages
+to every Horizon user. Each item has a severity `level` of `info`, `warning`,
+or `danger`, and a non-empty localized `content` array:
+
+```json
+{
+  "type": "interface_customization",
+  "announcements": [
+    {
+      "level": "warning",
+      "content": [
+        { "lang": "en", "value": "Scheduled maintenance on Saturday." },
+        { "lang": "fr", "value": "Maintenance planifiée samedi." }
+      ]
+    }
+  ]
+}
+```
+
+Horizon uses full-replace semantics for this array. There is no
+per-announcement delete operation: read the entry, remove or revise the desired
+items in the complete array, then update the entry.
+
+### Storage Backends and Global Wiring (Horizon 2.10+)
+
+Check the version with `get_license_info` before configuring storage backends.
+
+Create S3-compatible storage backends with `create_storage`. The S3 fields are
+`bucket`, `timeout`, `forcePathStyle`, `checksumMode`, and `partBufferSize`,
+with optional `credentials`, `roleArn`, `region`, `proxy`, `endpoint`, and
+`description`. `forcePathStyle` supports S3-compatible endpoints that require
+path-style addressing; `checksumMode` controls S3 checksum behavior;
+`partBufferSize` is the multipart upload buffer and must be below 2 GB;
+`roleArn` selects an AWS role to assume. `create_storage` takes these as
+snake_case inputs: `force_path_style`, `checksum_mode`, `part_buffer_size`,
+`role_arn`.
+
+The global `storage` system configuration entry wires a named storage backend
+through `archiveStorage` for archive files and `magicLinkReportStorage` for
+magic-link reports. Omit either reference to fall back to the built-in GridFS
+storage, subject to the deployment's allowed storage types.
 
 ### System Configuration API
 
@@ -333,6 +380,31 @@ platform. They are GET-only endpoints returning status summaries.
   Horizon UI, not through the API.
 - **Discovery path**: Note the extra path segment for discovery analytics:
   `/api/v1/analytics/discovery/events` (not `/api/v1/analytics/discovery`).
+
+---
+
+## Upgrade Notes (Horizon 2.11)
+
+Call `get_license_info` to read the Horizon version before relying on
+2.11 behavior. Breaking changes when upgrading from 2.10:
+
+| Area           | Change since 2.11                                                                                                                                        | Action                                                  |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| LDAP connector | Verifies that the server certificate matches the configured hostname; mismatching connections fail                                                       | Fix the hostname or certificate, or set `tlsInsecure`   |
+| AWS connector  | AssumeRole `roleSessionName` is `evt-<uuid>` (was `EverTrustHorizon-Session-<uuid>`)                                                                     | Update IAM policies that match on the session name      |
+| OCSP           | Response verification enforces the `id-kp-OCSPSigning` EKU on delegated OCSP responder certificates, and fully enforces EKU requirements                 | Check delegated responder certificates carry this EKU   |
+| F5 connector   | CA chains are named after the connector prefix; on the first push they are pushed under the new name and Horizon-managed client SSL profiles are rebound | Rebind SSL profiles bound to old chains outside Horizon |
+
+Other 2.11 changes: ACME External Account Binding and ACME account/order
+management (horizon://knowledge/acme), WebRA challenge mode
+(horizon://knowledge/workflows), new connectors and triggers
+(horizon://knowledge/integrations), Sectigo and GlobalSign MSSL DCV
+providers (horizon://knowledge/dcv), service-account `Authorization: Bearer`
+and OIDC `synchronizationMode` (horizon://knowledge/rbac).
+
+New public error codes in 2.11: the ACME-, EAB-, EAB-POLICY- and ORDER-
+families (see horizon://knowledge/acme) and WEBRA-ENROLL-015 (invalid WebRA
+challenge).
 
 ---
 

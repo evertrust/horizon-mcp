@@ -34,7 +34,7 @@ Verified in OpenAPI:
 
 - `productId`
 - `caCertId`
-- `retryInterval`
+- `retryInterval` (positive finite duration, for example `"6 seconds"`)
 - `skipApproval`
 - `timeout`
 - `proxy`

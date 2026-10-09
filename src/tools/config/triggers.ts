@@ -50,6 +50,10 @@ const TRIGGER_TYPES = [
   'gcm',
   'ldappub',
   'netscaler',
+  'fortigate',
+  'fortimanager',
+  'panos_firewall',
+  'panos_panorama',
 ] as const;
 
 /** Union of every subtype's top-level property keys (from the resolved schema). */
@@ -80,7 +84,7 @@ const KNOWN_KEYS = [
 const nameSchema = z
   .string()
   .describe(
-    'Trigger name. Immutable primary key, unique. Ask the user - never invent it.',
+    'Trigger name. Unique identifier; it cannot change after creation. Ask the user - never invent it.',
   );
 const typeSchema = z
   .enum(TRIGGER_TYPES)
@@ -130,7 +134,8 @@ export function registerTriggerCrudTools(
     description:
       'Create a trigger: an EVENT-DRIVEN action that fires ON certificate ' +
       'lifecycle events (email, webhook, rest, akv, f5client, f5as3, aws, ' +
-      'intunepkcs, gcm, ldappub, netscaler). A vendor-typed trigger is the event ' +
+      'intunepkcs, gcm, ldappub, netscaler, and on Horizon 2.11+ fortigate, ' +
+      'fortimanager, panos_firewall, panos_panorama). A vendor-typed trigger is the event ' +
       'HOOK - distinct from a third-party connector of the same vendor (the ' +
       'standing publish integration, create_thirdparty_connector). For a simple ' +
       'REST ' +

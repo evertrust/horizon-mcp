@@ -19,27 +19,56 @@ const SENSITIVE_FIELDS = new Set([
   'hmacKey',
   'pkcs12',
   'keystore',
+  'challenge',
 ]);
 
 // Specific error codes -> remediation hints
 const SPECIFIC_REMEDIATION: Record<string, string> = {
   'HQL-001':
     'Invalid query syntax. Use validate_hcql/hrql/heql to check your query.',
+  'LIC-004':
+    'License expired. Renew the Horizon license, then retry the operation.',
+  'SERV-ACC-003':
+    'Already exists: use update_service_account for the service account instead.',
+  'SERV-ACC-004':
+    'Not found: use list_service_accounts to see available service accounts.',
+  'SERV-ACC-005':
+    'This configuration-defined service account is read-only and cannot be changed or deleted.',
   'SEC-AUTH-002':
     'Authentication failed. Check HORIZON_API_ID/HORIZON_API_KEY, ' +
     'HORIZON_SERVICE_ACCOUNT/HORIZON_API_TOKEN or the client certificate settings; ' +
     'in HTTP mode, check the X-API-ID/X-API-KEY or X-API-SVA/X-API-TOKEN headers.',
   'SEC-PERM-001':
     'Insufficient permissions. Check role assignments for the authenticated principal.',
+  'ACME-003':
+    'Invalid status change. A compromised ACME account cannot change status. Check the current status with get_acme_account or get_acme_eab.',
+  'ACME-004':
+    'Not found: use search_acme_accounts to find the ACME account ID.',
+  'ACME-005':
+    'An ACME account cannot be deleted while one of its certificates is still valid.',
+  'EAB-001': 'Already exists: use update_acme_eab, or choose another EAB name.',
+  'EAB-002': 'Not found: use search_acme_eabs to see available EABs.',
+  'EAB-003':
+    'An EAB cannot be deleted while an ACME account with status valid, deactivated, or suspended is bound to it.',
+  'EAB-004': 'The EAB search took too long. Narrow the HEABQL query and retry.',
+  'EAB-POLICY-001':
+    'Not found: use list_eab_policies to see available EAB policies.',
+  'EAB-POLICY-002':
+    'The EAB policy is still referenced by an EAB. Change or delete those EABs first.',
+  'ORDER-001':
+    'Not found: use list_acme_orders with the account ID to see its orders.',
+  'ORDER-002':
+    'An ACME account cannot be deleted while one of its orders is not final (pending, ready, or processing) or has a valid certificate.',
 };
 
-// Error code suffix -> remediation hint
-const SUFFIX_REMEDIATION: Record<string, string> = {
-  '003': 'Not found. Use the corresponding list_* tool to see available items.',
-  '004': 'Already exists. Use the corresponding update_* tool instead.',
-  '005': 'Referenced by other objects. Remove references first, then retry.',
-  '002':
-    'Validation failed. Check the error details for specific field issues.',
+const FAMILY_REMEDIATION: Record<string, Record<string, string>> = {
+  CRT: {
+    '003':
+      'Not found. Use the corresponding list_* tool to see available items.',
+  },
+  PRF: {
+    '004': 'Already exists. Use the corresponding update_* tool instead.',
+  },
 };
 
 export class HorizonError extends Error {
@@ -114,6 +143,7 @@ const JWT_RE = /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g;
 const LONG_BASE64_RE = /[A-Za-z0-9+/=_-]{40,}/g;
 
 const MAX_ERROR_FIELD_LENGTH = 200;
+const TRUNCATION_MARKER = '... [truncated]';
 
 /**
  * Scrub PEM private keys, JWT tokens, and long base64-ish blobs from a
@@ -126,16 +156,62 @@ export function redactValue(s: string): string {
     .replace(JWT_RE, '<redacted-jwt>')
     .replace(LONG_BASE64_RE, '<redacted-blob>');
   if (scrubbed.length > MAX_ERROR_FIELD_LENGTH) {
-    scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + '... [truncated]';
+    scrubbed = scrubbed.slice(0, MAX_ERROR_FIELD_LENGTH) + TRUNCATION_MARKER;
   }
+  return scrubbed;
+}
+
+function redactSecretPrefixAtEnd(text: string, secret: string): string {
+  for (let length = secret.length - 1; length > 0; length--) {
+    if (text.endsWith(secret.slice(0, length))) {
+      return text.slice(0, text.length - length) + '<redacted>';
+    }
+  }
+  return text;
+}
+
+function redactSecret(text: string, secret: string): string {
+  const segments = text
+    .split(secret)
+    .join('<redacted>')
+    .split(TRUNCATION_MARKER);
+  return segments
+    .map((segment, index) =>
+      index < segments.length - 1
+        ? redactSecretPrefixAtEnd(segment, secret)
+        : segment,
+    )
+    .join(TRUNCATION_MARKER);
+}
+
+export function scrubSecretFromError(
+  err: HorizonError,
+  secret: string,
+): HorizonError {
+  if (!secret) return err;
+  const scrub = (value: string): string => redactSecret(value, secret);
+  if (
+    scrub(err.message) === err.message &&
+    (err.detail === undefined || scrub(err.detail) === err.detail)
+  ) {
+    return err;
+  }
+  const scrubbed = new HorizonError(err.statusCode, {
+    errorCode: err.errorCode,
+    detail: err.detail === undefined ? undefined : scrub(err.detail),
+    remediation: err.remediation,
+  });
+  scrubbed.message = scrub(err.message);
   return scrubbed;
 }
 
 function resolveRemediation(errorCode: string | undefined): string | undefined {
   if (!errorCode) return undefined;
   if (errorCode in SPECIFIC_REMEDIATION) return SPECIFIC_REMEDIATION[errorCode];
-  const suffix = errorCode.includes('-') ? errorCode.split('-').pop()! : '';
-  return SUFFIX_REMEDIATION[suffix];
+  const parts = errorCode.split('-');
+  const suffix = parts.pop();
+  const family = parts.join('-');
+  return suffix && family ? FAMILY_REMEDIATION[family]?.[suffix] : undefined;
 }
 
 export function parseErrorResponse(

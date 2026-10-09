@@ -13,11 +13,13 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
+import { HorizonError } from '../../src/client/errors.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import { registerProfileTools } from '../../src/tools/profiles.js';
+import { configureToolRegistration } from '../../src/tools/register.js';
 import { registerTriggerTools } from '../../src/tools/triggers.js';
 
 // ---------------------------------------------------------------------------
@@ -259,6 +261,44 @@ describe('Trigger tools', () => {
       expect(items[0]!['name']).toBe('deploy-rest');
     });
   });
+
+  it('does not expose trigger simulation in read-only mode', async () => {
+    const ctx = await setupServerAndClient((server, mc) => {
+      configureToolRegistration(server, { readOnly: true });
+      registerTriggerTools(server, mc as any);
+    });
+    try {
+      const result = await ctx.client.callTool({
+        name: 'simulate_trigger',
+        arguments: { name: 'example-trigger' },
+      });
+      expect(result.isError).toBe(true);
+      expect(ctx.mockClient.get).not.toHaveBeenCalled();
+      expect(ctx.mockClient.patch).not.toHaveBeenCalled();
+    } finally {
+      await ctx.client.close();
+    }
+  });
+
+  it('gets a trigger before simulating it', async () => {
+    mockClient.get.mockResolvedValueOnce({
+      name: 'example-trigger',
+      type: 'rest',
+    });
+    mockClient.patch.mockResolvedValueOnce({ status: 'ok' });
+
+    await client.callTool({
+      name: 'simulate_trigger',
+      arguments: { name: 'example-trigger' },
+    });
+
+    expect(mockClient.get).toHaveBeenCalledWith(
+      '/api/v1/triggers/example-trigger',
+    );
+    expect(mockClient.patch).toHaveBeenCalledWith('/api/v1/triggers', {
+      trigger: { name: 'example-trigger', type: 'rest' },
+    });
+  });
 });
 
 // ===========================================================================
@@ -474,6 +514,143 @@ describe('Lifecycle tools', () => {
     });
   });
 
+  describe('set_certificate_auto_renew', () => {
+    it('submits an update request for a certificate ID', async () => {
+      mockClient.post.mockResolvedValueOnce({ id: 'req-auto-renew-id' });
+
+      await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/submit', {
+        module: 'webra',
+        workflow: 'update',
+        certificateId: '0123456789abcdef01234567',
+        template: { autoRenew: { value: true } },
+      });
+    });
+
+    it('submits an update request for a certificate PEM', async () => {
+      mockClient.post.mockResolvedValueOnce({ id: 'req-auto-renew-pem' });
+      const certificatePem =
+        '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----';
+
+      await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: { certificate_pem: certificatePem, enabled: false },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/submit', {
+        module: 'webra',
+        workflow: 'update',
+        certificatePem,
+        template: { autoRenew: { value: false } },
+      });
+    });
+
+    it('rejects a missing certificate selector before calling Horizon', async () => {
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: { enabled: true },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'exactly one of certificate_id or certificate_pem',
+      );
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('rejects both certificate selectors before calling Horizon', async () => {
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          certificate_pem:
+            '-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'exactly one of certificate_id or certificate_pem',
+      );
+      expect(mockClient.post).not.toHaveBeenCalled();
+    });
+
+    it('returns a clear error when the profile policy is not editable', async () => {
+      mockClient.post.mockRejectedValueOnce(
+        new HorizonError(403, { message: 'auto-renew is not editable' }),
+      );
+
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect(parseToolResult(result)['error']).toContain(
+        'autoRenewalPolicy.editable is true',
+      );
+    });
+
+    it('preserves standard Horizon errors that are unrelated to editability', async () => {
+      mockClient.post.mockRejectedValueOnce(
+        new HorizonError(403, {
+          errorCode: 'LIC-004',
+          message: 'Expired License',
+        }),
+      );
+
+      const result = await client.callTool({
+        name: 'set_certificate_auto_renew',
+        arguments: {
+          certificate_id: '0123456789abcdef01234567',
+          enabled: true,
+        },
+      });
+
+      expect((result as ToolResult).isError).toBe(true);
+      expect((result as ToolResult).content[0]!.text).toContain(
+        'Horizon API error 403 [LIC-004]. Expired License',
+      );
+      expect((result as ToolResult).content[0]!.text).not.toContain(
+        'autoRenewalPolicy.editable is true',
+      );
+    });
+  });
+
+  describe('get_request_template', () => {
+    it('sends include_terms_of_service in the query string, not the POST body', async () => {
+      await client.callTool({
+        name: 'get_request_template',
+        arguments: {
+          workflow: 'enroll',
+          profile: 'webra-enrollment',
+          module: 'webra',
+          include_terms_of_service: true,
+        },
+      });
+
+      const [url, body] = mockClient.post.mock.calls[0]!;
+      expect(url).toBe('/api/v1/requests/template?termsOfService=true');
+      expect(body).toEqual({
+        workflow: 'enroll',
+        profile: 'webra-enrollment',
+        module: 'webra',
+      });
+      expect(body).not.toHaveProperty('termsOfService');
+    });
+  });
+
   describe('get_certificate', () => {
     it('returns full certificate', async () => {
       const certData = {
@@ -551,6 +728,115 @@ describe('Lifecycle tools', () => {
       expect(result.content[0]!.text).toContain('format');
     });
   });
+
+  describe.each([
+    {
+      name: 'approve_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/approve',
+      allowed: true,
+    },
+    {
+      name: 'approve_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/approve',
+      allowed: false,
+    },
+    {
+      name: 'deny_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/deny',
+      allowed: true,
+    },
+    {
+      name: 'deny_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/deny',
+      allowed: true,
+    },
+    {
+      name: 'cancel_request',
+      status: 'pending',
+      endpoint: '/api/v1/requests/cancel',
+      allowed: true,
+    },
+    {
+      name: 'cancel_request',
+      status: 'in_progress',
+      endpoint: '/api/v1/requests/cancel',
+      allowed: true,
+    },
+  ])('$name request state $status', ({ name, status, endpoint, allowed }) => {
+    it(`${allowed ? 'allows' : 'blocks'} the action`, async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        module: 'est',
+        status,
+        permissions: { approve: true, cancel: true },
+      });
+      mockClient.post.mockResolvedValueOnce({ status: 'handled' });
+
+      const result = await client.callTool({
+        name,
+        arguments: { request_id: 'async-request' },
+      });
+
+      if (!allowed) {
+        expect((result as ToolResult).isError).toBe(true);
+        expect(String(parseToolResult(result)['error'])).toContain('pending');
+        expect(mockClient.post).not.toHaveBeenCalled();
+        return;
+      }
+
+      expect(mockClient.post).toHaveBeenCalledWith(endpoint, {
+        _id: 'async-request',
+        module: 'est',
+        workflow: 'enroll',
+      });
+      expect(parseToolResult(result)['status']).toBe('handled');
+    });
+  });
+
+  describe.each(['approve_request', 'deny_request', 'cancel_request'])(
+    '%s API errors',
+    (name) => {
+      it.each(['preflight', 'action'])(
+        'marks %s failures as errors',
+        async (stage) => {
+          const error = new HorizonError(503, {
+            message: 'Service unavailable',
+          });
+          if (stage === 'preflight') {
+            mockClient.get.mockRejectedValueOnce(error);
+          } else {
+            mockClient.get.mockResolvedValueOnce({
+              module: 'webra',
+              workflow: 'enroll',
+              status: 'pending',
+              permissions: { approve: true, cancel: true },
+            });
+            mockClient.post.mockRejectedValueOnce(error);
+          }
+
+          const result = await client.callTool({
+            name,
+            arguments: { request_id: 'test-request' },
+          });
+
+          expect((result as ToolResult).isError).toBe(true);
+          expect(result.structuredContent).toMatchObject({
+            statusCode: 503,
+            message: expect.stringContaining('Service unavailable'),
+          });
+          if (stage === 'preflight') {
+            expect(mockClient.post).not.toHaveBeenCalled();
+          } else {
+            expect(mockClient.post).toHaveBeenCalledOnce();
+          }
+        },
+      );
+    },
+  );
 
   describe('submit_request', () => {
     it('enrolls with template', async () => {
@@ -649,6 +935,7 @@ describe('Lifecycle tools', () => {
     it('approves with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         profile: 'my-profile',
         permissions: { approve: true, cancel: true },
@@ -670,13 +957,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-001', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-001',
+        module: 'webra',
+        workflow: 'enroll',
+      });
       expect(parsed['status']).toBe('approved');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         profile: 'my-profile',
         permissions: { approve: false, cancel: true },
@@ -689,6 +981,7 @@ describe('Lifecycle tools', () => {
       const r = result as ToolResult;
       const parsed = JSON.parse(r.content[0]!.text);
 
+      expect(r.isError).toBe(true);
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
       expect(mockClient.post).not.toHaveBeenCalled();
@@ -697,6 +990,7 @@ describe('Lifecycle tools', () => {
     it('blocks non-pending request', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'approved',
         permissions: { approve: true, cancel: false },
       });
@@ -708,6 +1002,7 @@ describe('Lifecycle tools', () => {
       const r = result as ToolResult;
       const parsed = JSON.parse(r.content[0]!.text);
 
+      expect(r.isError).toBe(true);
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('pending');
       expect(mockClient.post).not.toHaveBeenCalled();
@@ -718,6 +1013,7 @@ describe('Lifecycle tools', () => {
     it('denies with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         permissions: { approve: true, cancel: true },
       });
@@ -736,13 +1032,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-002', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-002',
+        module: 'webra',
+        workflow: 'enroll',
+      });
       expect(parsed['status']).toBe('denied');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         permissions: { approve: false, cancel: true },
       });
@@ -754,6 +1055,7 @@ describe('Lifecycle tools', () => {
       const r = result as ToolResult;
       const parsed = JSON.parse(r.content[0]!.text);
 
+      expect(r.isError).toBe(true);
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
       expect(mockClient.post).not.toHaveBeenCalled();
@@ -761,9 +1063,33 @@ describe('Lifecycle tools', () => {
   });
 
   describe('cancel_request', () => {
+    it('cancels an authorized in_progress request with an error field', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        module: 'webra',
+        status: 'in_progress',
+        permissions: { cancel: true },
+        error: 'Certificate issuance is delayed.',
+      });
+      mockClient.post.mockResolvedValueOnce({ status: 'cancelled' });
+
+      const result = await client.callTool({
+        name: 'cancel_request',
+        arguments: { request_id: 'req-003' },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/cancel', {
+        _id: 'req-003',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(parseToolResult(result)['status']).toBe('cancelled');
+    });
+
     it('cancels with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         permissions: { approve: false, cancel: true },
       });
@@ -782,13 +1108,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-003', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-003',
+        module: 'webra',
+        workflow: 'enroll',
+      });
       expect(parsed['status']).toBe('cancelled');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',
+        module: 'webra',
         status: 'pending',
         permissions: { approve: true, cancel: false },
       });
@@ -800,6 +1131,7 @@ describe('Lifecycle tools', () => {
       const r = result as ToolResult;
       const parsed = JSON.parse(r.content[0]!.text);
 
+      expect(r.isError).toBe(true);
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
       expect(mockClient.post).not.toHaveBeenCalled();

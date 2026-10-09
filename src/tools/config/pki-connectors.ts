@@ -57,6 +57,7 @@ const CONNECTOR_TYPES = [
   'idca',
   'integrated',
   'fcms',
+  'gcp',
   'gsatlas',
   'gsmssl',
   'otpki',
@@ -66,6 +67,22 @@ const CONNECTOR_TYPES = [
   'sectigo',
   'swisssign',
 ] as const;
+
+const ASYNC_CONNECTOR_TYPES = [
+  'digicert',
+  'acmeenroll',
+  'integrated',
+  'gsmssl',
+  'gsatlas',
+  'awsacmpca',
+  'certeurope',
+  'sectigo',
+  'nameshield',
+] as const;
+
+const ASYNC_CONNECTOR_TYPE_SET = new Set<string>(ASYNC_CONNECTOR_TYPES);
+const POSITIVE_FINITE_DURATION =
+  /^(0*[1-9][0-9]*) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$/;
 
 const SCHEMA_VERSION = 'pki_connectors.request.json';
 
@@ -143,6 +160,14 @@ const KNOWN_KEYS = [
   'authenticationDomainId',
   'ownerGroups',
   'deleteOnRevoke',
+  'projectId',
+  'location',
+  'caPool',
+  'certificateLifetime',
+  'credentials',
+  'impersonation',
+  'certificateTemplate',
+  'endpoint',
   'hashAlgorithm',
   'endpointType',
   'domainId',
@@ -165,6 +190,8 @@ const KNOWN_KEYS = [
   'productUuid',
 ] as const;
 
+const GCP_REQUIRED_KEYS = pkiConnectorRequestSchema.$defs.GCPConnector.required;
+
 const configSchema = z
   .record(z.string(), z.unknown())
   .describe(
@@ -177,13 +204,13 @@ const configSchema = z
 const nameSchema = z
   .string()
   .describe(
-    'Connector name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
+    'Connector name. Unique identifier; it cannot change after creation. Server-validated against regex [0-9a-zA-Z-_.]+.',
   );
 const typeSchema = z
   .enum(CONNECTOR_TYPES)
   .describe(
     'Connector subtype discriminator (lowercase). Determines which fields are ' +
-      'required in `config`. Cannot change after creation.',
+      'required in `config`. Cannot change after creation. gcp (Google Cloud CAS) requires Horizon 2.11+.',
   );
 
 /** Merge the typed mandatory params with the subtype config into one body. */
@@ -191,14 +218,39 @@ function mergeBody(
   name: string,
   type: string,
   config: Record<string, unknown>,
+  requireFull = true,
 ): Record<string, unknown> {
   const body: Record<string, unknown> = { ...config, name, type };
+  validateRetryInterval(type, config);
   assertConfigBody(body, {
-    requiredKeys: ['name', 'type'],
+    requiredKeys:
+      type === 'gcp' && requireFull ? GCP_REQUIRED_KEYS : ['name', 'type'],
     knownKeys: KNOWN_KEYS,
     enums: { type: CONNECTOR_TYPES },
   });
   return body;
+}
+
+function validateRetryInterval(
+  type: string,
+  config: Record<string, unknown>,
+): void {
+  const retryInterval = config['retryInterval'];
+  if (retryInterval === undefined) return;
+  if (!ASYNC_CONNECTOR_TYPE_SET.has(type)) {
+    throw new Error(
+      'retryInterval is supported only for asynchronous PKI connector types: ' +
+        `${ASYNC_CONNECTOR_TYPES.join(', ')}.`,
+    );
+  }
+  if (
+    typeof retryInterval !== 'string' ||
+    !POSITIVE_FINITE_DURATION.test(retryInterval)
+  ) {
+    throw new Error(
+      'retryInterval must be a positive FiniteDuration string, for example "6 seconds".',
+    );
+  }
 }
 
 export function registerPkiConnectorTools(
@@ -227,7 +279,7 @@ export function registerPkiConnectorTools(
       'system (use a third-party connector) and NOT the inbound device ' +
       'enrollment protocol (use a certificate profile). Polymorphic: the `type` discriminator ' +
       'selects the subtype (stream, acmeenroll, awsacmpca, digicert, ejbca, ' +
-      'integrated, ...). Active Directory Certificate Services (ADCS / Microsoft ' +
+      'integrated, ...). gcp (Google Cloud CAS) requires Horizon 2.11+. Active Directory Certificate Services (ADCS / Microsoft ' +
       'CA) is a PKI connector: use type "evtadcs" (EverTrust ADCS connector) or ' +
       'legacy "msadcs" - NOT a WCCE forest mapping. Call ' +
       'describe_pki_connector_schema for the chosen type first to learn the ' +
@@ -263,7 +315,7 @@ export function registerPkiConnectorTools(
         .describe('Top-level fields to explicitly null, e.g. ["proxy"].'),
     }),
     buildOverrides: ({ name, type, config }) =>
-      mergeBody(name, type, config ?? {}),
+      mergeBody(name, type, config ?? {}, false),
   });
 
   registerDeleteTool(server, client, SPEC, {

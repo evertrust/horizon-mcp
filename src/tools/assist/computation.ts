@@ -36,62 +36,89 @@ function toDatasourceFlow(
   });
 }
 
-export function registerComputationTools(
+const SIMULATE_COMPUTATION_RULE_CONFIG = {
+  description:
+    'Test a computation rule or template string against a dictionary.\n\n' +
+    'MANDATORY: Before writing ANY computation rule, you MUST read the ' +
+    'knowledge resource horizon://knowledge/computation-and-data-flow. ' +
+    'It contains the COMPLETE list of available functions, the exact syntax, ' +
+    'and real-world PKI examples. DO NOT invent functions or syntax - only ' +
+    'use what is documented in that resource.\n\n' +
+    'Documented functions:\n' +
+    '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
+    '  List: Filter, Slice, Sort, Split\n' +
+    '  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n' +
+    '  Date: DateTimeFormat\n' +
+    '  Access: Get, First, Last, Join, Match\n' +
+    '  Encoding: Base64, Raw (Horizon 2.8.5+)\n' +
+    '  Special: NULL, NOW\n\n' +
+    'Syntax rules:\n' +
+    '  - Dictionary lookups: {{key}} for single, [[key]] for multi\n' +
+    '  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n' +
+    '  - Concat joins strings if all arguments are single values; otherwise, it combines values into an array. An empty result returns None.\n' +
+    '  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n' +
+    '  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n' +
+    '  - Sort alphabetically sorts a list\n\n' +
+    'Two expression modes:\n\n' +
+    '  computation_rule (default): Full expression language with functions.\n' +
+    '    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort([[sans]])\n\n' +
+    '  template_string: Text interpolation with embedded {{ }} blocks.\n' +
+    '    Hello {{name}}, cert expires {{certificate.not_after}}',
+  inputSchema: z.object({
+    rule: z
+      .string()
+      .describe(
+        'The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.',
+      ),
+    dictionary: z
+      .record(z.string(), z.string())
+      .describe('Key-value pairs available as variables during evaluation.'),
+    mode: z
+      .enum(['computation_rule', 'template_string'])
+      .default('computation_rule')
+      .describe('Expression type - "computation_rule" or "template_string".'),
+  }),
+};
+
+const SIMULATE_DATASOURCE_FLOW_CONFIG = {
+  description:
+    'Test a datasource flow pipeline against an optional context.\n\n' +
+    'Executes a datasource flow chain in test mode and returns the ' +
+    'enriched dictionary. Each flow entry specifies a datasource name, ' +
+    'input mappings, and an optional stop-on-success flag. The MCP ' +
+    "accepts a small-model-friendly shape and translates it to Horizon's " +
+    'raw `dsFlow` request body.',
+  inputSchema: z.object({
+    flow: z
+      .array(
+        z.object({
+          datasource: z.string().describe('Name of the datasource to execute.'),
+          inputs: z
+            .record(z.string(), z.string())
+            .default({})
+            .describe('Input names mapped to computation rules.'),
+          stopOnSuccess: z
+            .boolean()
+            .default(false)
+            .describe('Stop the flow when this datasource succeeds.'),
+        }),
+      )
+      .describe('Ordered list of flow entries.'),
+    context: z
+      .record(z.string(), z.unknown())
+      .optional()
+      .describe('Optional initial context dictionary.'),
+  }),
+};
+
+function registerSimulateComputationRuleTool(
   server: McpServer,
   client: HorizonClient,
 ): void {
   registerTool(
     server,
     'simulate_computation_rule',
-    {
-      description:
-        'Test a computation rule or template string against a dictionary.\n\n' +
-        'MANDATORY: Before writing ANY computation rule, you MUST read the ' +
-        'knowledge resource horizon://knowledge/computation-and-data-flow. ' +
-        'It contains the COMPLETE list of available functions, the exact syntax, ' +
-        'and real-world PKI examples. DO NOT invent functions or syntax - only ' +
-        'use what is documented in that resource.\n\n' +
-        'Available functions (exhaustive list - no others exist):\n' +
-        '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
-        '  List: Filter, Slice, Sort, Split, Unique\n' +
-        '  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n' +
-        '  Date: DateTimeFormat\n' +
-        '  Access: Get, First, Last, Join, Match\n' +
-        '  Encoding: URLEncode, URLDecode, EscapeJson, JsonArray, DerAsBase64, Base64, Raw\n' +
-        '  Special: NULL, NOW\n\n' +
-        'Syntax rules:\n' +
-        '  - Dictionary lookups: {{key}} for single, [[key]] for multi\n' +
-        '  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n' +
-        '  - Concat on arrays merges them: Concat([[a]], [[b]]) -> combined list\n' +
-        '  - Concat with null returns null: use OrElse({{key}}, "") to guard\n' +
-        '  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n' +
-        '  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n' +
-        '  - Sort alphabetically sorts a list\n' +
-        '  - Unique deduplicates a list\n\n' +
-        'Two expression modes:\n\n' +
-        '  computation_rule (default): Full expression language with functions.\n' +
-        '    Upper({{cn}}) - DomainDNS({{fqdn}}) - Sort(Unique([[sans]]))\n\n' +
-        '  template_string: Text interpolation with embedded {{ }} blocks.\n' +
-        '    Hello {{name}}, cert expires {{certificate.not_after}}',
-      inputSchema: z.object({
-        rule: z
-          .string()
-          .describe(
-            'The expression to evaluate. For computation rules, use function calls with {{key}} for dictionary lookups.',
-          ),
-        dictionary: z
-          .record(z.string(), z.string())
-          .describe(
-            'Key-value pairs available as variables during evaluation.',
-          ),
-        mode: z
-          .enum(['computation_rule', 'template_string'])
-          .default('computation_rule')
-          .describe(
-            'Expression type - "computation_rule" or "template_string".',
-          ),
-      }),
-    },
+    SIMULATE_COMPUTATION_RULE_CONFIG,
     async ({ rule, dictionary, mode }) => {
       const key =
         mode === 'computation_rule' ? 'computationRule' : 'templateString';
@@ -104,34 +131,16 @@ export function registerComputationTools(
       };
     },
   );
+}
 
+function registerSimulateDatasourceFlowTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'simulate_datasource_flow',
-    {
-      description:
-        'Test a datasource flow pipeline against an optional context.\n\n' +
-        'Executes a datasource flow chain in test mode and returns the ' +
-        'enriched dictionary. Each flow entry specifies a datasource name, ' +
-        'input mappings, and an optional stop-on-success flag. The MCP ' +
-        "accepts a small-model-friendly shape and translates it to Horizon's " +
-        'raw `dsFlow` request body.',
-      inputSchema: z.object({
-        flow: z
-          .array(
-            z.object({
-              datasource: z.string(),
-              inputs: z.record(z.string(), z.string()).default({}),
-              stopOnSuccess: z.boolean().default(false),
-            }),
-          )
-          .describe('Ordered list of flow entries.'),
-        context: z
-          .record(z.string(), z.unknown())
-          .optional()
-          .describe('Optional initial context dictionary.'),
-      }),
-    },
+    SIMULATE_DATASOURCE_FLOW_CONFIG,
     async ({ flow, context }) => {
       const body: Record<string, unknown> = { dsFlow: toDatasourceFlow(flow) };
       const normalizedContext = toMapEntries(context);
@@ -142,4 +151,12 @@ export function registerComputationTools(
       };
     },
   );
+}
+
+export function registerComputationTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
+  registerSimulateComputationRuleTool(server, client);
+  registerSimulateDatasourceFlowTool(server, client);
 }

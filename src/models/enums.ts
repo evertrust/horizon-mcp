@@ -42,16 +42,16 @@ export enum PKIConnectorType {
   ACME_ENROLL = 'acmeenroll',
   ACME_REVOKE = 'acmerevoke',
   EVT_ADCS = 'evtadcs',
-  MS_ADCS = 'msadcs',
   AWS_ACM_PCA = 'awsacmpca',
   CERTEUROPE = 'certeurope',
   CMP = 'cmp',
   DIGICERT = 'digicert',
   EJBCA = 'ejbca',
-  ENTRUST = 'entrust',
+  EJBCA_REST = 'ejbca_rest',
   IDCA = 'idca',
   INTEGRATED = 'integrated',
   FCMS = 'fcms',
+  GCP = 'gcp',
   GS_ATLAS = 'gsatlas',
   GS_MSSL = 'gsmssl',
   OTPKI = 'otpki',
@@ -74,6 +74,10 @@ export enum ThirdPartyConnectorType {
   LDAP_PUB = 'ldappub',
   MS_AD = 'msad',
   NETSCALER = 'netscaler',
+  FORTIGATE = 'fortigate',
+  FORTIMANAGER = 'fortimanager',
+  PANOS_FIREWALL = 'panos_firewall',
+  PANOS_PANORAMA = 'panos_panorama',
 }
 
 export enum TriggerType {
@@ -88,6 +92,10 @@ export enum TriggerType {
   LDAPPUB = 'ldappub',
   GCM = 'gcm',
   NETSCALER = 'netscaler',
+  FORTIGATE = 'fortigate',
+  FORTIMANAGER = 'fortimanager',
+  PANOS_FIREWALL = 'panos_firewall',
+  PANOS_PANORAMA = 'panos_panorama',
 }
 
 export enum CertificateFormat {

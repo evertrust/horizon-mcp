@@ -31,7 +31,7 @@ export const archiveRequestSchema = {
         name: {
           type: 'string',
           description:
-            "Primary key / immutable identifier of the archive. Must be unique (ARCHIVE-004 'Archive already exists' otherwise).",
+            "Unique identifier of the archive; it cannot change after creation. Must be unique (ARCHIVE-004 'Archive already exists' otherwise).",
         },
         type: {
           type: 'string',
@@ -67,7 +67,7 @@ export const archiveRequestSchema = {
         name: {
           type: 'string',
           description:
-            "Primary key / immutable identifier of the archive. Must be unique (ARCHIVE-004 'Archive already exists' otherwise).",
+            "Unique identifier of the archive; it cannot change after creation. Must be unique (ARCHIVE-004 'Archive already exists' otherwise).",
         },
         type: {
           type: 'string',

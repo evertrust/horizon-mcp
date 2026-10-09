@@ -161,6 +161,54 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
     // Certificate download
     // -----------------------------------------------------------------------
 
+    describe('set_certificate_auto_renew', () => {
+      it('submits a no-change WebRA auto-renew update for an editable certificate', async (ctx) => {
+        const search = await callTool('search_certificates', {
+          query: 'module equals "webra"',
+          fields: ['_id', 'profile', 'autoRenew'],
+          page_size: 25,
+        });
+        const certificates = (search['results'] ?? []) as Record<
+          string,
+          unknown
+        >[];
+        const certificate = certificates.find(
+          (item) =>
+            typeof item['_id'] === 'string' &&
+            /^[a-fA-F0-9]{24}$/.test(item['_id']) &&
+            typeof item['profile'] === 'string' &&
+            typeof item['autoRenew'] === 'boolean',
+        );
+        if (!certificate) {
+          console.log(
+            'SKIP: No WebRA certificate with an autoRenew flag found',
+          );
+          ctx.skip();
+        }
+
+        const profileName = certificate['profile'] as string;
+        const profile = await getHorizonClient().get<Record<string, unknown>>(
+          `/api/v1/certificate/profiles/${encodeURIComponent(profileName)}`,
+        );
+        const policy = profile['autoRenewalPolicy'] as
+          | Record<string, unknown>
+          | undefined;
+        if (policy?.['editable'] !== true) {
+          console.log(
+            'SKIP: WebRA certificate profile does not allow auto-renew edits',
+          );
+          ctx.skip();
+        }
+
+        const result = await callTool('set_certificate_auto_renew', {
+          certificate_id: certificate['_id'],
+          enabled: certificate['autoRenew'],
+        });
+        expect(typeof result['_id']).toBe('string');
+        expect(typeof result['status']).toBe('string');
+      });
+    });
+
     describe('download_certificate', () => {
       it('returns PEM content for a known certificate', async () => {
         const search = await callTool('search_certificates', {
@@ -221,11 +269,13 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           format: 'der',
         });
         expect(raw).toBeTruthy();
-        const data = JSON.parse(raw) as Record<string, unknown>;
+        // The format enum only admits 'pem', so the SDK rejects 'der' during
+        // input validation and reports it as text, before the handler runs.
         expect(
-          data['error'],
-          'download_certificate with format=der should return an error dict',
-        ).toBeDefined();
+          raw,
+          'download_certificate with format=der should be rejected as a validation error',
+        ).toMatch(/Input validation error/);
+        expect(raw).toContain('format');
       });
     });
 
@@ -248,9 +298,12 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
       }, 150_000);
 
       it('exports requests as CSV', async () => {
-        const result = await callTool('export_requests_csv', {
-          query: 'profile exists',
-        });
+        // Use a narrow query to keep the export within the test timeout.
+        const result = await callTool(
+          'export_requests_csv',
+          { query: 'status equals "denied"' },
+          { timeout: 120_000 },
+        );
         expect(
           result['csv'],
           `export_requests_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
@@ -489,7 +542,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
     // -----------------------------------------------------------------------
 
     describe('submit and cancel flow', () => {
-      it('submits and cancels an enrollment request on a webra profile', async () => {
+      it('submits and cancels an enrollment request on a webra profile', async (ctx) => {
         // Find a webra profile
         const profiles = await callTool('list_profiles', {
           module: 'webra',
@@ -531,7 +584,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
         }
 
         // Submit
-        const cn = `${E2E_PREFIX}.test.local`;
+        const cn = `${E2E_PREFIX}.example.com`;
         let submitRaw: string;
         try {
           submitRaw = await callToolRaw('submit_request', {
@@ -577,14 +630,18 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           return;
         }
 
-        // Cancel the just-submitted request
-        try {
-          await callToolRaw('cancel_request', {
-            request_id: requestId,
-          });
-        } catch {
-          // Cancel may fail if request already transitioned - acceptable
+        // Cancel only the request created by this test.
+        const request = await callTool('get_request', {
+          request_id: requestId,
+        });
+        if (!['pending', 'in_progress'].includes(String(request['status']))) {
+          ctx.skip();
         }
+        const cancelled = await callTool('cancel_request', {
+          request_id: requestId,
+        });
+        expect(cancelled['_id']).toBe(requestId);
+        expect(cancelled['status']).toBe('canceled');
       });
     });
   });

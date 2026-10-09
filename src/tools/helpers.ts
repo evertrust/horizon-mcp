@@ -49,7 +49,6 @@ export const encodePathSegment = (value: string): string =>
 
 const MAX_PAGE_SIZE = 100;
 const MAX_CSV_ROWS = 1000;
-const CSV_TIMEOUT = 120;
 
 // Field-level truncation limits (search results only)
 const MAX_STRING_LEN = 500;
@@ -251,52 +250,58 @@ export async function getStripMergePut(
 // Request action preflight
 // ---------------------------------------------------------------------------
 
+type RequestActionPreflight =
+  | { ok: true; request: Record<string, unknown> }
+  | { ok: false; failure: Record<string, unknown> };
+
 export async function preflightRequestAction(
   client: HorizonClient,
   action: string,
   requestId: string,
   permissionKey: string,
-): Promise<Record<string, unknown>> {
-  let request: Record<string, unknown>;
-  try {
-    request = await client.get<Record<string, unknown>>(
-      `/api/v1/requests/${encodePathSegment(requestId)}`,
-    );
-  } catch (err) {
-    if (err instanceof HorizonError) {
-      return { error: err.toToolResult() };
-    }
-    return { error: String(err) };
-  }
+): Promise<RequestActionPreflight> {
+  const request = await client.get<Record<string, unknown>>(
+    `/api/v1/requests/${encodePathSegment(requestId)}`,
+  );
 
   const permissions = (request['permissions'] ?? {}) as Record<string, boolean>;
   if (!permissions[permissionKey]) {
     return {
-      error:
-        `Permission denied: you do not have '${action}' ` +
-        'permission on this request. Do NOT retry - use a ' +
-        'principal with the appropriate role, or check the ' +
-        "profile's authorization levels.",
-      request_id: requestId,
-      request_status: request['status'],
-      request_workflow: request['workflow'],
-      request_profile: request['profile'],
-      your_permissions: permissions,
+      ok: false,
+      failure: {
+        error:
+          `Permission denied: you do not have '${action}' ` +
+          'permission on this request. Do NOT retry - use a ' +
+          'principal with the appropriate role, or check the ' +
+          "profile's authorization levels.",
+        request_id: requestId,
+        request_status: request['status'],
+        request_workflow: request['workflow'],
+        request_profile: request['profile'],
+        your_permissions: permissions,
+      },
     };
   }
 
   const status = String(request['status'] ?? '').toLowerCase();
-  if (status !== 'pending') {
+  const acceptedStatuses =
+    action === 'approve' ? ['pending'] : ['pending', 'in_progress'];
+  if (!acceptedStatuses.includes(status)) {
+    const participle =
+      { approve: 'approved', deny: 'denied' }[action] ?? 'cancelled';
     return {
-      error:
-        `Request is not pending (current status: '${status}'). ` +
-        `Only pending requests can be ${action}d.`,
-      request_id: requestId,
-      request_status: status,
+      ok: false,
+      failure: {
+        error:
+          `Request status '${status}' cannot be ${participle}. ` +
+          `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
+        request_id: requestId,
+        request_status: status,
+      },
     };
   }
 
-  return request;
+  return { ok: true, request };
 }
 
 // ---------------------------------------------------------------------------
@@ -426,8 +431,6 @@ export function buildExportPayload(
 // ---------------------------------------------------------------------------
 // CSV export helper
 // ---------------------------------------------------------------------------
-
-export { CSV_TIMEOUT };
 
 export function csvTruncationMetadata(csvText: string): {
   truncated: boolean;
