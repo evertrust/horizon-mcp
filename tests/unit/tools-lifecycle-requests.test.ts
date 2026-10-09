@@ -1,6 +1,7 @@
 import type { Client } from '@modelcontextprotocol/client';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
+import { HorizonError } from '../../src/client/errors.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 import {
   type MockClient,
@@ -54,6 +55,7 @@ describe('Lifecycle tools', () => {
     it('enrolls with template', async () => {
       mockClient.post.mockResolvedValueOnce({
         id: 'req-001',
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
       });
@@ -146,6 +148,7 @@ describe('Lifecycle tools', () => {
   describe('approve_request', () => {
     it('approves with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         profile: 'my-profile',
@@ -168,12 +171,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-001', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-001',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(result.isError).not.toBe(true);
       expect(parsed['status']).toBe('approved');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         profile: 'my-profile',
@@ -189,11 +198,13 @@ describe('Lifecycle tools', () => {
 
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('blocks non-pending request', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'approved',
         permissions: { approve: true, cancel: false },
@@ -209,6 +220,7 @@ describe('Lifecycle tools', () => {
       expect(parsed.error).toBe(
         "Request status 'approved' cannot be approved. Only pending requests can be approved.",
       );
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
@@ -216,6 +228,7 @@ describe('Lifecycle tools', () => {
   describe('deny_request', () => {
     it('denies with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         permissions: { approve: true, cancel: true },
@@ -235,12 +248,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-002', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-002',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(result.isError).not.toBe(true);
       expect(parsed['status']).toBe('denied');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         permissions: { approve: false, cancel: true },
@@ -255,11 +274,13 @@ describe('Lifecycle tools', () => {
 
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('describes an invalid state with the denied participle', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'completed',
         permissions: { approve: true, cancel: true },
@@ -273,13 +294,39 @@ describe('Lifecycle tools', () => {
       expect(parseToolResult(result)['error']).toBe(
         "Request status 'completed' cannot be denied. Only pending or in_progress requests can be denied.",
       );
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
 
   describe('cancel_request', () => {
+    it('cancels an authorized in_progress request with an error field', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
+        workflow: 'enroll',
+        status: 'in_progress',
+        permissions: { cancel: true },
+        error: 'PKI-CONNECTOR-003',
+      });
+      mockClient.post.mockResolvedValueOnce({ status: 'cancelled' });
+
+      const result = await client.callTool({
+        name: 'cancel_request',
+        arguments: { request_id: 'req-003' },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/cancel', {
+        _id: 'req-003',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(result.isError).not.toBe(true);
+      expect(parseToolResult(result)['status']).toBe('cancelled');
+    });
+
     it('cancels with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         permissions: { approve: false, cancel: true },
@@ -299,12 +346,18 @@ describe('Lifecycle tools', () => {
         string,
         unknown
       >;
-      expect(payload).toEqual({ id: 'req-003', workflow: 'enroll' });
+      expect(payload).toEqual({
+        _id: 'req-003',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(result.isError).not.toBe(true);
       expect(parsed['status']).toBe('cancelled');
     });
 
     it('blocks without permission', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'pending',
         permissions: { approve: true, cancel: false },
@@ -319,11 +372,13 @@ describe('Lifecycle tools', () => {
 
       expect(parsed.error).toBeDefined();
       expect(parsed.error).toContain('Permission denied');
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
 
     it('describes an invalid state with the cancelled participle', async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status: 'completed',
         permissions: { approve: true, cancel: true },
@@ -337,6 +392,7 @@ describe('Lifecycle tools', () => {
       expect(parseToolResult(result)['error']).toBe(
         "Request status 'completed' cannot be cancelled. Only pending or in_progress requests can be cancelled.",
       );
+      expect(result.isError).toBe(true);
       expect(mockClient.post).not.toHaveBeenCalled();
     });
   });
@@ -381,6 +437,7 @@ describe('Lifecycle tools', () => {
   ])('$name request state $status', ({ name, status, endpoint, allowed }) => {
     it(`${allowed ? 'allows' : 'blocks'} the action`, async () => {
       mockClient.get.mockResolvedValueOnce({
+        module: 'webra',
         workflow: 'enroll',
         status,
         permissions: { approve: true, cancel: true },
@@ -394,17 +451,55 @@ describe('Lifecycle tools', () => {
 
       if (!allowed) {
         expect(String(parseToolResult(result)['error'])).toContain('pending');
+        expect(result.isError).toBe(true);
         expect(mockClient.post).not.toHaveBeenCalled();
         return;
       }
 
       expect(mockClient.post).toHaveBeenCalledWith(endpoint, {
-        id: 'async-request',
+        _id: 'async-request',
+        module: 'webra',
         workflow: 'enroll',
       });
+      expect(result.isError).not.toBe(true);
       expect(parseToolResult(result)['status']).toBe('handled');
     });
   });
+
+  describe.each(['approve_request', 'deny_request', 'cancel_request'])(
+    '%s API failures',
+    (name) => {
+      it.each(['get', 'post'] as const)(
+        'reports a %s failure as an MCP error',
+        async (method) => {
+          mockClient.get.mockResolvedValueOnce({
+            module: 'webra',
+            workflow: 'enroll',
+            status: 'pending',
+            permissions: { approve: true, cancel: true },
+          });
+          if (method === 'get') mockClient.get.mockReset();
+          mockClient[method].mockRejectedValueOnce(
+            new HorizonError(401, {
+              errorCode: 'SEC-AUTH-002',
+              message: 'Unauthorized',
+            }),
+          );
+          const result = await client.callTool({
+            name,
+            arguments: { request_id: 'req-error' },
+          });
+          expect(result.isError).toBe(true);
+          expect(result.content).toEqual([
+            expect.objectContaining({
+              text: expect.stringContaining('SEC-AUTH-002'),
+            }),
+          ]);
+          if (method === 'get') expect(mockClient.post).not.toHaveBeenCalled();
+        },
+      );
+    },
+  );
 
   // ==========================================================================
   // Cross-tool pagination contract

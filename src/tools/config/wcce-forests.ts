@@ -101,7 +101,7 @@ const CREATE_WCCE_FORESTS_SCHEMA = z.object({
   forest: z
     .string()
     .describe(
-      'AD forest name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
+      'AD forest name. Unique identifier; it cannot change after creation. Server-validated against regex [0-9a-zA-Z-_.]+.',
     ),
   template_mappings: z
     .array(templateMappingSchema)

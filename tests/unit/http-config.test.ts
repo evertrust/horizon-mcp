@@ -18,6 +18,31 @@ function build(env: Record<string, string | undefined>) {
 }
 
 describe('buildHttpConfig', () => {
+  it('reports obsolete authentication before other invalid HTTP settings', () => {
+    expect(() =>
+      build({
+        HORIZON_HTTP_AUTH_MODE: 'api-key',
+        HORIZON_MAX_SESSIONS: '1',
+        HORIZON_SSE_MAX_DURATION: '7',
+        HORIZON_EXPORT_TIMEOUT: '7',
+        HORIZON_ALLOW_PRIVATE_TLS_PROBE: '1',
+        HORIZON_HTTP_PATH: 'invalid',
+      }),
+    ).toThrow('HORIZON_HTTP_AUTH_MODE');
+  });
+
+  it('reports obsolete sessions before the response budget and endpoint', () => {
+    expect(() =>
+      build({
+        HORIZON_MAX_SESSIONS: '1',
+        HORIZON_SSE_MAX_DURATION: '7',
+        HORIZON_EXPORT_TIMEOUT: '7',
+        HORIZON_ALLOW_PRIVATE_TLS_PROBE: '1',
+        HORIZON_HTTP_PATH: 'invalid',
+      }),
+    ).toThrow('HORIZON_MAX_SESSIONS');
+  });
+
   describe('response budget', () => {
     it('requires the SSE duration to exceed the export timeout', () => {
       expect(() =>

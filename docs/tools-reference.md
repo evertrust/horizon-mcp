@@ -163,7 +163,7 @@ Other destructive tools do not all carry an echo, and they run as soon as the MC
 | `get_trigger`              | read-only            | Get a trigger configuration by name                               |
 | `create_rest_notification` | mutating-safe        | Create a REST notification with multi-step sequences              |
 | `delete_trigger`           | mutating-destructive | Delete a trigger (requires name confirmation)                     |
-| `simulate_trigger`         | read-only            | Test-fire a trigger without real certificate context              |
+| `simulate_trigger` | mutating-destructive | Test-fire an existing trigger. It sends real notifications or external requests, and repeated calls send repeated notifications |
 
 ---
 

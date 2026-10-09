@@ -40,7 +40,7 @@ function serviceAccountArgs() {
   return {
     name: 'ci-runner',
     trustConfig: staticTrustConfig(),
-    validationRules: ['{{iss}} equals "https://issuer.example"'],
+    validationRules: ['{{iss}} equals "https://issuer.example.com"'],
     permissions: [{ value: 'lifecycle:*:*:enroll' }],
     roles: ['operator'],
     iatFutureRestriction: '5 minutes',
@@ -118,7 +118,10 @@ describe('create_service_account', () => {
   it('rejects a dynamic JWKS URL without http(s)', async () => {
     const args = {
       ...serviceAccountArgs(),
-      trustConfig: { type: 'dynamic_jwks', url: 'ftp://issuer.example/jwks' },
+      trustConfig: {
+        type: 'dynamic_jwks',
+        url: 'ftp://issuer.example.com/jwks',
+      },
     };
     const result = await client.callTool({
       name: 'create_service_account',
@@ -127,6 +130,19 @@ describe('create_service_account', () => {
     expect(result.isError).toBe(true);
     expect(mc.post).not.toHaveBeenCalled();
   });
+  it.each(['iatPastRestriction', 'iatFutureRestriction'])(
+    'rejects creating an account with only %s',
+    async (field) => {
+      const args: Record<string, unknown> = serviceAccountArgs();
+      delete args[field];
+      const result = await client.callTool({
+        name: 'create_service_account',
+        arguments: args,
+      });
+      expect(result.isError).toBe(true);
+      expect(mc.post).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('update_service_account', () => {
@@ -137,7 +153,7 @@ describe('update_service_account', () => {
       tenant: 'default',
       name: 'ci-runner',
       trustConfig: { type: 'static_jwks', jwks: { keys: [{ kid: 'old' }] } },
-      validationRules: ['{{iss}} equals "https://issuer.example"'],
+      validationRules: ['{{iss}} equals "https://issuer.example.com"'],
       permissions: [{ value: 'lifecycle:*:*:enroll' }],
       roles: ['operator'],
     });
@@ -159,6 +175,96 @@ describe('update_service_account', () => {
       permissions: [{ value: 'lifecycle:*:*:enroll' }],
       roles: ['operator'],
     });
+  });
+});
+
+describe('service-account clear fields', () => {
+  it('clears optional restrictions while preserving trust and permissions', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce(serviceAccountArgs());
+    const result = await client.callTool({
+      name: 'update_service_account',
+      arguments: {
+        name: 'ci-runner',
+        clear_fields: ['iatPastRestriction', 'iatFutureRestriction'],
+      },
+    });
+    expect(result.isError).not.toBe(true);
+    const expected: Record<string, unknown> = serviceAccountArgs();
+    delete expected['iatPastRestriction'];
+    delete expected['iatFutureRestriction'];
+    expect(mc.put).toHaveBeenCalledWith(
+      '/api/v1/security/service-accounts',
+      expected,
+    );
+  });
+
+  it.each(['iatPastRestriction', 'iatFutureRestriction'])(
+    'rejects clearing only %s from a stored restriction pair',
+    async (field) => {
+      const { client, mc } = await setup();
+      mc.get.mockResolvedValueOnce(serviceAccountArgs());
+      const result = await client.callTool({
+        name: 'update_service_account',
+        arguments: { name: 'ci-runner', clear_fields: [field] },
+      });
+      expect(result.isError).toBe(true);
+      expect(mc.put).not.toHaveBeenCalled();
+    },
+  );
+
+  it('validates restrictions after merging with the stored account', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce(serviceAccountArgs());
+    const result = await client.callTool({
+      name: 'update_service_account',
+      arguments: { name: 'ci-runner', iatPastRestriction: '2 hours' },
+    });
+    expect(result.isError).not.toBe(true);
+    expect(mc.put).toHaveBeenCalledWith('/api/v1/security/service-accounts', {
+      ...serviceAccountArgs(),
+      iatPastRestriction: '2 hours',
+    });
+  });
+
+  it('omits cleared optional strings instead of sending null', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce(serviceAccountArgs());
+    const result = await client.callTool({
+      name: 'update_service_account',
+      arguments: {
+        name: 'ci-runner',
+        clear_fields: ['jwtAllowedClockSkew', 'identifierMapping'],
+      },
+    });
+    expect(result.isError).not.toBe(true);
+    const expected: Record<string, unknown> = serviceAccountArgs();
+    delete expected['jwtAllowedClockSkew'];
+    delete expected['identifierMapping'];
+    expect(mc.put).toHaveBeenCalledWith(
+      '/api/v1/security/service-accounts',
+      expected,
+    );
+  });
+
+  it.each([
+    'name',
+    'readonly',
+    'trustConfig',
+    'validationRules',
+    'permissions',
+    'roles',
+    'unknownField',
+  ])('rejects clearing %s before reading or writing Horizon', async (field) => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce(serviceAccountArgs());
+    const result = await client.callTool({
+      name: 'update_service_account',
+      arguments: { name: 'ci-runner', clear_fields: [field] },
+    });
+    expect(result.isError).toBe(true);
+    expect(mc.get).not.toHaveBeenCalled();
+    expect(mc.put).not.toHaveBeenCalled();
   });
 });
 

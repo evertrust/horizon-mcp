@@ -268,22 +268,7 @@ function resolveMtlsForMethods(
   return undefined;
 }
 
-/**
- * Validate and resolve every HTTP-mode setting into an HttpConfig, or throw.
- * Call only when `settings.transport === 'http'`. `env` is consulted solely
- * for the HORIZON_ALLOW_PRIVATE_TLS_PROBE fail-closed gate.
- */
-export function buildHttpConfig(
-  settings: HorizonSettings,
-  env: Record<string, string | undefined> = process.env,
-): HttpConfig {
-  if (settings.httpAuthMode) {
-    fail(
-      `HORIZON_HTTP_AUTH_MODE was replaced by HORIZON_HTTP_AUTH_METHODS; ` +
-        `set a comma- or pipe-separated whitelist such as "api-key,service"`,
-    );
-  }
-
+function assertRemovedSessionSettings(settings: HorizonSettings): void {
   // MCP 2026-07-28 removed protocol sessions. Fail closed rather than let a
   // deployment believe a session limit is still in force.
   const removedSessionVars: [string, string, string][] = [
@@ -312,6 +297,17 @@ export function buildHttpConfig(
       );
     }
   }
+}
+
+function assertCurrentHttpSettings(settings: HorizonSettings): void {
+  if (settings.httpAuthMode) {
+    fail(
+      `HORIZON_HTTP_AUTH_MODE was replaced by HORIZON_HTTP_AUTH_METHODS; ` +
+        `set a comma- or pipe-separated whitelist such as "api-key,service"`,
+    );
+  }
+
+  assertRemovedSessionSettings(settings);
   if (settings.initRateLimit) {
     fail(
       `HORIZON_INIT_RATE_LIMIT is no longer supported: there is no ` +
@@ -325,9 +321,11 @@ export function buildHttpConfig(
         `HORIZON_EXPORT_TIMEOUT; leave headroom above the export budget.`,
     );
   }
-  const acceptedAuthMethods = assertValidAuthMethodMask(
-    settings.httpAuthMethods,
-  );
+}
+
+function assertHttpPrivateProbeDisabled(
+  env: Record<string, string | undefined>,
+): void {
   if (env['HORIZON_ALLOW_PRIVATE_TLS_PROBE'] === '1') {
     fail(
       `HORIZON_ALLOW_PRIVATE_TLS_PROBE=1 is not allowed in HTTP mode: it would ` +
@@ -335,27 +333,13 @@ export function buildHttpConfig(
         `reachable by any caller`,
     );
   }
+}
 
-  const path = normalizePath(settings.httpPath);
-  const publicUrl = settings.publicUrl
-    ? validatePublicUrl(settings.publicUrl)
-    : undefined;
-  const allowedHosts = deriveAllowedHosts(settings, publicUrl);
-  const allowedOrigins = deriveAllowedOrigins(settings);
-  const mtls = resolveMtlsForMethods(settings);
-  const listenerTls = Boolean(mtls?.listener);
-  if (listenerTls && publicUrl?.protocol === 'http:') {
-    fail(
-      `HORIZON_PUBLIC_URL must use https when the MCP TLS listener is enabled`,
-    );
-  }
-  const publicEndpoint = derivePublicEndpoint(
-    settings,
-    path,
-    publicUrl,
-    listenerTls,
-  );
-
+function assertHeaderTransport(
+  settings: HorizonSettings,
+  publicUrl: URL | undefined,
+  acceptedAuthMethods: HttpAuthMethodMask,
+): void {
   // Fail closed: API-key and JWKS service-account methods carry per-caller
   // credentials in headers, so cleartext HTTP on a non-loopback bind leaks
   // them on the wire. An HTTPS public URL denotes a TLS-terminating edge.
@@ -374,6 +358,59 @@ export function buildHttpConfig(
         `proxy) or bind to loopback.`,
     );
   }
+}
+
+function resolveHttpTlsEndpoint(
+  settings: HorizonSettings,
+  path: string,
+  publicUrl: URL | undefined,
+  acceptedAuthMethods: HttpAuthMethodMask,
+): { mtls: HttpMtlsConfig | undefined; publicEndpoint: string } {
+  const mtls = resolveMtlsForMethods(settings);
+  const listenerTls = Boolean(mtls?.listener);
+  if (listenerTls && publicUrl?.protocol === 'http:') {
+    fail(
+      `HORIZON_PUBLIC_URL must use https when the MCP TLS listener is enabled`,
+    );
+  }
+  const publicEndpoint = derivePublicEndpoint(
+    settings,
+    path,
+    publicUrl,
+    listenerTls,
+  );
+
+  assertHeaderTransport(settings, publicUrl, acceptedAuthMethods);
+  return { mtls, publicEndpoint };
+}
+
+/**
+ * Validate and resolve every HTTP-mode setting into an HttpConfig, or throw.
+ * Call only when `settings.transport === 'http'`. `env` is consulted solely
+ * for the HORIZON_ALLOW_PRIVATE_TLS_PROBE fail-closed gate.
+ */
+export function buildHttpConfig(
+  settings: HorizonSettings,
+  env: Record<string, string | undefined> = process.env,
+): HttpConfig {
+  assertCurrentHttpSettings(settings);
+  const acceptedAuthMethods = assertValidAuthMethodMask(
+    settings.httpAuthMethods,
+  );
+  assertHttpPrivateProbeDisabled(env);
+
+  const path = normalizePath(settings.httpPath);
+  const publicUrl = settings.publicUrl
+    ? validatePublicUrl(settings.publicUrl)
+    : undefined;
+  const allowedHosts = deriveAllowedHosts(settings, publicUrl);
+  const allowedOrigins = deriveAllowedOrigins(settings);
+  const { mtls, publicEndpoint } = resolveHttpTlsEndpoint(
+    settings,
+    path,
+    publicUrl,
+    acceptedAuthMethods,
+  );
 
   return {
     host: settings.httpHost,

@@ -116,6 +116,59 @@ describe('Discovery campaign tools', () => {
   });
 
   describe('create_discovery_campaign', () => {
+    it.each(['Local', 'OpenId', 'X509', 'Pop'])(
+      'accepts and forwards an enforced %s identity provider',
+      async (type) => {
+        const authorizationLevels = {
+          search: {
+            accessLevel: 'authenticated',
+            enforcedIdentityProviders: [{ type, name: 'example.com' }],
+          },
+          feed: { accessLevel: 'authorized' },
+        };
+        const result = await client.callTool({
+          name: 'create_discovery_campaign',
+          arguments: {
+            name: 'example-campaign',
+            authorization_levels: authorizationLevels,
+          },
+        });
+
+        expect(result.isError).not.toBe(true);
+        expect(mockClient.post).toHaveBeenCalledWith(
+          '/api/v1/discovery/campaigns',
+          expect.objectContaining({ authorizationLevels }),
+        );
+      },
+    );
+
+    it.each([
+      'example.com',
+      { name: 'example.com' },
+      { type: 'Local' },
+      { type: 'invalid', name: 'example.com' },
+    ])(
+      'rejects an invalid enforced identity provider: %j',
+      async (provider) => {
+        const result = await client.callTool({
+          name: 'create_discovery_campaign',
+          arguments: {
+            name: 'example-campaign',
+            authorization_levels: {
+              search: {
+                accessLevel: 'authenticated',
+                enforcedIdentityProviders: [provider],
+              },
+              feed: { accessLevel: 'authorized' },
+            },
+          },
+        });
+
+        expect(result.isError).toBe(true);
+        expect(mockClient.post).not.toHaveBeenCalled();
+      },
+    );
+
     it('creates valid campaign', async () => {
       mockClient.post.mockResolvedValueOnce({ name: 'new-scan' });
       const authLevels = {

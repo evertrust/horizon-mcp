@@ -4,6 +4,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { beforeAll, describe, expect, it } from 'vitest';
 
+import { getAllResources } from '../../src/resources/catalog.js';
 import { registerAllResources } from '../../src/resources/index.js';
 import {
   CURATED_KNOWLEDGE_FILES,
@@ -14,6 +15,29 @@ import {
 } from './support/golden-harness.js';
 
 describe('Knowledge resource accessibility', () => {
+  it('reads every catalog resource through MCP, including generated sections', async () => {
+    const server = new McpServer({ name: 'test-resources', version: '0.0.0' });
+    registerAllResources(server);
+    const client = new Client({ name: 'test-reader', version: '0.0.0' });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(ct), server.connect(st)]);
+
+    try {
+      for (const resource of getAllResources()) {
+        const result = await client.readResource({ uri: resource.uri });
+        expect(result.contents, resource.uri).toHaveLength(1);
+        expect(result.contents[0], resource.uri).toMatchObject({
+          uri: resource.uri,
+          text: resource.content,
+        });
+        expect(resource.content.trim(), resource.uri).not.toBe('');
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it.each(KNOWLEDGE_FILES)(
     'knowledge file %s exists and has >50 lines',
     (filename) => {
@@ -237,17 +261,18 @@ describe('Knowledge field alignment', () => {
     );
     for (const concept of [
       'on_approve_enroll',
-      'pkcs12',
-      'certificate.private_key',
+      'request.password',
+      'request.certificate',
       'previous.certificate',
-      'fire-and-forget',
-      'Dictionary Availability Matrix',
+      'caller-chosen correlation key',
     ]) {
       expect(
         knowledgeText,
         `Event semantics concept '${concept}' not in rest_notifications.md`,
       ).toContain(concept);
     }
+    expect(knowledgeText).not.toContain('fire-and-forget');
+    expect(knowledgeText).not.toContain('Dictionary Availability Matrix');
   });
 
   it('rest-notifications knowledge mentions chaining patterns', () => {

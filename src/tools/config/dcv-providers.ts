@@ -35,7 +35,7 @@ const SPEC: ConfigSpec = {
   routeCollection: '/api/v1/dcv/providers',
   routeItem: '/api/v1/dcv/providers/{name}',
   idField: 'name',
-  immutableKeys: ['name', '_id'],
+  immutableKeys: ['name', '_id', 'type'],
   stripFields: ['_id', 'tenant'],
   putOnCollection: true,
 };
@@ -47,6 +47,11 @@ const credentialsSchema = z
   .string()
   .describe(
     'Name of an existing credentials object (DCV target) holding the provider API key.',
+  );
+const gsMsslCredentialsSchema = z
+  .string()
+  .describe(
+    'Name of an existing login/password credentials object for GlobalSign MSSL.',
   );
 const timeoutSchema = z
   .string()
@@ -100,7 +105,9 @@ const organizationIdSchema = z
   );
 const providerNameSchema = z
   .string()
-  .describe('Provider name. Immutable primary key (the update lookup key).');
+  .describe(
+    'Provider name. Unique identifier (the update lookup key); it cannot change after creation.',
+  );
 const clearFieldsSchema = z
   .array(z.string())
   .optional()
@@ -121,7 +128,7 @@ const CREATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
       .literal('gs_mssl')
       .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema,
-    credentials: credentialsSchema,
+    credentials: gsMsslCredentialsSchema,
     timeout: timeoutSchema,
     proxy: proxySchema.optional(),
     profile: profileSchema,
@@ -159,7 +166,7 @@ const UPDATE_DCV_PROVIDERS_SCHEMA = z.discriminatedUnion('type', [
       .literal('gs_mssl')
       .describe('GlobalSign MSSL DCV provider (Horizon 2.11+).'),
     endpoint: endpointSchema.optional(),
-    credentials: credentialsSchema.optional(),
+    credentials: gsMsslCredentialsSchema.optional(),
     timeout: timeoutSchema.optional(),
     proxy: proxySchema.optional(),
     profile: profileSchema.optional(),

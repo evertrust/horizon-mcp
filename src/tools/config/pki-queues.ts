@@ -76,7 +76,9 @@ function buildPkiQueueBody(args: {
 const CREATE_PKI_QUEUES_SCHEMA = z.object({
   name: z
     .string()
-    .describe('PKI queue name. Immutable primary key, must not already exist.'),
+    .describe(
+      'PKI queue name. Unique identifier; it cannot change after creation. Must not already exist.',
+    ),
   size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
   cluster_wide: z
     .boolean()
@@ -93,8 +95,11 @@ const CREATE_PKI_QUEUES_SCHEMA = z.object({
 
 const UPDATE_PKI_QUEUES_SCHEMA = z.object({
   name: z.string().describe('PKI queue name to update (immutable key).'),
-  size: z.number().int().optional(),
-  cluster_wide: z.boolean().optional(),
+  size: CREATE_PKI_QUEUES_SCHEMA.shape.size.optional().describe('Queue size.'),
+  cluster_wide: CREATE_PKI_QUEUES_SCHEMA.shape.cluster_wide
+    .removeDefault()
+    .optional()
+    .describe('Whether the queue is shared across the cluster.'),
   description: descriptionSchema.optional(),
   throttle_duration: throttleDurationSchema.optional(),
   throttle_parallelism: throttleParallelismSchema.optional(),

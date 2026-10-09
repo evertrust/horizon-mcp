@@ -25,7 +25,9 @@ order:
 
 ---
 
-## Asynchronous PKI Connector Enrollment
+## Asynchronous PKI Connector Enrollment (Horizon 2.10+)
+
+Check the version with `get_license_info` before using asynchronous enrollment.
 
 The following PKI connector types use asynchronous enrollment and accept a
 `retryInterval`: `digicert`, `acmeenroll`, `integrated`, `gsmssl`, `gsatlas`,
@@ -159,19 +161,8 @@ directory. Also used for certificate publishing to AD.
    }
    ```
 
-2. Add computation rules to map LDAP attributes to certificate fields:
-   ```json
-   {
-     "computationRules": [
-       {
-         "source": "{{ ds.1.1.department }}",
-         "target": "subject.organizationalUnit"
-       },
-       { "source": "{{ ds.1.1.mail }}", "target": "subject.email" },
-       { "source": "{{ ds.1.1.displayName }}", "target": "subject.commonName" }
-     ]
-   }
-   ```
+2. Set `computationRule` on the selected `certificateTemplate` fields,
+   using the datasource dictionary entries.
 
 ### Certificate Publishing to AD
 
@@ -228,7 +219,8 @@ Restrict enrollment to OIDC-authenticated users:
 
 ### Claim Mapping
 
-Horizon 2.10 uses claim expressions and an explicit role/team mapping:
+Horizon 2.9+ uses claim expressions and an explicit role/team mapping.
+Horizon 2.8 does not support role/team mapping in the identity-provider API:
 
 | Public API Field              | Purpose                                                     |
 | ----------------------------- | ----------------------------------------------------------- |
@@ -408,12 +400,12 @@ Complete setup for automated internal TLS certificate issuance:
 
 1. **Credential** "adcs-creds" -- service account for ADCS
 2. **Credential** "ldap-creds" -- LDAP bind credentials
-3. **PKI Connector** "adcs-prod" (type: `msadcs` or `evtadcs`) -- references "adcs-creds"
+3. **PKI Connector** "adcs-prod" (type: `evtadcs`) -- references "adcs-creds"
 4. **Datasource** "corp-ldap" (type: `ldap`) -- references "ldap-creds"
 5. **Profile** "TLS-Internal" (module: `webra`):
    - `pkiConnector: "adcs-prod"`
    - `dsFlow` with "corp-ldap" to enrich requests
-   - `computationRules` to map LDAP attributes to subject fields
+   - `computationRule` on certificate-template fields to map LDAP attributes
    - `authorizationMode: "auto-validation"` with validation ruleset
    - `selfPermissions.selfPopRenew: true` for automated renewal
 6. **Trigger** "notify-expiry-30d" (type: `email`) -- attach to profile
@@ -453,7 +445,7 @@ Step 2: create_rest_notification(
   ]
 )
 Step 3: Attach the trigger to a profile via the Horizon admin UI
-        or by updating the profile's triggerHooks via the API.
+        or by updating the profile's triggers via the API.
 ```
 
 ### Create an Email Notification Trigger with Attachments
@@ -483,71 +475,61 @@ Email triggers are created via the Horizon admin UI or the trigger API
 
 ### Create a Profile with Datasource Flow and Computation Rules
 
-Set up a WebRA profile that auto-populates certificate fields from an LDAP
-datasource. The datasource must exist before the profile references it.
+Set up a WebRA profile that fills certificate fields from an LDAP datasource.
+Ask the user for the immutable datasource and profile names, the existing LDAP
+credential, and the required profile policies before creation.
 
-```
-Step 1: create_datasource(name="ldap-lookup", ...)
-Step 2: create_webra_profile(
-  name="AutoDN-Profile",
-  pki_connector="my-pki",
-  certificate_template={
-    "subject": [
-      {"type": "CN", "computationRule": "{{ ds.1.1.cn }}", "mandatory": true, "editableByRequester": false},
-      {"type": "O", "value": "My Org", "mandatory": true, "editableByRequester": false},
-      {"type": "OU", "computationRule": "{{ ds.1.1.department }}", "mandatory": false}
-    ],
-    "sans": [
-      {"type": "RFC822", "computationRule": "{{ ds.1.1.email }}", "editableByRequester": false}
-    ]
-  },
-  authorization_levels={
-    "search": {"accessLevel": "authenticated"},
-    "update": {"accessLevel": "authorized"},
-    "requestUpdate": {"accessLevel": "authenticated"},
-    "approveUpdate": {"accessLevel": "authorized"},
-    "enroll": {"accessLevel": "authenticated"},
-    "approveEnroll": {"accessLevel": "authorized"}
-  },
-  ds_flow=[
-    {"ds": "ldap-lookup", "inputs": [{"key": "uid", "value": "${holderid}"}], "stopOnSuccess": true}
+1. Call `create_ldap_datasource` with `name`, `hostname`, `credentials`,
+   `base_dn`, `filter`, `secure`, and `timeout`. For example, use
+   `hostname: "ldap.example.com"`, `base_dn: "dc=example,dc=com"`, and
+   `filter: "(uid={{username}})"`. Select the attributes needed by the template.
+2. Call `simulate_datasource_flow` with
+   `flow: [{"datasource": "ldap-lookup", "inputs": {"username": "{{username}}"}}]`
+   and `context: {"username": "alice"}` to check the lookup.
+3. Call `describe_certificate_profile_schema` with `subtype: "webra"`.
+4. Call `create_certificate_profile` with `module: "webra"`, the user-supplied
+   `name`, `enabled`, `authorization_levels`, `requests_policy`,
+   `self_permissions`, and `crypto_policy`. Put subtype fields in `config`,
+   including `pkiConnector`, `certificateTemplate`, `authorizationMode`,
+   and `dsFlow`. Use the documented structures returned by the schema tool.
+
+The profile's `config.dsFlow` uses the API shape, unlike the simulation tool's
+`flow` input. For example:
+
+```json
+{
+  "dsFlow": [
+    {
+      "ds": "ldap-lookup",
+      "inputs": [{ "key": "username", "value": "{{principal.identifier}}" }],
+      "stopOnSuccess": true
+    }
   ]
-)
+}
 ```
+
+Use `{{ds.1.1.cn}}` or `{{ds.1.1.mail}}` in certificate-template computation
+rules to reference the selected LDAP attributes.
 
 ### Set Up ACME with DNS-01 and Expiry Notification
 
-Create an ACME profile for automated certificate issuance, then add a
-trigger that warns certificate contacts 30 days before expiry.
+Create an ACME profile for automated issuance, then attach an expiry trigger.
+Ask the user for the immutable profile and trigger names and required policies.
 
-```
-Step 1: list_pki_connectors → select the target CA connector
-Step 2: create_acme_profile(
-  name="acme-dns01",
-  pki_connector="my-pki",
-  certificate_template={
-    "subject": [
-      {"type": "CN", "mandatory": true, "editableByRequester": true}
-    ],
-    "sans": [
-      {"type": "DNSNAME", "editableByRequester": true, "min": 1, "max": 10}
-    ]
-  },
-  authorization_levels={
-    "search": {"accessLevel": "authenticated"},
-    "update": {"accessLevel": "authorized"},
-    "requestUpdate": {"accessLevel": "authenticated"},
-    "approveUpdate": {"accessLevel": "authorized"},
-    "enroll": {"accessLevel": "authenticated"}
-  },
-  acme_challenge_type="dns-01"
-)
-Step 3: Create an email notification via the trigger API or Horizon admin UI:
-        POST /api/v1/triggers with type="email", events=["on_expire"],
-        runPeriod="1 day", runOnRenewed=false
-Step 4: Attach the trigger to the profile via the Horizon admin UI
-        or by updating the profile's triggerHooks via the API.
-```
+1. Use `list_pki_connectors` to select the target CA connector.
+2. Call `describe_certificate_profile_schema` with `subtype: "acme"`.
+3. Call `create_certificate_profile` with `module: "acme"`, `name`, `enabled`,
+   `authorization_levels`, `requests_policy`, `self_permissions`, and
+   `crypto_policy`. Set `config.pkiConnector` to the selected connector and
+   `config.authorizationMethods` to `["dns-01"]`. Supply the remaining
+   ACME settings required by the schema, including `timeout`,
+   `authorizeShortName`, `authorizeEmptyContact`, `verifyRetryCount`,
+   `verifyRetryDelay`, and `requireTermsOfService`.
+4. Call `describe_trigger_schema` with `subtype: "email"`, then `create_trigger`
+   with `name`, `type: "email"`, and `config` containing `events: ["on_expire"]`,
+   `runPeriod: "1 day"`, `runOnRenewed: false`, and the user-supplied
+   `emailTemplate`.
+5. Attach the trigger to the profile in the Horizon administration UI.
 
 ### Create a Dashboard for Certificate Monitoring
 
@@ -606,8 +588,8 @@ Step 1: create_execution_policy(
   name="business-hours",
   description="Allow automation only during business hours",
   authorized_periods=[{
-    "weekDays": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
-    "timeRange": {"start": "08:00:00", "end": "18:00:00"}
+    "week_days": ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY"],
+    "time_range": {"start": "08:00:00", "end": "18:00:00"}
   }]
 )
 Step 2: create_automation_policy(
@@ -626,9 +608,10 @@ Step 2: create_automation_policy(
    API and are never exposed through the MCP server. Plan credential creation
    as the first step in any integration setup.
 
-2. **Connectivity testing**: After creating connectors and datasources, use
-   the test endpoints (`simulate_datasource`, `simulate_trigger`) to verify
-   connectivity before attaching to profiles.
+2. **Connectivity testing**: Use `test_datasource` with `ds_type`, `name`,
+   the connection fields, and optional `context` to test a datasource. Use `simulate_datasource_flow` with `flow`
+   and optional `context` to test a flow. `simulate_trigger` takes `name`
+   and sends real notifications; use a test trigger and recipient.
 
 3. **Proxy routing**: If Horizon is in a DMZ or restricted network, create
    HTTP proxy objects for connectors that need to reach external services.

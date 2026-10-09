@@ -17,6 +17,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { localizedStringEntrySchema } from '../helpers.js';
 import {
   type ConfigSpec,
   registerCreateTool,
@@ -38,7 +39,7 @@ const SPEC: ConfigSpec = {
 };
 
 const localizedStringSchema = z
-  .array(z.object({ lang: z.string(), value: z.string() }))
+  .array(localizedStringEntrySchema)
   .describe(
     "Localized strings, e.g. [{lang: 'en', value: 'Business Unit'}]. lang is an " +
       'ISO 3166-1 two-letter code.',
@@ -48,7 +49,7 @@ const CREATE_CERTIFICATE_LABELS_SCHEMA = z.object({
   name: z
     .string()
     .describe(
-      'Technical name of the label. Immutable primary key, server-validated ' +
+      'Technical name of the label. Unique identifier; it cannot change after creation. Server-validated ' +
         'against regex [0-9a-zA-Z-_]+ (alphanumeric, hyphen, underscore; NO dots).',
     ),
   display_name: localizedStringSchema

@@ -64,7 +64,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
           "type": "string",
         },
         "name": {
-          "description": "Service-account name. Immutable primary key.",
+          "description": "Service-account name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
         "permissions": {
@@ -105,6 +105,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
                 },
                 "type": {
                   "const": "static_jwks",
+                  "description": "Trust a static JWKS document.",
                   "type": "string",
                 },
               },
@@ -122,6 +123,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
                 },
                 "type": {
                   "const": "dynamic_jwks",
+                  "description": "Fetch a JWKS document from a URL.",
                   "type": "string",
                 },
                 "url": {
@@ -183,8 +185,14 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "clear_fields": {
-          "description": "Top-level optional fields to null explicitly.",
+          "description": "Top-level optional fields to remove. Clear both iat restrictions together.",
           "items": {
+            "enum": [
+              "iatFutureRestriction",
+              "iatPastRestriction",
+              "jwtAllowedClockSkew",
+              "identifierMapping",
+            ],
             "type": "string",
           },
           "type": "array",
@@ -198,6 +206,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
           "type": "string",
         },
         "identifierMapping": {
+          "description": "Template used to derive the authenticated principal identifier.",
           "type": "string",
         },
         "jwtAllowedClockSkew": {
@@ -246,6 +255,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
                 },
                 "type": {
                   "const": "static_jwks",
+                  "description": "Trust a static JWKS document.",
                   "type": "string",
                 },
               },
@@ -263,6 +273,7 @@ exports[`Golden tests > service-account mutation schemas match snapshot 1`] = `
                 },
                 "type": {
                   "const": "dynamic_jwks",
+                  "description": "Fetch a JWKS document from a URL.",
                   "type": "string",
                 },
                 "url": {
@@ -639,12 +650,14 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "properties": {
         "authorization_levels": {
           "additionalProperties": {},
-          "description": "Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. Valid accessLevel values: "everyone", "authenticated", "authorized". Optional per-section: "enforcedIdentityProviders": ["idp-name"].",
+          "description": "Access control for search and feed operations. Required shape: {"search": {"accessLevel": "authenticated"}, "feed": {"accessLevel": "authorized"}}. Valid accessLevel values: "everyone", "authenticated", "authorized". Optional per-section: "enforcedIdentityProviders": [{"type": "Local", "name": "idp-name"}].",
           "properties": {
             "feed": {
               "additionalProperties": {},
+              "description": "Authorization required to feed certificates into this campaign.",
               "properties": {
                 "accessLevel": {
+                  "description": "Access level required to perform the action.",
                   "enum": [
                     "everyone",
                     "authenticated",
@@ -653,8 +666,29 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
                   "type": "string",
                 },
                 "enforcedIdentityProviders": {
+                  "description": "Identity providers enforced for this action. Each requires type and name.",
                   "items": {
-                    "type": "string",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the enforced identity provider.",
+                        "type": "string",
+                      },
+                      "type": {
+                        "description": "Type of the enforced identity provider.",
+                        "enum": [
+                          "Local",
+                          "OpenId",
+                          "X509",
+                          "Pop",
+                        ],
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                    ],
+                    "type": "object",
                   },
                   "type": "array",
                 },
@@ -666,8 +700,10 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
             },
             "search": {
               "additionalProperties": {},
+              "description": "Authorization required to search this campaign.",
               "properties": {
                 "accessLevel": {
+                  "description": "Access level required to perform the action.",
                   "enum": [
                     "everyone",
                     "authenticated",
@@ -676,8 +712,29 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
                   "type": "string",
                 },
                 "enforcedIdentityProviders": {
+                  "description": "Identity providers enforced for this action. Each requires type and name.",
                   "items": {
-                    "type": "string",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the enforced identity provider.",
+                        "type": "string",
+                      },
+                      "type": {
+                        "description": "Type of the enforced identity provider.",
+                        "enum": [
+                          "Local",
+                          "OpenId",
+                          "X509",
+                          "Pop",
+                        ],
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                    ],
+                    "type": "object",
                   },
                   "type": "array",
                 },
@@ -767,9 +824,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "lang": {
+                "description": "Language code, for example "en" or "fr".",
                 "type": "string",
               },
               "value": {
+                "description": "Localized text value.",
                 "type": "string",
               },
             },
@@ -790,7 +849,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "name": {
-          "description": "Unique datasource name (immutable primary key).",
+          "description": "Datasource name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
         "port": {
@@ -830,12 +889,15 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "key": {
+                "description": "Output attribute key.",
                 "type": "string",
               },
               "multi": {
+                "description": "Whether the attribute has multiple values.",
                 "type": "boolean",
               },
               "selected": {
+                "description": "Whether to select the attribute on future fetches.",
                 "type": "boolean",
               },
             },
@@ -870,9 +932,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "lang": {
+                "description": "Language code, for example "en" or "fr".",
                 "type": "string",
               },
               "value": {
+                "description": "Localized text value.",
                 "type": "string",
               },
             },
@@ -903,7 +967,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "integer",
         },
         "name": {
-          "description": "Unique datasource name (immutable primary key).",
+          "description": "Datasource name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
         "port": {
@@ -947,12 +1011,15 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "key": {
+                "description": "Output attribute key.",
                 "type": "string",
               },
               "multi": {
+                "description": "Whether the attribute has multiple values.",
                 "type": "boolean",
               },
               "selected": {
+                "description": "Whether to select the attribute on future fetches.",
                 "type": "boolean",
               },
             },
@@ -982,9 +1049,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "lang": {
+                "description": "Language code, for example "en" or "fr".",
                 "type": "string",
               },
               "value": {
+                "description": "Localized text value.",
                 "type": "string",
               },
             },
@@ -1010,9 +1079,11 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "name": {
+                "description": "HTTP header name.",
                 "type": "string",
               },
               "value": {
+                "description": "HTTP header value TemplateString.",
                 "type": "string",
               },
             },
@@ -1029,7 +1100,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "string",
         },
         "name": {
-          "description": "Unique datasource name (immutable primary key).",
+          "description": "Datasource name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
         "payload": {
@@ -1080,7 +1151,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "type": "integer",
         },
         "name": {
-          "description": "Unique trigger name (immutable primary key).",
+          "description": "Trigger name. Unique identifier; it cannot change after creation.",
           "type": "string",
         },
         "on_trigger_error": {
@@ -1092,7 +1163,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         },
         "retries": {
           "default": 10,
-          "description": "Retry count on failure with exponential backoff (default 10).",
+          "description": "Number of retries when the notification fails.",
           "maximum": 9007199254740991,
           "minimum": -9007199254740991,
           "type": "integer",
@@ -1536,7 +1607,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
-          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HCQL query fields. Examples: dn, serial, contactEmail, autoRenew, module, profile, notAfter. Prefix families: label.<key>, metadata.<key>, grade.<policy>, team.displayname.<lang>. Invalid names return a Horizon 500 that lists the usable columns.",
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HCQL query fields. Examples: dn, serial, contactEmail, autoRenew, module, profile, notAfter. Prefix families: label.<key>, metadata.<key>, grade.<policy>, team.displayname.<lang>.",
           "items": {
             "type": "string",
           },
@@ -1595,7 +1666,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
-          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HEQL query fields. Examples: code, module, timestamp, status, plus detail.<key> for detail columns (detail.actorId, detail.ip). Invalid names return a Horizon 500 that lists the usable columns.",
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HEQL query fields. Examples: code, module, timestamp, status, plus detail.<key> for detail columns (detail.actorId, detail.ip).",
           "items": {
             "type": "string",
           },
@@ -1622,7 +1693,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "properties": {
         "fields": {
-          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HRQL query fields. Examples: profile, requestType, status, contactEmail, registrationDate. Prefix families: label.<key>, metadata.<key>. Invalid names return a Horizon 500 that lists the usable columns.",
+          "description": "CSV columns to include, as camelCase API column names (SearchResult columns) - NOT the lowercase HRQL query fields. Examples: profile, requestType, status, contactEmail, registrationDate. Prefix families: label.<key>, metadata.<key>.",
           "items": {
             "type": "string",
           },
@@ -1698,11 +1769,13 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
             "additionalProperties": {},
             "properties": {
               "port": {
+                "description": "TLS port number.",
                 "maximum": 9007199254740991,
                 "minimum": -9007199254740991,
                 "type": "integer",
               },
               "version": {
+                "description": "TLS protocol version.",
                 "type": "string",
               },
             },
@@ -2910,6 +2983,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
           "items": {
             "properties": {
               "datasource": {
+                "description": "Name of the datasource to execute.",
                 "type": "string",
               },
               "inputs": {
@@ -2917,6 +2991,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
                   "type": "string",
                 },
                 "default": {},
+                "description": "Datasource inputs as key-value pairs. Each value is a computation rule.",
                 "propertyNames": {
                   "type": "string",
                 },
@@ -2924,6 +2999,7 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
               },
               "stopOnSuccess": {
                 "default": false,
+                "description": "Stop the flow when this datasource succeeds.",
                 "type": "boolean",
               },
             },
@@ -3088,12 +3164,15 @@ check get_request_template.",
           "items": {
             "properties": {
               "key": {
+                "description": "Output attribute key.",
                 "type": "string",
               },
               "multi": {
+                "description": "Whether the attribute has multiple values.",
                 "type": "boolean",
               },
               "selected": {
+                "description": "Whether to select the attribute on future fetches.",
                 "type": "boolean",
               },
             },
@@ -3150,9 +3229,11 @@ check get_request_template.",
           "items": {
             "properties": {
               "name": {
+                "description": "HTTP header name.",
                 "type": "string",
               },
               "value": {
+                "description": "HTTP header value TemplateString.",
                 "type": "string",
               },
             },
@@ -3578,12 +3659,15 @@ Examples:
           "items": {
             "properties": {
               "key": {
+                "description": "Output attribute key.",
                 "type": "string",
               },
               "multi": {
+                "description": "Whether the attribute has multiple values.",
                 "type": "boolean",
               },
               "selected": {
+                "description": "Whether to select the attribute on future fetches.",
                 "type": "boolean",
               },
             },
@@ -3628,9 +3712,11 @@ Examples:
           "items": {
             "properties": {
               "lang": {
+                "description": "Language code, for example "en" or "fr".",
                 "type": "string",
               },
               "value": {
+                "description": "Localized text value.",
                 "type": "string",
               },
             },
@@ -3664,9 +3750,11 @@ Examples:
           "items": {
             "properties": {
               "name": {
+                "description": "HTTP header name.",
                 "type": "string",
               },
               "value": {
+                "description": "HTTP header value TemplateString.",
                 "type": "string",
               },
             },
@@ -3759,8 +3847,10 @@ Examples:
           "properties": {
             "feed": {
               "additionalProperties": {},
+              "description": "Authorization required to feed certificates into this campaign.",
               "properties": {
                 "accessLevel": {
+                  "description": "Access level required to perform the action.",
                   "enum": [
                     "everyone",
                     "authenticated",
@@ -3769,8 +3859,29 @@ Examples:
                   "type": "string",
                 },
                 "enforcedIdentityProviders": {
+                  "description": "Identity providers enforced for this action. Each requires type and name.",
                   "items": {
-                    "type": "string",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the enforced identity provider.",
+                        "type": "string",
+                      },
+                      "type": {
+                        "description": "Type of the enforced identity provider.",
+                        "enum": [
+                          "Local",
+                          "OpenId",
+                          "X509",
+                          "Pop",
+                        ],
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                    ],
+                    "type": "object",
                   },
                   "type": "array",
                 },
@@ -3782,8 +3893,10 @@ Examples:
             },
             "search": {
               "additionalProperties": {},
+              "description": "Authorization required to search this campaign.",
               "properties": {
                 "accessLevel": {
+                  "description": "Access level required to perform the action.",
                   "enum": [
                     "everyone",
                     "authenticated",
@@ -3792,8 +3905,29 @@ Examples:
                   "type": "string",
                 },
                 "enforcedIdentityProviders": {
+                  "description": "Identity providers enforced for this action. Each requires type and name.",
                   "items": {
-                    "type": "string",
+                    "properties": {
+                      "name": {
+                        "description": "Name of the enforced identity provider.",
+                        "type": "string",
+                      },
+                      "type": {
+                        "description": "Type of the enforced identity provider.",
+                        "enum": [
+                          "Local",
+                          "OpenId",
+                          "X509",
+                          "Pop",
+                        ],
+                        "type": "string",
+                      },
+                    },
+                    "required": [
+                      "type",
+                      "name",
+                    ],
+                    "type": "object",
                   },
                   "type": "array",
                 },

@@ -101,7 +101,7 @@ const CREATE_AUTOMATION_POLICIES_SCHEMA = z.object({
   name: z
     .string()
     .describe(
-      'Automation policy name. Immutable primary key, regex [0-9a-zA-Z-_.]+.',
+      'Automation policy name. Unique identifier; it cannot change after creation. Regex [0-9a-zA-Z-_.]+.',
     ),
   profile: profileSchema,
   execution_policy: executionPolicySchema.optional(),

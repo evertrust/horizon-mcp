@@ -180,80 +180,53 @@ function titleFromName(name: string): string {
     .join(' ');
 }
 
-function classify(name: string): Classification {
-  const title = titleFromName(name);
-
-  // Open-world tools: reach outside Horizon or hit live network endpoints.
-  const isOpenWorld =
-    name === 'fetch_exposed_certificate' ||
-    name === 'search_docs' ||
-    name === 'search_api_docs' ||
-    name === 'get_doc_page';
-
-  // Read-only families
-  if (
-    /^(search|list|get|read|aggregate|describe|validate|simulate|decode|export|download|explain|test)_/.test(
-      name,
-    ) ||
+function isReadOnlyTool(name: string): boolean {
+  return (
+    (name !== 'simulate_trigger' &&
+      /^(search|list|get|read|aggregate|describe|validate|simulate|decode|export|download|explain|test)_/.test(
+        name,
+      )) ||
     name === 'whoami' ||
     name === 'get_license_info' ||
     name === 'fetch_exposed_certificate' ||
     name === 'detect_file' ||
     name === 'convert_pkcs12_to_jks' ||
     name === 'translate_to_hql'
-  ) {
-    const ann: ToolAnnotations = {
+  );
+}
+
+function mutationAnnotations(name: string, title: string): ToolAnnotations {
+  const destructive =
+    /^(delete|remove|cancel|deny|flush)_/.test(name) ||
+    name === 'revoke_certificate' ||
+    name === 'simulate_trigger';
+  return {
+    title,
+    readOnlyHint: false,
+    destructiveHint: destructive,
+    idempotentHint: !destructive && /^(update|set|upsert)_/.test(name),
+    openWorldHint: true,
+  };
+}
+
+function classify(name: string): Classification {
+  const title = titleFromName(name);
+  if (!isReadOnlyTool(name)) {
+    return { annotations: mutationAnnotations(name, title), title };
+  }
+  const isOpenWorld =
+    name === 'simulate_trigger' ||
+    name === 'fetch_exposed_certificate' ||
+    name === 'search_docs' ||
+    name === 'search_api_docs' ||
+    name === 'get_doc_page';
+  return {
+    annotations: {
       title,
       readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: isOpenWorld,
-    };
-    return {
-      annotations: ann,
-      title,
-    };
-  }
-
-  // Destructive mutations
-  if (
-    /^(delete|remove|cancel|deny|flush)_/.test(name) ||
-    name === 'revoke_certificate'
-  ) {
-    return {
-      annotations: {
-        title,
-        readOnlyHint: false,
-        destructiveHint: true,
-        idempotentHint: false,
-        openWorldHint: true,
-      },
-      title,
-    };
-  }
-
-  // Idempotent mutations (updates / upserts converge to the same state)
-  if (/^(update|set|upsert)_/.test(name)) {
-    return {
-      annotations: {
-        title,
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: true,
-        openWorldHint: true,
-      },
-      title,
-    };
-  }
-
-  // Additive mutations and everything else (create/add/submit/approve/...)
-  return {
-    annotations: {
-      title,
-      readOnlyHint: false,
-      destructiveHint: false,
-      idempotentHint: false,
-      openWorldHint: true,
     },
     title,
   };

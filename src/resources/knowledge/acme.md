@@ -71,8 +71,7 @@ Require External Account Binding (Horizon 2.11+): the profile option "Require
 External Account Binding (EAB)" (default false) rejects account registrations
 without valid EAB credentials and advertises `externalAccountRequired` in the
 ACME directory. The public 2.11 profile schema does not name its JSON key:
-read an existing profile with `get_certificate_profile` to see it, or set the
-option in the Horizon UI. Horizon 2.10 profiles carry
+set the option in the Horizon UI. Horizon 2.10 profiles carry
 `meta.externalAccountRequired`; the 2.11 public schema no longer lists it.
 
 ACME profiles have no `authorizationMode` and no `validationRuleset`.
@@ -109,8 +108,9 @@ bound accounts.
 
 Create with `create_acme_eab`. Required inputs: `name` (immutable, unique),
 `eab_policy`, `mac_key_algorithm` (`HS256`, `HS384`, `HS512`). Optional:
-`description`, `eab_validity_duration` (finite duration from creation; empty
-means no expiry; can only be set at creation or renewal), `allowed_profiles`,
+`description`, `eab_validity_duration` (finite duration from creation; omit
+`eab_validity_duration` to create without expiry; can only be set at creation
+or renewal), `allowed_profiles`,
 `identifier_constraint`, `email_constraint`, `validation_methods`. The API
 and responses use the camelCase names (`eabPolicy`, `macKeyAlgorithm`,
 `eabValidityDuration`, ...).
@@ -122,8 +122,8 @@ MAC key handling:
   time, tell the user to store them in a secret store, and never repeat them
   in later messages or logs.
 - `renew_acme_eab` generates a new MAC key and keeps the same key ID. It can
-  set a new `mac_key_algorithm` and a new `eab_validity_duration` (empty
-  removes the expiry). Already bound ACME accounts keep working; only new
+  set a new `mac_key_algorithm` and a new `eab_validity_duration`. Omit
+  `eab_validity_duration` to remove expiry. Already bound ACME accounts keep working; only new
   registrations with the old key are rejected. `numberOfKeyRegeneration`
   counts renewals.
 - If the MAC key is lost, renew the EAB. If it may be disclosed, renew it or
@@ -133,7 +133,9 @@ MAC key handling:
 `eab_policy`, constraint inputs); `clear_fields` empties optional fields. Change the status with `update_acme_eab_status`.
 
 An EAB is usable only when its status is `valid` and its `expirationDate`, if
-any, is not passed. An EAB cannot be deleted while it is linked to an ACME
+any, is not passed. An expired EAB blocks
+new account registrations and the use of linked ACME accounts.
+An EAB cannot be deleted while it is linked to an ACME
 account in status `valid`, `deactivated`, or `suspended` (`EAB-003`).
 
 ## EAB statuses
@@ -144,13 +146,13 @@ Statuses: `valid`, `disabled`, `suspended`, `deactivated`, `compromised`. Set
 with `update_acme_eab_status` (`name`, `status`, optional `compromised_at` in
 epoch milliseconds, optional `compromission_reason` revocation reason).
 
-| Status        | Effect                                                                                          |
-| ------------- | ----------------------------------------------------------------------------------------------- |
-| `valid`       | Active. New accounts can bind to it.                                                            |
-| `disabled`    | Temporary. Not usable for new account registrations.                                            |
-| `suspended`   | Temporary, for a suspected compromise. Not usable for new account registrations.                |
-| `deactivated` | Deactivates every linked ACME account. Afterwards only `compromised` is possible.               |
-| `compromised` | Irreversible. Compromises every linked ACME account and revokes the certificates they enrolled. |
+| Status        | Effect                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| `valid`       | Active. New accounts can bind to it.                                                                         |
+| `disabled`    | Temporary. Blocks new account registrations and the use of linked ACME accounts.                             |
+| `suspended`   | Temporary, for a suspected compromise. Blocks new account registrations and the use of linked ACME accounts. |
+| `deactivated` | Deactivates every linked ACME account. Afterwards only `compromised` is possible.                            |
+| `compromised` | Irreversible. Compromises every linked ACME account and revokes the certificates they enrolled.              |
 
 Compromise: certificates issued after `compromised_at` are revoked; omit it
 to revoke all certificates linked to the EAB. `compromission_reason` applies

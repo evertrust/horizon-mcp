@@ -18,35 +18,14 @@ actions when conditions match.
 
 ### Trigger Types
 
-| Type         | Description                                               |
-| ------------ | --------------------------------------------------------- |
-| `email`      | Send email notifications using configurable templates     |
-| `webhook`    | Call an external HTTP endpoint with a JSON payload        |
-| `thirdparty` | Invoke a third-party connector (publish, sync, etc.)      |
-| `groupware`  | Integration with groupware systems (calendars, ticketing) |
-
-### Trigger Structure
-
-```json
-{
-  "name": "notify-expiring-30d",
-  "type": "email",
-  "description": "Notify certificate contacts 30 days before expiry",
-  "events": ["on_expire"],
-  "configuration": {
-    "template": "expiration-warning",
-    "recipients": ["{{ certificate.contactEmail }}"]
-  },
-  "retries": 3,
-  "runPeriod": "P1D",
-  "runOnRenewed": false
-}
-```
+Use the Trigger Type Catalog below for the supported types. Call
+`describe_trigger_schema` for the chosen subtype, then `create_trigger`
+with `name`, `type`, and subtype fields inside `config`.
 
 ### Event Names
 
 Triggers subscribe to events using snake_case event names. Each event maps
-to a hook field on the profile's `triggerHooks` object.
+to a hook field on the profile's `triggers` object.
 
 #### Enrollment Events
 
@@ -96,19 +75,15 @@ request lifecycle.
 ### Sync vs. Async Hooks
 
 - **Sync hooks** store trigger names as plain strings in a list.
-  They fire during the action processing and can block the workflow.
 - **Async hooks** store trigger references as objects (`{"name": "trigger-name"}`).
-  They fire after the action completes and do not block the workflow.
 
 ### Attaching Triggers to Profiles
 
-Triggers are attached to profiles via the `triggerHooks` object on the profile.
-This is done through the Horizon admin UI or by updating the profile via the
-API (`PUT /api/v1/certificate/profiles`). Each trigger event maps to a specific hook
-field on the `triggerHooks` object (e.g., `on_enroll` maps to `onEnroll`,
-`on_approve_enroll` maps to `onApproveEnroll`). Sync hooks are plain string
-lists; async hooks (like `on_expire`, `on_pending_*`) are lists of objects
-with a `name` field.
+Profiles reference notifications through `triggers`. Use the hook fields
+exposed by `CertificateProfileTriggers`, such as `onEnroll` and
+`onApproveEnroll`. `onExpire` and `onPending*` hooks use objects with a
+`name` field. Configure the hooks in the Horizon administration UI or through
+the profile API.
 
 ---
 
@@ -117,52 +92,17 @@ with a `name` field.
 Execution policies control the timing and constraints of automated actions
 at the profile level.
 
-### Policy Settings
-
-| Setting              | Type    | Description                                |
-| -------------------- | ------- | ------------------------------------------ |
-| `autoRenewalEnabled` | boolean | Enable automatic renewal for this profile  |
-| `autoRenewalDays`    | number  | Days before expiry to trigger auto-renewal |
-| `maxConcurrentOps`   | number  | Maximum concurrent automated operations    |
-| `retryPolicy`        | object  | Retry behavior for failed operations       |
-
-### Retry Policy
-
-```json
-{
-  "retryPolicy": {
-    "maxRetries": 3,
-    "backoffMs": 60000,
-    "backoffMultiplier": 2.0
-  }
-}
-```
+See the Execution Policy Fields and ExecutionPeriod Structure sections below
+for `authorizedPeriods` and `forbiddenPeriods`. WebRA automatic renewal uses
+`autoRenewalPolicy` on the certificate profile (Horizon 2.10+); see
+`horizon://knowledge/profiles`.
 
 ---
 
 ## Trust Chains
 
-Trust chain management ensures that issued certificates include the correct
-CA certificate chain. Horizon manages trust chains as CA objects.
-
-### Trust Chain Object
-
-```json
-{
-  "name": "internal-ca-chain",
-  "certificates": ["intermediate-ca-pem", "root-ca-pem"],
-  "autoUpdate": true,
-  "source": "pki-connector"
-}
-```
-
-### Chain Sources
-
-| Source          | Description                                  |
-| --------------- | -------------------------------------------- |
-| `manual`        | Manually uploaded CA certificates            |
-| `pki-connector` | Automatically fetched from the PKI connector |
-| `discovery`     | Extracted from discovered certificate chains |
+Inspect public trust chains in the Horizon UI. Automation policies reference
+the selected chains through `trustChains`; the MCP input is `trust_chains`.
 
 ---
 
@@ -188,62 +128,30 @@ Create three triggers with different `runPeriod` values, all subscribing to
 
 ### Publish Certificate to Load Balancer on Enrollment
 
-```json
-{
-  "name": "publish-to-f5",
-  "type": "thirdparty",
-  "events": ["on_enroll", "on_renew"],
-  "configuration": { "connector": "f5-prod" }
-}
-```
+Call `describe_trigger_schema` for the connector's trigger subtype, such as
+`f5client`. Then use `create_trigger` with the user-supplied `name`, the
+chosen `type`, and `config.connector` referencing the existing connector.
+Attach it to the profile in the Horizon administration UI.
 
 ### Notify Security Team on Revocation
 
-```json
-{
-  "name": "notify-revocation",
-  "type": "email",
-  "events": ["on_revoke"],
-  "configuration": {
-    "template": "revocation-alert",
-    "recipients": ["security-team@example.com"]
-  }
-}
-```
+Call `describe_trigger_schema` with `subtype: "email"`, then `create_trigger`
+with `name`, `type: "email"`, and `config` containing `events: ["on_revoke"]`
+and an `emailTemplate` with the user-supplied recipient and message.
 
-### Webhook Integration on Any Lifecycle Event
+### Webhook Integration
 
-```json
-{
-  "name": "webhook-all-events",
-  "type": "webhook",
-  "events": ["on_enroll", "on_revoke", "on_renew", "on_update"],
-  "configuration": {
-    "url": "https://hooks.example.com/horizon",
-    "method": "POST",
-    "headers": { "Authorization": "Bearer {{ secret }}" }
-  }
-}
-```
+Call `describe_trigger_schema` with `subtype: "webhook"` to inspect its
+`webhookTemplate`. Create a separate trigger for each event using
+`create_trigger` with `name`, `type: "webhook"`, and the documented fields
+inside `config`.
 
 ---
 
-## Key Considerations
+## Testing Triggers
 
-1. **Trigger ordering**: Multiple triggers can match the same event. They
-   execute independently -- there is no guaranteed ordering between triggers.
-
-2. **Failure handling**: If a trigger action fails, it follows the configured
-   retry policy. Failed actions produce audit events for troubleshooting.
-
-3. **Circular prevention**: Horizon prevents trigger loops (e.g., a renewal
-   trigger that fires on renewal events would not re-trigger itself).
-
-4. **Permissions**: Automated actions run with the permissions of the
-   configured service account, not the original certificate holder.
-
-5. **Testing**: Use `simulate_trigger` (`PATCH /api/v1/triggers/` with name
-   in body) to test-fire a trigger without affecting real certificates.
+`simulate_trigger` takes `name` and sends the configured notifications.
+Use a test trigger and recipient.
 
 ---
 
@@ -266,9 +174,9 @@ run periods.
 
 ### Third-Party Triggers (8 on 2.10, 12 on 2.11)
 
-Third-party triggers push or remove certificates to/from external systems.
-They require a third-party connector and have minimal user-configurable
-fields -- events, retries, and runPeriod are auto-computed per type.
+Third-party triggers push or remove certificates to or from external systems.
+They reference a third-party connector. Call `describe_trigger_schema` for
+its subtype before setting the configuration fields.
 
 | Type             | Description                               | Requires              |
 | ---------------- | ----------------------------------------- | --------------------- |
@@ -350,6 +258,9 @@ The workflow events also include `on_in_progress_enroll`,
 
 ### System Events (12)
 
+DCV events are notification hooks and are available since Horizon 2.10. They
+do not run a DCV policy.
+
 | Event                       | Description                                   | Notes                                                       |
 | --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
 | `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed`                     |
@@ -358,12 +269,12 @@ The workflow events also include `on_in_progress_enroll`,
 | `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
 | `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
 | `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
-| `on_dcv_license_usage`      | DCV license usage event                       | DCV                                                         |
-| `on_dcv_policy_start`       | DCV policy run starts                         | DCV                                                         |
-| `on_dcv_policy_end`         | DCV policy run ends                           | DCV                                                         |
-| `on_dcv_validation_success` | Domain validation succeeds                    | DCV                                                         |
-| `on_dcv_validation_failure` | Domain validation fails                       | DCV                                                         |
-| `on_dcv_validation_retry`   | Domain validation retry                       | DCV                                                         |
+| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                                               |
+| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                                               |
+| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                                               |
+| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                                               |
+| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                                               |
+| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                                               |
 
 ---
 
@@ -375,39 +286,37 @@ The workflow events also include `on_in_progress_enroll`,
 {
   "emailTemplate": {
     "to": [{ "type": "static", "email": "admin@example.com" }],
-    "cc": [],
-    "bcc": [],
     "from": "horizon@example.com",
-    "title": "Certificate issued: {{ csr.subject.cn }}",
+    "title": "Certificate issued: {{certificate.subject.cn.1}}",
     "body": "<p>Certificate issued.</p>",
-    "isHtml": true,
-    "headers": [{ "key": "X-Priority", "value": "1" }]
+    "isHtml": true
   },
   "attachPemCertificate": true,
   "attachPkcs7Bundle": false
 }
 ```
 
-**7 attachment flags** (all boolean, default `false`):
-`attachPemCertificate`, `attachPkcs7Bundle`, `attachDerCertificate`,
-`attachPemChain`, `attachPkcs7Chain`, `attachDerChain`,
-`attachPrivateKey`.
+**Attachment flags** are nullable booleans:
+`attachPemCertificate`, `attachPemBundle`, `attachDerCertificate`,
+`attachPkcs7`, `attachPkcs7Bundle`, and `attachPkcs12`.
 
-**EmailRecipientType values (11)**:
+**Email recipient types**:
 
-| Type                     | `email` field | `label` field | Notes                              |
-| ------------------------ | :-----------: | :-----------: | ---------------------------------- |
-| `static`                 |   required    |   forbidden   | Send to a fixed email address      |
-| `label`                  |   forbidden   |   required    | Resolve address from a label value |
-| `certificate_owner`      |   forbidden   |   forbidden   | Certificate holder's email         |
-| `certificate_rfc822name` |   forbidden   |   forbidden   | Email from certificate SAN         |
-| `contact`                |   forbidden   |   forbidden   | Profile contact email              |
-| `approver`               |   forbidden   |   forbidden   | Request approver                   |
-| `requester`              |   forbidden   |   forbidden   | Request submitter                  |
-| `lifecycle_operators`    |   forbidden   |   forbidden   | All lifecycle operators            |
-| `team_contact`           |   forbidden   |   forbidden   | Team contact email                 |
-| `team_manager`           |   forbidden   |   forbidden   | Team manager email                 |
-| `team_members`           |   forbidden   |   forbidden   | All team member emails             |
+`email` is required for `static` and ignored otherwise. `label` is required
+for `label` and ignored otherwise.
+
+| Type                     | Purpose                         |
+| ------------------------ | ------------------------------- |
+| `static`                 | Send to a fixed email address   |
+| `label`                  | Resolve an address from a label |
+| `certificate_owner`      | Certificate owner's email       |
+| `certificate_rfc822name` | Email from the certificate SAN  |
+| `contact`                | Contact email                   |
+| `approver`               | Request approver                |
+| `requester`              | Request submitter               |
+| `lifecycle_operators`    | Lifecycle operators             |
+| `team_contact`           | Team contact email              |
+| `team_manager`           | Team manager email              |
 
 ### Custom REST Notification (`rest`)
 
@@ -421,10 +330,10 @@ The workflow events also include `on_in_progress_enroll`,
       "method": "POST",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
-      "payload": "{\"cn\": \"{{ csr.subject.cn }}\"}",
+      "payload": "{\"cn\": \"{{certificate.subject.cn.1}}\"}",
       "expectedHttpCodes": [200, 201],
       "proxy": null,
-      "timeout": 30000
+      "timeout": "30 seconds"
     }
   ]
 }
@@ -446,19 +355,19 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
     "to": {
       "type": "static",
       "webhook": {
-        "type": "TEAMS",
-        "url": "https://outlook.office.com/webhook/..."
+        "type": "teams",
+        "url": "https://hooks.example.com/webhook"
       }
     },
     "title": "Certificate Alert",
-    "body": "Certificate {{ csr.subject.cn }} has been issued."
+    "body": "Certificate {{certificate.subject.cn.1}} has been issued."
   },
   "proxy": null,
-  "timeout": 30000
+  "timeout": "30 seconds"
 }
 ```
 
-**Webhook types**: `TEAMS`, `SLACK`, `MATTERMOST`.
+**Webhook types**: `teams`, `slack` (Slack/Mattermost).
 
 **WebhookRecipientType values**: `static`, `team`.
 
@@ -467,21 +376,11 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 
 ### Third-Party Triggers
 
-Third-party triggers have only 3 user-configurable fields:
-
-| Field       | Type         | Description                                 |
-| ----------- | ------------ | ------------------------------------------- |
-| `name`      | string       | Trigger identifier                          |
-| `connector` | string       | Name of the third-party connector to invoke |
-| `triggers`  | dict or null | Sub-triggers for error handling             |
-
-All other fields (`events`, `retries`, `runPeriod`, etc.) are
-**auto-computed** per trigger type. User-supplied values for these fields
-are silently ignored by the API.
-
-Special case: `netscaler`, `fortigate`, `fortimanager`, `panos_firewall` and
-`panos_panorama` triggers also accept an optional `retries` (number of
-retries on error; the 2.11 docs give 1 to 15 for the firewall triggers).
+Third-party triggers include `name`, `type`, and `connector`. Some subtypes
+also expose `retries` and error-trigger settings. Call `describe_trigger_schema`
+for the chosen subtype and pass its documented fields in `create_trigger`'s
+`config`. The public trigger guides describe retries in case of error; for
+firewall triggers on Horizon 2.11+, the range is 1 to 15.
 
 ---
 

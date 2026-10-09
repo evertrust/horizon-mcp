@@ -29,7 +29,6 @@ If the `docs` toolset is enabled and a tool description points to a `horizon://k
 | DCV                       | `horizon://knowledge/dcv`                       | DCV providers, policies, lifecycle status, and events                                                        |
 | ACME                      | `horizon://knowledge/acme`                      | ACME server, EAB policies, EABs, ACME accounts and orders, HAQL and HEABQL (Horizon 2.11 and later)          |
 | Validation Rules          | `horizon://knowledge/validation-rules`          | Auto-approval conditions, operator reference (API-verified syntax), module support matrix                    |
-| Dictionary Entries        | `horizon://knowledge/dictionary-entries`        | Alias URI for `dictionary-matrix` content                                                                    |
 | Discovery                 | `horizon://knowledge/discovery`                 | Concepts, campaigns, data structures, search patterns                                                        |
 | Discovery Workflows       | `horizon://knowledge/discovery-workflows`       | CLI commands for netscan, localscan, netimport, importscan, localimport                                      |
 | Automation                | `horizon://knowledge/automation`                | Trigger types, event hooks, execution policies                                                               |

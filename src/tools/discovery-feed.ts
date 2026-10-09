@@ -66,8 +66,8 @@ const FEED_DISCOVERY_CERTIFICATE_CONFIG = {
       .array(
         z
           .object({
-            port: z.number().int(),
-            version: z.string().optional(),
+            port: z.number().int().describe('TLS port number.'),
+            version: z.string().optional().describe('TLS protocol version.'),
           })
           .passthrough(),
       )

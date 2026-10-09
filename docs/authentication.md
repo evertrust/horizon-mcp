@@ -45,7 +45,9 @@ HORIZON_CLIENT_PFX=/path/to/client.p12
 HORIZON_CLIENT_PFX_PASSWORD=optional-password
 ```
 
-### Service-account JWT
+### Service-account JWT (Horizon 2.10+)
+
+Service-account JWT authentication requires **Horizon 2.10+**.
 
 ```bash
 HORIZON_SERVICE_ACCOUNT=automation-account

@@ -15,7 +15,6 @@
 import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
-import { HorizonError } from '../../client/errors.js';
 import type { HorizonClient } from '../../client/http.js';
 import {
   CSV_EXPORT_OUTPUT_SCHEMA,
@@ -262,11 +261,10 @@ const GET_REQUEST_CONFIG = {
     'Returns complete untruncated data including all workflow fields,\n' +
     'certificate details, requester/approver info, and audit trail.\n\n' +
     'An asynchronous enrollment can remain in_progress while Horizon waits for the external CA.\n\n' +
-    'PKCS#12 / PFX: For centralized enrollment requests (server-side key\n' +
-    'generation), the response contains the PKCS#12 bundle with the\n' +
-    'certificate and private key. Look for the pkcs12 or keyStore\n' +
-    'field (base64-encoded). This is the ONLY way to retrieve the private\n' +
-    'key - it is NOT available on the certificate object itself.',
+    'PKCS#12 / PFX: For a centralized enrollment request (server-side key\n' +
+    'generation), after approval the response contains the PKCS#12 in\n' +
+    'pkcs12.value and its password in password.value. The private key is\n' +
+    'NOT available on the certificate object.',
   inputSchema: z.object({
     request_id: z.string().describe('Request ID.'),
   }),
@@ -287,8 +285,7 @@ const EXPORT_REQUESTS_CSV_CONFIG = {
         'CSV columns to include, as camelCase API column names (SearchResult ' +
           'columns) - NOT the lowercase HRQL query fields. Examples: profile, ' +
           'requestType, status, contactEmail, registrationDate. Prefix ' +
-          'families: label.<key>, metadata.<key>. Invalid names return a ' +
-          'Horizon 500 that lists the usable columns.',
+          'families: label.<key>, metadata.<key>.',
       ),
     sorted_by: z
       .string()
@@ -328,7 +325,7 @@ const AGGREGATE_REQUESTS_CONFIG = {
   }),
 };
 
-export function registerRequestTools(
+function registerGetRequestTemplateTool(
   server: McpServer,
   client: HorizonClient,
 ): void {
@@ -357,7 +354,12 @@ export function registerRequestTools(
       };
     },
   );
+}
 
+function registerSubmitRequestTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'submit_request',
@@ -395,127 +397,77 @@ export function registerRequestTools(
       };
     },
   );
+}
 
+async function executeRequestAction(
+  client: HorizonClient,
+  action: 'approve' | 'deny' | 'cancel',
+  requestId: string,
+) {
+  const preflight = await preflightRequestAction(
+    client,
+    action,
+    requestId,
+    action === 'cancel' ? 'cancel' : 'approve',
+  );
+  if (!preflight.ok) {
+    return {
+      isError: true,
+      content: [
+        { type: 'text' as const, text: JSON.stringify(preflight.failure) },
+      ],
+    };
+  }
+  const result = await client.post<Record<string, unknown>>(
+    `/api/v1/requests/${action}`,
+    {
+      _id: requestId,
+      module: preflight.request['module'],
+      workflow: preflight.request['workflow'],
+    },
+  );
+  return {
+    content: [{ type: 'text' as const, text: JSON.stringify(result) }],
+  };
+}
+
+function registerApproveRequestTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'approve_request',
     APPROVE_REQUEST_CONFIG,
-    async ({ request_id }) => {
-      const preflight = await preflightRequestAction(
-        client,
-        'approve',
-        request_id,
-        'approve',
-      );
-      if ('error' in preflight) {
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(preflight) }],
-        };
-      }
-
-      try {
-        const result = await client.post<Record<string, unknown>>(
-          '/api/v1/requests/approve',
-          {
-            id: request_id,
-            workflow: preflight['workflow'],
-          },
-        );
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-        };
-      } catch (err) {
-        const msg =
-          err instanceof HorizonError ? err.toToolResult() : String(err);
-        return {
-          content: [
-            { type: 'text' as const, text: JSON.stringify({ error: msg }) },
-          ],
-        };
-      }
-    },
+    ({ request_id }) => executeRequestAction(client, 'approve', request_id),
   );
+}
 
-  registerTool(
-    server,
-    'deny_request',
-    DENY_REQUEST_CONFIG,
-    async ({ request_id }) => {
-      const preflight = await preflightRequestAction(
-        client,
-        'deny',
-        request_id,
-        'approve',
-      );
-      if ('error' in preflight) {
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(preflight) }],
-        };
-      }
-
-      try {
-        const result = await client.post<Record<string, unknown>>(
-          '/api/v1/requests/deny',
-          {
-            id: request_id,
-            workflow: preflight['workflow'],
-          },
-        );
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-        };
-      } catch (err) {
-        const msg =
-          err instanceof HorizonError ? err.toToolResult() : String(err);
-        return {
-          content: [
-            { type: 'text' as const, text: JSON.stringify({ error: msg }) },
-          ],
-        };
-      }
-    },
+function registerDenyRequestTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
+  registerTool(server, 'deny_request', DENY_REQUEST_CONFIG, ({ request_id }) =>
+    executeRequestAction(client, 'deny', request_id),
   );
+}
 
+function registerCancelRequestTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'cancel_request',
     CANCEL_REQUEST_CONFIG,
-    async ({ request_id }) => {
-      const preflight = await preflightRequestAction(
-        client,
-        'cancel',
-        request_id,
-        'cancel',
-      );
-      if ('error' in preflight) {
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(preflight) }],
-        };
-      }
-
-      try {
-        const result = await client.post<Record<string, unknown>>(
-          '/api/v1/requests/cancel',
-          {
-            id: request_id,
-            workflow: preflight['workflow'],
-          },
-        );
-        return {
-          content: [{ type: 'text' as const, text: JSON.stringify(result) }],
-        };
-      } catch (err) {
-        const msg =
-          err instanceof HorizonError ? err.toToolResult() : String(err);
-        return {
-          content: [
-            { type: 'text' as const, text: JSON.stringify({ error: msg }) },
-          ],
-        };
-      }
-    },
+    ({ request_id }) => executeRequestAction(client, 'cancel', request_id),
   );
+}
 
+function registerSearchRequestsTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'search_requests',
@@ -552,7 +504,12 @@ export function registerRequestTools(
       };
     },
   );
+}
 
+function registerGetRequestTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'get_request',
@@ -566,7 +523,12 @@ export function registerRequestTools(
       };
     },
   );
+}
 
+function registerExportRequestsCsvTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'export_requests_csv',
@@ -589,7 +551,12 @@ export function registerRequestTools(
       };
     },
   );
+}
 
+function registerAggregateRequestsTool(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'aggregate_requests',
@@ -611,4 +578,19 @@ export function registerRequestTools(
       };
     },
   );
+}
+
+export function registerRequestTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
+  registerGetRequestTemplateTool(server, client);
+  registerSubmitRequestTool(server, client);
+  registerApproveRequestTool(server, client);
+  registerDenyRequestTool(server, client);
+  registerCancelRequestTool(server, client);
+  registerSearchRequestsTool(server, client);
+  registerGetRequestTool(server, client);
+  registerExportRequestsCsvTool(server, client);
+  registerAggregateRequestsTool(server, client);
 }

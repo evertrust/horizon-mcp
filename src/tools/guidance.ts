@@ -145,15 +145,18 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
       'confirm expected_name and check that the account is not read-only',
   },
   simulate_trigger: {
-    useWhen: 'caller wants to dry-run a trigger payload or REST notification',
-    doNotUseWhen: 'caller wants to create/update/delete the trigger itself',
+    useWhen:
+      'caller explicitly wants to fire a trigger test; it sends real notifications',
+    doNotUseWhen:
+      'caller wants a dry run, or wants to create/update/delete the trigger',
+    beforeCall: 'confirm the intent and use a test recipient',
   },
   submit_request: {
     useWhen:
       'caller wants to submit a lifecycle request and template fields are known',
     doNotUseWhen: 'the request template has not been inspected yet',
     beforeCall:
-      'call get_request_template first; for WebRA update inspect template.autoRenew; a WebRA challenge profile returns the challenge in password.value',
+      'call get_request_template first; for WebRA update inspect template.autoRenew; on Horizon 2.11+ a WebRA challenge profile returns the challenge in password.value',
   },
   approve_request: {
     useWhen: 'caller wants to approve a pending request and the id is known',
@@ -174,6 +177,14 @@ const EXPLICIT_GUIDANCE: Record<string, ToolGuidance> = {
   cancel_request: {
     useWhen: 'caller wants to cancel a pending request and the id is known',
     doNotUseWhen: 'the request id is unknown or caller is only inspecting',
+  },
+  set_certificate_auto_renew: {
+    useWhen:
+      'caller wants to turn WebRA auto-renew on or off for one certificate (Horizon 2.10+)',
+    doNotUseWhen:
+      'caller wants to change the auto-renewal policy of a profile; use update_certificate_profile',
+    beforeCall:
+      'check that the profile has autoRenewalPolicy.editable set to true',
   },
   list_dcv_policy_status: {
     useWhen:

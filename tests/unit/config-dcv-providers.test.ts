@@ -214,6 +214,24 @@ describe('create_dcv_provider', () => {
 });
 
 describe('update_dcv_provider (GET-merge-PUT on collection)', () => {
+  it('rejects a different provider type before PUT', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      name: 'dc',
+      type: 'digicert',
+      endpoint: 'https://www.digicert.com',
+      credentials: 'dc-creds',
+      timeout: '30 seconds',
+    });
+
+    const result = await client.callTool({
+      name: 'update_dcv_provider',
+      arguments: { name: 'dc', type: 'sectigo' },
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(mc.put).not.toHaveBeenCalled();
+  });
   it('merges sectigo fields over the stored provider', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({

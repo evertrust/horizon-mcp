@@ -7,7 +7,12 @@ import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
 import { registerTool } from '../register.js';
-import { DS_BASE, dsAttributeSchema, validateDsType } from './shared.js';
+import {
+  DS_BASE,
+  dsAttributeSchema,
+  httpHeaderSchema,
+  validateDsType,
+} from './shared.js';
 
 const TEST_DATASOURCE_CONFIG = {
   description:
@@ -72,7 +77,7 @@ const TEST_DATASOURCE_CONFIG = {
     url: z.string().optional().describe('(REST) Endpoint URL TemplateString.'),
     authentication_type: z.string().optional().describe('(REST) Auth type.'),
     headers: z
-      .array(z.object({ name: z.string(), value: z.string() }))
+      .array(httpHeaderSchema)
       .optional()
       .describe('(REST) HTTP headers.'),
     payload_type: z.string().optional().describe('(REST) Payload format.'),

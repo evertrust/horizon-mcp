@@ -177,7 +177,7 @@ const AUTO_RENEWAL_POLICY_SCHEMA = z
       .describe('Whether a certificate auto-renew value can be changed.'),
   })
   .describe(
-    'WebRA auto-renewal policy. Server-side transitions: adding the policy ' +
+    'WebRA auto-renewal policy (Horizon 2.10+). Server-side transitions: adding the policy ' +
       'where none existed bulk-sets existing certificates to the new default; ' +
       "removing it disables auto-renew on all the profile's certificates; " +
       'changing an existing policy does not bulk-rewrite existing flags.',
@@ -284,7 +284,7 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
   name: z
     .string()
     .describe(
-      'Profile name. Immutable primary key. Ask the user - never invent it.',
+      'Profile name. Unique identifier; it cannot change after creation. Ask the user - never invent it.',
     ),
   enabled: z.boolean().describe('Whether the profile is enabled.'),
   authorization_levels: objectRecord.describe(
@@ -300,12 +300,14 @@ const CREATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
   crypto_policy: objectRecord.describe(
     'Crypto policy object (key types, escrow, P12 handling).',
   ),
-  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional().describe(
+    `${AUTO_RENEWAL_POLICY_SCHEMA.description} If omitted, auto renewal is disabled.`,
+  ),
   terms_of_service: z
     .string()
     .optional()
     .describe(
-      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+      'Name of a Terms of Service object for webra, scep, or est profiles only (Horizon 2.10+). ' +
         'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
         'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
         'delete_terms_of_service; deletion fails while a profile references the object.',
@@ -333,12 +335,14 @@ const UPDATE_CERTIFICATE_PROFILES_SCHEMA = z.object({
     .optional()
     .describe('CertificateProfileSelfPermissions object.'),
   crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
-  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional(),
+  auto_renewal_policy: AUTO_RENEWAL_POLICY_SCHEMA.optional().describe(
+    `${AUTO_RENEWAL_POLICY_SCHEMA.description} If omitted, the existing policy is kept.`,
+  ),
   terms_of_service: z
     .string()
     .optional()
     .describe(
-      'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
+      'Name of a Terms of Service object for webra, scep, or est profiles only (Horizon 2.10+). ' +
         'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
         'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
         'delete_terms_of_service; deletion fails while a profile references the object.',

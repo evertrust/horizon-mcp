@@ -21,6 +21,7 @@ import type { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 
 import type { HorizonClient } from '../../client/http.js';
+import { localizedStringEntrySchema } from '../helpers.js';
 import {
   type ConfigSpec,
   assertConfigBody,
@@ -72,7 +73,7 @@ const KNOWN_KEYS = [
 const typeSchema = z
   .enum(SUBTYPES)
   .describe(
-    'Configuration subtype discriminator. Effective immutable primary key ' +
+    'Configuration subtype discriminator. Unique identifier; it cannot change after creation ' +
       '(unique per tenant). One of: license, internal_monitor, ' +
       'interface_customization, storage.',
   );
@@ -109,7 +110,7 @@ const announcementsSchema = z
         .enum(ANNOUNCEMENT_LEVELS)
         .describe('Announcement severity: info, warning, or danger.'),
       content: z
-        .array(z.object({ lang: z.string(), value: z.string() }))
+        .array(localizedStringEntrySchema)
         .min(1)
         .describe(
           'Localized contents, e.g. [{lang:"en",value:"..."}]. Server requires at least one element.',

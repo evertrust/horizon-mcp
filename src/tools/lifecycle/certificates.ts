@@ -103,8 +103,7 @@ const EXPORT_CERTIFICATES_CSV_CONFIG = {
           'columns) - NOT the lowercase HCQL query fields. Examples: dn, ' +
           'serial, contactEmail, autoRenew, module, profile, notAfter. Prefix ' +
           'families: label.<key>, metadata.<key>, grade.<policy>, ' +
-          'team.displayname.<lang>. Invalid names return a Horizon 500 that ' +
-          'lists the usable columns.',
+          'team.displayname.<lang>.',
       ),
     sorted_by: z
       .string()
@@ -119,7 +118,7 @@ const DOWNLOAD_CERTIFICATE_CONFIG = {
     'Download a certificate as PEM. Returned as an embedded resource ' +
     '(application/x-pem-file). The PKCS#12 bundle is not on the certificate ' +
     'object; for centralized enrollment or recover requests retrieve it via ' +
-    'search_requests + get_request (pkcs12 / keyStore field).',
+    'search_requests + get_request (pkcs12.value field).',
   inputSchema: z.object({
     certificate_id: z.string().describe('Certificate ID.'),
     format: z
@@ -185,7 +184,7 @@ const SET_CERTIFICATE_AUTO_RENEW_SCHEMA = z
 
 const SET_CERTIFICATE_AUTO_RENEW_CONFIG = {
   description:
-    'Set automatic renewal for one WebRA certificate. The certificate profile ' +
+    'Set automatic renewal for one WebRA certificate (Horizon 2.10+). The certificate profile ' +
     'must have autoRenewalPolicy.editable set to true. Use ' +
     'get_request_template with workflow update and module webra to inspect the ' +
     'autoRenew template element when using the generic request path.',

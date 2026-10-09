@@ -3,6 +3,8 @@
  */
 import { z } from 'zod';
 
+import { localizedStringEntrySchema } from '../helpers.js';
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -24,17 +26,24 @@ export const VALID_AUTH_TYPES = new Set([
 // Zod schemas for reuse
 // ---------------------------------------------------------------------------
 
+export const httpHeaderSchema = z.object({
+  name: z.string().describe('HTTP header name.'),
+  value: z.string().describe('HTTP header value TemplateString.'),
+});
+
 export const localizedNameSchema = z
-  .array(z.object({ lang: z.string(), value: z.string() }))
+  .array(localizedStringEntrySchema)
   .optional()
   .describe("Localized display names, e.g. [{lang: 'en', value: 'My DS'}].");
 
 export const dsAttributeSchema = z
   .array(
     z.object({
-      key: z.string(),
-      multi: z.boolean(),
-      selected: z.boolean(),
+      key: z.string().describe('Output attribute key.'),
+      multi: z.boolean().describe('Whether the attribute has multiple values.'),
+      selected: z
+        .boolean()
+        .describe('Whether to select the attribute on future fetches.'),
     }),
   )
   .optional()
