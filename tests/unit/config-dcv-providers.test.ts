@@ -109,7 +109,7 @@ describe('create_dcv_provider', () => {
     expect(mc.post).not.toHaveBeenCalled();
   });
 
-  it('rejects an unknown type via enum validation', async () => {
+  it('requires sectigo dcvMethod', async () => {
     const res = await client.callTool({
       name: 'create_dcv_provider',
       arguments: {
@@ -123,9 +123,143 @@ describe('create_dcv_provider', () => {
     expect(isError(res)).toBe(true);
     expect(mc.post).not.toHaveBeenCalled();
   });
+
+  it('POSTs the gs_mssl subtype fields', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'gs' });
+    await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
+        timeout: '30 seconds',
+        profile: 'managed-ssl',
+        defaultEmail: 'dcv@example.com',
+        defaultPhone: '+33102030405',
+      },
+    });
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/dcv/providers', {
+      name: 'gs',
+      type: 'gs_mssl',
+      endpoint: 'https://system.globalsign.com',
+      credentials: 'gs-creds',
+      timeout: '30 seconds',
+      profile: 'managed-ssl',
+      defaultEmail: 'dcv@example.com',
+      defaultPhone: '+33102030405',
+    });
+  });
+
+  it('requires gs_mssl profile and default contact fields', async () => {
+    const res = await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'gs',
+        type: 'gs_mssl',
+        endpoint: 'https://system.globalsign.com',
+        credentials: 'gs-creds',
+        timeout: '30 seconds',
+      },
+    });
+    expect(isError(res)).toBe(true);
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
+  it('POSTs the sectigo subtype fields', async () => {
+    mc.post.mockResolvedValueOnce({ name: 'sec' });
+    const res = await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'sec',
+        type: 'sectigo',
+        endpoint: 'https://admin.enterprise.sectigo.com',
+        credentials: 'sectigo-oauth-client',
+        timeout: '30 seconds',
+        dcvMethod: 'cname',
+        organizationId: 1234,
+      },
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/dcv/providers', {
+      name: 'sec',
+      type: 'sectigo',
+      endpoint: 'https://admin.enterprise.sectigo.com',
+      credentials: 'sectigo-oauth-client',
+      timeout: '30 seconds',
+      dcvMethod: 'cname',
+      organizationId: 1234,
+    });
+  });
+
+  it('rejects an invalid sectigo dcvMethod', async () => {
+    const res = await client.callTool({
+      name: 'create_dcv_provider',
+      arguments: {
+        name: 'sec',
+        type: 'sectigo',
+        endpoint: 'https://admin.enterprise.sectigo.com',
+        credentials: 'sectigo-oauth-client',
+        timeout: '30 seconds',
+        dcvMethod: 'http',
+      },
+    });
+    expect(isError(res)).toBe(true);
+    expect(mc.post).not.toHaveBeenCalled();
+  });
 });
 
 describe('update_dcv_provider (GET-merge-PUT on collection)', () => {
+  it('rejects a different provider type before PUT', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      name: 'dc',
+      type: 'digicert',
+      endpoint: 'https://www.digicert.com',
+      credentials: 'dc-creds',
+      timeout: '30 seconds',
+    });
+
+    const result = await client.callTool({
+      name: 'update_dcv_provider',
+      arguments: { name: 'dc', type: 'sectigo' },
+    });
+
+    expect(isError(result)).toBe(true);
+    expect(mc.put).not.toHaveBeenCalled();
+  });
+
+  it('merges sectigo fields over the stored provider', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      _id: 'x',
+      name: 'sec',
+      type: 'sectigo',
+      endpoint: 'https://admin.enterprise.sectigo.com',
+      credentials: 'sectigo-oauth-client',
+      timeout: '30 seconds',
+      dcvMethod: 'cname',
+    });
+    mc.put.mockResolvedValueOnce({ name: 'sec' });
+    await client.callTool({
+      name: 'update_dcv_provider',
+      arguments: {
+        name: 'sec',
+        type: 'sectigo',
+        dcvMethod: 'txt',
+        oauthTokenEndpoint: 'https://sso.example.com/token',
+      },
+    });
+    const [, putBody] = mc.put.mock.calls[0]!;
+    expect(putBody).toMatchObject({
+      name: 'sec',
+      type: 'sectigo',
+      dcvMethod: 'txt',
+      oauthTokenEndpoint: 'https://sso.example.com/token',
+      credentials: 'sectigo-oauth-client',
+    });
+  });
+
   it('GETs the item, strips _id, merges, PUTs the collection', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({

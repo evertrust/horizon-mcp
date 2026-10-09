@@ -15,6 +15,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { HorizonClient } from '../client/http.js';
+import { registerDcvLifecycleTools } from './dcv-lifecycle.js';
 import { registerCertificateTools } from './lifecycle/certificates.js';
 import { registerEventTools } from './lifecycle/events.js';
 import { registerRequestTools } from './lifecycle/requests.js';
@@ -26,4 +27,5 @@ export function registerLifecycleTools(
   registerCertificateTools(server, client);
   registerRequestTools(server, client);
   registerEventTools(server, client);
+  registerDcvLifecycleTools(server, client);
 }
