@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { AuthProvider } from '../../src/auth/base.js';
+import { ServiceAccountAuthProvider } from '../../src/auth/service-account.js';
 import {
   HorizonError,
   HorizonResponseValidationError,
@@ -56,7 +57,7 @@ function fakeResponse(
 
 /** Create a HorizonClient with lazy init bypassed. */
 function makeClient(auth: AuthProvider): InstanceType<typeof HorizonClient> {
-  const client = new HorizonClient('https://horizon.test', auth, {
+  const client = new HorizonClient('https://horizon.example.com', auth, {
     timeout: 5,
     exportTimeout: 120,
     verifySsl: false,
@@ -323,7 +324,7 @@ describe('ClientTlsWarning', () => {
       .mockImplementation(() => true);
     try {
       new HorizonClient(
-        'https://horizon.test',
+        'https://horizon.example.com',
         new ApiKeyAuthProvider('id', 'key'),
         {
           timeout: 5,
@@ -346,7 +347,7 @@ describe('ClientTlsWarning', () => {
       .mockImplementation(() => true);
     try {
       new HorizonClient(
-        'https://horizon.test',
+        'https://horizon.example.com',
         new ApiKeyAuthProvider('id', 'key'),
         {
           timeout: 5,
@@ -383,5 +384,36 @@ describe('ClientMultipart', () => {
     const result = await client.postMultipart('/api/v1/upload', []);
     expect(result).toEqual({});
     await client.close();
+  });
+});
+
+describe('service-account error confidentiality', () => {
+  it('redacts a JWT echoed in a Horizon error message', async () => {
+    const token = 'private-service-account-jwt';
+    const client = new HorizonClient(
+      'https://horizon.example.com',
+      new ServiceAccountAuthProvider('automation', token),
+      { timeout: 5, exportTimeout: 120, verifySsl: true },
+    );
+    mockFetch
+      .mockResolvedValueOnce(fakeResponse(200, { token: 'csrf' }))
+      .mockResolvedValueOnce(
+        fakeResponse(200, { identity: { identifier: 'automation' } }),
+      )
+      .mockResolvedValueOnce(
+        fakeResponse(400, {
+          error: 'SEC-AUTH-006',
+          message: `Rejected token: ${token}`,
+        }),
+      );
+    try {
+      const error = await client
+        .get('/api/v1/cas')
+        .catch((failure: Error) => failure.message);
+      expect(error).toContain('SEC-AUTH-006');
+      expect(error).not.toContain(token);
+    } finally {
+      await client.close();
+    }
   });
 });
