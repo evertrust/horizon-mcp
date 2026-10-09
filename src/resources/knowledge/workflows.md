@@ -265,8 +265,8 @@ Client    -> submit_webra_challenge (POST /api/v1/challenge/submit) -> certifica
    challenge. `metadata` accepts only `automation_policy`, with a policy
    authorized on the profile.
 4. Response: `certificate` (PEM) and, in centralized mode only, `pkcs12`
-   (DER Base64, encrypted with the challenge as password). The PKCS#12 is
-   never stored: it cannot be retrieved later.
+   (DER Base64, encrypted with the challenge as password). Save the bundle
+   from this response.
 
 Errors: WEBRA-ENROLL-015 (invalid challenge),
 WEBRA-ENROLL-001/009/012 and REQ-002 (400), LIC-003/004 (403),

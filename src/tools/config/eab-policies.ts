@@ -94,7 +94,12 @@ const CREATE_EAB_POLICY_OPTS = {
     'EABs that reference it. A request must satisfy both the policy and the EAB constraints.',
   mandatoryFields: ['name'],
   inputSchema: z.object({
-    name: z.string().min(1).describe('EAB policy name. Immutable primary key.'),
+    name: z
+      .string()
+      .min(1)
+      .describe(
+        'EAB policy name. Unique identifier; it cannot change after creation.',
+      ),
     ...constraintShape,
   }),
   buildPayload: ({ name, ...rest }) => ({ name, ...constraintFields(rest) }),

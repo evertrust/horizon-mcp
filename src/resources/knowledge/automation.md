@@ -25,7 +25,7 @@ with `name`, `type`, and subtype fields inside `config`.
 ### Event Names
 
 Triggers subscribe to events using snake_case event names. Each event maps
-to a hook field on the profile's `triggerHooks` object.
+to a hook field on the profile's `triggers` object.
 
 #### Enrollment Events
 
@@ -79,13 +79,11 @@ request lifecycle.
 
 ### Attaching Triggers to Profiles
 
-Triggers are attached to profiles via the `triggerHooks` object on the profile.
-This is done through the Horizon admin UI or by updating the profile via the
-API (`PUT /api/v1/certificate/profiles`). Each trigger event maps to a specific hook
-field on the `triggerHooks` object (e.g., `on_enroll` maps to `onEnroll`,
-`on_approve_enroll` maps to `onApproveEnroll`). Sync hooks are plain string
-lists; async hooks (like `on_expire`, `on_pending_*`) are lists of objects
-with a `name` field.
+Profiles reference notifications through `triggers`. Use the hook fields
+exposed by `CertificateProfileTriggers`, such as `onEnroll` and
+`onApproveEnroll`. `onExpire` and `onPending*` hooks use objects with a
+`name` field. Configure the hooks in the Horizon administration UI or through
+the profile API.
 
 ---
 
@@ -288,39 +286,37 @@ do not run a DCV policy.
 {
   "emailTemplate": {
     "to": [{ "type": "static", "email": "admin@example.com" }],
-    "cc": [],
-    "bcc": [],
     "from": "horizon@example.com",
-    "title": "Certificate issued: {{ csr.subject.cn }}",
+    "title": "Certificate issued: {{certificate.subject.cn.1}}",
     "body": "<p>Certificate issued.</p>",
-    "isHtml": true,
-    "headers": [{ "key": "X-Priority", "value": "1" }]
+    "isHtml": true
   },
   "attachPemCertificate": true,
   "attachPkcs7Bundle": false
 }
 ```
 
-**7 attachment flags** (all boolean, default `false`):
-`attachPemCertificate`, `attachPkcs7Bundle`, `attachDerCertificate`,
-`attachPemChain`, `attachPkcs7Chain`, `attachDerChain`,
-`attachPrivateKey`.
+**Attachment flags** are nullable booleans:
+`attachPemCertificate`, `attachPemBundle`, `attachDerCertificate`,
+`attachPkcs7`, `attachPkcs7Bundle`, and `attachPkcs12`.
 
-**EmailRecipientType values (11)**:
+**Email recipient types**:
 
-| Type                     | `email` field | `label` field | Notes                              |
-| ------------------------ | :-----------: | :-----------: | ---------------------------------- |
-| `static`                 |   required    |   forbidden   | Send to a fixed email address      |
-| `label`                  |   forbidden   |   required    | Resolve address from a label value |
-| `certificate_owner`      |   forbidden   |   forbidden   | Certificate holder's email         |
-| `certificate_rfc822name` |   forbidden   |   forbidden   | Email from certificate SAN         |
-| `contact`                |   forbidden   |   forbidden   | Profile contact email              |
-| `approver`               |   forbidden   |   forbidden   | Request approver                   |
-| `requester`              |   forbidden   |   forbidden   | Request submitter                  |
-| `lifecycle_operators`    |   forbidden   |   forbidden   | All lifecycle operators            |
-| `team_contact`           |   forbidden   |   forbidden   | Team contact email                 |
-| `team_manager`           |   forbidden   |   forbidden   | Team manager email                 |
-| `team_members`           |   forbidden   |   forbidden   | All team member emails             |
+`email` is required for `static` and ignored otherwise. `label` is required
+for `label` and ignored otherwise.
+
+| Type                     | Purpose                         |
+| ------------------------ | ------------------------------- |
+| `static`                 | Send to a fixed email address   |
+| `label`                  | Resolve an address from a label |
+| `certificate_owner`      | Certificate owner's email       |
+| `certificate_rfc822name` | Email from the certificate SAN  |
+| `contact`                | Contact email                   |
+| `approver`               | Request approver                |
+| `requester`              | Request submitter               |
+| `lifecycle_operators`    | Lifecycle operators             |
+| `team_contact`           | Team contact email              |
+| `team_manager`           | Team manager email              |
 
 ### Custom REST Notification (`rest`)
 
@@ -334,10 +330,10 @@ do not run a DCV policy.
       "method": "POST",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
-      "payload": "{\"cn\": \"{{ csr.subject.cn }}\"}",
+      "payload": "{\"cn\": \"{{certificate.subject.cn.1}}\"}",
       "expectedHttpCodes": [200, 201],
       "proxy": null,
-      "timeout": 30000
+      "timeout": "30 seconds"
     }
   ]
 }
@@ -359,19 +355,19 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
     "to": {
       "type": "static",
       "webhook": {
-        "type": "TEAMS",
-        "url": "https://outlook.office.com/webhook/..."
+        "type": "teams",
+        "url": "https://hooks.example.com/webhook"
       }
     },
     "title": "Certificate Alert",
-    "body": "Certificate {{ csr.subject.cn }} has been issued."
+    "body": "Certificate {{certificate.subject.cn.1}} has been issued."
   },
   "proxy": null,
-  "timeout": 30000
+  "timeout": "30 seconds"
 }
 ```
 
-**Webhook types**: `TEAMS`, `SLACK`, `MATTERMOST`.
+**Webhook types**: `teams`, `slack` (Slack/Mattermost).
 
 **WebhookRecipientType values**: `static`, `team`.
 

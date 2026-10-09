@@ -208,8 +208,7 @@ export function registerCertificateTools(
               'columns) - NOT the lowercase HCQL query fields. Examples: dn, ' +
               'serial, contactEmail, autoRenew, module, profile, notAfter. Prefix ' +
               'families: label.<key>, metadata.<key>, grade.<policy>, ' +
-              'team.displayname.<lang>. Invalid names return a Horizon 500 that ' +
-              'lists the usable columns.',
+              'team.displayname.<lang>.',
           ),
         sorted_by: z
           .string()
@@ -251,7 +250,7 @@ export function registerCertificateTools(
         'Download a certificate as PEM. Returned as an embedded resource ' +
         '(application/x-pem-file). The PKCS#12 bundle is not on the certificate ' +
         'object; for centralized enrollment or recover requests retrieve it via ' +
-        'search_requests + get_request (pkcs12 / keyStore field).',
+        'search_requests + get_request (pkcs12.value field).',
       inputSchema: z.object({
         certificate_id: z.string().describe('Certificate ID.'),
         format: z

@@ -207,8 +207,7 @@ metadata with no enrichment or lifecycle control.
    in the desired changes, and PUT the complete object back.
 
 7. **Immutable names**: ALL object names in Horizon are immutable after
-   creation - names are used as primary keys in the database and CANNOT be
-   changed. This applies to every configuration object: profiles, connectors,
+   creation. Keep the existing name when updating an object. This applies to every configuration object: profiles, connectors,
    datasources, CAs, triggers, roles, teams, dashboards, saved queries,
    labels, discovery campaigns, etc. When creating any object, you MUST ask
    the user for the name - never invent or guess names on their behalf.

@@ -35,7 +35,7 @@ Horizon supports these DCV provider types:
   license use.
 
 Credentials must be existing Horizon credentials with the DCV target. Provider
-names are immutable primary keys.
+names identify the provider and must stay unchanged during updates.
 
 ## DNS provisioners
 

@@ -76,6 +76,25 @@ function mandatoryArgs(overrides: Record<string, unknown> = {}) {
 }
 
 describe('certificate profile tools registration', () => {
+  it.each([
+    ['create_certificate_profile', 'If omitted, auto renewal is disabled.'],
+    ['update_certificate_profile', 'If omitted, the existing policy is kept.'],
+  ])(
+    '%s describes auto renewal availability and omission',
+    async (name, omission) => {
+      const { client } = await setup();
+      const tool = (await client.listTools()).tools.find(
+        (entry) => entry.name === name,
+      )!;
+      const policy = tool.inputSchema.properties!['auto_renewal_policy'] as {
+        description: string;
+      };
+      expect(policy.description).toContain('(Horizon 2.10+)');
+      expect(policy.description).toContain(omission);
+      await client.close();
+    },
+  );
+
   it('registers list/get/create/update/delete + describe tools', async () => {
     const { client } = await setup();
     const tools = (await client.listTools()).tools;
@@ -309,6 +328,7 @@ describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', 
       module: 'webra',
       name: 'cp1',
       enabled: true,
+      autoRenewalPolicy: { default: true, editable: false },
     });
     await client.callTool({
       name: 'update_certificate_profile',
@@ -317,6 +337,10 @@ describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', 
 
     const body = mc.put.mock.calls[0]![1] as Record<string, unknown>;
     expect(body['termsOfService']).toBe('corporate-terms');
+    expect(body['autoRenewalPolicy']).toEqual({
+      default: true,
+      editable: false,
+    });
   });
 
   it('rejects terms_of_service for the stored module after GET and before PUT', async () => {

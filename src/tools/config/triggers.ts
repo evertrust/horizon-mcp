@@ -84,7 +84,7 @@ const KNOWN_KEYS = [
 const nameSchema = z
   .string()
   .describe(
-    'Trigger name. Immutable primary key, unique. Ask the user - never invent it.',
+    'Trigger name. Unique identifier; it cannot change after creation. Ask the user - never invent it.',
   );
 const typeSchema = z
   .enum(TRIGGER_TYPES)

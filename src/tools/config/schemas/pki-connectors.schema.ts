@@ -102,7 +102,7 @@ export const pkiConnectorRequestSchema = {
     ConnectorName: {
       type: 'string',
       description:
-        'Primary key, immutable. Server enforces the name pattern `[0-9a-zA-Z-_.]+`.',
+        'Unique identifier; it cannot change after creation. Server enforces the name pattern `[0-9a-zA-Z-_.]+`.',
       pattern: '^[0-9a-zA-Z-_\\.]+$',
     },
     KeyType: {

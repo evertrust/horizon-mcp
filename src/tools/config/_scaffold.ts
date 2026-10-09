@@ -101,7 +101,7 @@ function itemPath(spec: ConfigSpec, id: string): string {
 export function immutableNote(spec: ConfigSpec): string {
   const key = spec.idField ?? 'name';
   return (
-    `IMPORTANT: ${key} is an immutable primary key and cannot be changed after ` +
+    `IMPORTANT: ${key} is a unique identifier and cannot be changed after ` +
     `creation. Always ask the user for it before creating - never invent or infer it.`
   );
 }

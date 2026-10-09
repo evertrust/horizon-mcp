@@ -164,10 +164,12 @@ const objectRecord = z.record(z.string(), z.unknown());
 const autoRenewalPolicySchema = z.object({
   default: z
     .boolean()
-    .describe('Default auto-renew value for new certificates.'),
+    .describe('Default auto-renew status for a new certificate.'),
   editable: z
     .boolean()
-    .describe('Whether a certificate auto-renew value can be changed.'),
+    .describe(
+      'Whether auto-renew status can be updated on new and existing certificates.',
+    ),
 });
 const TERMS_OF_SERVICE_MODULES = ['webra', 'scep', 'est'] as const;
 
@@ -292,7 +294,7 @@ export function registerCertificateProfileTools(
       name: z
         .string()
         .describe(
-          'Profile name. Immutable primary key. Ask the user - never invent it.',
+          'Profile name. Unique identifier; it cannot change after creation. Ask the user - never invent it.',
         ),
       enabled: z.boolean().describe('Whether the profile is enabled.'),
       authorization_levels: objectRecord.describe(
@@ -308,13 +310,17 @@ export function registerCertificateProfileTools(
       crypto_policy: objectRecord.describe(
         'Crypto policy object (key types, escrow, P12 handling).',
       ),
-      auto_renewal_policy: autoRenewalPolicySchema.optional(),
+      auto_renewal_policy: autoRenewalPolicySchema
+        .optional()
+        .describe(
+          'WebRA auto-renewal policy (Horizon 2.10+). If omitted, auto renewal is disabled.',
+        ),
       terms_of_service: z
         .string()
         .optional()
         .describe(
-          'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
-            'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+          'Name of a Terms of Service object for webra, scep, or est profiles only ' +
+            '(Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, ' +
             'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
             'delete_terms_of_service; deletion fails while a profile references the object.',
         ),
@@ -356,13 +362,17 @@ export function registerCertificateProfileTools(
         .optional()
         .describe('CertificateProfileSelfPermissions object.'),
       crypto_policy: objectRecord.optional().describe('Crypto policy object.'),
-      auto_renewal_policy: autoRenewalPolicySchema.optional(),
+      auto_renewal_policy: autoRenewalPolicySchema
+        .optional()
+        .describe(
+          'WebRA auto-renewal policy (Horizon 2.10+). If omitted, the existing policy is kept.',
+        ),
       terms_of_service: z
         .string()
         .optional()
         .describe(
-          'Name of a Terms of Service object for webra, scep, or est profiles only. ' +
-            'Not ACME requireTermsOfService. Use list_terms_of_services, ' +
+          'Name of a Terms of Service object for webra, scep, or est profiles only ' +
+            '(Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, ' +
             'get_terms_of_service, create_terms_of_service, update_terms_of_service, or ' +
             'delete_terms_of_service; deletion fails while a profile references the object.',
         ),

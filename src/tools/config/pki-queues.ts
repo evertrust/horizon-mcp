@@ -91,7 +91,7 @@ export function registerPkiQueueTools(
       name: z
         .string()
         .describe(
-          'PKI queue name. Immutable primary key, must not already exist.',
+          'PKI queue name. Unique identifier; it cannot change after creation. Must not already exist.',
         ),
       size: z.number().int().describe('Queue size. Mandatory, must be > 0.'),
       cluster_wide: z
@@ -113,8 +113,11 @@ export function registerPkiQueueTools(
     description: 'Update an existing PKI queue configuration.',
     inputSchema: z.object({
       name: z.string().describe('PKI queue name to update (immutable key).'),
-      size: z.number().int().optional(),
-      cluster_wide: z.boolean().optional(),
+      size: z.number().int().optional().describe('Maximum queue size.'),
+      cluster_wide: z
+        .boolean()
+        .optional()
+        .describe('Whether the queue is shared across the cluster.'),
       description: descriptionSchema.optional(),
       throttle_duration: throttleDurationSchema.optional(),
       throttle_parallelism: throttleParallelismSchema.optional(),

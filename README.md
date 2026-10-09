@@ -18,7 +18,8 @@ Most MCP servers hand an LLM a list of tools and leave it to figure out the doma
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events). On Horizon 2.11+, `validate_hql` also accepts HAQL (ACME accounts) and HEABQL (ACME External Account Bindings).
 - **Crypto decoding**: parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses to structured JSON without leaving the chat.
-- **Confirmation safeguards**: every mutating tool emits a STOP confirmation block; destructive tools additionally require an `expected_name` parameter that must match the target object.
+- **Destructive-operation safeguards**: `delete_*` and `flush_*` tools need an exact `expected_*` confirmation value.
+  Every other change runs as soon as the client calls it. Use the client approval controls and a Horizon identity with minimum privileges.
 - **Standalone binaries** for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
 
 Tool counts per domain:
@@ -37,7 +38,7 @@ Tool counts per domain:
 | Discovery events  |     3 | search, fetch, CSV export                                             |
 | Reports           |     3 | list, download, delete                                                |
 | Docs              |     4 | search product docs, search API docs, fetch a page, read knowledge    |
-| Profiles          |     2 | list and inspect (CRUD lives in the Horizon admin UI)                 |
+| Profiles          |     2 | list and inspect convenience tools. Profile mutations live in the Configuration toolset |
 
 Full per-tool table with safety tiers in [docs/tools-reference.md](docs/tools-reference.md).
 

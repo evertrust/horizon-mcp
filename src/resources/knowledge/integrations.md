@@ -161,19 +161,8 @@ directory. Also used for certificate publishing to AD.
    }
    ```
 
-2. Add computation rules to map LDAP attributes to certificate fields:
-   ```json
-   {
-     "computationRules": [
-       {
-         "source": "{{ ds.1.1.department }}",
-         "target": "subject.organizationalUnit"
-       },
-       { "source": "{{ ds.1.1.mail }}", "target": "subject.email" },
-       { "source": "{{ ds.1.1.displayName }}", "target": "subject.commonName" }
-     ]
-   }
-   ```
+2. Set `computationRule` on the selected `certificateTemplate` fields,
+   using the datasource dictionary entries.
 
 ### Certificate Publishing to AD
 
@@ -416,7 +405,7 @@ Complete setup for automated internal TLS certificate issuance:
 5. **Profile** "TLS-Internal" (module: `webra`):
    - `pkiConnector: "adcs-prod"`
    - `dsFlow` with "corp-ldap" to enrich requests
-   - `computationRules` to map LDAP attributes to subject fields
+   - `computationRule` on certificate-template fields to map LDAP attributes
    - `authorizationMode: "auto-validation"` with validation ruleset
    - `selfPermissions.selfPopRenew: true` for automated renewal
 6. **Trigger** "notify-expiry-30d" (type: `email`) -- attach to profile
@@ -456,7 +445,7 @@ Step 2: create_rest_notification(
   ]
 )
 Step 3: Attach the trigger to a profile via the Horizon admin UI
-        or by updating the profile's triggerHooks via the API.
+        or by updating the profile's triggers via the API.
 ```
 
 ### Create an Email Notification Trigger with Attachments

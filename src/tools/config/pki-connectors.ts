@@ -204,7 +204,7 @@ const configSchema = z
 const nameSchema = z
   .string()
   .describe(
-    'Connector name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
+    'Connector name. Unique identifier; it cannot change after creation. Server-validated against regex [0-9a-zA-Z-_.]+.',
   );
 const typeSchema = z
   .enum(CONNECTOR_TYPES)

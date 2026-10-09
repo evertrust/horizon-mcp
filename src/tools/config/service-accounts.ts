@@ -33,15 +33,19 @@ const SPEC: ConfigSpec = {
 
 const nameSchema = z
   .string()
-  .describe('Service-account name. Immutable primary key.');
+  .describe(
+    'Service-account name. Unique identifier; it cannot change after creation.',
+  );
 
 const staticJwksSchema = z.object({
-  type: z.literal('static_jwks'),
+  type: z.literal('static_jwks').describe('Inline JWKS trust configuration.'),
   jwks: z.string().describe('JWKS JSON document, serialized as a string.'),
 });
 
 const dynamicJwksSchema = z.object({
-  type: z.literal('dynamic_jwks'),
+  type: z
+    .literal('dynamic_jwks')
+    .describe('JWKS trust configuration fetched from a URL.'),
   url: z
     .string()
     .url()
@@ -111,7 +115,7 @@ const UPDATE_SERVICE_ACCOUNT_SCHEMA = z.object({
   iatFutureRestriction: durationSchema.optional(),
   iatPastRestriction: durationSchema.optional(),
   jwtAllowedClockSkew: durationSchema.optional(),
-  identifierMapping: z.string().optional(),
+  identifierMapping: CREATE_SERVICE_ACCOUNT_SCHEMA.shape.identifierMapping,
   clear_fields: z
     .array(
       z.enum([
@@ -222,10 +226,10 @@ export function registerServiceAccountTools(
 ): void {
   registerReadTools(server, client, SPEC, {
     listDescription:
-      'List service accounts. Requires audit access; manage access is required ' +
+      'List service accounts (Horizon 2.10+). Requires audit access; manage access is required ' +
       'to change accounts (`access-management:service-account:*`).',
     getDescription:
-      'Get a single service account by name, including its JWT trust configuration. ' +
+      'Get a single service account by name (Horizon 2.10+), including its JWT trust configuration. ' +
       'Requires audit access; manage access is required for mutations.',
   });
 

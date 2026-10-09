@@ -108,7 +108,7 @@ const CREATE_ACME_EAB_CONFIG = {
     `${ACME_VERSION_NOTE} Create an ACME External Account Binding. The ` +
     'response holds macKey and macKeyId ONCE: give them to the user ' +
     'immediately. Horizon will not show them again.\nSafety tier: mutating-safe\n' +
-    'IMPORTANT: name is an immutable primary key. Always ask the user for it ' +
+    'IMPORTANT: name is a unique identifier; it cannot change after creation. Always ask the user for it ' +
     'before creating - never invent or infer it.\nMANDATORY fields: name, ' +
     'eab_policy, mac_key_algorithm. If the user has not supplied one of these, ' +
     'DO NOT infer or default it - ask the user.',

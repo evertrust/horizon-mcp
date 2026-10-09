@@ -96,7 +96,12 @@ export function registerMutateDatasourceTools(
           .optional()
           .describe('(REST) New auth type.'),
         headers: z
-          .array(z.object({ name: z.string(), value: z.string() }))
+          .array(
+            z.object({
+              name: z.string().describe('HTTP header name.'),
+              value: z.string().describe('HTTP header value.'),
+            }),
+          )
           .optional()
           .describe('(REST) New HTTP headers.'),
         payload_type: z

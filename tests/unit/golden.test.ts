@@ -17,8 +17,10 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import {
   CORE_RESOURCE_URIS,
   CURATED_RESOURCE_URIS,
+  getAllResources,
 } from '../../src/resources/catalog.js';
 import { registerAllResources } from '../../src/resources/index.js';
+import { createSessionServer } from '../../src/server-factory.js';
 import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
@@ -82,6 +84,40 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerComputationTools(server, c);
   registerTranslateTools(server, c);
   registerAcmeTools(server, c);
+}
+
+function undescribedProperties(schema: unknown, path: string): string[] {
+  if (Array.isArray(schema)) {
+    return schema.flatMap((item, index) =>
+      undescribedProperties(item, `${path}[${index}]`),
+    );
+  }
+  if (!schema || typeof schema !== 'object') return [];
+  const node = schema as Record<string, unknown>;
+  const properties = (node['properties'] ?? {}) as Record<
+    string,
+    { description?: string }
+  >;
+  const offenders = Object.entries(properties).flatMap(([key, property]) => {
+    const fieldPath = `${path}.${key}`;
+    return [
+      ...(!property.description?.trim() ? [fieldPath] : []),
+      ...undescribedProperties(property, fieldPath),
+    ];
+  });
+  if (node['items'])
+    offenders.push(...undescribedProperties(node['items'], `${path}[]`));
+  for (const branch of ['anyOf', 'oneOf', 'allOf']) {
+    const alternatives = node[branch];
+    if (Array.isArray(alternatives)) {
+      alternatives.forEach((alternative, index) => {
+        offenders.push(
+          ...undescribedProperties(alternative, `${path}.${branch}[${index}]`),
+        );
+      });
+    }
+  }
+  return offenders;
 }
 
 // ===================================================================
@@ -482,6 +518,31 @@ describe('Golden tests', () => {
     }));
     expect(schemas).toMatchSnapshot();
   });
+
+  it('advertises every input field description across all toolsets', async () => {
+    const fullServer = createSessionServer(
+      createMockClient() as Parameters<typeof createSessionServer>[0],
+    );
+    const fullClient = new Client({
+      name: 'description-test',
+      version: '0.0.0',
+    });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await Promise.all([fullClient.connect(ct), fullServer.connect(st)]);
+    try {
+      const result = await fullClient.listTools();
+      const offenders = result.tools.flatMap((tool) =>
+        undescribedProperties(tool.inputSchema, tool.name),
+      );
+      expect(
+        offenders,
+        `Missing field descriptions: ${offenders.join(', ')}`,
+      ).toEqual([]);
+    } finally {
+      await fullClient.close();
+      await fullServer.close();
+    }
+  });
 });
 
 // ===================================================================
@@ -489,6 +550,29 @@ describe('Golden tests', () => {
 // ===================================================================
 
 describe('Knowledge resource accessibility', () => {
+  it('reads every catalog resource through MCP, including generated sections', async () => {
+    const server = new McpServer({ name: 'test-resources', version: '0.0.0' });
+    registerAllResources(server);
+    const client = new Client({ name: 'test-reader', version: '0.0.0' });
+    const [ct, st] = InMemoryTransport.createLinkedPair();
+    await Promise.all([client.connect(ct), server.connect(st)]);
+
+    try {
+      for (const resource of getAllResources()) {
+        const result = await client.readResource({ uri: resource.uri });
+        expect(result.contents, resource.uri).toHaveLength(1);
+        expect(result.contents[0], resource.uri).toMatchObject({
+          uri: resource.uri,
+          text: resource.content,
+        });
+        expect(resource.content.trim(), resource.uri).not.toBe('');
+      }
+    } finally {
+      await client.close();
+      await server.close();
+    }
+  });
+
   it.each(KNOWLEDGE_FILES)(
     'knowledge file %s exists and has >50 lines',
     (filename) => {
@@ -712,17 +796,18 @@ describe('Knowledge field alignment', () => {
     );
     for (const concept of [
       'on_approve_enroll',
-      'pkcs12',
-      'certificate.private_key',
+      'request.password',
+      'request.certificate',
       'previous.certificate',
-      'fire-and-forget',
-      'Dictionary Availability Matrix',
+      'caller-chosen correlation key',
     ]) {
       expect(
         knowledgeText,
         `Event semantics concept '${concept}' not in rest_notifications.md`,
       ).toContain(concept);
     }
+    expect(knowledgeText).not.toContain('fire-and-forget');
+    expect(knowledgeText).not.toContain('Dictionary Availability Matrix');
   });
 
   it('rest-notifications knowledge mentions chaining patterns', () => {

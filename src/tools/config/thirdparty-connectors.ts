@@ -199,7 +199,7 @@ const subtypeParam = z
 const nameParam = z
   .string()
   .describe(
-    'Connector name. Immutable primary key (unique); cannot change after creation.',
+    'Connector name. Unique identifier; it cannot change after creation.',
   );
 const throttleDurationParam = z
   .string()

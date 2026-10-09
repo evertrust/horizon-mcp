@@ -61,7 +61,7 @@ const fields = {
   name: z
     .string()
     .describe(
-      'Provisioner name. Immutable primary key (the update lookup key).',
+      'Provisioner name. Unique identifier (the update lookup key); it cannot change after creation.',
     ),
   type: z
     .enum(PROVISIONER_TYPES)

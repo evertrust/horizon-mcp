@@ -1063,6 +1063,29 @@ describe('Lifecycle tools', () => {
   });
 
   describe('cancel_request', () => {
+    it('cancels an authorized in_progress request with an error field', async () => {
+      mockClient.get.mockResolvedValueOnce({
+        workflow: 'enroll',
+        module: 'webra',
+        status: 'in_progress',
+        permissions: { cancel: true },
+        error: 'Certificate issuance is delayed.',
+      });
+      mockClient.post.mockResolvedValueOnce({ status: 'cancelled' });
+
+      const result = await client.callTool({
+        name: 'cancel_request',
+        arguments: { request_id: 'req-003' },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith('/api/v1/requests/cancel', {
+        _id: 'req-003',
+        module: 'webra',
+        workflow: 'enroll',
+      });
+      expect(parseToolResult(result)['status']).toBe('cancelled');
+    });
+
     it('cancels with permission', async () => {
       mockClient.get.mockResolvedValueOnce({
         workflow: 'enroll',

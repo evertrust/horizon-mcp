@@ -27,16 +27,23 @@ export const VALID_AUTH_TYPES = new Set([
 // ---------------------------------------------------------------------------
 
 export const localizedNameSchema = z
-  .array(z.object({ lang: z.string(), value: z.string() }))
+  .array(
+    z.object({
+      lang: z.string().describe('Language code, e.g. "en", "fr".'),
+      value: z.string().describe('Localized text.'),
+    }),
+  )
   .optional()
   .describe("Localized display names, e.g. [{lang: 'en', value: 'My DS'}].");
 
 export const dsAttributeSchema = z
   .array(
     z.object({
-      key: z.string(),
-      multi: z.boolean(),
-      selected: z.boolean(),
+      key: z.string().describe('Attribute name.'),
+      multi: z
+        .boolean()
+        .describe('Whether the attribute can contain multiple values.'),
+      selected: z.boolean().describe('Whether to return this attribute.'),
     }),
   )
   .optional()

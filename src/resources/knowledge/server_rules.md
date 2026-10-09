@@ -6,7 +6,7 @@ holds the longer explanations for when you need them.
 
 ## 1. Immutable names
 
-Every Horizon object name is the primary key and cannot change after creation.
+Each Horizon object name is a unique identifier and cannot change after creation.
 Applies to profiles, connectors, dashboards, roles, teams, CAs, triggers,
 labels, REST notifications, datasources, saved queries, and any other named
 object. Always ask the user for the `name` (and, where supported, the
@@ -52,16 +52,15 @@ object. It is returned in the enrollment or recover REQUEST response. When the
 user asks for a PKCS#12, PFX, or private key:
 
 1. Find the enrollment or recover request via `search_requests`.
-2. Call `get_request` to read it; the `pkcs12` / `keyStore` field contains the
-   base64-encoded bundle.
+2. Call `get_request` to read it; `pkcs12.value` contains the base64-encoded
+   bundle and `password.value` its password.
 
 Do not say PKCS#12 retrieval is impossible. It is available through the
 request.
 
 Special case (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
 only in the `submit_webra_challenge` response, in centralized mode, encrypted
-with the challenge as password. It is never stored and cannot be retrieved
-later, so save it from that response. In a challenge profile's enroll
+with the challenge as password. Save it from that response. In a challenge profile's enroll
 request response, `password` holds the challenge.
 
 ## 6. Lifecycle requests: inspect the template first

@@ -106,7 +106,9 @@ const organizationIdSchema = z
   );
 const providerNameSchema = z
   .string()
-  .describe('Provider name. Immutable primary key (the update lookup key).');
+  .describe(
+    'Provider name. Unique identifier (the update lookup key); it cannot change after creation.',
+  );
 const clearFieldsSchema = z
   .array(z.string())
   .optional()

@@ -392,7 +392,9 @@ export function registerTriggerTools(
       inputSchema: z.object({
         name: z
           .string()
-          .describe('Unique trigger name (immutable primary key).'),
+          .describe(
+            'Trigger name. Unique identifier; it cannot change after creation.',
+          ),
         event: z
           .string()
           .describe(
@@ -409,9 +411,7 @@ export function registerTriggerTools(
           .number()
           .int()
           .default(10)
-          .describe(
-            'Retry count on failure with exponential backoff (default 10).',
-          ),
+          .describe('Number of retries when the notification fails.'),
         run_period: z
           .string()
           .optional()
