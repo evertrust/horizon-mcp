@@ -15,6 +15,7 @@ import { afterAll, beforeAll } from 'vitest';
 import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
 import { HorizonClient } from '../../src/client/http.js';
 import { registerAllResources } from '../../src/resources/index.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -246,6 +247,7 @@ function registerAllTools(server: McpServer, client: HorizonClient): void {
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
   registerConfigTools(server, client);
+  registerAcmeTools(server, client);
 }
 
 /**

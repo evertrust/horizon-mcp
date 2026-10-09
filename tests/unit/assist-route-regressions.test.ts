@@ -5,6 +5,7 @@ import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
 
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
+import { registerQueryTools } from '../../src/tools/assist/query.js';
 import { registerSystemTools } from '../../src/tools/assist/system.js';
 
 function createMockClient() {
@@ -237,5 +238,69 @@ describe('Computation assist route regressions', () => {
     expect(mockClient.post).toHaveBeenCalledWith('/api/v1/datasource/flows', {
       dsFlow: [{ ds: 'cmdb', inputs: undefined, stopOnSuccess: false }],
     });
+  });
+});
+
+describe('ACME query assist regressions', () => {
+  let client: Client;
+  let mockClient: MockClient;
+
+  beforeAll(async () => {
+    const ctx = await setupServer((server, mc) => {
+      registerQueryTools(server, mc as any);
+    });
+    client = ctx.client;
+    mockClient = ctx.mockClient;
+  });
+
+  beforeEach(() => {
+    resetMocks(mockClient);
+  });
+
+  it.each([
+    ['haql', '/api/v1/acme/accounts/search'],
+    ['heabql', '/api/v1/acme/eab/search'],
+  ])(
+    'validates %s against its documented search route',
+    async (dialect, route) => {
+      mockClient.post.mockResolvedValueOnce({ count: 1, hasMore: false });
+
+      const result = await client.callTool({
+        name: 'validate_hql',
+        arguments: { dialect, query: 'status equals "valid"' },
+      });
+
+      expect(mockClient.post).toHaveBeenCalledWith(route, {
+        query: 'status equals "valid"',
+        pageSize: 1,
+      });
+      expect(parseToolResult(result)['valid']).toBe(true);
+    },
+  );
+
+  it.each([
+    ['haql', ['id', 'contact', 'eab.name', 'status', 'created.at']],
+    [
+      'heabql',
+      [
+        'id',
+        'name',
+        'status',
+        'mackey.algorithm',
+        'expiration.date',
+        'created.at',
+        'eab.policy',
+        'validation.methods',
+      ],
+    ],
+  ])('describes the documented %s fields', async (queryType, fields) => {
+    const result = await client.callTool({
+      name: 'describe_query_fields',
+      arguments: { query_type: queryType },
+    });
+    const metadata = parseToolResult(result);
+    expect(
+      (metadata['fields'] as Array<{ name: string }>).map(({ name }) => name),
+    ).toEqual(fields);
   });
 });
