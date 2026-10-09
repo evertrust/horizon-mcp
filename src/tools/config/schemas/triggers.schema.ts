@@ -102,22 +102,6 @@ export const triggerRequestSchema = {
         '^([0-9]+) *(ms|millisecond|milliseconds|s|second|seconds|m|minute|minutes|h|hour|hours|d|day|days)$',
       example: '30 s',
     },
-    TriggerErrorTriggers: {
-      type: 'object',
-      description:
-        'Error-handler chain run on the on_trigger_error event. Optional on every subtype. Not in the OpenAPI request schemas.',
-      properties: {
-        onTriggerError: {
-          type: 'array',
-          nullable: true,
-          items: {
-            type: 'string',
-            description: 'Name of another trigger to run on error',
-          },
-        },
-      },
-      additionalProperties: false,
-    },
     EmailRecipient: {
       type: 'object',
       description: 'Email recipient.',
@@ -367,10 +351,6 @@ export const triggerRequestSchema = {
           nullable: true,
           description: 'Only valid on on_approve_enroll/recover/renew events.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'events', 'emailTemplate'],
     },
@@ -413,10 +393,6 @@ export const triggerRequestSchema = {
           allOf: [{ $ref: '#/$defs/FiniteDuration' }],
           nullable: true,
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'events', 'webhookTemplate'],
     },
@@ -454,10 +430,6 @@ export const triggerRequestSchema = {
           description:
             'REST requests in execution order. Server rejects empty sequence.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'events', 'sequence'],
     },
@@ -477,10 +449,6 @@ export const triggerRequestSchema = {
           description:
             'Name of the third-party connector. Dependency: must reference an existing ThirdPartyConnector of matching type.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'connector'],
     },
@@ -499,10 +467,6 @@ export const triggerRequestSchema = {
           type: 'string',
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
-        },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
         },
       },
       required: ['name', 'type', 'connector'],
@@ -524,10 +488,6 @@ export const triggerRequestSchema = {
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'connector'],
     },
@@ -546,10 +506,6 @@ export const triggerRequestSchema = {
           type: 'string',
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
-        },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
         },
       },
       required: ['name', 'type', 'connector'],
@@ -570,10 +526,6 @@ export const triggerRequestSchema = {
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'connector'],
     },
@@ -592,10 +544,6 @@ export const triggerRequestSchema = {
           type: 'string',
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
-        },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
         },
       },
       required: ['name', 'type', 'connector'],
@@ -616,10 +564,6 @@ export const triggerRequestSchema = {
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
         },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
-        },
       },
       required: ['name', 'type', 'connector'],
     },
@@ -639,10 +583,6 @@ export const triggerRequestSchema = {
           type: 'string',
           description:
             'Name of the third-party connector. Dependency: must pre-exist.',
-        },
-        triggers: {
-          allOf: [{ $ref: '#/$defs/TriggerErrorTriggers' }],
-          nullable: true,
         },
       },
       required: ['name', 'type', 'connector'],

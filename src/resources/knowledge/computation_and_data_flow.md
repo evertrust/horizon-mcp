@@ -2,7 +2,7 @@
 
 ## Before Writing a Computation Rule
 
-Use the functions and syntax in the public
+Use the functions and syntax in the
 [computation guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/other/computation_rules.html).
 Call `simulate_computation_rule` with the relevant context before configuring
 an enrollment field. Do not invent function names.
@@ -144,7 +144,10 @@ These functions accept single values or lists. `Upper`, `Lower`, `Trim`,
 | `Filter` | `Filter(multiExpr, regex)`                                  | list    | Keep items matching regex.                                | `Filter(["string1", "string2", "match"], "[a-z]+")` → `["match"]`                    |
 | `Slice`  | `Slice(multiExpr, start)` or `Slice(multiExpr, start, end)` | list    | Sub-list extraction. Negative indexes count from the end. | `Slice(["string1", "string2", "string3", "string4"], -2)` → `["string3", "string4"]` |
 | `Sort`   | `Sort(multiExpr)`                                           | list    | Alphabetical sort.                                        | `Sort(["b","a"])` → `["a","b"]`                                                      |
+| `Unique` | `Unique(multiExpr)`                                         | list    | Remove duplicate values.                                  | `Unique(["a","b","a"])` → `["a","b"]`                                                |
 | `Split`  | `Split(singleExpr, separator)`                              | list    | Divide string into list.                                  | `Split("a.b", ".")` → `["a","b"]`                                                    |
+
+[Template string guide](https://docs.evertrust.fr/horizon/2.5/admin-guide/other/template_string.html).
 
 ### Specialized Parsing Functions
 
@@ -176,7 +179,7 @@ Use the key type shown in the public dictionary reference. A subject field
 such as `csr.subject.cn` is multivalued. Use `{{csr.subject.cn.1}}` for its
 first value, or `[[csr.subject.cn]]` for its values.
 
-Functions such as `Concat`, `Filter`, and `Sort` can produce lists.
+Functions such as `Concat`, `Filter`, `Sort`, and `Unique` can produce lists.
 Configure the resulting expression on the documented template field.
 
 Combine DNS and IP SAN values from a CSR:

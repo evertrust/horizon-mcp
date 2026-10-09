@@ -166,10 +166,12 @@ Information from the HTTP request that initiated enrollment.
 
 Populated by datasource flow execution at enrollment time.
 
-| Pattern                              | Description                                 | Type   |
-| ------------------------------------ | ------------------------------------------- | ------ |
-| `ds.<flowIndex>.<resultIndex>.<key>` | Specific result attribute (1-based indexes) | Varies |
-| `ds.<flowIndex>.*.<key>`             | Wildcard over all results                   | Multi  |
+Datasource flow results use the prefix `ds.<flowIndex>`, starting from 1.
+For example, `{{ds.1.1.mail}}` accesses an LDAP mail value. Run `test_datasource`
+or `simulate_datasource_flow` and read the returned dictionary keys.
+
+[Datasource introduction](https://docs.evertrust.fr/horizon/2.11/admin-guide/datasources/introduction.html).
+[Validation guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/protocols/autovalidation.html).
 
 ---
 
