@@ -154,6 +154,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "cancel_dcv_run",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "request_id": {
           "type": "string",
         },
@@ -190,6 +205,63 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "convert_pkcs12_to_jks",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "allowed_profiles": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "type": "string",
+        },
+        "eab_policy": {
+          "type": "string",
+        },
+        "eab_validity_duration": {
+          "type": "string",
+        },
+        "email_constraint": {
+          "type": "string",
+        },
+        "identifier_constraint": {
+          "type": "string",
+        },
+        "mac_key_algorithm": {
+          "enum": [
+            "HS256",
+            "HS384",
+            "HS512",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+        "validation_methods": {
+          "items": {
+            "enum": [
+              "http-01",
+              "dns-01",
+              "tls-alpn-01",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+        "eab_policy",
+        "mac_key_algorithm",
+      ],
+      "type": "object",
+    },
+    "name": "create_acme_eab",
   },
   {
     "inputSchema": {
@@ -730,6 +802,44 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "account_id": {
+          "type": "string",
+        },
+        "expected_account_id": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+        "expected_account_id",
+      ],
+      "type": "object",
+    },
+    "name": "delete_acme_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "expected_name": {
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "expected_name",
+      ],
+      "type": "object",
+    },
+    "name": "delete_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "expected_name": {
           "type": "string",
         },
@@ -1194,6 +1304,51 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "account_id": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_account",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "order_id": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "order_id",
+      ],
+      "type": "object",
+    },
+    "name": "get_acme_order",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "certificate_id": {
           "type": "string",
         },
@@ -1234,6 +1389,21 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "get_datasource",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "get_dcv_policy_status",
   },
   {
     "inputSchema": {
@@ -1347,6 +1517,9 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
         "certificate_id": {
           "type": "string",
         },
+        "include_terms_of_service": {
+          "type": "boolean",
+        },
         "module": {
           "type": "string",
         },
@@ -1393,6 +1566,36 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "get_trigger",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "account_id": {
+          "type": "string",
+        },
+        "page_index": {
+          "default": 0,
+          "type": "number",
+        },
+        "page_size": {
+          "default": 25,
+          "type": "number",
+        },
+        "sorted_by": {
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "account_id",
+      ],
+      "type": "object",
+    },
+    "name": "list_acme_orders",
   },
   {
     "inputSchema": {
@@ -1454,6 +1657,43 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "list_datasources",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "domain": {
+          "type": "string",
+        },
+        "page_index": {
+          "type": "number",
+        },
+        "page_size": {
+          "type": "number",
+        },
+        "policy": {
+          "type": "string",
+        },
+        "sorted_by": {
+          "type": "string",
+        },
+        "with_count": {
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "policy",
+      ],
+      "type": "object",
+    },
+    "name": "list_dcv_events",
+  },
+  {
+    "inputSchema": {
+      "properties": {},
+      "type": "object",
+    },
+    "name": "list_dcv_policy_status",
   },
   {
     "inputSchema": {
@@ -1622,6 +1862,120 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "remove_dashboard_chart",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "eab_validity_duration": {
+          "type": "string",
+        },
+        "mac_key_algorithm": {
+          "enum": [
+            "HS256",
+            "HS384",
+            "HS512",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "renew_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "domain": {
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "domain",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_domain",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "name": {
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "run_dcv_policy",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "page_index": {
+          "default": 0,
+          "type": "number",
+        },
+        "page_size": {
+          "default": 25,
+          "type": "number",
+        },
+        "query": {
+          "type": "string",
+        },
+        "sorted_by": {
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "search_acme_accounts",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "page_index": {
+          "default": 0,
+          "type": "number",
+        },
+        "page_size": {
+          "default": 25,
+          "type": "number",
+        },
+        "query": {
+          "type": "string",
+        },
+        "sorted_by": {
+          "type": "string",
+        },
+        "with_count": {
+          "default": true,
+          "type": "boolean",
+        },
+      },
+      "type": "object",
+    },
+    "name": "search_acme_eabs",
   },
   {
     "inputSchema": {
@@ -1828,6 +2182,27 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "certificate_id": {
+          "type": "string",
+        },
+        "certificate_pem": {
+          "type": "string",
+        },
+        "enabled": {
+          "type": "boolean",
+        },
+      },
+      "required": [
+        "enabled",
+      ],
+      "type": "object",
+    },
+    "name": "set_certificate_auto_renew",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "dictionary": {
           "additionalProperties": {
             "type": "string",
@@ -1981,6 +2356,33 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
     "inputSchema": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "properties": {
+        "challenge": {
+          "type": "string",
+        },
+        "profile": {
+          "type": "string",
+        },
+        "template": {
+          "additionalProperties": {},
+          "propertyNames": {
+            "type": "string",
+          },
+          "type": "object",
+        },
+      },
+      "required": [
+        "profile",
+        "challenge",
+        "template",
+      ],
+      "type": "object",
+    },
+    "name": "submit_webra_challenge",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
         "attributes": {
           "items": {
             "properties": {
@@ -2123,6 +2525,143 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
       "type": "object",
     },
     "name": "translate_to_hql",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "account_id": {
+          "type": "string",
+        },
+        "compromised_at": {
+          "type": "number",
+        },
+        "compromission_reason": {
+          "enum": [
+            "unspecified",
+            "keycompromise",
+            "cacompromise",
+            "affiliationchange",
+            "superseded",
+            "cessationofoperation",
+          ],
+          "type": "string",
+        },
+        "status": {
+          "enum": [
+            "valid",
+            "deactivated",
+            "suspended",
+            "revoked",
+            "compromised",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "account_id",
+        "status",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_account_status",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "allowed_profiles": {
+          "items": {
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "clear_fields": {
+          "items": {
+            "enum": [
+              "description",
+              "identifierConstraint",
+              "allowedProfiles",
+              "validationMethods",
+              "emailConstraint",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+        "description": {
+          "type": "string",
+        },
+        "eab_policy": {
+          "type": "string",
+        },
+        "email_constraint": {
+          "type": "string",
+        },
+        "identifier_constraint": {
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+        "validation_methods": {
+          "items": {
+            "enum": [
+              "http-01",
+              "dns-01",
+              "tls-alpn-01",
+            ],
+            "type": "string",
+          },
+          "type": "array",
+        },
+      },
+      "required": [
+        "name",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_eab",
+  },
+  {
+    "inputSchema": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "properties": {
+        "compromised_at": {
+          "type": "number",
+        },
+        "compromission_reason": {
+          "enum": [
+            "unspecified",
+            "keycompromise",
+            "cacompromise",
+            "affiliationchange",
+            "superseded",
+            "cessationofoperation",
+          ],
+          "type": "string",
+        },
+        "name": {
+          "type": "string",
+        },
+        "status": {
+          "enum": [
+            "valid",
+            "disabled",
+            "suspended",
+            "deactivated",
+            "compromised",
+          ],
+          "type": "string",
+        },
+      },
+      "required": [
+        "name",
+        "status",
+      ],
+      "type": "object",
+    },
+    "name": "update_acme_eab_status",
   },
   {
     "inputSchema": {
@@ -2584,6 +3123,8 @@ exports[`Golden tests > tool schemas match snapshot 1`] = `
             "hrql",
             "heql",
             "hdql",
+            "haql",
+            "heabql",
           ],
           "type": "string",
         },

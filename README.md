@@ -8,14 +8,15 @@ An [MCP](https://modelcontextprotocol.io/) server for [Evertrust Horizon](https:
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **17 core knowledge URIs**, **4 curated integration playbooks**, and generated section resources for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **125 knowledge URIs**: **19 core knowledge guides**, **4 curated integration playbooks**, and **102 generated section resources** for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, DCV, ACME, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
 
 ## Features
 
-- **212 tools across 12 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 17 core topic URIs, 4 curated playbooks, plus auto-generated section URIs derived from H2 headings of the longest guides.
+- **241 tools across 13 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
+- **Knowledge catalog**: 125 registered topic URIs: 19 core guides, 4 curated playbooks, and 102 section URIs derived from the H2 headings of the longest guides.
 - **Three credential types**: Horizon API key (`X-API-ID` / `X-API-KEY`), service-account JWT (`X-API-SVA` / `X-API-TOKEN`, Horizon 2.10+), and TLS client certificate (PEM or PKCS12/PFX). In HTTP mode, each caller supplies a credential.
-- **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events).
+- **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
+- **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events). On Horizon 2.11+, `validate_hql` also accepts HAQL (ACME accounts) and HEABQL (ACME External Account Bindings).
 - **Crypto decoding**: parse X.509, PKCS#10 CSR, PKCS#7, CRL, OCSP, and RFC 3161 timestamp responses to structured JSON without leaving the chat.
 - **Confirmation safeguards**: every mutating tool emits a STOP confirmation block; destructive tools additionally require an `expected_name` parameter that must match the target object.
 - **Standalone binaries** for macOS (x64/arm64), Linux (x64/arm64), and Windows (x64).
@@ -24,9 +25,10 @@ Tool counts per domain:
 
 | Domain            | Tools | Highlights                                                            |
 | ----------------- | ----: | --------------------------------------------------------------------- |
-| Configuration     |   126 | CA / profile / RBAC / DCV / connector / policy CRUD (Horizon 2.8-2.10)|
+| Configuration     |   134 | CA / profile / RBAC / DCV / EAB policy / connector / policy CRUD (Horizon 2.8-2.11)|
 | Assist            |    21 | `whoami`, grading, HQL validators, crypto decoders, simulators        |
-| Lifecycle         |    17 | search/aggregate certs, requests, events, enroll, approve, revoke     |
+| Lifecycle         |    25 | search/aggregate certs, requests, events, enroll, approve, revoke, DCV runs |
+| ACME              |    13 | ACME accounts, orders, and External Account Bindings (Horizon 2.11+)  |
 | Dashboards        |    12 | dashboard CRUD, charts, saved HQL queries                             |
 | Datasources       |     8 | DNS / LDAP / REST datasources, plus a `test_datasource` dry-run       |
 | Discovery         |     6 | campaign CRUD and flush                                               |
@@ -116,7 +118,7 @@ In stdio mode, configure exactly one complete authentication method: API key, se
 | `HORIZON_LOG_LEVEL`            | No                | `INFO`               | One of `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                                  |
 | `HORIZON_TESTED_VERSIONS`      | No                | `2.8`                | Comma-separated list of Horizon versions known to fully work with this build.                |
 | `HORIZON_WARN_VERSIONS`        | No                | `2.7,2.9`            | Comma-separated list of versions that are likely to work but emit a warning.                 |
-| `HORIZON_ENABLED_TOOLSETS`     | No                | (all)                | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`. Unset registers every toolset; an unknown name fails startup. |
+| `HORIZON_ENABLED_TOOLSETS`     | No                | (all)                | Comma-separated list of tool domains to register, trimming the context cost of the full tool set. Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`, `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`, `acme`. Unset registers every toolset; an unknown name fails startup. |
 | `HORIZON_READ_ONLY`            | No                | `false`              | Set to `true` or `1` to register only read-only tools; every mutating tool (create/update/delete/submit/...) is skipped at startup. |
 | `HORIZON_AUTH_MODE`            | DEPRECATED        |                      | No longer required. Kept readable for backward compatibility; setting it logs a warning.     |
 
@@ -274,7 +276,7 @@ Each HTTP session is bound to the caller credential used for initialization. Sen
 
 ## Tool catalog overview
 
-The 212 tools are grouped into 12 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
+The 241 tools are grouped into 13 domains. Each tool ships with explicit "use when / do not use when" guidance for smaller models. The table at the top of this README lists tool counts; [docs/tools-reference.md](docs/tools-reference.md) has the full per-tool table with safety tiers and one-line descriptions.
 
 Knowledge resources are exposed at `horizon://knowledge/*` URIs. See [docs/knowledge-resources.md](docs/knowledge-resources.md) for the full catalog.
 
@@ -477,8 +479,8 @@ PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs f
 | [Installation](docs/installation.md)              | Install methods and troubleshooting                                            |
 | [Authentication](docs/authentication.md)          | Supported credential types with environment variable reference                 |
 | [Client setup](docs/client-setup.md)              | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector            |
-| [Tool reference](docs/tools-reference.md)         | All 212 tools by domain with safety tiers                                      |
-| [Knowledge resources](docs/knowledge-resources.md)| 17 core URIs, 4 curated playbooks, generated section resources                 |
+| [Tool reference](docs/tools-reference.md)         | All 241 tools by domain with safety tiers                                      |
+| [Knowledge resources](docs/knowledge-resources.md)| 19 core URIs, 4 curated playbooks, 102 generated section resources             |
 | [Development](docs/development.md)                | Dev setup, tests, linting                                                      |
 
 ## License

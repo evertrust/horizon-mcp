@@ -19,6 +19,7 @@ import {
   CURATED_RESOURCE_URIS,
 } from '../../src/resources/catalog.js';
 import { registerAllResources } from '../../src/resources/index.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -80,6 +81,7 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerCryptoTools(server, c);
   registerComputationTools(server, c);
   registerTranslateTools(server, c);
+  registerAcmeTools(server, c);
 }
 
 // ===================================================================
@@ -118,7 +120,7 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'describe_query_fields',
   // assist/translate.ts (1)
   'translate_to_hql',
-  // lifecycle.ts (17)
+  // lifecycle.ts (25)
   'search_certificates',
   'export_certificates_csv',
   'get_certificate',
@@ -131,11 +133,19 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'search_requests',
   'get_request',
   'export_requests_csv',
+  'submit_webra_challenge',
   'search_events',
   'get_event',
   'export_events_csv',
   'aggregate_certificates',
+  'set_certificate_auto_renew',
   'aggregate_requests',
+  'list_dcv_policy_status',
+  'get_dcv_policy_status',
+  'run_dcv_policy',
+  'run_dcv_domain',
+  'cancel_dcv_run',
+  'list_dcv_events',
   // profiles.ts (2)
   'list_profiles',
   'get_profile',
@@ -188,6 +198,20 @@ const EXPECTED_TOOL_NAMES: string[] = [
   'create_rest_notification',
   'delete_trigger',
   'simulate_trigger',
+  // acme/ (13, Horizon 2.11+)
+  'search_acme_accounts',
+  'get_acme_account',
+  'update_acme_account_status',
+  'delete_acme_account',
+  'list_acme_orders',
+  'get_acme_order',
+  'search_acme_eabs',
+  'get_acme_eab',
+  'create_acme_eab',
+  'update_acme_eab',
+  'update_acme_eab_status',
+  'renew_acme_eab',
+  'delete_acme_eab',
 ].sort();
 
 const REQUIRED_RESOURCE_URIS: string[] = [
@@ -222,8 +246,10 @@ const KNOWLEDGE_FILES: string[] = [
   'system_admin.md',
   'discovery_workflows.md',
   'datasources.md',
+  'dcv.md',
   'validation_rules.md',
   'rest_notifications.md',
+  'acme.md',
 ];
 
 const CURATED_KNOWLEDGE_FILES: string[] = [
@@ -263,9 +289,9 @@ describe('Golden tests', () => {
   // Tool count and enumeration
   // -----------------------------------------------------------------
 
-  it('registers exactly 86 tools', async () => {
+  it('registers exactly 107 tools', async () => {
     const result = await client.listTools();
-    expect(result.tools.length).toBe(86);
+    expect(result.tools.length).toBe(107);
   });
 
   it('tool name enumeration matches expected set exactly', async () => {
@@ -917,6 +943,8 @@ describe('Critical tool schema spot-checks', () => {
 
 describe('Delete tool safety-tier enumeration', () => {
   const EXPECTED_DELETE_TOOLS = [
+    'delete_acme_account',
+    'delete_acme_eab',
     'delete_dashboard',
     'delete_datasource',
     'delete_discovery_campaign',
@@ -978,8 +1006,8 @@ describe('Tool registration verification', () => {
     toolNames = new Set(result.tools.map((t) => t.name));
   });
 
-  it('registers exactly 86 tools', () => {
-    expect(toolNames.size).toBe(86);
+  it('registers exactly 107 tools', () => {
+    expect(toolNames.size).toBe(107);
   });
 
   it('excludes admin tools', () => {

@@ -4,14 +4,14 @@ Configure your LLM client to connect to the horizon-mcp server.
 
 ## Trimming the tool surface (recommended)
 
-The full server registers 212 tools, which costs roughly 45-55k context
+The full server registers 241 tools, which costs roughly 45-55k context
 tokens per session before the first user message. If you do not need every
 domain, scope the server with two environment variables (they work in any
 client's `env` block below, and server-side in HTTP mode):
 
 - `HORIZON_ENABLED_TOOLSETS` - comma-separated list of domains to register.
   Valid names: `lifecycle`, `profiles`, `dashboards`, `discovery`,
-  `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`.
+  `datasources`, `reports`, `triggers`, `docs`, `assist`, `config`, `acme`.
   Unknown names fail at startup with the valid list.
 - `HORIZON_READ_ONLY=true` - drop every mutating tool (create/update/delete,
   request submission), keeping only read-only tools.
@@ -25,8 +25,8 @@ Suggested presets:
 | Configuration administration | `HORIZON_ENABLED_TOOLSETS=config,assist,docs` |
 | Discovery review | `HORIZON_ENABLED_TOOLSETS=discovery,lifecycle,assist` |
 
-A scoped lifecycle+docs+assist read-only server registers ~38 tools instead
-of 212, cutting the context cost by roughly 80%.
+A scoped lifecycle+docs+assist read-only server registers about 41 tools
+instead of 241, cutting the context cost by roughly 80%.
 
 ## Claude Desktop
 
@@ -104,7 +104,7 @@ Or with the standalone binary:
 }
 ```
 
-Start Claude Code from that directory. The 212 tools are available immediately.
+Start Claude Code from that directory. The 241 tools are available immediately.
 
 ## Cursor
 
@@ -244,7 +244,7 @@ export HORIZON_API_KEY=your-api-key
 bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 ```
 
-Opens a browser UI showing all 212 tools and the full knowledge resource catalog (17 core URIs + 4 curated playbooks + generated section URIs).
+Opens a browser UI showing all 241 tools and the full knowledge resource catalog (19 core URIs + 4 curated playbooks + 102 generated section URIs).
 
 ## Connecting over streamable HTTP (remote server)
 

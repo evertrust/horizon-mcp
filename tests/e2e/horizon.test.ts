@@ -269,11 +269,13 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
           format: 'der',
         });
         expect(raw).toBeTruthy();
-        const data = JSON.parse(raw) as Record<string, unknown>;
+        // The format enum only admits 'pem', so the SDK rejects 'der' during
+        // input validation and reports it as text, before the handler runs.
         expect(
-          data['error'],
-          'download_certificate with format=der should return an error dict',
-        ).toBeDefined();
+          raw,
+          'download_certificate with format=der should be rejected as a validation error',
+        ).toMatch(/Input validation error/);
+        expect(raw).toContain('format');
       });
     });
 

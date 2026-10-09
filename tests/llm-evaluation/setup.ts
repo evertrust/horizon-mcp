@@ -178,7 +178,7 @@ function keywordBonus(question: string, candidate: string): number {
   let score = 0;
   if (question.includes('csv') && candidate.includes('export_')) score += 20;
   if (
-    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+    /\b(count|distribution|breakdown|group|grouped|by profile|by status)\b/.test(
       question,
     ) &&
     candidate.includes('aggregate_')
@@ -186,7 +186,7 @@ function keywordBonus(question: string, candidate: string): number {
     score += 34;
   }
   if (
-    /(count|distribution|breakdown|group|grouped|by profile|by status)/.test(
+    /\b(count|distribution|breakdown|group|grouped|by profile|by status)\b/.test(
       question,
     ) &&
     candidate.includes('search_')
@@ -218,7 +218,7 @@ function keywordBonus(question: string, candidate: string): number {
   if (/(id|uuid)\b/.test(question) && candidate.includes('get_')) score += 10;
   if (
     /request [a-f0-9-]{8,}/.test(question) &&
-    candidate.includes('get_request')
+    candidate.startsWith('get_request ')
   ) {
     score += 28;
   }
@@ -234,7 +234,7 @@ function keywordBonus(question: string, candidate: string): number {
   ) {
     score += 12;
   }
-  if (/(request)/.test(question) && candidate.includes('get_request'))
+  if (/(request)/.test(question) && candidate.startsWith('get_request '))
     score += 10;
   if (
     /(live|exposed|deployed|host|https:\/\/|ldaps:\/\/|port)/.test(question) &&
