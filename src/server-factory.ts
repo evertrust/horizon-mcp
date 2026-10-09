@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import pkg from '../package.json';
 import type { HorizonClient } from './client/http.js';
 import { registerAllResources } from './resources/index.js';
+import { registerAcmeTools } from './tools/acme/index.js';
 import { registerComputationTools } from './tools/assist/computation.js';
 import { registerCryptoTools } from './tools/assist/crypto.js';
 import { registerQueryTools } from './tools/assist/query.js';
@@ -83,6 +84,7 @@ const TOOLSET_REGISTRY: Record<string, ToolsetRegistrar> = {
     registerTranslateTools(server, client);
   },
   config: registerConfigTools,
+  acme: registerAcmeTools,
 };
 
 /** All registered toolset names, in registration order. */

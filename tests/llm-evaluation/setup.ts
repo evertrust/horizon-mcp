@@ -3,6 +3,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import { registerAllResources } from '../../src/resources/index.js';
+import { registerAcmeTools } from '../../src/tools/acme/index.js';
 import { registerComputationTools } from '../../src/tools/assist/computation.js';
 import { registerCryptoTools } from '../../src/tools/assist/crypto.js';
 import { registerQueryTools } from '../../src/tools/assist/query.js';
@@ -115,6 +116,7 @@ function registerAllTools(server: McpServer, mockClient: unknown): void {
   registerComputationTools(server, client);
   registerTranslateTools(server, client);
   registerConfigTools(server, client);
+  registerAcmeTools(server, client);
 }
 
 let metadataPromise: Promise<ScenarioMetadata> | undefined;
