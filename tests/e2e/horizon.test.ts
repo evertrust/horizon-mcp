@@ -298,9 +298,14 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
       }, 150_000);
 
       it('exports requests as CSV', async () => {
-        const result = await callTool('export_requests_csv', {
-          query: 'profile exists',
-        });
+        // QA holds tens of thousands of requests and the export costs roughly
+        // 50 ms per row server-side, so a match-all export exceeds the budget
+        // under parallel E2E load; a narrower status query keeps it representative.
+        const result = await callTool(
+          'export_requests_csv',
+          { query: 'status equals "denied"' },
+          { timeout: 120_000 },
+        );
         expect(
           result['csv'],
           `export_requests_csv response lacks 'csv'. Got keys: ${Object.keys(result).join(', ')}`,
