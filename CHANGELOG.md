@@ -1,3 +1,9 @@
+## [2.1.0](https://github.com/evertrust/horizon-mcp/compare/v2.0.2...v2.1.0) (2026-10-09)
+
+### Features
+
+* add horizon 2.10 and 2.11 support to the 2.x line ([25d61a5](https://github.com/evertrust/horizon-mcp/commit/25d61a5212965015593164a312f4ac76639ef8b7))
+
 ## [2.0.2](https://github.com/evertrust/horizon-mcp/compare/v2.0.1...v2.0.2) (2026-10-08)
 
 ### Bug Fixes
