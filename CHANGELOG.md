@@ -1,3 +1,9 @@
+## [3.1.1](https://github.com/evertrust/horizon-mcp/compare/v3.1.0...v3.1.1) (2026-10-09)
+
+### Bug Fixes
+
+* align tools and knowledge with the public horizon api ([#31](https://github.com/evertrust/horizon-mcp/issues/31)) ([a33c6a4](https://github.com/evertrust/horizon-mcp/commit/a33c6a46bedc267bcfea425751e8f85a0b040c65))
+
 ## [3.1.0](https://github.com/evertrust/horizon-mcp/compare/v3.0.1...v3.1.0) (2026-10-08)
 
 ### Features
