@@ -53,7 +53,9 @@ const contentsSchema = z
 const CREATE_TERMS_OF_SERVICE_SCHEMA = z.object({
   name: z
     .string()
-    .describe('ToS name. Immutable primary key (the update lookup key).'),
+    .describe(
+      'ToS name. Unique identifier (the update lookup key); it cannot change after creation.',
+    ),
   contents: contentsSchema,
   description: z
     .string()
@@ -80,14 +82,15 @@ export function registerTermsOfServiceTools(
 ): void {
   registerReadTools(server, client, SPEC, {
     listDescription:
-      'List Terms of Service entries. A ToS entry can be required for ' +
+      'List Terms of Service entries (Horizon 2.10+). A ToS entry can be required for ' +
       'acceptance during certificate enrollment (referenced by certificate profiles).',
-    getDescription: 'Get a single Terms of Service entry by name.',
+    getDescription:
+      'Get a single Terms of Service entry by name (Horizon 2.10+).',
   });
 
   registerCreateTool(server, client, SPEC, {
     description:
-      'Create a Terms of Service entry that enrollment workflows can require ' +
+      'Create a Terms of Service entry (Horizon 2.10+) that enrollment workflows can require ' +
       'users to accept. contents holds the localized markdown text.',
     mandatoryFields: ['name', 'contents'],
     inputSchema: CREATE_TERMS_OF_SERVICE_SCHEMA,
@@ -99,7 +102,7 @@ export function registerTermsOfServiceTools(
   });
 
   registerUpdateTool(server, client, SPEC, {
-    description: 'Update an existing Terms of Service entry.',
+    description: 'Update an existing Terms of Service entry (Horizon 2.10+).',
     inputSchema: UPDATE_TERMS_OF_SERVICE_SCHEMA,
     buildOverrides: ({ contents, description }) => {
       const o: Record<string, unknown> = {};
@@ -110,7 +113,7 @@ export function registerTermsOfServiceTools(
   });
 
   registerDeleteTool(server, client, SPEC, {
-    description: 'Delete a Terms of Service entry.',
+    description: 'Delete a Terms of Service entry (Horizon 2.10+).',
     deleteConstraints:
       'Cannot be deleted while referenced by a certificate profile.',
   });

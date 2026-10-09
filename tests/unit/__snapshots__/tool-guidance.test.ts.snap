@@ -1,0 +1,151 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Tool guidance contracts > advertises feature versions and notification safety 1`] = `
+[
+  {
+    "description": "Cancel the current run of a DCV policy (Horizon 2.10+). This cancels the whole policy run, including its domains. Full guidance: horizon://knowledge/dcv.
+[when: caller explicitly wants to stop an active DCV policy run | not: caller wants to stop only one domain or merely inspect status | pre: confirm this cancels the whole policy run, including its domains]",
+    "name": "cancel_dcv_run",
+  },
+  {
+    "description": "Create a service account for federated JWT authentication (Horizon 2.10+). Requires manage access (\`access-management:service-account:*\`). Grant only explicit roles and permissions, never broad permissions inferred by the model.
+Safety tier: mutating-safe
+IMPORTANT: name is a unique identifier and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.
+MANDATORY fields: name, trustConfig, validationRules, permissions, roles. If the user has not supplied one of these, DO NOT infer or default it - ask the user for the value.
+[when: caller explicitly provides the JWT trust configuration and grants | not: caller only wants to inspect service-account configuration | pre: confirm exact roles and permissions; do not infer broad access]",
+    "name": "create_service_account",
+  },
+  {
+    "description": "Create a Terms of Service entry (Horizon 2.10+) that enrollment workflows can require users to accept. contents holds the localized markdown text.
+Safety tier: mutating-safe
+IMPORTANT: name is a unique identifier and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.
+MANDATORY fields: name, contents. If the user has not supplied one of these, DO NOT infer or default it - ask the user for the value.",
+    "name": "create_terms_of_service",
+  },
+  {
+    "description": "Delete a service account (Horizon 2.10+). Requires manage access (\`access-management:service-account:*\`).
+Safety tier: mutating-destructive
+Requires name confirmation via expected_name.
+Configuration-defined accounts are read-only and cannot be deleted (SERV-ACC-005).
+[when: caller explicitly wants to permanently remove a service account | not: caller only wants to revoke or inspect its access | pre: confirm expected_name and check that the account is not read-only]",
+    "name": "delete_service_account",
+  },
+  {
+    "description": "Delete a Terms of Service entry (Horizon 2.10+).
+Safety tier: mutating-destructive
+Requires name confirmation via expected_name.
+Cannot be deleted while referenced by a certificate profile.",
+    "name": "delete_terms_of_service",
+  },
+  {
+    "description": "Get the full lifecycle status for one DCV policy, including scheduled or active domain validation runs (Horizon 2.10+). Full guidance: horizon://knowledge/dcv.
+[when: caller needs one policy's domain status, schedule, or run errors | not: caller only needs the available policy list]",
+    "name": "get_dcv_policy_status",
+  },
+  {
+    "description": "Get a single service account by name (Horizon 2.10+), including its JWT trust configuration. Requires audit access; manage access is required for mutations.
+Safety tier: read-only",
+    "name": "get_service_account",
+  },
+  {
+    "description": "Get a single Terms of Service entry by name (Horizon 2.10+).
+Safety tier: read-only",
+    "name": "get_terms_of_service",
+  },
+  {
+    "description": "List DCV lifecycle events for a policy, optionally narrowed to one domain (Horizon 2.10+). removeAt is the event retention deadline. Full guidance: horizon://knowledge/dcv.
+[when: caller needs DCV run history, failures, retries, or retention timing | not: caller needs the current policy or domain status instead]",
+    "name": "list_dcv_events",
+  },
+  {
+    "description": "List DCV policy lifecycle status (Horizon 2.10+). An empty Horizon response is returned as an empty array. Full guidance: horizon://knowledge/dcv.
+[when: caller wants an overview of DCV policy readiness or current state | not: caller needs domains, timing, or errors for one policy]",
+    "name": "list_dcv_policy_status",
+  },
+  {
+    "description": "List service accounts (Horizon 2.10+). Requires audit access; manage access is required to change accounts (\`access-management:service-account:*\`).
+Safety tier: read-only",
+    "name": "list_service_accounts",
+  },
+  {
+    "description": "List Terms of Service entries (Horizon 2.10+). A ToS entry can be required for acceptance during certificate enrollment (referenced by certificate profiles).
+Safety tier: read-only",
+    "name": "list_terms_of_services",
+  },
+  {
+    "description": "Queue DCV for one domain in a policy (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.
+[when: caller explicitly wants to start DCV for one named policy domain | not: caller intends a full policy run or is only inspecting status | pre: confirm the policy and domain, then inspect policy status first]",
+    "name": "run_dcv_domain",
+  },
+  {
+    "description": "Queue a DCV policy run for every eligible domain (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.
+[when: caller explicitly wants to start DCV for every eligible policy domain | not: caller wants a single domain or is only inspecting status | pre: confirm the policy is intended and inspect its status first]",
+    "name": "run_dcv_policy",
+  },
+  {
+    "description": "Set automatic renewal for one WebRA certificate (Horizon 2.10+). The certificate profile must have autoRenewalPolicy.editable set to true. Use get_request_template with workflow update and module webra to inspect the autoRenew template element when using the generic request path.
+[when: caller wants to turn WebRA auto-renew on or off for one certificate (Horizon 2.10+) | not: caller wants to change the auto-renewal policy of a profile; use update_certificate_profile | pre: check that the profile has autoRenewalPolicy.editable set to true]",
+    "name": "set_certificate_auto_renew",
+  },
+  {
+    "description": "Test-fire an existing trigger. Sends real notifications or external requests and returns the execution result. Repeated calls can send repeated notifications.
+Safety tier: mutating-destructive
+Inspect the trigger with get_trigger before running this test. Ref: horizon://knowledge/rest-notifications.
+[when: caller explicitly wants to fire a trigger test; it sends real notifications | not: caller wants a dry run, or wants to create/update/delete the trigger | pre: confirm the intent and use a test recipient]",
+    "name": "simulate_trigger",
+  },
+  {
+    "description": "Submit a certificate lifecycle request (enroll, renew, revoke, update, recover, migrate). MUST call get_request_template first to learn which fields are required/editable for this profile+workflow, then ask the user for any missing values. Outcome depends on caller permissions: with the direct action permission (enrollApi, revokeApi, renewApi) the operation completes immediately; with only the request permission the request is created in PENDING state and needs approve_request. Surface that status to the user. This can perform destructive workflows (revoke); confirm with the user before submitting a revoke. For a WebRA revoke, put revocationReason in template; it is strongly recommended, and Horizon defaults to 'unspecified' if omitted (keycompromise, cacompromise, affiliationchange, superseded, cessationofoperation, certificatehold, removefromcrl, privilegewithdrawn, aacompromise, unspecified). Modules: webra, est, scep, acme, crmp, wcce, intune, jamf. EST/SCEP enroll returns the challenge password in the response. On Horizon 2.11+, a WebRA enroll on a profile whose authorizationMode is "challenge" returns a one-time challenge in \`password.value\` (if the request is pending, approve_request returns it). Give it to the user once; it is consumed with submit_webra_challenge. For a WebRA update, template.autoRenew is the generic path for changing per-certificate automatic renewal. Full workflow + examples: horizon://knowledge/workflows.
+[when: caller wants to submit a lifecycle request and template fields are known | not: the request template has not been inspected yet | pre: call get_request_template first; for WebRA update inspect template.autoRenew; on Horizon 2.11+ a WebRA challenge profile returns the challenge in password.value]",
+    "name": "submit_request",
+  },
+  {
+    "description": "Update a service account (Horizon 2.10+). Requires manage access (\`access-management:service-account:*\`). Omitted fields are preserved from the stored account, so trustConfig may be omitted when unchanged. Only an explicitly replaced static JWKS must be supplied as a JSON string.
+Safety tier: mutating-destructive
+Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored fields not mentioned in the call are preserved by the merge; use clear_fields to reset a field. IMPORTANT: name is a unique identifier and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.
+[when: caller wants to change an existing service account | not: caller only wants to inspect service-account configuration | pre: get the account first; omitted fields are preserved, trustConfig may be omitted when unchanged, and only an explicitly replaced static JWKS must be a JSON string]",
+    "name": "update_service_account",
+  },
+  {
+    "description": "Update an existing Terms of Service entry (Horizon 2.10+).
+Safety tier: mutating-destructive
+Update is GET -> strip server fields -> merge -> PUT (full-replace). Stored fields not mentioned in the call are preserved by the merge; use clear_fields to reset a field. IMPORTANT: name is a unique identifier and cannot be changed after creation. Always ask the user for it before creating - never invent or infer it.",
+    "name": "update_terms_of_service",
+  },
+]
+`;
+
+exports[`Tool guidance contracts > advertises typed credential and profile field guidance 1`] = `
+{
+  "profiles": [
+    {
+      "autoRenewal": "WebRA auto-renewal policy (Horizon 2.10+). Server-side transitions: adding the policy where none existed bulk-sets existing certificates to the new default; removing it disables auto-renew on all the profile's certificates; changing an existing policy does not bulk-rewrite existing flags. If omitted, auto renewal is disabled.",
+      "name": "create_certificate_profile",
+      "termsOfService": "Name of a Terms of Service object for webra, scep, or est profiles only (Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, get_terms_of_service, create_terms_of_service, update_terms_of_service, or delete_terms_of_service; deletion fails while a profile references the object.",
+    },
+    {
+      "autoRenewal": "WebRA auto-renewal policy (Horizon 2.10+). Server-side transitions: adding the policy where none existed bulk-sets existing certificates to the new default; removing it disables auto-renew on all the profile's certificates; changing an existing policy does not bulk-rewrite existing flags. If omitted, the existing policy is kept.",
+      "name": "update_certificate_profile",
+      "termsOfService": "Name of a Terms of Service object for webra, scep, or est profiles only (Horizon 2.10+). Not ACME requireTermsOfService. Use list_terms_of_services, get_terms_of_service, create_terms_of_service, update_terms_of_service, or delete_terms_of_service; deletion fails while a profile references the object.",
+    },
+  ],
+  "providers": [
+    {
+      "credentials": {
+        "description": "Name of an existing login/password credentials object for GlobalSign MSSL.",
+        "type": "string",
+      },
+      "name": "create_dcv_provider",
+    },
+    {
+      "credentials": {
+        "description": "Name of an existing login/password credentials object for GlobalSign MSSL.",
+        "type": "string",
+      },
+      "name": "update_dcv_provider",
+    },
+  ],
+}
+`;
+
+exports[`Tool guidance contracts > describes DCV event availability 1`] = `"Full list of accepted trigger events (the OpenAPI Base.events enum is a subset). DCV events require Horizon 2.10+."`;

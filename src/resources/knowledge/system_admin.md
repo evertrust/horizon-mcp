@@ -184,14 +184,16 @@ intended - it is NOT a mistake.
 System configuration manages global platform settings. There are four
 configuration entry types:
 
-| Type                      | Description                                   |
-| ------------------------- | --------------------------------------------- |
-| `license`                 | License key and activation status             |
-| `internal_monitor`        | Internal monitoring and health check settings |
-| `interface_customization` | UI branding, theme, and display settings      |
-| `storage`                 | Global storage backend assignments            |
+| Type                      | Description                                        |
+| ------------------------- | -------------------------------------------------- |
+| `license`                 | License key and activation status                  |
+| `internal_monitor`        | Internal monitoring and health check settings      |
+| `interface_customization` | UI branding, theme, and display settings           |
+| `storage`                 | Global storage backend assignments (Horizon 2.10+) |
 
-### Announcements
+### Announcements (Horizon 2.10+)
+
+Check the version with `get_license_info` before configuring announcements.
 
 The `interface_customization` entry's `announcements` array displays messages
 to every Horizon user. Each item has a severity `level` of `info`, `warning`,
@@ -216,7 +218,9 @@ Horizon uses full-replace semantics for this array. There is no
 per-announcement delete operation: read the entry, remove or revise the desired
 items in the complete array, then update the entry.
 
-### Storage Backends and Global Wiring
+### Storage Backends and Global Wiring (Horizon 2.10+)
+
+Check the version with `get_license_info` before configuring storage backends.
 
 Create S3-compatible storage backends with `create_storage`. The S3 fields are
 `bucket`, `timeout`, `forcePathStyle`, `checksumMode`, and `partBufferSize`,
@@ -260,30 +264,37 @@ POST /api/v1/system/configurations/export
 The Horizon 2.10 public API lists 20 configuration categories. The
 `HorizonExportableItems` request contains arrays of selected items, each with
 at least a `name`. The `HorizonExportItems` response contains the exported
-configuration objects:
+configuration objects.
 
-| Field                | Description                          |
-| -------------------- | ------------------------------------ |
-| `cas`                | Certificate authorities              |
-| `pkiConnectors`      | PKI connector configurations         |
-| `roles`              | RBAC roles                           |
-| `teams`              | Team definitions                     |
-| `passwordPolicies`   | Password policy rules                |
-| `notifications`      | Notification templates               |
-| `datasources`        | External datasource connections      |
-| `discoveryCampaigns` | Discovery campaign definitions       |
-| `thirdParties`       | Third-party connector configurations |
-| `reports`            | Report scheduled task definitions    |
-| `triggers`           | Automation triggers                  |
-| `automations`        | Automation policy definitions        |
-| `executions`         | Execution policy definitions         |
-| `profiles`           | Certificate profile configurations   |
-| `forestMappings`     | AD forest mapping definitions        |
-| `labels`             | Certificate label definitions        |
-| `proxies`            | HTTP proxy configurations            |
-| `pkiQueues`          | PKI queue configurations             |
-| `scimProfiles`       | SCIM provisioning profiles           |
-| `storages`           | Storage backend configurations       |
+On Horizon 2.8/2.9, the catalog has 19 categories and no `storages`.
+`storages` requires **Horizon 2.10+**. The request still uses arrays of
+selected item names on these older versions. See the public
+[2.8 export reference](https://docs.evertrust.fr/horizon/2.8/api-ref/export_export_items.html),
+[2.9 export reference](https://docs.evertrust.fr/horizon/2.9/api-ref/export_export_items.html),
+and [2.10 release notes](https://docs.evertrust.fr/horizon/2.10/release-notes/2.10.0.html).
+
+| Field                | Description                                    |
+| -------------------- | ---------------------------------------------- |
+| `cas`                | Certificate authorities                        |
+| `pkiConnectors`      | PKI connector configurations                   |
+| `roles`              | RBAC roles                                     |
+| `teams`              | Team definitions                               |
+| `passwordPolicies`   | Password policy rules                          |
+| `notifications`      | Notification templates                         |
+| `datasources`        | External datasource connections                |
+| `discoveryCampaigns` | Discovery campaign definitions                 |
+| `thirdParties`       | Third-party connector configurations           |
+| `reports`            | Report scheduled task definitions              |
+| `triggers`           | Automation triggers                            |
+| `automations`        | Automation policy definitions                  |
+| `executions`         | Execution policy definitions                   |
+| `profiles`           | Certificate profile configurations             |
+| `forestMappings`     | AD forest mapping definitions                  |
+| `labels`             | Certificate label definitions                  |
+| `proxies`            | HTTP proxy configurations                      |
+| `pkiQueues`          | PKI queue configurations                       |
+| `scimProfiles`       | SCIM provisioning profiles                     |
+| `storages`           | Storage backend configurations (Horizon 2.10+) |
 
 ### Import
 

@@ -11,42 +11,45 @@ Horizon supports two categories of profiles:
 | Category      | Module Types                                                 | Description                                                                     |
 | ------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------- |
 | **Managed**   | WebRA, ACME, SCEP, EST, WCCE, CRMP, Intune, IntunePKCS, Jamf | Horizon controls the full lifecycle: enrollment, renewal, revocation, recovery. |
-| **Monitored** | Monitored (CertMonitor)                                      | Horizon _observes_ externally-issued certificates but does not issue them.      |
+| **Monitored** | Monitored                                                    | Horizon _observes_ externally-issued certificates but does not issue them.      |
 
 Each profile is accessed via `GET /api/v1/certificate/profiles/{name}` (read)
 or `PUT /api/v1/certificate/profiles/` with the name in the JSON body (update),
-and contains protocol-specific settings nested under a `module` object.
+The profile uses a top-level `module` discriminator. Protocol-specific
+fields are top-level API properties.
 
 ---
 
 ## Common Fields (All Managed Profiles)
 
-These fields appear on every managed profile regardless of protocol module:
+These fields are used by managed profiles. Available fields vary by module.
+Inspect the selected subtype with `describe_certificate_profile_schema`.
 
-| Field                           | Type     | Description                                                                                                 |
-| ------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------- |
-| `name`                          | string   | Unique profile identifier. Immutable after creation.                                                        |
-| `displayName`                   | string   | Human-readable label shown in the UI.                                                                       |
-| `description`                   | string   | Free-text description of the profile's purpose.                                                             |
-| `enabled`                       | boolean  | Whether the profile accepts new enrollment requests.                                                        |
-| `module`                        | string   | Protocol type: `webra`, `acme`, `scep`, `est`, `wcce`, `crmp`, `intune`, `intunepkcs`, `jamf`, `monitored`. |
-| `pkiConnector`                  | string   | Name of the PKI connector used for enrollment. Required for all managed profiles.                           |
-| `certificateTemplate`           | object   | Default DN, SANs, key type, key size, extensions, labels, and policies for certificates.                    |
-| `authorizationLevels`           | object   | WHO can perform each workflow action (enroll, revoke, update, etc.). See _workflows_ knowledge.             |
-| `cryptoPolicy`                  | object   | Key generation mode (`centralized` or `decentralized`), allowed key types, PKCS#12 settings.                |
-| `selfPermissions`               | object   | What a certificate holder can do with their own certificate (self-revoke, self-renew, etc.).                |
-| `requestsPolicy`                | object   | HOW LONG: duration limits, request expiry, and workflow-specific timing per workflow type.                  |
-| `triggers`                      | object   | Hook configuration mapping lifecycle events to notification triggers.                                       |
-| `gradingPolicies`               | string[] | Names of grading policies applied to certificates in this profile.                                          |
-| `dsFlow`                        | object[] | Ordered list of datasource flow entries for external data enrichment during enrollment.                     |
-| `maxCertificatePerHolderPolicy` | object   | Limit on concurrent active certificates per holder identity.                                                |
-| `renewalPeriod`                 | integer  | Number of days before expiry when renewal becomes available.                                                |
-| `pqcAllowed`                    | boolean  | Whether post-quantum cryptography key types are permitted.                                                  |
-| `thirdPartyDiscoverySync`       | boolean  | Whether certificates discovered by third-party sources are synced into this profile.                        |
+| Field                           | Type                           | Description                                                                                                 |
+| ------------------------------- | ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `name`                          | string                         | Unique profile identifier. Immutable after creation.                                                        |
+| `displayName`                   | localized-string array or null | Human-readable label shown in the UI.                                                                       |
+| `description`                   | localized-string array or null | Free-text description of the profile's purpose.                                                             |
+| `enabled`                       | boolean                        | Whether the profile accepts new enrollment requests.                                                        |
+| `module`                        | string                         | Protocol type: `webra`, `acme`, `scep`, `est`, `wcce`, `crmp`, `intune`, `intunepkcs`, `jamf`, `monitored`. |
+| `pkiConnector`                  | string                         | Name of the PKI connector used for enrollment. Required for all managed profiles.                           |
+| `certificateTemplate`           | object                         | DN, SANs, extensions, labels, and field policies for certificates.                                          |
+| `authorizationLevels`           | object                         | WHO can perform each workflow action (enroll, revoke, update, etc.). See _workflows_ knowledge.             |
+| `cryptoPolicy`                  | object                         | Key generation mode (`centralized` or `decentralized`), allowed key types, PKCS#12 settings.                |
+| `selfPermissions`               | object                         | What a certificate holder can do with their own certificate (self-revoke, self-renew, etc.).                |
+| `requestsPolicy`                | object                         | HOW LONG: duration limits, request expiry, and workflow-specific timing per workflow type.                  |
+| `triggers`                      | object                         | Hook configuration mapping lifecycle events to notification triggers.                                       |
+| `gradingPolicies`               | string[]                       | Names of grading policies applied to certificates in this profile.                                          |
+| `dsFlow`                        | object[]                       | Ordered list of datasource flow entries for external data enrichment during enrollment.                     |
+| `maxCertificatePerHolderPolicy` | object                         | Limit on concurrent active certificates per holder identity.                                                |
+| `renewalPeriod`                 | finite-duration string or null | Duration before expiry when renewal becomes available.                                                      |
+| `thirdPartyDiscoverySync`       | boolean                        | Whether certificates discovered by third-party sources are synced into this profile.                        |
 
 ---
 
-## WebRA Auto-Renewal Policy
+## WebRA Auto-Renewal Policy (Horizon 2.10+)
+
+Check the version with `get_license_info` before using automatic renewal.
 
 `autoRenewalPolicy` controls auto-renew on WebRA certificates.
 
@@ -59,7 +62,9 @@ trust-chain automation-policy renewal in `automation.md`.
 
 ---
 
-## Terms of Service Mapping
+## Terms of Service Mapping (Horizon 2.10+)
+
+Check the version with `get_license_info` before using Terms of Service objects.
 
 WebRA, SCEP, and EST profiles use top-level `termsOfService` to reference a
 Terms of Service object's immutable `name`, not inline text:
@@ -81,45 +86,13 @@ reference a Terms of Service object.
 
 ## Certificate Template Structure
 
-The `certificateTemplate` object defines the _defaults_ for certificates
-enrolled under this profile. Computation rules can override any of these
-at enrollment time.
+`CertificateTemplate` contains `subject`, `sans`, and `extensions` arrays.
+It also exposes `ownerPolicy`, `teamPolicy`, `contactEmailPolicy`,
+`metadataPolicies`, and `labels`. Use the documented element structures.
+Configure `computationRule` on the fields that expose it. Key-generation
+settings belong to `cryptoPolicy`.
 
-```json
-{
-  "certificateTemplate": {
-    "subject": {
-      "dnQualifier": "",
-      "commonName": "",
-      "organization": "",
-      "organizationalUnit": "",
-      "country": "",
-      "stateOrProvince": "",
-      "locality": "",
-      "email": ""
-    },
-    "sans": {
-      "dnsnames": [],
-      "rfc822names": [],
-      "ipaddresses": [],
-      "uris": [],
-      "othernames": []
-    },
-    "keyType": "rsa",
-    "keySize": 2048,
-    "signatureAlgorithm": "SHA256WithRSA",
-    "extensions": {},
-    "labels": [],
-    "policies": []
-  }
-}
-```
-
-**Important**: The `subject` fields use the Horizon internal naming convention
-(camelCase), not the X.500 OID names. The `extensions` object allows defining
-custom X.509v3 extensions by OID. The `labels` array associates profile-level
-tags that flow down to every certificate. The `policies` array can embed
-certificate policy OIDs and qualifiers.
+See the CertificateTemplate Schema section below for the field reference.
 
 ---
 
@@ -130,22 +103,21 @@ certificate policy OIDs and qualifiers.
 WebRA is the primary web-based enrollment protocol. It supports the richest
 set of configuration options.
 
-| Field                  | Type     | Description                                                                                                     |
-| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
-| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (Horizon 2.11+).                     |
-| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.               |
-| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                                |
-| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                                            |
-| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                                      |
-| `passwordPolicy`       | string   | (Horizon 2.11+) Password policy name used to generate challenges. Required for `challenge`, rejected otherwise. |
-| `constraints`          | object   | (Horizon 2.11+) `allowedEmailDomains` and `allowedDnsDomains` regexes. On WebRA only profile constraints apply. |
-| `notificationTemplate` | string   | Email template for enrollment notifications.                                                                    |
-| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                                          |
+| Field               | Type                         | Description                                                                                                     |
+| ------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `authorizationMode` | string                       | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (Horizon 2.11+).                     |
+| `validationRuleset` | object (`ValidationRuleset`) | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.               |
+| `passwordPolicy`    | string                       | (Horizon 2.11+) Password policy name used to generate challenges. Required for `challenge`, rejected otherwise. |
+| `constraints`       | object                       | (Horizon 2.11+) `allowedEmailDomains` and `allowedDnsDomains` regexes. On WebRA only profile constraints apply. |
+
+Datasource flows use `dsFlow`. Configure computation rules on
+certificate-template fields. Key-generation settings are in `cryptoPolicy`,
+and notification hooks are in `triggers`. Use `passwordPolicy` for the
+protocol modes that expose it.
 
 #### WebRA Authorization Modes
 
-- **`authorized`**: Every enrollment request requires explicit approval by an
-  authorized operator before the certificate is issued.
+- **`authorized`**: Uses the caller's permissions to authorize enrollment.
 - **`auto-validation`**: Enrollment proceeds automatically if the request
   passes the configured `validationRuleset`. No human approval needed.
 - **`auto-validation-authorized`**: Enrollment tries auto-validation first.
@@ -176,14 +148,16 @@ accounts and orders: horizon://knowledge/acme.
 SCEP (Simple Certificate Enrollment Protocol) is used primarily for network
 device enrollment.
 
-| Field                   | Type     | Description                                                            |
-| ----------------------- | -------- | ---------------------------------------------------------------------- |
-| `authorizationMode`     | string   | `challenge`, `authorized`, `ndes`, or `auto-validation`.               |
-| `validationRuleset`     | string   | Ruleset for auto-validation modes.                                     |
-| `challengePassword`     | string   | Static challenge password for SCEP clients (when mode is `challenge`). |
-| `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).             |
-| `computationRules`      | object[] | Transformation rules applied to SCEP requests.                         |
-| `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).      |
+| Field               | Type                         | Description                                                     |
+| ------------------- | ---------------------------- | --------------------------------------------------------------- |
+| `authorizationMode` | string                       | `challenge`, `authorized`, `ndes`, or `auto-validation`.        |
+| `validationRuleset` | object (`ValidationRuleset`) | Ruleset for auto-validation modes.                              |
+| `caps`              | string[]                     | Advertised CA capabilities (`AES`, `SHA-256`, `Renewal`, etc.). |
+
+Datasource flows use `dsFlow`. Configure computation rules on
+certificate-template fields. Key-generation settings are in `cryptoPolicy`,
+and notification hooks are in `triggers`. Use `passwordPolicy` for the
+protocol modes that expose it.
 
 #### SCEP Authorization Modes
 
@@ -197,13 +171,15 @@ device enrollment.
 EST (Enrollment over Secure Transport, RFC 7030) provides modern,
 TLS-secured enrollment.
 
-| Field                 | Type     | Description                                              |
-| --------------------- | -------- | -------------------------------------------------------- |
-| `authorizationMode`   | string   | `authorized`, `x509`, `challenge`, or `auto-validation`. |
-| `validationRuleset`   | string   | Ruleset for auto-validation modes.                       |
-| `computationRules`    | object[] | Transformation rules for EST requests.                   |
-| `clientCertAuth`      | boolean  | Whether to require client certificate authentication.    |
-| `reenrollmentAllowed` | boolean  | Whether simple re-enrollment is permitted.               |
+| Field               | Type                         | Description                                              |
+| ------------------- | ---------------------------- | -------------------------------------------------------- |
+| `authorizationMode` | string                       | `authorized`, `x509`, `challenge`, or `auto-validation`. |
+| `validationRuleset` | object (`ValidationRuleset`) | Ruleset for auto-validation modes.                       |
+
+Datasource flows use `dsFlow`. Configure computation rules on
+certificate-template fields. Key-generation settings are in `cryptoPolicy`,
+and notification hooks are in `triggers`. Use `passwordPolicy` for the
+protocol modes that expose it.
 
 #### EST Authorization Modes
 
@@ -219,12 +195,11 @@ TLS-secured enrollment.
 Monitored profiles do not issue certificates. They define a _bucket_ for
 certificates discovered or imported from external sources.
 
-| Field               | Type     | Description                                                         |
-| ------------------- | -------- | ------------------------------------------------------------------- |
-| `discoveryEnabled`  | boolean  | Whether this profile accepts certificates from discovery campaigns. |
-| `importEnabled`     | boolean  | Whether manual/API import is allowed.                               |
-| `gradingPolicy`     | string   | Security grading policy name applied to monitored certificates.     |
-| `notificationRules` | object[] | Expiration notification rules.                                      |
+Monitored profiles expose `authorizationLevels`, `requestsPolicy`,
+`cryptoPolicy`, `selfPermissions`, `certificateTemplate`, `triggers`, and
+`gradingPolicies`. They have no `pkiConnector` or `authorizationMode`.
+Use the monitored profile's crypto policy for key
+escrow and recovery settings.
 
 **Note**: Monitored profiles have no `pkiConnector`, no `authorizationMode`,
 no `computationRules`, and no `keyEscrowPolicy` -- because Horizon does not
@@ -249,36 +224,11 @@ issue certificates for them.
 
 ---
 
-## `csrDataMapping` -- DEPRECATED
+## CSR Data Mapping
 
-The `csrDataMapping` field was the original mechanism for extracting values
-from CSR fields and mapping them to certificate attributes. It has been
-**fully superseded by computation rules**.
-
-Do not use `csrDataMapping` in new profiles. If you encounter it in an
-existing profile, recommend migrating to `computationRules`.
-
-Migration example:
-
-```
-# Old csrDataMapping
-"csrDataMapping": {
-  "commonName": "CN",
-  "organization": "O"
-}
-
-# New computation rule equivalent
-"computationRules": [
-  {
-    "source": "{{ csr.subject.cn }}",
-    "target": "subject.commonName"
-  },
-  {
-    "source": "{{ csr.subject.o }}",
-    "target": "subject.organization"
-  }
-]
-```
+CSR data mapping remains available. Defining a certificate template disables
+CSR data mapping. Configure computation rules on the documented
+certificate-template fields.
 
 ---
 
@@ -648,22 +598,29 @@ Common values: `rsa-2048`, `rsa-3072`, `rsa-4096`, `ec-p256`, `ec-p384`,
 
 ### MonitoredCryptoPolicy (Monitored profiles)
 
-Controls grading and compliance rules for discovered/imported certificates.
+Controls key escrow and recovery settings for discovered or imported certificates.
+The public schema is `MonitoredCertificateProfileCryptoPolicy`.
 
-| Field                      | Type               | Required | Description                                         |
-| -------------------------- | ------------------ | -------- | --------------------------------------------------- |
-| `minimumKeySize`           | integer\|null      | no       | Minimum acceptable key size for compliance grading. |
-| `allowedSigningAlgorithms` | list[string]\|null | no       | Accepted signing algorithms for compliance grading. |
+| Field                      | Type               | Required | Description                                                                               |
+| -------------------------- | ------------------ | -------- | ----------------------------------------------------------------------------------------- |
+| `authorizedKeyTypes`       | list[string]\|null | no       | Authorized key types.                                                                     |
+| `escrow`                   | boolean\|null      | no       | Escrow certificate private keys. Default: false.                                          |
+| `p12passwordPolicy`        | string\|null       | no       | Password policy for the PKCS#12 file.                                                     |
+| `p12passwordMode`          | string\|null       | no       | `random` or `manual` PKCS#12 password input.                                              |
+| `p12storeEncryptionType`   | string\|null       | no       | Encryption type for the PKCS#12 file.                                                     |
+| `showP12PasswordOnRecover` | boolean\|null      | no       | Show the PKCS#12 password on recovery.                                                    |
+| `showP12OnRecover`         | boolean\|null      | no       | Show the PKCS#12 file on recovery.                                                        |
+| `keyAvailability`          | FiniteDuration     | no       | Key availability for enroll and recover requests, and for trigger retries without escrow. |
 
 ```json
 {
   "cryptoPolicy": {
-    "minimumKeySize": 2048,
-    "allowedSigningAlgorithms": [
-      "SHA256WithRSA",
-      "SHA384WithRSA",
-      "SHA256WithECDSA"
-    ]
+    "authorizedKeyTypes": ["rsa-2048", "rsa-3072", "rsa-4096"],
+    "escrow": true,
+    "p12passwordPolicy": "example-password-policy",
+    "p12passwordMode": "random",
+    "showP12PasswordOnRecover": true,
+    "showP12OnRecover": true
   }
 }
 ```
@@ -686,18 +643,10 @@ auto-approved." If fewer than `threshold` rules pass, the request either fails
 (in `auto-validation` mode) or falls through to manual approval (in
 `auto-validation-authorized` mode).
 
-```json
-{
-  "validationRuleset": {
-    "rules": ["dn matches \".*\\.example\\.com\"", "keytype contains \"rsa\""],
-    "threshold": 1
-  }
-}
-```
-
-**Important**: Rules are plain strings containing HCQL-style boolean
-expressions, not structured objects. Each rule evaluates to true or false
-against the enrollment request data.
+**Important**: Rules are plain strings containing boolean conditions, not
+structured objects. Inputs come from dictionary entries and can be manipulated
+using computation rules and validation functions and operators. See
+horizon://knowledge/validation-rules for the condition syntax.
 
 ### Threshold Semantics
 
@@ -711,88 +660,22 @@ against the enrollment request data.
 
 ## Composing a Complete Profile (Practical Example)
 
-This example shows how all the documented structures compose in a
-`create_webra_profile` call, creating a WebRA profile with auto-validation,
-centralized key generation, and enforced IDP constraints:
+Use `describe_certificate_profile_schema` with `subtype: "webra"` first.
+Create the profile with `create_certificate_profile`, using these MCP inputs:
 
-```json
-{
-  "module": "webra",
-  "name": "tls-internal-webra",
-  "displayName": "TLS Internal (WebRA)",
-  "description": "Internal TLS certificates via web enrollment",
-  "enabled": true,
-  "pkiConnector": "adcs-prod",
-  "pqcAllowed": false,
-  "thirdPartyDiscoverySync": false,
-  "renewalPeriod": 30,
-  "authorizationMode": "auto-validation-authorized",
-  "validationRuleset": {
-    "rules": [
-      "dn matches \".*\\.internal\\.acme\\.com\"",
-      "keytype contains \"rsa\""
-    ],
-    "threshold": 2
-  },
-  "certificateTemplate": {
-    "subject": [
-      { "type": "CN", "mandatory": true, "editableByRequester": true },
-      {
-        "type": "O",
-        "value": "Acme Corp",
-        "mandatory": true,
-        "editableByRequester": false
-      },
-      {
-        "type": "C",
-        "value": "US",
-        "mandatory": true,
-        "editableByRequester": false
-      }
-    ],
-    "sans": [
-      { "type": "DNSNAME", "editableByRequester": true, "min": 1, "max": 10 }
-    ],
-    "extensions": [],
-    "ownerPolicy": { "editable": true, "required": true, "autoFill": true },
-    "teamPolicy": { "editable": true, "required": false },
-    "contactEmailPolicy": {
-      "editable": true,
-      "required": true,
-      "autoFill": true
-    },
-    "metadataPolicies": [
-      {
-        "key": "environment",
-        "editable": true,
-        "required": true,
-        "regexValidation": "^(prod|staging|dev)$"
-      }
-    ],
-    "labels": [{ "label": "use-case", "value": "tls", "editable": false }]
-  },
-  "authorizationLevels": {
-    "search": { "accessLevel": "authenticated" },
-    "update": { "accessLevel": "authorized" },
-    "requestUpdate": { "accessLevel": "authenticated" },
-    "approveUpdate": { "accessLevel": "authorized" },
-    "enroll": { "accessLevel": "authorized" },
-    "requestEnroll": { "accessLevel": "authenticated" },
-    "approveEnroll": {
-      "accessLevel": "authorized",
-      "enforcedIdentityProviders": [{ "type": "OpenId", "name": "azure-ad" }]
-    },
-    "revoke": { "accessLevel": "authorized" },
-    "requestRevoke": { "accessLevel": "authenticated" },
-    "approveRevoke": { "accessLevel": "authorized" },
-    "renew": { "accessLevel": "authorized" },
-    "requestRenew": { "accessLevel": "authenticated" },
-    "approveRenew": { "accessLevel": "authorized" }
-  },
-  "cryptoPolicy": {
-    "allowedKeyTypes": ["rsa-2048", "rsa-4096"],
-    "defaultKeyType": "rsa-2048"
-  },
-  "gradingPolicies": ["default-tls-grading"]
-}
-```
+- `module: "webra"`, the user-supplied `name`, and `enabled`.
+- `authorization_levels`, `requests_policy`, `self_permissions`, and
+  `crypto_policy`: the required policy objects supplied by the user.
+- `config`: the WebRA fields, using their camelCase API names, including
+  `pkiConnector`, `authorizationMode`, `validationRuleset`,
+  `certificateTemplate`, and any other required fields shown by the schema.
+
+Use `get_certificate_profile` to inspect an existing WebRA profile and
+`describe_certificate_profile_schema` to check the required fields. Complete
+the certificate template, validation ruleset, and policy objects before
+creation. Validation rules use dictionary expressions; see
+horizon://knowledge/validation-rules before writing conditions.
+
+For centralized key generation, configure `crypto_policy` according to the
+schema. On Horizon 2.10+, pass `auto_renewal_policy` and `terms_of_service`
+as separate MCP inputs, rather than inside `config`.

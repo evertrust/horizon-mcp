@@ -2,6 +2,7 @@ import type { Client } from '@modelcontextprotocol/client';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { registerProfileTools } from '../../src/tools/profiles.js';
+import { configureToolRegistration } from '../../src/tools/register.js';
 import { registerTriggerTools } from '../../src/tools/triggers.js';
 import {
   type MockClient,
@@ -226,6 +227,40 @@ describe('Trigger tools', () => {
   });
 
   describe('simulate_trigger', () => {
+    it('is unavailable in read-only mode and makes no upstream call', async () => {
+      const { client: readOnlyClient, mockClient: mc } =
+        await setupServerAndClient([
+          (server, mc) => {
+            configureToolRegistration(server, { readOnly: true });
+            registerTriggerTools(server, mc as any);
+          },
+        ]);
+      expect(
+        (await readOnlyClient.listTools()).tools.map((tool) => tool.name),
+      ).not.toContain('simulate_trigger');
+      await expect(
+        readOnlyClient.callTool({
+          name: 'simulate_trigger',
+          arguments: { name: 'notify-email' },
+        }),
+      ).rejects.toThrow('not found');
+      expect(mc.get).not.toHaveBeenCalled();
+      expect(mc.patch).not.toHaveBeenCalled();
+      await readOnlyClient.close();
+    });
+
+    it('advertises notification side effects', async () => {
+      const tool = (await client.listTools()).tools.find(
+        (tool) => tool.name === 'simulate_trigger',
+      );
+      expect(tool?.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: true,
+        idempotentHint: false,
+        openWorldHint: true,
+      });
+    });
+
     it('fetches the named trigger and sends the full body under trigger', async () => {
       const trigger = {
         _id: 'trigger-id',
@@ -235,23 +270,27 @@ describe('Trigger tools', () => {
         sequence: [
           {
             method: 'POST',
-            url: 'https://example.test/deploy',
+            url: 'https://example.com/deploy',
             authenticationType: 'noauth',
             expectedHttpCodes: [200],
             timeout: '30 seconds',
           },
         ],
       };
-      mockClient.get.mockResolvedValueOnce(trigger);
-      mockClient.patch.mockResolvedValueOnce({
+      mockClient.get.mockResolvedValue(trigger);
+      mockClient.patch.mockResolvedValue({
         status: 'success',
         message: 'Rest notification successfully sent',
       });
 
-      await client.callTool({
-        name: 'simulate_trigger',
-        arguments: { name: 'deploy-rest' },
-      });
+      for (let call = 0; call < 2; call++) {
+        const result = await client.callTool({
+          name: 'simulate_trigger',
+          arguments: { name: 'deploy-rest' },
+        });
+        expect(result.isError).not.toBe(true);
+      }
+      expect(mockClient.patch).toHaveBeenCalledTimes(2);
 
       expect(mockClient.get).toHaveBeenCalledWith(
         '/api/v1/triggers/deploy-rest',

@@ -133,10 +133,10 @@ Fields usable in chart `fields` for certificate aggregation:
 
 **Dynamic fields (instance-specific):**
 
-- `label.<name>` - Labels defined on the instance. Use `list_labels` to
+- `label.<name>` - Labels defined on the instance. Use `list_certificate_labels` to
   discover available label names. Example: `label.environment`.
 - `grade.<name>` - Grading policies defined on the instance. Use
-  `list_grading_policies` to discover available policy names.
+  `list_certificate_grading_policies` to discover available policy names.
   Example: `grade.Horizon-Grading-Policy`.
 - `metadata.*` - Certificate metadata keys.
 
@@ -156,7 +156,7 @@ Fields usable in chart `fields` for request aggregation:
 
 **Dynamic fields (instance-specific):**
 
-- `label.<name>` - Labels defined on the instance. Use `list_labels`.
+- `label.<name>` - Labels defined on the instance. Use `list_certificate_labels`.
 - `metadata.*` - Request metadata keys.
 
 ---
@@ -285,7 +285,7 @@ Show the distribution of key types across all valid certificates.
 ### Grade Distribution
 
 Display the spread of certificate grades under a grading policy.
-Use `list_grading_policies` to discover the policy name on this instance.
+Use `list_certificate_grading_policies` to discover the policy name on this instance.
 
 ```json
 {

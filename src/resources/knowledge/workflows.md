@@ -37,7 +37,9 @@ Each workflow supports up to four sub-actions:
 
 ---
 
-## WebRA Update Template: `autoRenew`
+## WebRA Update Template: `autoRenew` (Horizon 2.10+)
+
+Check the version with `get_license_info` before using automatic renewal.
 
 For a WebRA `update` workflow, the request template can include the
 per-certificate `autoRenew` element:
@@ -217,12 +219,14 @@ Two-step process: the requester submits a request, then a separate approver
 approves it. The requester must meet `enrollRequest` access level; the
 approver must meet `enrollApprove` access level.
 
-### Asynchronous Enrollment Flow
+### Asynchronous Enrollment Flow (Horizon 2.10+)
+
+Check the version with `get_license_info` before using asynchronous enrollment.
 
 Some PKI connectors submit enrollment to an external CA that does not return
 the certificate immediately. Horizon records the request as `in_progress`
-while it waits and retries the external CA according to the connector's
-`retryInterval`.
+while certificate issuance is pending. Asynchronous enrollment is available
+for WebRA enroll and renew workflows; ACME, SCEP, and EST remain synchronous.
 
 ```
 Caller -> submit_request -> in_progress request -> external CA polling -> certificate issued
@@ -261,8 +265,8 @@ Client    -> submit_webra_challenge (POST /api/v1/challenge/submit) -> certifica
    challenge. `metadata` accepts only `automation_policy`, with a policy
    authorized on the profile.
 4. Response: `certificate` (PEM) and, in centralized mode only, `pkcs12`
-   (DER Base64, encrypted with the challenge as password). The PKCS#12 is
-   never stored: it cannot be retrieved later.
+   (DER Base64, encrypted with the challenge as password). Save the bundle
+   from this response.
 
 Errors: WEBRA-ENROLL-015 (invalid challenge),
 WEBRA-ENROLL-001/009/012 and REQ-002 (400), LIC-003/004 (403),

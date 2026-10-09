@@ -16,6 +16,7 @@ import profilesContent from './knowledge/profiles.md';
 import queryLanguagesContent from './knowledge/query_languages.md';
 import rbacContent from './knowledge/rbac.md';
 import restNotificationsContent from './knowledge/rest_notifications.md';
+import restNotificationExamplesContent from './knowledge/rest_notifications_examples.md';
 import serverRulesContent from './knowledge/server_rules.md';
 import systemAdminContent from './knowledge/system_admin.md';
 import toolSelectionContent from './knowledge/tool_selection.md';
@@ -154,7 +155,9 @@ const CORE_RESOURCES: readonly ResourceEntry[] = [
     name: 'rest-notifications',
     uri: 'horizon://knowledge/rest-notifications',
     description: 'REST notification trigger configuration',
-    content: restNotificationsContent,
+    content: [restNotificationsContent, restNotificationExamplesContent].join(
+      '\n',
+    ),
     splitSections: true,
   },
   {
