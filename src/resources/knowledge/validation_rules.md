@@ -32,16 +32,17 @@ a different module, validation rules are not an option.
 | Key type / algorithm       | Via profile's cryptoPolicy (not in validation)          |        No         |
 | Client IP address          | `{{http.request.ip}}`                                   |        No         |
 | DNS resolution check       | `{{csr.san.dnsname.1}} resolvesDNS`                     |        No         |
-| CNAME / TXT record content | Needs DNS datasource -> `{{ds.1.1.cname}}`              |      **Yes**      |
-| User's AD group membership | Needs LDAP datasource -> `[[ds.1.1.memberOf]]`          |      **Yes**      |
-| User's department / role   | Needs LDAP datasource -> `{{ds.1.1.department}}`        |      **Yes**      |
-| External API validation    | Needs REST datasource -> `{{ds.1.status}}`              |      **Yes**      |
+| CNAME / TXT record content | Needs DNS datasource. Inspect its output dictionary.    |      **Yes**      |
+| User's AD group membership | Needs LDAP datasource. Inspect its output dictionary.   |      **Yes**      |
+| User's department / role   | Needs LDAP datasource. Inspect its output dictionary.   |      **Yes**      |
+| External API validation    | Needs REST datasource. Inspect its output dictionary.   |      **Yes**      |
 
 ### Step 4: Create datasources if needed
 
 If you need external data, create the datasource first and add it to the
 profile's dsFlow BEFORE configuring the validation ruleset. The datasource
-flow executes before validation rules, populating the `ds.*` entries.
+flow executes before validation rules. Run `test_datasource` or
+`simulate_datasource_flow` and read the returned dictionary keys.
 
 See horizon://knowledge/datasources for full datasource setup guide.
 
@@ -137,7 +138,7 @@ These are the EXACT syntaxes accepted by the parser. Using wrong syntax
 | Operator    | Aliases | Syntax                                | Description                                                                     |
 | ----------- | ------- | ------------------------------------- | ------------------------------------------------------------------------------- |
 | equals      | `=`     | `{{key}} equals "value"`              | Exact string match (case-sensitive)                                             |
-| matches     | `~`     | `{{key}} matches "regex"`             | Java regex full match (`String.matches`)                                        |
+| matches     | `~`     | `{{key}} matches "regex"`             | Tests whether the value matches the regex                                       |
 | contains    | -       | `{{key}} contains "substring"`        | Substring check on single values. On multi-value fields: exact element match    |
 | starts with | -       | `{{key}} starts with "prefix"`        | Starts with prefix. **Two words, not `startsWith`**                             |
 | ends with   | -       | `{{key}} ends with "suffix"`          | Ends with suffix. **Two words, not `endsWith`**                                 |
@@ -216,12 +217,6 @@ for most operators. This lets you check conditions across every element
 | `all of [[key]] in 10.0.0.0/8`        | Every IP is in the CIDR range            |
 | `any of [[key]] in 10.0.0.0/8`        | At least one IP is in range              |
 
-**Double wildcards work**: `[[ds.1.*.a.*]]` matches across both the result
-index (which hostname) AND the record sub-index (which A record for that
-hostname). Use this for CIDR checks when hostnames may have multiple A records:
-`all of [[ds.1.*.a.*]] in 10.0.0.0/8` checks every resolved IP across all
-hostnames and all their A records.
-
 `contains all of` and `contains any of` test element inclusion.
 An empty right-hand list is always contained.
 
@@ -247,12 +242,9 @@ all entries populated by datasource flows.
 
 ### Datasource Results
 
-| Key                     | Description                                           |
-| ----------------------- | ----------------------------------------------------- |
-| `{{ds.1.1.cname}}`      | CNAME from first datasource flow, first result        |
-| `[[ds.1.*.a]]`          | All A records from first flow (wildcard result index) |
-| `{{ds.1.1.cn}}`         | CN attribute from first LDAP datasource result        |
-| `{{ds.2.1.department}}` | Department from second datasource flow                |
+Use `{{ds.1.1.mail}}` for an LDAP mail value. Run `test_datasource` or
+`simulate_datasource_flow` and read the returned dictionary keys before
+writing conditions for other attributes.
 
 ### Protocol-Specific
 
@@ -289,39 +281,14 @@ Only allow certificates for the corporate domain:
 }
 ```
 
-### Example 2: DNS CNAME Validation with Datasource
-
-Verify that the first DNS SAN has a CNAME pointing to the PaaS domain.
-
-**Setup:**
-
-1. Create a DNS datasource named `"san-cname-check"` with `lookup: "{{hostname}}"`
-2. Add it to the profile's dsFlow: `{"ds": "san-cname-check", "inputs": [{"key": "hostname", "value": "{{csr.san.dnsname.1}}"}]}`
-3. Configure the validation ruleset:
-
-```json
-{
-  "rules": ["{{ds.1.1.cname}} matches \".*\\.paas\\.example\\.com$\""],
-  "threshold": 1
-}
-```
-
 ### Example 3: LDAP Group Membership Validation
 
 Verify the requesting user belongs to a PKI-authorized group:
 
-Inspect the datasource output with `test_datasource`. Use the full group
-DN from the `memberOf` list. For example:
-
-```json
-{
-  "rules": [
-    "[[ds.1.1.memberOf]] contains \"CN=PKI-Users,OU=Groups,DC=example,DC=com\"",
-    "{{ds.1.1.department}} exists"
-  ],
-  "threshold": 2
-}
-```
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys for `memberOf` and `department`. Use `[[key]] contains`
+with the full group DN and `{{key}} exists` for the department. Set
+`threshold` to 2 if both conditions must pass.
 
 ### Example 4: IP-Based Access Control
 
@@ -351,19 +318,6 @@ To check every DNS SAN from the CSR, use this standalone condition:
 }
 ```
 
-### Example 6: Complex Boolean Logic
-
-Combine domain restriction with CNAME validation:
-
-```json
-{
-  "rules": [
-    "({{csr.subject.cn.1}} matches \".*\\.corp\\.example\\.com$\") and ({{ds.1.1.cname}} exists)"
-  ],
-  "threshold": 1
-}
-```
-
 ### Example 7: Multi-Criteria with Quorum
 
 Require at least 2 of 3 checks to pass:
@@ -372,7 +326,7 @@ Require at least 2 of 3 checks to pass:
 {
   "rules": [
     "{{csr.subject.cn.1}} matches \".*\\.corp\\.example\\.com$\"",
-    "{{ds.1.1.department}} equals \"Engineering\"",
+    "{{csr.san.rfc822name.1}} equals {{ds.1.1.mail}}",
     "{{http.request.ip}} in 10.0.0.0/8"
   ],
   "threshold": 2
@@ -436,18 +390,10 @@ rule configuration. Each recipe is self-contained.
 
 3. Set SCEP authorizationMode to `auto-validation`.
 
-4. Use `test_datasource` to inspect the multivalued `memberOf` output.
-   Configure `validationRuleset` with the full group DN from that output:
-   ```json
-   {
-     "validationRuleset": {
-       "rules": [
-         "[[ds.1.1.memberOf]] contains \"CN=Certificate-Issuers,OU=Groups,DC=example,DC=com\""
-       ],
-       "threshold": 1
-     }
-   }
-   ```
+4. Run `test_datasource` or `simulate_datasource_flow` and read the returned
+   dictionary keys for `memberOf`. Configure a `validationRuleset` condition
+   with the returned key, `[[key]] contains`, and the full group DN. Set
+   `threshold` to 1.
 
 ### Recipe: Network + Domain Combined Validation for EST
 

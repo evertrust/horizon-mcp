@@ -5,7 +5,7 @@
 Datasources are external data assets queried during certificate enrollment to
 enrich request data for computation rules and validation rule conditions.
 They run at **enrollment time** (after request submission, before certificate
-issuance) and populate dictionary entries accessible as `ds.<flowIndex>.<resultIndex>.<key>`.
+issuance) and populate dictionary entries prefixed with `ds.<flowIndex>`.
 
 Three types exist: **DNS**, **LDAP**, and **REST**.
 
@@ -43,8 +43,8 @@ Three types exist: **DNS**, **LDAP**, and **REST**.
    profile's `dataSourceFlows` (dsFlow) list with input mappings that connect
    dictionary entries to datasource parameters.
 
-5. **Reference results in computation rules or validation rules** - use
-   `ds.<flowIndex>.<resultIndex>.<key>` to access the enriched data.
+5. **Reference results in computation rules or validation rules** - inspect
+   the flow dictionary and use the returned keys.
 
 6. **Verify end-to-end** - use `simulate_datasource_flow` to test the complete
    pipeline with all chained datasources.
@@ -69,21 +69,13 @@ Queries DNS servers and returns record data.
 | `recordTypes` | string[]          | No       | all          | Filter which record types to return. Values: `a`, `aaaa`, `cname`, `ptr`, `txt`. If omitted, ALL types are fetched |
 | `lookup`      | TemplateString    | Yes      | -            | DNS hostname to look up. Supports `{{key}}` syntax for dynamic values                                              |
 
-### DNS Record Type Characteristics
-
-| Record Type | Multi-valued | Description                          |
-| ----------- | :----------: | ------------------------------------ |
-| `a`         |     Yes      | IPv4 addresses (can return multiple) |
-| `aaaa`      |     Yes      | IPv6 addresses (can return multiple) |
-| `cname`     |      No      | Canonical name alias (single value)  |
-| `ptr`       |      No      | Reverse DNS pointer (single value)   |
-| `txt`       |     Yes      | Text records (can return multiple)   |
+Select the record types to fetch with `recordTypes`. Use `test_datasource`
+to inspect the returned dictionary before writing computation rules.
 
 ### DNS Datasource Constraints
 
 - Does **NOT** support credentials or proxy
 - Inputs are extracted from the `lookup` TemplateString dictionary keys
-- Outputs are all five record types, prefixed with `*` for multi-valued
 
 ### Example: CNAME Lookup for SAN Validation
 
@@ -98,7 +90,8 @@ Queries DNS servers and returns record data.
 }
 ```
 
-After execution, access results as `ds.1.1.cname` in computation rules or validation conditions.
+Use `simulate_datasource_flow` to inspect the dictionary keys before writing
+computation rules or validation conditions.
 
 ---
 
@@ -133,19 +126,11 @@ Queries LDAP directories (Active Directory, OpenLDAP, etc.) for user/object attr
 result `dictionary`. Use `test_datasource` to inspect the returned dictionary
 before writing computation rules.
 
-### LDAP Result Structure and Indexing
+### LDAP Result Access
 
-LDAP results are indexed like DNS: `ds.<flowIndex>.<resultIndex>.<attribute>`.
-Multiple LDAP results (when `limit > 1`) get separate result indexes:
-
-- `ds.1.1.department` = department of first LDAP result
-- `ds.1.2.department` = department of second LDAP result
-
-Multi-valued LDAP attributes (e.g., `memberOf` with `multi: true`) are
-sub-indexed: `ds.1.1.memberOf.1`, `ds.1.1.memberOf.2`, etc.
-
-Use `[[ds.1.*.memberOf.*]]` (double wildcard) to match all values of a
-multi-valued attribute across all results.
+Use `{{ds.1.1.mail}}` to access an LDAP mail value.
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys for your selected attributes.
 
 ### Attribute Selection Behavior
 
@@ -230,66 +215,18 @@ Calls HTTP APIs and returns parsed response data.
 Each authentication type requires a specific Horizon credential type.
 Using the wrong combination causes a validation error.
 
-| Auth type | Required credential type              | Auto-generated behavior                                             |
-| --------- | ------------------------------------- | ------------------------------------------------------------------- |
-| `noauth`  | None (MUST NOT provide)               | No auth headers added                                               |
-| `basic`   | PasswordCredentials                   | `Authorization: Basic base64(login:password)` auto-generated        |
-| `bearer`  | RawCredentials                        | `Authorization: Bearer <secret>` auto-generated                     |
-| `x509`    | CertificateCredentials                | mTLS client certificate attached to request                         |
-| `custom`  | PasswordCredentials OR RawCredentials | NO auto-headers. Credentials exposed as dictionary keys (see below) |
-
-**Credential dictionary keys** (available in `payload` and `headers` TemplateStrings only - NOT in `url`):
-
-| Credential type     | Dictionary keys                                                           |
-| ------------------- | ------------------------------------------------------------------------- |
-| PasswordCredentials | `{{credentials.login}}` (username), `{{credentials.password}}` (password) |
-| RawCredentials      | `{{credentials.key}}` (raw secret value)                                  |
-
-### Chaining Pattern: OAuth Token Then API Call
-
-Many external APIs require OAuth client_credentials authentication. Since
-Horizon doesn't have a native OAuth auth type, use two chained REST
-datasources: one to acquire a token, one to call the API.
-
-**Pattern**:
-
-1. **Datasource A** (token): POST to the OAuth token endpoint with `custom`
-   auth + PasswordCredentials. The `{{credentials.login}}` provides the
-   client_id and `{{credentials.password}}` provides the client_secret in
-   the payload. The JSON response's `access_token` field becomes
-   `ds.<flowIndex>.access_token` in the dictionary.
-
-2. **Datasource B** (API call): GET/POST to the actual API with `noauth`.
-   Pass the token via a custom header:
-   `[{"name": "Authorization", "value": "Bearer {{ds.<flowIndexOfA>.access_token}}"}]`
-
-3. **dsFlow**: Chain A then B. B's headers reference A's output because
-   dsFlow entries execute in order and merge results into the dictionary.
-
-4. **Computation rule**: Set `computationRule` on a certificate-template SAN
-   element. For a response with a `fieldName` UPN value from flow entry 2:
-
-   ```json
-   {
-     "certificateTemplate": {
-       "sans": [
-         { "type": "OTHERNAME_UPN", "computationRule": "{{ds.2.fieldName}}" }
-       ]
-     }
-   }
-   ```
-
-This pattern works for any OAuth-protected API (identity providers, cloud
-services, CMDBs, etc.). The key insight is that `noauth` + manual header
-construction lets you inject tokens from previous datasource results.
-
-Note: REST results have NO result index level. The dictionary key is
-`ds.<flowIndex>.<jsonPath>`, not `ds.<flowIndex>.1.<jsonPath>`.
+| Auth type | Required credential type              | Auto-generated behavior                                      |
+| --------- | ------------------------------------- | ------------------------------------------------------------ |
+| `noauth`  | None (MUST NOT provide)               | No auth headers added                                        |
+| `basic`   | PasswordCredentials                   | `Authorization: Basic base64(login:password)` auto-generated |
+| `bearer`  | RawCredentials                        | `Authorization: Bearer <secret>` auto-generated              |
+| `x509`    | CertificateCredentials                | mTLS client certificate attached to request                  |
+| `custom`  | PasswordCredentials OR RawCredentials | Credential values are available in headers                   |
 
 ### Response and Output Fields
 
 Configure `expectedHttpCodes` with the response codes that indicate success.
-The public REST datasource guide states that other codes produce a failure.
+Other response codes produce a failure.
 Use `test_datasource` to inspect the response and output dictionary before
 writing computation rules.
 
@@ -306,10 +243,6 @@ REST datasource results include:
 - `responseHeaders`: response headers
 - `responseBody`: raw response body
 - `dictionary`: extracted attributes as key-value pairs
-
-**Unlike DNS and LDAP, REST results are NOT multi-indexed** - there is one
-result per REST call (no result index level). Dictionary entries are directly
-at `ds.<flowIndex>.<jsonPath>`.
 
 ### Example: CMDB API Lookup
 
@@ -347,12 +280,9 @@ of `DataSourceFlowEntry` objects.
 
 ### Result Access Patterns
 
-Results are indexed by flow position (1-based in dictionary):
-
-| Pattern                              | Description                              |
-| ------------------------------------ | ---------------------------------------- |
-| `ds.<flowIndex>.<resultIndex>.<key>` | Specific result attribute                |
-| `ds.<flowIndex>.*.<key>`             | Wildcard over all results (multi-valued) |
+Datasource flow results use the prefix `ds.<flowIndex>`, starting from 1.
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys before writing expressions.
 
 ### Flow Execution
 
@@ -384,67 +314,40 @@ Results are indexed by flow position (1-based in dictionary):
 
 ## Dictionary Key Patterns by Datasource Type
 
-Each datasource type produces different key structures in the dictionary.
-Understanding these patterns is essential for writing computation rules and
-validation rule conditions.
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys before writing computation rules or validation conditions.
 
 ### DNS Dictionary Keys
 
-Pattern: `ds.<flowIndex>.<lookupIndex>.<recordType>[.<subIndex>]`
+`DNSDataSourceResult` exposes `computedLookupValues` and a result `dictionary`.
+Run `test_datasource` or `simulate_datasource_flow` and read the returned keys.
 
-| Key pattern     | Example                  | Description                                   |
-| --------------- | ------------------------ | --------------------------------------------- |
-| `ds.1.1.cname`  | `"app.paas.example.com"` | CNAME target for 1st hostname (single-valued) |
-| `ds.1.1.a.1`    | `"10.0.0.1"`             | First A record for 1st hostname               |
-| `ds.1.1.a.2`    | `"10.0.0.2"`             | Second A record for 1st hostname              |
-| `ds.1.1.aaaa.1` | `"2001:db8::1"`          | First AAAA record                             |
-| `ds.1.1.txt.1`  | `"v=spf1 ..."`           | First TXT record                              |
-| `ds.1.1.ptr`    | `"host.example.com"`     | PTR record (single-valued)                    |
+When updating a DNS datasource flow from before Horizon 2.7.7, replace
+`ds.1.a` with `ds.1.a.1`.
 
-**Wildcards**: `[[ds.1.*.cname]]` = all CNAMEs across all lookups.
-`[[ds.1.*.a.*]]` = all A records across all lookups and sub-indexes.
+[Horizon 2.7.7 release notes](https://docs.evertrust.fr/horizon/2.7/release-notes/2.7.7.html).
 
 ### LDAP Dictionary Keys
 
-Pattern: `ds.<flowIndex>.<resultIndex>.<attribute>[.<subIndex>]`
+Use `{{ds.1.1.mail}}` to access an LDAP mail value. Run `test_datasource`
+or `simulate_datasource_flow` and read the returned dictionary keys for
+other attributes.
 
-| Key pattern           | Example                   | Description                                      |
-| --------------------- | ------------------------- | ------------------------------------------------ |
-| `ds.1.1.department`   | `"Engineering"`           | Single-valued attribute, 1st result              |
-| `ds.1.1.mail`         | `"user@corp.example.com"` | Single-valued attribute                          |
-| `ds.1.1.memberOf.1`   | `"CN=Admins,..."`         | First value of multi-valued attribute            |
-| `ds.1.1.memberOf.2`   | `"CN=Users,..."`          | Second value of multi-valued attribute           |
-| `ds.1.2.department`   | `"Marketing"`             | Same attribute, 2nd LDAP result (when limit > 1) |
-| `ds.1.1.dn`           | `"CN=user,OU=..."`        | DN value                                         |
-| `ds.1.1.subject.cn.1` | `"username"`              | Auto-parsed DN component                         |
-| `ds.1.1.subject.ou.1` | `"Users"`                 | Auto-parsed DN component                         |
-
-**Wildcards**: `[[ds.1.*.department]]` = department from all LDAP results.
-`[[ds.1.1.memberOf.*]]` = all memberOf values for 1st result.
+[Validation guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/protocols/autovalidation.html).
 
 ### REST Dictionary Keys
 
-Pattern: `ds.<flowIndex>.<jsonPath>` (no result index level)
-
-| Key pattern            | Example    | Description             |
-| ---------------------- | ---------- | ----------------------- |
-| `ds.1.status`          | `"active"` | Top-level JSON field    |
-| `ds.1.user.name`       | `"alice"`  | Nested object field     |
-| `ds.1.roles.1`         | `"admin"`  | First array element     |
-| `ds.1.roles.2`         | `"user"`   | Second array element    |
-| `ds.1.users.1.name`    | `"alice"`  | Nested array of objects |
-| `ds.1.users.1.roles.1` | `"admin"`  | Deeply nested array     |
-
-**Important**: REST has NO result index (unlike DNS/LDAP). The JSON path
-starts directly after the flow index. `ds.1.field` not `ds.1.1.field`.
+The result exposes a `dictionary`. Use `simulate_datasource_flow` to inspect
+its keys before writing computation rules or validation conditions.
 
 ### Using Datasource Results in Computation Rules
 
 Computation rules use `{{key}}` for single values and `[[key]]` for lists:
 
 Set a string `computationRule` on the selected certificate-template field.
-For an LDAP result that exposes `ds.1.1.department`, the expression can be
-`{{ds.1.1.department}}`. Inspect the flow output before choosing its key.
+For example, use `{{ds.1.1.mail}}` for an LDAP mail value. Run
+`test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys before choosing another attribute.
 
 ### Using Datasource Results in Validation Rules
 
@@ -452,11 +355,7 @@ Validation rules use the same `{{key}}` / `[[key]]` syntax but with
 condition operators:
 
 ```
-{{ds.1.1.department}} equals "Engineering"
-[[ds.1.1.memberOf]] contains "CN=PKI-Users,OU=Groups,DC=example,DC=com"
-all of [[ds.1.*.cname]] matches ".*\\.paas\\.internal$"
-(all of [[ds.1.*.a.*]] in 10.0.0.0/8) and (all of [[ds.1.*.aaaa.*]] in fd00::/48)
-{{ds.1.status}} equals "active"
+{{csr.san.rfc822name.1}} equals {{ds.1.1.mail}}
 ```
 
 ---
@@ -580,37 +479,15 @@ create_ldap_datasource(
 }
 ```
 
-**Step 3** - Set the department expression on a certificate-template OU:
-
-```json
-{
-  "certificateTemplate": {
-    "subject": [
-      {
-        "type": "OU",
-        "mandatory": false,
-        "computationRule": "{{ds.1.1.department}}"
-      }
-    ]
-  }
-}
-```
+**Step 3** - Run `simulate_datasource_flow` and read the returned dictionary
+keys. Use the department key in the `computationRule` of a certificate-template
+OU field.
 
 **Step 4** - Add validation rule for group membership:
 
-Use `test_datasource` to inspect the `memberOf` output. Compare the list
-with the full group DN returned by the directory. For example:
-
-```json
-{
-  "validationRuleset": {
-    "rules": [
-      "[[ds.1.1.memberOf]] contains \"CN=PKI-Users,OU=Groups,DC=example,DC=com\""
-    ],
-    "threshold": 1
-  }
-}
-```
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys for `memberOf`. Use the returned key with `[[key]]` and
+`contains` to compare the list with the full group DN.
 
 ### Recipe 3: REST API Host Ownership Check
 
@@ -649,25 +526,15 @@ create_rest_datasource(
 }
 ```
 
-**Step 3** - Set the certificate-template contact email expression.
-For a JSON response with a top-level `owner_email` field:
-
-```json
-{
-  "certificateTemplate": {
-    "contactEmailPolicy": {
-      "mandatory": true,
-      "computationRule": "OrElse({{ds.1.owner_email}}, {{principal.mail}})"
-    }
-  }
-}
-```
+**Step 3** - Inspect the flow dictionary with `simulate_datasource_flow`.
+Use the returned owner email key in `contactEmailPolicy.computationRule`.
+Use `OrElse` with `{{principal.mail}}` as a fallback.
 
 ---
 
 ## Related Resources
 
 - horizon://knowledge/computation-and-data-flow - computation rule syntax and datasource flow chaining
-- horizon://knowledge/validation-rules - validation rule conditions that reference ds.\* entries
+- horizon://knowledge/validation-rules - validation rule conditions that reference datasource entries
 - horizon://knowledge/dictionary-matrix - all dictionary entries including datasource results
 - horizon://knowledge/profiles - profile configuration including dsFlow and authorizationMode

@@ -93,13 +93,10 @@ is submitted. This event uses the request dictionary:
   "sequence": [
     {
       "url": "https://api.example.com/enrollment-requests",
-      "authenticationType": "custom",
+      "authenticationType": "bearer",
       "credentials": "request-api-key",
       "method": "POST",
-      "headers": [
-        { "name": "Content-Type", "value": "application/json" },
-        { "name": "X-API-Key", "value": "{{credentials.key}}" }
-      ],
+      "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
       "payload": "{\"requestId\": \"{{request.id}}\", \"profile\": \"{{request.profile}}\", \"dnsName\": \"{{request.san.dnsname.1}}\"}",
       "timeout": "15 seconds",
