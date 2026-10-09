@@ -79,7 +79,10 @@ export const thirdpartyConnectorRequestSchema = {
       required: ['type', 'name', 'throttleDuration', 'region'],
       properties: {
         type: { const: 'aws' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         timeout: {
           oneOf: [{ $ref: '#/$defs/FiniteDuration' }, { type: 'null' }],
@@ -115,7 +118,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'akv' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -151,7 +157,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'f5as3' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -180,7 +189,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'f5client' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -230,7 +242,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'gcm' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         timeout: {
           oneOf: [{ $ref: '#/$defs/FiniteDuration' }, { type: 'null' }],
@@ -261,7 +276,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'intune' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -297,7 +315,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'intunepkcs' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -336,7 +357,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'jamf' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -365,7 +389,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'ldappub' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -453,7 +480,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'msad' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: {
@@ -486,7 +516,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'netscaler' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         renewalPeriod: {
@@ -533,7 +566,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'fortigate' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: { $ref: '#/$defs/FiniteDuration' },
@@ -584,7 +620,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'fortimanager' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: { $ref: '#/$defs/FiniteDuration' },
@@ -659,7 +698,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'panos_firewall' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: { $ref: '#/$defs/FiniteDuration' },
@@ -708,7 +750,10 @@ export const thirdpartyConnectorRequestSchema = {
       ],
       properties: {
         type: { const: 'panos_panorama' },
-        name: { type: 'string', description: 'Immutable primary key.' },
+        name: {
+          type: 'string',
+          description: 'Unique identifier; it cannot change after creation.',
+        },
         throttleDuration: { $ref: '#/$defs/FiniteDuration' },
         throttleParallelism: { type: 'integer' },
         timeout: { $ref: '#/$defs/FiniteDuration' },

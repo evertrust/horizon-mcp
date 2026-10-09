@@ -36,7 +36,7 @@ const SPEC: ConfigSpec = {
 const nameSchema = z
   .string()
   .describe(
-    'Password policy name. Immutable primary key. Reserved names "Horizon-Default" and "Horizon-Default-User" cannot be created, edited, or deleted.',
+    'Password policy name. Unique identifier; it cannot change after creation. Reserved names "Horizon-Default" and "Horizon-Default-User" cannot be created, edited, or deleted.',
   );
 const minCharSchema = z
   .number()

@@ -311,6 +311,36 @@ describe('create_pki_connector', () => {
 });
 
 describe('update_pki_connector (GET-strip-merge-PUT on collection root)', () => {
+  it('preserves required GCP fields when only the timeout changes', async () => {
+    const { client, mc } = await setup();
+    mc.get.mockResolvedValueOnce({
+      name: 'gcp-issuing',
+      type: 'gcp',
+      projectId: 'issuing-project',
+      location: 'europe-west1',
+      caPool: 'issuing-pool',
+      certificateLifetime: '90 days',
+    });
+    const result = await client.callTool({
+      name: 'update_pki_connector',
+      arguments: {
+        name: 'gcp-issuing',
+        type: 'gcp',
+        config: { timeout: '10 seconds' },
+      },
+    });
+    expect(isError(result)).toBe(false);
+    expect(mc.get).toHaveBeenCalledWith('/api/v1/pki/connectors/gcp-issuing');
+    expect(mc.put).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      name: 'gcp-issuing',
+      type: 'gcp',
+      projectId: 'issuing-project',
+      location: 'europe-west1',
+      caPool: 'issuing-pool',
+      certificateLifetime: '90 days',
+      timeout: '10 seconds',
+    });
+  });
   it('GETs the item, strips server fields, merges overrides, PUTs the collection', async () => {
     const { client, mc } = await setup();
     mc.get.mockResolvedValueOnce({

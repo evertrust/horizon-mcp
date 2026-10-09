@@ -117,6 +117,10 @@ async function readJsonBounded(response: Response): Promise<unknown> {
   }
 }
 
+function encodeOAuthCredential(value: string): string {
+  return new URLSearchParams({ value }).toString().slice('value='.length);
+}
+
 /** Forward a caller-supplied Horizon JWKS service-account identity. */
 export class ServiceAccountAuthProvider extends AuthProvider {
   private readonly _serviceAccount: string;
@@ -352,7 +356,7 @@ export class ServiceAccountAuthProvider extends AuthProvider {
     };
     if (discovery.authMethod === 'client_secret_basic') {
       headers['Authorization'] =
-        `Basic ${Buffer.from(`${oauth.clientId}:${oauth.clientSecret}`).toString('base64')}`;
+        `Basic ${Buffer.from(`${encodeOAuthCredential(oauth.clientId)}:${encodeOAuthCredential(oauth.clientSecret)}`).toString('base64')}`;
     } else {
       body.set('client_id', oauth.clientId);
       body.set('client_secret', oauth.clientSecret);

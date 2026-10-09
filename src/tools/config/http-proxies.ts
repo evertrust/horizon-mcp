@@ -34,7 +34,7 @@ const SPEC: ConfigSpec = {
 const nameSchema = z
   .string()
   .describe(
-    'Proxy name. Immutable primary key, server-validated against regex [0-9a-zA-Z-_.]+.',
+    'Proxy name. Unique identifier; it cannot change after creation. Server-validated against regex [0-9a-zA-Z-_.]+.',
   );
 const hostSchema = z
   .string()

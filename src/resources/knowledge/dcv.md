@@ -35,7 +35,7 @@ Horizon supports these DCV provider types:
   license use.
 
 Credentials must be existing Horizon credentials with the DCV target. Provider
-names are immutable primary keys.
+names identify the provider and must stay unchanged during updates.
 
 ## DNS provisioners
 
@@ -54,10 +54,10 @@ Key Vault (`akv`) PKI connector.
 ## Policies and scheduling
 
 A DCV policy connects one provider to one provisioner and limits the domains it
-manages with its filter. Its `renewalPolicy` uses a cron schedule. Policy
-triggers can run the policy on schedule or in response to certificate lifecycle
-needs. `executionTimeout` bounds a run, while `retryDelay` controls the delay
-before a retry after a recoverable validation failure.
+manages with its filter. Its `renewalPolicy` uses a cron schedule to run the
+policy. The API starts manual runs, and lifecycle hooks send notifications
+during runs. `executionTimeout` bounds a run, while `retryDelay` controls the
+delay before a retry after a recoverable validation failure.
 
 Use `list_dcv_policy_status` to find eligible policies, then
 `get_dcv_policy_status` to inspect a policy's schedule, current status, and
@@ -73,7 +73,7 @@ domain it contains. Confirm the intended policy before cancelling.
 
 Policy lifecycle statuses are `scheduled`, `disabled`, `running`, `queued`, and
 `enabled`. Domain execution statuses can be `initialized`, `succeeded`,
-`left_over`, `unexpected_error`, `get_challenge_error`,
+`left_over`, `error`, `get_challenge_error`,
 `challenge_publication_error`, or `dcv_validation_error`.
 
 ## Event stream

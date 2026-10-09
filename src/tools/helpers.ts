@@ -12,6 +12,11 @@ import { toUpdatePayload } from '../models/payloads.js';
 // Shared MCP outputSchema shapes for the common envelopes
 // ---------------------------------------------------------------------------
 
+export const localizedStringEntrySchema = z.object({
+  lang: z.string().describe('Language code, for example "en" or "fr".'),
+  value: z.string().describe('Localized text value.'),
+});
+
 /** Output shape returned by `buildSearchResponse`. */
 export const SEARCH_RESPONSE_OUTPUT_SCHEMA = z.object({
   results: z.array(z.record(z.string(), z.unknown())),
@@ -259,37 +264,48 @@ const REQUEST_ACTION_PARTICIPLES = {
   cancel: 'cancelled',
 } as const;
 
+function requestPermissionFailure(
+  action: string,
+  requestId: string,
+  request: Record<string, unknown>,
+  permissions: Record<string, boolean>,
+): Record<string, unknown> {
+  return {
+    error:
+      `Permission denied: you do not have '${action}' ` +
+      'permission on this request. Do NOT retry - use a ' +
+      'principal with the appropriate role, or check the ' +
+      "profile's authorization levels.",
+    request_id: requestId,
+    request_status: request['status'],
+    request_workflow: request['workflow'],
+    request_profile: request['profile'],
+    your_permissions: permissions,
+  };
+}
+
 export async function preflightRequestAction(
   client: HorizonClient,
   action: keyof typeof REQUEST_ACTION_PARTICIPLES,
   requestId: string,
   permissionKey: string,
-): Promise<Record<string, unknown>> {
-  let request: Record<string, unknown>;
-  try {
-    request = await client.get<Record<string, unknown>>(
-      `/api/v1/requests/${encodePathSegment(requestId)}`,
-    );
-  } catch (err) {
-    if (err instanceof HorizonError) {
-      return { error: err.toToolResult() };
-    }
-    return { error: String(err) };
-  }
-
+): Promise<
+  | { ok: true; request: Record<string, unknown> }
+  | { ok: false; failure: Record<string, unknown> }
+> {
+  const request = await client.get<Record<string, unknown>>(
+    `/api/v1/requests/${encodePathSegment(requestId)}`,
+  );
   const permissions = (request['permissions'] ?? {}) as Record<string, boolean>;
   if (!permissions[permissionKey]) {
     return {
-      error:
-        `Permission denied: you do not have '${action}' ` +
-        'permission on this request. Do NOT retry - use a ' +
-        'principal with the appropriate role, or check the ' +
-        "profile's authorization levels.",
-      request_id: requestId,
-      request_status: request['status'],
-      request_workflow: request['workflow'],
-      request_profile: request['profile'],
-      your_permissions: permissions,
+      ok: false,
+      failure: requestPermissionFailure(
+        action,
+        requestId,
+        request,
+        permissions,
+      ),
     };
   }
 
@@ -299,15 +315,17 @@ export async function preflightRequestAction(
   if (!acceptedStatuses.includes(status)) {
     const participle = REQUEST_ACTION_PARTICIPLES[action];
     return {
-      error:
-        `Request status '${status}' cannot be ${participle}. ` +
-        `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
-      request_id: requestId,
-      request_status: status,
+      ok: false,
+      failure: {
+        error:
+          `Request status '${status}' cannot be ${participle}. ` +
+          `Only ${acceptedStatuses.join(' or ')} requests can be ${participle}.`,
+        request_id: requestId,
+        request_status: status,
+      },
     };
   }
-
-  return request;
+  return { ok: true, request };
 }
 
 // ---------------------------------------------------------------------------

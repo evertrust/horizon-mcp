@@ -19,6 +19,7 @@ import { registerTool } from '../register.js';
 import {
   DS_BASE,
   dsAttributeSchema,
+  httpHeaderSchema,
   localizedNameSchema,
   validateAuthType,
   validateRecordTypes,
@@ -77,7 +78,7 @@ const UPDATE_DATASOURCE_CONFIG = {
       .optional()
       .describe('(REST) New auth type.'),
     headers: z
-      .array(z.object({ name: z.string(), value: z.string() }))
+      .array(httpHeaderSchema)
       .optional()
       .describe('(REST) New HTTP headers.'),
     payload_type: z

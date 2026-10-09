@@ -38,7 +38,61 @@ async function connect(server: ReturnType<typeof createSessionServer>) {
   return client;
 }
 
+function findUndescribedProperties(schema: unknown, path: string): string[] {
+  if (!schema || typeof schema !== 'object') return [];
+  const node = schema as Record<string, unknown>;
+  const offenders: string[] = [];
+  const properties = (node['properties'] ?? {}) as Record<
+    string,
+    Record<string, unknown>
+  >;
+  for (const [name, property] of Object.entries(properties)) {
+    const propertyPath = `${path}.${name}`;
+    const description = property['description'];
+    if (typeof description !== 'string' || !description.trim()) {
+      offenders.push(propertyPath);
+    }
+    offenders.push(...findUndescribedProperties(property, propertyPath));
+  }
+  for (const key of ['items', 'additionalProperties']) {
+    offenders.push(...findUndescribedProperties(node[key], `${path}.${key}`));
+  }
+  for (const key of ['anyOf', 'oneOf', 'allOf', 'prefixItems']) {
+    const branches = (node[key] ?? []) as unknown[];
+    branches.forEach((branch, index) => {
+      offenders.push(
+        ...findUndescribedProperties(branch, `${path}.${key}[${index}]`),
+      );
+    });
+  }
+  for (const [name, definition] of Object.entries(node['$defs'] ?? {})) {
+    offenders.push(
+      ...findUndescribedProperties(definition, `${path}.$defs.${name}`),
+    );
+  }
+  return offenders;
+}
+
 describe('createSessionServer', () => {
+  it('describes every input property in tools/list across all toolsets', async () => {
+    const server = createSessionServer(mockClient(), {
+      enabledToolsets: TOOLSET_NAMES,
+    });
+    const client = await connect(server);
+    try {
+      const { tools } = await client.listTools();
+      const offenders = tools.flatMap((tool) =>
+        findUndescribedProperties(tool.inputSchema, tool.name),
+      );
+      expect(
+        offenders,
+        `Missing field descriptions:\n${offenders.join('\n')}`,
+      ).toEqual([]);
+    } finally {
+      await client.close();
+    }
+  });
+
   it('registers the full tool set, including the config CRUD tools', async () => {
     const server = createSessionServer(mockClient());
     const client = await connect(server);

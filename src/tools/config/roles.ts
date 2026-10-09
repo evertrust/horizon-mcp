@@ -39,7 +39,7 @@ const SPEC: ConfigSpec = {
 const nameSchema = z
   .string()
   .describe(
-    'Role name. Immutable primary key, server-validated against regex ' +
+    'Role name. Unique identifier; it cannot change after creation. Server-validated against regex ' +
       '[0-9a-zA-Z-_]+ (alphanumerics, hyphen and underscore only - no dots, no spaces).',
   );
 

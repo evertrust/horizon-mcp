@@ -87,7 +87,9 @@ function buildStorageBody(args: {
 const CREATE_STORAGES_SCHEMA = z.object({
   name: z
     .string()
-    .describe('Storage name. Immutable primary key, regex [0-9a-zA-Z-_.]+.'),
+    .describe(
+      'Storage name. Unique identifier; it cannot change after creation. Regex [0-9a-zA-Z-_.]+.',
+    ),
   timeout: z
     .string()
     .describe('S3 connection timeout, e.g. "30s". Mandatory, must be > 0.'),
@@ -109,11 +111,15 @@ const CREATE_STORAGES_SCHEMA = z.object({
 
 const UPDATE_STORAGES_SCHEMA = z.object({
   name: z.string().describe('Storage name to update (immutable key).'),
-  timeout: z.string().optional(),
-  force_path_style: z.boolean().optional(),
-  bucket: z.string().optional(),
-  checksum_mode: z.enum(CHECKSUM_MODES).optional(),
-  part_buffer_size: z.string().optional(),
+  timeout: CREATE_STORAGES_SCHEMA.shape.timeout
+    .optional()
+    .describe('S3 connection timeout, for example "30s".'),
+  force_path_style: CREATE_STORAGES_SCHEMA.shape.force_path_style.optional(),
+  bucket: CREATE_STORAGES_SCHEMA.shape.bucket.optional(),
+  checksum_mode: CREATE_STORAGES_SCHEMA.shape.checksum_mode.optional(),
+  part_buffer_size: CREATE_STORAGES_SCHEMA.shape.part_buffer_size
+    .optional()
+    .describe('Multipart upload buffer size, for example "9MB".'),
   credentials: optionalStrings.credentials.optional(),
   role_arn: optionalStrings.role_arn.optional(),
   region: optionalStrings.region.optional(),

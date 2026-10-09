@@ -235,48 +235,55 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
     },
   );
 
-  it('uses the pinned token URL with client_secret_basic', async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const issuer = 'https://issuer.example.com/tenant/';
-    const initial = jwt({ iss: issuer, exp: now + 30 });
-    const renewed = jwt({ iss: issuer, exp: now + 3600 });
-    const fetcher = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(response(200, { access_token: renewed }));
-    const provider = new ServiceAccountAuthProvider('ci', initial, {
-      clientId: 'client id',
-      clientSecret: 'secret:value',
-      scope: 'horizon.read horizon.write',
-      audience: 'horizon-api',
-      issuers: {
-        [issuer]: {
-          tokenUrl: 'https://oauth.example.com/token',
-          authMethod: 'client_secret_basic',
-        },
-      },
-      fetcher,
-      refreshSkewSeconds: 60,
-    });
-
-    provider.markValidated();
-    await provider.refreshIfNeeded();
-
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    const tokenRequest = fetcher.mock.calls[0];
-    expect(tokenRequest?.[0]).toBe('https://oauth.example.com/token');
-    expect(tokenRequest?.[1]?.method).toBe('POST');
-    expect(new Headers(tokenRequest?.[1]?.headers).get('Authorization')).toBe(
-      `Basic ${Buffer.from('client id:secret:value').toString('base64')}`,
-    );
-    expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
-      new URLSearchParams({
-        grant_type: 'client_credentials',
+  it.each([
+    ['client id', 'secret:value~%é', 'client+id:secret%3Avalue%7E%25%C3%A9'],
+    ['id:~%é', 'secret value', 'id%3A%7E%25%C3%A9:secret+value'],
+    ['id+&=', 'secret+&=', 'id%2B%26%3D:secret%2B%26%3D'],
+  ])(
+    'form-encodes %s with client_secret_basic',
+    async (clientId, clientSecret, encoded) => {
+      const now = Math.floor(Date.now() / 1000);
+      const issuer = 'https://issuer.example.com/tenant/';
+      const initial = jwt({ iss: issuer, exp: now + 30 });
+      const renewed = jwt({ iss: issuer, exp: now + 3600 });
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockResolvedValue(response(200, { access_token: renewed }));
+      const provider = new ServiceAccountAuthProvider('ci', initial, {
+        clientId,
+        clientSecret,
         scope: 'horizon.read horizon.write',
         audience: 'horizon-api',
-      }),
-    );
-    expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
-  });
+        issuers: {
+          [issuer]: {
+            tokenUrl: 'https://oauth.example.com/token',
+            authMethod: 'client_secret_basic',
+          },
+        },
+        fetcher,
+        refreshSkewSeconds: 60,
+      });
+
+      provider.markValidated();
+      await provider.refreshIfNeeded();
+
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      const tokenRequest = fetcher.mock.calls[0];
+      expect(tokenRequest?.[0]).toBe('https://oauth.example.com/token');
+      expect(tokenRequest?.[1]?.method).toBe('POST');
+      expect(new Headers(tokenRequest?.[1]?.headers).get('Authorization')).toBe(
+        `Basic ${Buffer.from(encoded).toString('base64')}`,
+      );
+      expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
+        new URLSearchParams({
+          grant_type: 'client_credentials',
+          scope: 'horizon.read horizon.write',
+          audience: 'horizon-api',
+        }),
+      );
+      expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
+    },
+  );
 
   it('renews an expired token before validation through the pinned client_secret_post endpoint', async () => {
     const now = Math.floor(Date.now() / 1000);
@@ -289,8 +296,8 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
       'ci',
       jwt({ iss: issuer, exp: now - 1 }),
       {
-        clientId: 'client',
-        clientSecret: 'secret',
+        clientId: 'client id:~%é',
+        clientSecret: 'secret value:~%é',
         issuers: {
           [issuer]: {
             tokenUrl: 'https://tokens.example.com/token',
@@ -312,8 +319,8 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
     expect(new URLSearchParams(String(tokenRequest?.[1]?.body))).toEqual(
       new URLSearchParams({
         grant_type: 'client_credentials',
-        client_id: 'client',
-        client_secret: 'secret',
+        client_id: 'client id:~%é',
+        client_secret: 'secret value:~%é',
       }),
     );
     expect((await provider.getHeaders())['X-API-TOKEN']).toBe(renewed);
@@ -430,7 +437,7 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
       .mockResolvedValueOnce(response(200, { access_token: renewed }));
     const provider = new ServiceAccountAuthProvider('ci', initial, {
       clientId: 'client id',
-      clientSecret: 'secret:value',
+      clientSecret: 'secret:value~%é',
       scope: 'horizon.read horizon.write',
       audience: 'horizon-api',
       fetcher,
@@ -448,7 +455,7 @@ describe('ServiceAccountAuthProvider client_credentials renewal', () => {
     expect(tokenRequest?.[0]).toBe('https://issuer.example.com/oauth/token');
     expect(tokenRequest?.[1]?.method).toBe('POST');
     expect(new Headers(tokenRequest?.[1]?.headers).get('Authorization')).toBe(
-      `Basic ${Buffer.from('client id:secret:value').toString('base64')}`,
+      `Basic ${Buffer.from('client+id:secret%3Avalue%7E%25%C3%A9').toString('base64')}`,
     );
     const body = String(tokenRequest?.[1]?.body);
     expect(new URLSearchParams(body).get('grant_type')).toBe(

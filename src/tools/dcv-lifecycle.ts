@@ -34,8 +34,7 @@ const DOMAIN_STATUS_SCHEMA = z.looseObject({
       'initialized',
       'succeeded',
       'left_over',
-      // OpenAPI names the generic failure `error`; Horizon returns
-      // `unexpected_error`. Accept both.
+      // Accept the public error status and a compatibility value.
       'error',
       'unexpected_error',
       'get_challenge_error',
@@ -84,13 +83,13 @@ const DCV_EVENTS_RESPONSE_SCHEMA = z.looseObject({
 
 const LIST_DCV_POLICY_STATUS_CONFIG = {
   description:
-    'List DCV policy lifecycle status. An empty Horizon response is returned as an empty array. Full guidance: horizon://knowledge/dcv.',
+    'List DCV policy lifecycle status (Horizon 2.10+). An empty Horizon response is returned as an empty array. Full guidance: horizon://knowledge/dcv.',
   outputSchema: z.array(POLICY_STATUS_SCHEMA),
 };
 
 const GET_DCV_POLICY_STATUS_CONFIG = {
   description:
-    'Get the full lifecycle status for one DCV policy, including scheduled or active domain validation runs. Full guidance: horizon://knowledge/dcv.',
+    'Get the full lifecycle status for one DCV policy, including scheduled or active domain validation runs (Horizon 2.10+). Full guidance: horizon://knowledge/dcv.',
   inputSchema: z.object({
     name: z.string().describe('DCV policy name.'),
   }),
@@ -99,7 +98,7 @@ const GET_DCV_POLICY_STATUS_CONFIG = {
 
 const RUN_DCV_POLICY_CONFIG = {
   description:
-    'Queue a DCV policy run for every eligible domain. This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
+    'Queue a DCV policy run for every eligible domain (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
   inputSchema: z.object({
     name: z.string().describe('DCV policy name.'),
   }),
@@ -107,7 +106,7 @@ const RUN_DCV_POLICY_CONFIG = {
 
 const RUN_DCV_DOMAIN_CONFIG = {
   description:
-    'Queue DCV for one domain in a policy. This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
+    'Queue DCV for one domain in a policy (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
   inputSchema: z.object({
     name: z.string().describe('DCV policy name.'),
     domain: z.string().describe('Domain to validate.'),
@@ -116,7 +115,7 @@ const RUN_DCV_DOMAIN_CONFIG = {
 
 const CANCEL_DCV_RUN_CONFIG = {
   description:
-    'Cancel the current run of a DCV policy. This cancels the whole policy run, including its domains. Full guidance: horizon://knowledge/dcv.',
+    'Cancel the current run of a DCV policy (Horizon 2.10+). This cancels the whole policy run, including its domains. Full guidance: horizon://knowledge/dcv.',
   inputSchema: z.object({
     name: z.string().describe('DCV policy name.'),
   }),
@@ -124,7 +123,7 @@ const CANCEL_DCV_RUN_CONFIG = {
 
 const LIST_DCV_EVENTS_CONFIG = {
   description:
-    'List DCV lifecycle events for a policy, optionally narrowed to one domain. removeAt is the event retention deadline. Full guidance: horizon://knowledge/dcv.',
+    'List DCV lifecycle events for a policy, optionally narrowed to one domain (Horizon 2.10+). removeAt is the event retention deadline. Full guidance: horizon://knowledge/dcv.',
   inputSchema: z.object({
     policy: z.string().describe('DCV policy name.'),
     domain: z.string().optional().describe('Optional domain to filter to.'),
@@ -164,7 +163,7 @@ function policyPath(name: string): string {
   return `/api/v1/dcv/lifecycle/policies/${encodePathSegment(name)}`;
 }
 
-export function registerDcvLifecycleTools(
+function registerDcvStatusTools(
   server: McpServer,
   client: HorizonClient,
 ): void {
@@ -187,7 +186,12 @@ export function registerDcvLifecycleTools(
     GET_DCV_POLICY_STATUS_CONFIG,
     async ({ name }) => textResult(await client.get(policyPath(name))),
   );
+}
 
+function registerDcvActionTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
   registerTool(
     server,
     'run_dcv_policy',
@@ -217,31 +221,45 @@ export function registerDcvLifecycleTools(
       return textResult({ status: 'cancelled', policy: name });
     },
   );
+}
 
+function buildDcvEventsRequest({
+  policy,
+  domain,
+  sorted_by,
+  page_index,
+  page_size,
+  with_count,
+}: z.infer<typeof LIST_DCV_EVENTS_CONFIG.inputSchema>) {
+  const path = domain
+    ? `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}/${encodePathSegment(domain)}`
+    : `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}`;
+  const body: Record<string, unknown> = {};
+  const sortedBy = buildSortedBy(sorted_by);
+  if (sortedBy !== undefined) body['sortedBy'] = sortedBy;
+  if (page_index !== undefined) body['pageIndex'] = toApiPageIndex(page_index);
+  if (page_size !== undefined) body['pageSize'] = page_size;
+  if (with_count !== undefined) body['withCount'] = with_count;
+  return { path, body };
+}
+
+function registerDcvEventTool(server: McpServer, client: HorizonClient): void {
   registerTool(
     server,
     'list_dcv_events',
     LIST_DCV_EVENTS_CONFIG,
-    async ({
-      policy,
-      domain,
-      sorted_by,
-      page_index,
-      page_size,
-      with_count,
-    }) => {
-      const path = domain
-        ? `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}/${encodePathSegment(domain)}`
-        : `/api/v1/dcv/lifecycle/events/${encodePathSegment(policy)}`;
-      const body: Record<string, unknown> = {};
-      const sortedBy = buildSortedBy(sorted_by);
-      if (sortedBy !== undefined) body['sortedBy'] = sortedBy;
-      if (page_index !== undefined) {
-        body['pageIndex'] = toApiPageIndex(page_index);
-      }
-      if (page_size !== undefined) body['pageSize'] = page_size;
-      if (with_count !== undefined) body['withCount'] = with_count;
+    async (args) => {
+      const { path, body } = buildDcvEventsRequest(args);
       return textResult(await client.post(path, body));
     },
   );
+}
+
+export function registerDcvLifecycleTools(
+  server: McpServer,
+  client: HorizonClient,
+): void {
+  registerDcvStatusTools(server, client);
+  registerDcvActionTools(server, client);
+  registerDcvEventTool(server, client);
 }

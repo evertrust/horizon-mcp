@@ -102,7 +102,9 @@ Control the RBAC system itself. Scope = object name or `*`.
 | `security:credentials:{scope}`        | Manage stored credentials (keystores, passwords) |
 | `access-management:service-account:*` | Manage service accounts (create, update, delete) |
 
-### Service-account management
+### Service-account management (Horizon 2.10+)
+
+Check the version with `get_license_info` before using service accounts.
 
 Use `list_service_accounts` and `get_service_account` for audit access. Creating,
 updating, or deleting a service account requires
@@ -110,9 +112,7 @@ updating, or deleting a service account requires
 
 Service accounts authenticate workloads from an external JWT issuer. Grant only
 the roles and permissions explicitly required by the workload. For static JWKS,
-`trustConfig.jwks` is supplied as a JSON string when creating or updating an
-account. Horizon GET responses may represent that field as an object, so the
-update tool re-serializes it during its GET-merge-PUT cycle.
+`trustConfig.jwks` is a JSON string when creating or updating an account.
 
 Clients send the service-account name in `X-API-SVA` and the JWT in
 `X-API-TOKEN`. Since Horizon 2.11, the JWT can also be sent as
@@ -331,23 +331,19 @@ horizon://knowledge/integrations (OIDC).
 
 ---
 
-## X.509 Client-Authentication Identity Mapping
+## X.509 Client-Authentication Identity Mapping (Horizon 2.10+)
 
-When a client authenticates with an X.509 certificate, Horizon selects its
-trusted CA and evaluates that CA's TemplateString mappings:
+Check the version with `get_license_info` before configuring these mappings.
+Trusted client-authentication CAs expose these TemplateString mappings:
 
-| CA field            | Default TemplateString             | Result                          |
-| ------------------- | ---------------------------------- | ------------------------------- |
-| `identifierMapping` | `{{certificate.dn}}`               | Required principal identifier   |
-| `nameMapping`       | `{{certificate.subject.cn.1}}`     | Optional principal display name |
-| `emailMapping`      | `{{certificate.san.rfc822name.1}}` | Optional principal email        |
+| CA field            | Default TemplateString             | Result                 |
+| ------------------- | ---------------------------------- | ---------------------- |
+| `identifierMapping` | `{{certificate.dn}}`               | Principal identifier   |
+| `nameMapping`       | `{{certificate.subject.cn.1}}`     | Principal display name |
+| `emailMapping`      | `{{certificate.san.rfc822name.1}}` | Principal email        |
 
 Set these fields through `create_ca` or `update_ca` using the corresponding
 snake_case inputs: `identifier_mapping`, `name_mapping`, and `email_mapping`.
-The `identifierMapping` is the required anchor: if it does not evaluate for a
-certificate, Horizon fails the entire client-auth identity computation. Name
-and email mappings may independently evaluate to no value without substituting
-an identifier.
 
 ---
 
@@ -378,20 +374,13 @@ permissions, skip to Step 3.
 
 ### Step 3: Assign Role to Principal
 
-Use `update_principal` with the GET -> merge -> PUT pattern to add the new
-role to the principal's existing roles without overwriting:
-
-```json
-{
-  "roles": ["existing-role-1", "existing-role-2", "my-new-role"]
-}
-```
+Use the Horizon administration UI to add the role to the principal's existing
+roles. Keep the roles the principal still needs.
 
 ### Step 4: Verify
 
-Use `get_principal` to confirm the role assignment. The principal's effective
-permissions are computed server-side and include all implied permissions from
-wildcard expansion.
+Confirm the role assignment in the Horizon administration UI. For the current
+caller, use `whoami` to inspect the identity, roles, teams, and permissions.
 
 ---
 

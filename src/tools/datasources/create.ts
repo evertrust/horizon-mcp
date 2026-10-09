@@ -15,6 +15,7 @@ import { registerTool } from '../register.js';
 import {
   DS_BASE,
   dsAttributeSchema,
+  httpHeaderSchema,
   localizedNameSchema,
   validateAuthType,
   validateRecordTypes,
@@ -68,7 +69,9 @@ const CREATE_DNS_DATASOURCE_CONFIG = {
   inputSchema: z.object({
     name: z
       .string()
-      .describe('Unique datasource name (immutable primary key).'),
+      .describe(
+        'Datasource name. Unique identifier; it cannot change after creation.',
+      ),
     lookup: z
       .string()
       .describe(
@@ -145,7 +148,9 @@ const CREATE_LDAP_DATASOURCE_CONFIG = {
   inputSchema: z.object({
     name: z
       .string()
-      .describe('Unique datasource name (immutable primary key).'),
+      .describe(
+        'Datasource name. Unique identifier; it cannot change after creation.',
+      ),
     hostname: z
       .string()
       .describe('LDAP server URL (e.g. "ldaps://ldap.corp.example.com").'),
@@ -229,7 +234,9 @@ const CREATE_REST_DATASOURCE_CONFIG = {
   inputSchema: z.object({
     name: z
       .string()
-      .describe('Unique datasource name (immutable primary key).'),
+      .describe(
+        'Datasource name. Unique identifier; it cannot change after creation.',
+      ),
     method: z.string().describe('HTTP method (GET, POST, PUT, DELETE, etc.).'),
     url: z
       .string()
@@ -254,7 +261,7 @@ const CREATE_REST_DATASOURCE_CONFIG = {
         'Name of existing credentials. Required when authentication_type is not "noauth".',
       ),
     headers: z
-      .array(z.object({ name: z.string(), value: z.string() }))
+      .array(httpHeaderSchema)
       .optional()
       .describe('Custom HTTP headers as [{name, value}].'),
     payload_type: z

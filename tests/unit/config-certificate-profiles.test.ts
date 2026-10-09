@@ -388,6 +388,7 @@ describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', 
       name: 'cp1',
       enabled: true,
       gradingPolicies: ['old'],
+      autoRenewalPolicy: { default: true, editable: false },
     });
     mc.put.mockResolvedValueOnce({ name: 'cp1' });
     await client.callTool({
@@ -404,6 +405,7 @@ describe('update_certificate_profile (GET-strip-merge-PUT on collection root)', 
       name: 'cp1',
       enabled: false,
       gradingPolicies: ['old'],
+      autoRenewalPolicy: { default: true, editable: false },
     });
   });
 
