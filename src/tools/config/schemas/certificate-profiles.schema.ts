@@ -269,6 +269,17 @@ export const certificateProfileRequestSchema = {
           type: 'boolean',
           description: 'Available from `2.8.2`',
         },
+        ipIdentifierConstraint: {
+          nullable: true,
+          type: 'string',
+          description: 'Horizon 2.11+.',
+        },
+        excludeRootCA: {
+          default: false,
+          type: 'boolean',
+          description:
+            'Horizon 2.11+. If `true`, the root CA will be excluded from the response chain, as it should already be present on the target system',
+        },
       },
       required: [
         'module',
@@ -324,6 +335,8 @@ export const certificateProfileRequestSchema = {
         externalAccountRequired: {
           type: 'boolean',
           nullable: true,
+          description:
+            'Horizon 2.10 and older. The Horizon 2.11 API reference does not list it.',
         },
       },
     },
@@ -2489,8 +2502,28 @@ export const certificateProfileRequestSchema = {
         authorizationMode: {
           type: 'string',
           description:
-            'The authorization mode to use. \n`authorized` uses permissions to allow enrollment, \n`auto-validation` uses the validation ruleset,\n`auto-validation-authorized` uses the validation ruleset, and if enrollment is denied, uses the permissions\n',
-          enum: ['authorized', 'auto-validation', 'auto-validation-authorized'],
+            'The authorization mode to use. \n`authorized` uses permissions to allow enrollment, \n`auto-validation` uses the validation ruleset,\n`auto-validation-authorized` uses the validation ruleset, and if enrollment is denied, uses the permissions,\n`challenge` (Horizon 2.11+) allows enrollment through a one-time challenge, submitted on `/api/v1/challenge/submit`\n',
+          enum: [
+            'authorized',
+            'auto-validation',
+            'auto-validation-authorized',
+            'challenge',
+          ],
+        },
+        passwordPolicy: {
+          type: 'string',
+          description:
+            'Horizon 2.11+. Reference to a `Password policy` object, used to generate the challenge. Required when the authorization mode is `challenge`, and rejected otherwise',
+        },
+        constraints: {
+          type: 'object',
+          description:
+            'Horizon 2.11+. Restricts the identity a certificate may carry on this profile',
+          allOf: [
+            {
+              $ref: '#/$defs/CertificateRequestConstraints',
+            },
+          ],
         },
         enabled: {
           type: 'boolean',

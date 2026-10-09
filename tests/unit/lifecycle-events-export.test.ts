@@ -3,9 +3,13 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { describe, expect, it, vi } from 'vitest';
 
+import { ApiKeyAuthProvider } from '../../src/auth/apikey.js';
+import { HorizonClient } from '../../src/client/http.js';
+import { registerDiscoveryEventTools } from '../../src/tools/discovery-events.js';
 import { registerLifecycleTools } from '../../src/tools/lifecycle.js';
 
 type MockLifecycleClient = {
+  readonly exportTimeout: number;
   post: ReturnType<typeof vi.fn>;
   get: ReturnType<typeof vi.fn>;
   postText: ReturnType<typeof vi.fn>;
@@ -18,6 +22,11 @@ async function createLifecycleClient(
   registerLifecycleTools(
     server,
     mockClient as unknown as Parameters<typeof registerLifecycleTools>[1],
+  );
+
+  registerDiscoveryEventTools(
+    server,
+    mockClient as unknown as Parameters<typeof registerDiscoveryEventTools>[1],
   );
 
   const [clientTransport, serverTransport] =
@@ -51,6 +60,7 @@ async function callJsonTool(
 describe('export_events_csv', () => {
   it('builds a compact CSV from paged search results', async () => {
     const mockClient: MockLifecycleClient = {
+      exportTimeout: 120000,
       get: vi.fn(),
       postText: vi.fn(),
       post: vi
@@ -121,6 +131,7 @@ describe('export_events_csv', () => {
 
   it('respects explicit field selection and preserves order', async () => {
     const mockClient: MockLifecycleClient = {
+      exportTimeout: 120000,
       get: vi.fn(),
       postText: vi.fn(),
       post: vi.fn().mockResolvedValue({
@@ -150,4 +161,68 @@ describe('export_events_csv', () => {
       '2026-04-14T12:00:00.000Z;alice@example.com;SEC-AUTHENTICATION',
     );
   });
+
+  it('uses the HorizonClient export timeout as the CSV request budget', async () => {
+    const horizonClient = new HorizonClient(
+      'https://horizon.example.com',
+      new ApiKeyAuthProvider('id', 'key'),
+      { timeout: 5, exportTimeout: 7, verifySsl: true },
+    );
+    const post = vi.spyOn(horizonClient, 'post').mockResolvedValue({
+      results: [],
+      count: 0,
+      hasMore: false,
+    });
+    const client = await createLifecycleClient(
+      horizonClient as unknown as MockLifecycleClient,
+    );
+    try {
+      await callJsonTool(client, 'export_events_csv', {
+        query: 'code matches ".*"',
+      });
+
+      expect(horizonClient.exportTimeout).toBe(7000);
+      expect(post).toHaveBeenCalledWith(
+        '/api/v1/events/search',
+        expect.any(Object),
+        { timeout: 7 },
+      );
+    } finally {
+      await client.close();
+      await horizonClient.close();
+    }
+  });
+  it.each([
+    ['export_certificates_csv', '/api/v1/certificates/csv'],
+    ['export_requests_csv', '/api/v1/requests/csv'],
+    [
+      'export_discovery_events_csv',
+      '/api/v1/discovery/events/csv?enableAnalytics=true',
+    ],
+  ])(
+    '%s uses the configured HTTP export budget in seconds',
+    async (name, route) => {
+      const horizonClient = new HorizonClient(
+        'https://horizon.example.com',
+        new ApiKeyAuthProvider('id', 'key'),
+        { timeout: 5, exportTimeout: 7, verifySsl: true },
+      );
+      const postText = vi
+        .spyOn(horizonClient, 'postText')
+        .mockResolvedValue('');
+      const client = await createLifecycleClient(
+        horizonClient as unknown as MockLifecycleClient,
+      );
+      try {
+        await callJsonTool(client, name, { query: 'status equals "success"' });
+        expect(horizonClient.exportTimeout).toBe(7000);
+        expect(postText).toHaveBeenCalledWith(route, expect.any(Object), {
+          timeout: 7,
+        });
+      } finally {
+        await client.close();
+        await horizonClient.close();
+      }
+    },
+  );
 });

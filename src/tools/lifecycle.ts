@@ -16,6 +16,7 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 import type { HorizonClient } from '../client/http.js';
 import { registerCertificateTools } from './lifecycle/certificates.js';
+import { registerChallengeTools } from './lifecycle/challenge.js';
 import { registerEventTools } from './lifecycle/events.js';
 import { registerRequestTools } from './lifecycle/requests.js';
 
@@ -25,5 +26,6 @@ export function registerLifecycleTools(
 ): void {
   registerCertificateTools(server, client);
   registerRequestTools(server, client);
+  registerChallengeTools(server, client);
   registerEventTools(server, client);
 }
