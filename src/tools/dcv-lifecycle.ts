@@ -25,7 +25,7 @@ function registerDcvStatusTools(
     'list_dcv_policy_status',
     {
       description:
-        'List DCV policy lifecycle status. An empty Horizon response is returned as an empty array. Full guidance: horizon://knowledge/dcv.',
+        'List DCV policy lifecycle status (Horizon 2.10+). An empty Horizon response is returned as an empty array. Full guidance: horizon://knowledge/dcv.',
     },
     async () => {
       const result = await client.get<unknown>(
@@ -40,7 +40,7 @@ function registerDcvStatusTools(
     'get_dcv_policy_status',
     {
       description:
-        'Get the full lifecycle status for one DCV policy, including scheduled or active domain validation runs. Full guidance: horizon://knowledge/dcv.',
+        'Get the full lifecycle status for one DCV policy, including scheduled or active domain validation runs (Horizon 2.10+). Full guidance: horizon://knowledge/dcv.',
       inputSchema: z.object({
         name: z.string().describe('DCV policy name.'),
       }),
@@ -58,7 +58,7 @@ function registerDcvActionTools(
     'run_dcv_policy',
     {
       description:
-        'Queue a DCV policy run for every eligible domain. This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
+        'Queue a DCV policy run for every eligible domain (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
       inputSchema: z.object({
         name: z.string().describe('DCV policy name.'),
       }),
@@ -76,7 +76,7 @@ function registerDcvDomainTool(server: McpServer, client: HorizonClient): void {
     'run_dcv_domain',
     {
       description:
-        'Queue DCV for one domain in a policy. This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
+        'Queue DCV for one domain in a policy (Horizon 2.10+). This starts a real validation operation. Full guidance: horizon://knowledge/dcv.',
       inputSchema: z.object({
         name: z.string().describe('DCV policy name.'),
         domain: z.string().describe('Domain to validate.'),
@@ -98,7 +98,7 @@ function registerCancelDcvRunTool(
     'cancel_dcv_run',
     {
       description:
-        'Cancel the current run of a DCV policy. This cancels the whole policy run, including its domains. Full guidance: horizon://knowledge/dcv.',
+        'Cancel the current run of a DCV policy (Horizon 2.10+). This cancels the whole policy run, including its domains. Full guidance: horizon://knowledge/dcv.',
       inputSchema: z.object({
         name: z.string().describe('DCV policy name.'),
       }),
@@ -138,7 +138,7 @@ function registerDcvEventTool(server: McpServer, client: HorizonClient): void {
     'list_dcv_events',
     {
       description:
-        'List DCV lifecycle events for a policy, optionally narrowed to one domain. removeAt is the event retention deadline. Full guidance: horizon://knowledge/dcv.',
+        'List DCV lifecycle events for a policy, optionally narrowed to one domain (Horizon 2.10+). removeAt is the event retention deadline. Full guidance: horizon://knowledge/dcv.',
       inputSchema: z.object({
         policy: z.string().describe('DCV policy name.'),
         domain: z.string().optional().describe('Optional domain to filter to.'),
