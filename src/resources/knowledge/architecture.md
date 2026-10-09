@@ -108,50 +108,57 @@ metadata with no enrichment or lifecycle control.
 
 ---
 
-## PKI Connector Types (22)
+## PKI Connector Types (21 on 2.10, 22 on 2.11)
 
-| Type         | CA / Protocol                     |
-| ------------ | --------------------------------- |
-| `stream`     | Stream CA (generic)               |
-| `acmeenroll` | ACME enrollment connector         |
-| `acmerevoke` | ACME revocation connector         |
-| `evtadcs`    | Evertrust ADCS connector          |
-| `msadcs`     | Microsoft AD Certificate Services |
-| `awsacmpca`  | AWS ACM Private CA                |
-| `certeurope` | CertEurope CA                     |
-| `cmp`        | Certificate Management Protocol   |
-| `digicert`   | DigiCert CertCentral              |
-| `ejbca`      | EJBCA                             |
-| `entrust`    | Entrust                           |
-| `idca`       | IDCA                              |
-| `integrated` | Integrated CA (built-in)          |
-| `fcms`       | FCMS                              |
-| `gsatlas`    | GlobalSign Atlas                  |
-| `gsmssl`     | GlobalSign MSSL                   |
-| `otpki`      | OpenTrust PKI                     |
-| `metapki`    | MetaPKI                           |
-| `nameshield` | Nameshield                        |
-| `nexuscm`    | Nexus Certificate Manager         |
-| `sectigo`    | Sectigo                           |
-| `swisssign`  | SwissSign                         |
+| Type         | CA / Protocol                    |
+| ------------ | -------------------------------- |
+| `stream`     | Stream CA (generic)              |
+| `acmeenroll` | ACME enrollment connector        |
+| `acmerevoke` | ACME revocation connector        |
+| `evtadcs`    | Evertrust ADCS connector         |
+| `ejbca_rest` | EJBCA REST                       |
+| `awsacmpca`  | AWS ACM Private CA               |
+| `certeurope` | CertEurope CA                    |
+| `cmp`        | Certificate Management Protocol  |
+| `digicert`   | DigiCert CertCentral             |
+| `ejbca`      | EJBCA                            |
+| `gcp`        | Google Cloud CAS (Horizon 2.11+) |
+| `idca`       | IDCA                             |
+| `integrated` | Integrated CA (built-in)         |
+| `fcms`       | FCMS                             |
+| `gsatlas`    | GlobalSign Atlas                 |
+| `gsmssl`     | GlobalSign MSSL                  |
+| `otpki`      | OpenTrust PKI                    |
+| `metapki`    | MetaPKI                          |
+| `nameshield` | Nameshield                       |
+| `nexuscm`    | Nexus Certificate Manager        |
+| `sectigo`    | Sectigo                          |
+| `swisssign`  | SwissSign                        |
+
+`gcp` exists only on Horizon 2.11+; see the Google Cloud CAS section of
+`horizon://knowledge/integrations`.
 
 ---
 
-## Third-Party Connector Types (11)
+## Third-Party Connector Types (11 on 2.10, 15 on 2.11)
 
-| Type         | Target System                     |
-| ------------ | --------------------------------- |
-| `aws`        | AWS Certificate Manager / Secrets |
-| `akv`        | Azure Key Vault                   |
-| `f5as3`      | F5 BIG-IP (AS3 declarative)       |
-| `f5client`   | F5 BIG-IP (iControl REST)         |
-| `gcm`        | Google Cloud Certificate Manager  |
-| `intune`     | Microsoft Intune (SCEP)           |
-| `intunepkcs` | Microsoft Intune (PKCS)           |
-| `jamf`       | Jamf Pro                          |
-| `ldappub`    | LDAP Publishing                   |
-| `msad`       | Microsoft Active Directory        |
-| `netscaler`  | NetScaler                         |
+| Type             | Target System                                       |
+| ---------------- | --------------------------------------------------- |
+| `aws`            | AWS Certificate Manager / Secrets                   |
+| `akv`            | Azure Key Vault                                     |
+| `f5as3`          | F5 BIG-IP (AS3 declarative)                         |
+| `f5client`       | F5 BIG-IP (iControl REST)                           |
+| `gcm`            | Google Cloud Certificate Manager                    |
+| `intune`         | Microsoft Intune (SCEP)                             |
+| `intunepkcs`     | Microsoft Intune (PKCS)                             |
+| `jamf`           | Jamf Pro                                            |
+| `ldappub`        | LDAP Publishing                                     |
+| `msad`           | Microsoft Active Directory                          |
+| `netscaler`      | NetScaler ADC                                       |
+| `fortigate`      | FortiGate firewall (Horizon 2.11+)                  |
+| `fortimanager`   | FortiManager or a managed FortiGate (Horizon 2.11+) |
+| `panos_firewall` | Standalone PAN-OS firewall (Horizon 2.11+)          |
+| `panos_panorama` | Palo Alto Panorama (Horizon 2.11+)                  |
 
 ---
 

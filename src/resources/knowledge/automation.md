@@ -18,30 +18,9 @@ actions when conditions match.
 
 ### Trigger Types
 
-| Type         | Description                                               |
-| ------------ | --------------------------------------------------------- |
-| `email`      | Send email notifications using configurable templates     |
-| `webhook`    | Call an external HTTP endpoint with a JSON payload        |
-| `thirdparty` | Invoke a third-party connector (publish, sync, etc.)      |
-| `groupware`  | Integration with groupware systems (calendars, ticketing) |
-
-### Trigger Structure
-
-```json
-{
-  "name": "notify-expiring-30d",
-  "type": "email",
-  "description": "Notify certificate contacts 30 days before expiry",
-  "events": ["on_expire"],
-  "configuration": {
-    "template": "expiration-warning",
-    "recipients": ["{{ certificate.contactEmail }}"]
-  },
-  "retries": 3,
-  "runPeriod": "P1D",
-  "runOnRenewed": false
-}
-```
+Use the Trigger Type Catalog below for the supported types. Call
+`describe_trigger_schema` for the chosen subtype, then `create_trigger`
+with `name`, `type`, and subtype fields inside `config`.
 
 ### Event Names
 
@@ -96,9 +75,7 @@ request lifecycle.
 ### Sync vs. Async Hooks
 
 - **Sync hooks** store trigger names as plain strings in a list.
-  They fire during the action processing and can block the workflow.
 - **Async hooks** store trigger references as objects (`{"name": "trigger-name"}`).
-  They fire after the action completes and do not block the workflow.
 
 ### Attaching Triggers to Profiles
 
@@ -117,52 +94,17 @@ with a `name` field.
 Execution policies control the timing and constraints of automated actions
 at the profile level.
 
-### Policy Settings
-
-| Setting              | Type    | Description                                |
-| -------------------- | ------- | ------------------------------------------ |
-| `autoRenewalEnabled` | boolean | Enable automatic renewal for this profile  |
-| `autoRenewalDays`    | number  | Days before expiry to trigger auto-renewal |
-| `maxConcurrentOps`   | number  | Maximum concurrent automated operations    |
-| `retryPolicy`        | object  | Retry behavior for failed operations       |
-
-### Retry Policy
-
-```json
-{
-  "retryPolicy": {
-    "maxRetries": 3,
-    "backoffMs": 60000,
-    "backoffMultiplier": 2.0
-  }
-}
-```
+See the Execution Policy Fields and ExecutionPeriod Structure sections below
+for `authorizedPeriods` and `forbiddenPeriods`. WebRA automatic renewal uses
+`autoRenewalPolicy` on the certificate profile (Horizon 2.10+); see
+`horizon://knowledge/profiles`.
 
 ---
 
 ## Trust Chains
 
-Trust chain management ensures that issued certificates include the correct
-CA certificate chain. Horizon manages trust chains as CA objects.
-
-### Trust Chain Object
-
-```json
-{
-  "name": "internal-ca-chain",
-  "certificates": ["intermediate-ca-pem", "root-ca-pem"],
-  "autoUpdate": true,
-  "source": "pki-connector"
-}
-```
-
-### Chain Sources
-
-| Source          | Description                                  |
-| --------------- | -------------------------------------------- |
-| `manual`        | Manually uploaded CA certificates            |
-| `pki-connector` | Automatically fetched from the PKI connector |
-| `discovery`     | Extracted from discovered certificate chains |
+Inspect public trust chains in the Horizon UI. Automation policies reference
+the selected chains through `trustChains`; the MCP input is `trust_chains`.
 
 ---
 
@@ -188,68 +130,37 @@ Create three triggers with different `runPeriod` values, all subscribing to
 
 ### Publish Certificate to Load Balancer on Enrollment
 
-```json
-{
-  "name": "publish-to-f5",
-  "type": "thirdparty",
-  "events": ["on_enroll", "on_renew"],
-  "configuration": { "connector": "f5-prod" }
-}
-```
+Call `describe_trigger_schema` for the connector's trigger subtype, such as
+`f5client`. Then use `create_trigger` with the user-supplied `name`, the
+chosen `type`, and `config.connector` referencing the existing connector.
+Attach it to the profile in the Horizon administration UI.
 
 ### Notify Security Team on Revocation
 
-```json
-{
-  "name": "notify-revocation",
-  "type": "email",
-  "events": ["on_revoke"],
-  "configuration": {
-    "template": "revocation-alert",
-    "recipients": ["security-team@example.com"]
-  }
-}
-```
+Call `describe_trigger_schema` with `subtype: "email"`, then `create_trigger`
+with `name`, `type: "email"`, and `config` containing `events: ["on_revoke"]`
+and an `emailTemplate` with the user-supplied recipient and message.
 
-### Webhook Integration on Any Lifecycle Event
+### Webhook Integration
 
-```json
-{
-  "name": "webhook-all-events",
-  "type": "webhook",
-  "events": ["on_enroll", "on_revoke", "on_renew", "on_update"],
-  "configuration": {
-    "url": "https://hooks.example.com/horizon",
-    "method": "POST",
-    "headers": { "Authorization": "Bearer {{ secret }}" }
-  }
-}
-```
+Call `describe_trigger_schema` with `subtype: "webhook"` to inspect its
+`webhookTemplate`. Create a separate trigger for each event using
+`create_trigger` with `name`, `type: "webhook"`, and the documented fields
+inside `config`.
 
 ---
 
-## Key Considerations
+## Testing Triggers
 
-1. **Trigger ordering**: Multiple triggers can match the same event. They
-   execute independently -- there is no guaranteed ordering between triggers.
-
-2. **Failure handling**: If a trigger action fails, it follows the configured
-   retry policy. Failed actions produce audit events for troubleshooting.
-
-3. **Circular prevention**: Horizon prevents trigger loops (e.g., a renewal
-   trigger that fires on renewal events would not re-trigger itself).
-
-4. **Permissions**: Automated actions run with the permissions of the
-   configured service account, not the original certificate holder.
-
-5. **Testing**: Use `simulate_trigger` (`PATCH /api/v1/triggers/` with name
-   in body) to test-fire a trigger without affecting real certificates.
+`simulate_trigger` takes `name` and sends the configured notifications.
+Use a test trigger and recipient.
 
 ---
 
-## Trigger Type Catalog (11 Types)
+## Trigger Type Catalog (11 on 2.10, 15 on 2.11)
 
-Horizon supports 11 trigger types organized into two categories.
+Horizon 2.10 supports 11 trigger types and Horizon 2.11 supports 15,
+organized into two categories.
 
 ### Notification Triggers (3)
 
@@ -263,22 +174,26 @@ run periods.
 | `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
-### Third-Party Triggers (8)
+### Third-Party Triggers (8 on 2.10, 12 on 2.11)
 
-Third-party triggers push or remove certificates to/from external systems.
-They require a third-party connector and have minimal user-configurable
-fields -- events, retries, and runPeriod are auto-computed per type.
+Third-party triggers push or remove certificates to or from external systems.
+They reference a third-party connector. Call `describe_trigger_schema` for
+its subtype before setting the configuration fields.
 
-| Type         | Description                               | Requires              |
-| ------------ | ----------------------------------------- | --------------------- |
-| `akv`        | Azure Key Vault                           | Third-party connector |
-| `aws`        | AWS Certificate Manager / Secrets Manager | Third-party connector |
-| `f5client`   | F5 BIG-IP (client certificate)            | Third-party connector |
-| `f5as3`      | F5 AS3 (Application Services 3)           | Third-party connector |
-| `intunepkcs` | Microsoft Intune PKCS                     | Third-party connector |
-| `ldappub`    | LDAP publish                              | Third-party connector |
-| `gcm`        | Google Cloud Certificate Manager          | Third-party connector |
-| `netscaler`  | NetScaler                                 | Third-party connector |
+| Type             | Description                               | Requires              |
+| ---------------- | ----------------------------------------- | --------------------- |
+| `akv`            | Azure Key Vault                           | Third-party connector |
+| `aws`            | AWS Certificate Manager / Secrets Manager | Third-party connector |
+| `f5client`       | F5 BIG-IP (client certificate)            | Third-party connector |
+| `f5as3`          | F5 AS3 (Application Services 3)           | Third-party connector |
+| `intunepkcs`     | Microsoft Intune PKCS                     | Third-party connector |
+| `ldappub`        | LDAP publish                              | Third-party connector |
+| `gcm`            | Google Cloud Certificate Manager          | Third-party connector |
+| `netscaler`      | NetScaler ADC                             | Third-party connector |
+| `fortigate`      | FortiGate firewall (Horizon 2.11+)        | Third-party connector |
+| `fortimanager`   | FortiManager (Horizon 2.11+)              | Third-party connector |
+| `panos_firewall` | PAN-OS firewall (Horizon 2.11+)           | Third-party connector |
+| `panos_panorama` | Palo Alto Panorama (Horizon 2.11+)        | Third-party connector |
 
 ---
 
@@ -293,7 +208,7 @@ third-party triggers do not use.
 | Field      | Type         | Description                                                        |
 | ---------- | ------------ | ------------------------------------------------------------------ |
 | `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
-| `type`     | string       | One of the 10 types listed above                                   |
+| `type`     | string       | One of the types listed above                                      |
 | `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
@@ -345,9 +260,8 @@ The workflow events also include `on_in_progress_enroll`,
 
 ### System Events (12)
 
-DCV events are **Available since Horizon 2.10 (Horizon 2.10+).**
-They are unavailable on Horizon 2.8/2.9. See the public
-[2.10 release notes](https://docs.evertrust.fr/horizon/2.10/release-notes/2.10.0.html).
+DCV events are notification hooks and are available since Horizon 2.10. They
+do not run a DCV policy.
 
 | Event                       | Description                                   | Notes                                                       |
 | --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
@@ -464,19 +378,13 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 - `static` -- the webhook URL is provided directly in the `webhook` object.
 - `team` -- the webhook URL is resolved from the certificate's team configuration.
 
-### Third-Party Triggers (akv, aws, f5client, f5as3, intunepkcs, ldappub, gcm)
+### Third-Party Triggers
 
-Third-party triggers have only 3 user-configurable fields:
-
-| Field       | Type         | Description                                 |
-| ----------- | ------------ | ------------------------------------------- |
-| `name`      | string       | Trigger identifier                          |
-| `connector` | string       | Name of the third-party connector to invoke |
-| `triggers`  | dict or null | Sub-triggers for error handling             |
-
-All other fields (`events`, `retries`, `runPeriod`, etc.) are
-**auto-computed** per trigger type. User-supplied values for these fields
-are silently ignored by the API.
+Third-party triggers include `name`, `type`, and `connector`. Some subtypes
+also expose `retries` and error-trigger settings. Call `describe_trigger_schema`
+for the chosen subtype and pass its documented fields in `create_trigger`'s
+`config`. The public trigger guides describe retries in case of error; for
+firewall triggers on Horizon 2.11+, the range is 1 to 15.
 
 ---
 

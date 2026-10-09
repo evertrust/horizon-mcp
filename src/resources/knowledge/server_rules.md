@@ -16,7 +16,7 @@ tool. Never invent a name on the user's behalf.
 ## 2. Ownership queries
 
 When the user asks about "my certificates" or "certificates I own", call
-`whoami` first to get the principal identifier and team list, then run an
+`whoami` first to get `identity.identifier` and the `teams` list, then run an
 HCQL query that covers both:
 
 ```
@@ -58,6 +58,12 @@ user asks for a PKCS#12, PFX, or private key:
 Do not say PKCS#12 retrieval is impossible. It is available through the
 request.
 
+Special case (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
+only in the `submit_webra_challenge` response, in centralized mode, encrypted
+with the challenge as password. It is never stored and cannot be retrieved
+later, so save it from that response. In a challenge profile's enroll
+request response, `password` holds the challenge.
+
 ## 6. Lifecycle requests: inspect the template first
 
 Before calling `submit_request`, call `get_request_template` to discover
@@ -76,6 +82,9 @@ The outcome of `submit_request` depends on permissions:
 
 Surface the response status to the user so they know whether approval is
 still required.
+
+Since Horizon 2.11, update, renew and migrate submit only the modified
+fields: an unchanged submission creates no request.
 
 ## 7. Live exposure check
 
@@ -144,3 +153,30 @@ If the docs tool returns a version-detection warning, tell the user that the
 connected Horizon instance could not reliably expose its version and that
 the result fell back to the latest indexed docs. Use the warning instead of
 pretending the version match is exact.
+
+## 13. Check the Horizon version before using new features
+
+Before using Horizon 2.10+ automatic renewal, Terms of Service, service
+accounts, asynchronous enrollment, announcements, storage backends, or DCV,
+call `get_license_info` and confirm the version.
+
+Before using a Horizon 2.11+ feature (ACME EAB, accounts and orders, HAQL or
+HEABQL, WebRA challenge, FortiGate, FortiManager, PAN-OS or Panorama
+connectors, GCP CAS, Sectigo DCV), call `get_license_info` to read the
+Horizon version. On an older version, tell the user the feature is not
+available instead of calling the tool.
+
+---
+
+## Service-account identity and durable ownership
+
+When `whoami` reports a service-account principal, interpret its
+`identity.identifier` as
+token-specific. Horizon uses `<name>-<first 16 hex chars of sha256(jwt)>` without a mapping
+and `<name>-<hash16>-<mapped-value>` with `identifierMapping`. The hash segment
+is always present, so either form changes when the JWT rotates.
+
+Treat `identifierMapping` only as claim-derived context, never as a stable
+identity mechanism. For certificates or other objects whose ownership must
+survive token rotation, select team-based ownership instead of ownership by the
+service-account identifier.

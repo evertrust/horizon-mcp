@@ -46,6 +46,43 @@ These fields appear on every managed profile regardless of protocol module:
 
 ---
 
+## WebRA Auto-Renewal Policy (Horizon 2.10+)
+
+Check the version with `get_license_info` before using automatic renewal.
+
+`autoRenewalPolicy` controls auto-renew on WebRA certificates.
+
+`default` applies to new certificates; `editable` allows a certificate's value
+to change through the WebRA `update` workflow. Adding a missing policy
+bulk-sets existing certificates to its new `default`; removing it disables
+auto-renew on all profile certificates; changing an existing policy leaves
+existing certificate flags unchanged. This is per-certificate renewal, not the
+trust-chain automation-policy renewal in `automation.md`.
+
+---
+
+## Terms of Service Mapping (Horizon 2.10+)
+
+Check the version with `get_license_info` before using Terms of Service objects.
+
+WebRA, SCEP, and EST profiles use top-level `termsOfService` to reference a
+Terms of Service object's immutable `name`, not inline text:
+
+```json
+{
+  "termsOfService": "corporate-enrollment-terms"
+}
+```
+
+Use `list_terms_of_services`, `get_terms_of_service`,
+`create_terms_of_service`, `update_terms_of_service`, and
+`delete_terms_of_service`; deletion fails while any profile references it.
+This mapping is only for `webra`, `scep`, and `est`, unlike ACME's
+`requireTermsOfService` boolean, which governs account agreement and does not
+reference a Terms of Service object.
+
+---
+
 ## Certificate Template Structure
 
 The `certificateTemplate` object defines the _defaults_ for certificates
@@ -97,16 +134,17 @@ certificate policy OIDs and qualifiers.
 WebRA is the primary web-based enrollment protocol. It supports the richest
 set of configuration options.
 
-| Field                  | Type     | Description                                                                                        |
-| ---------------------- | -------- | -------------------------------------------------------------------------------------------------- |
-| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`. Controls how requests are approved. |
-| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.  |
-| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                   |
-| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                               |
-| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                         |
-| `passwordPolicy`       | object   | Password requirements for PKCS#12 download (centralized mode).                                     |
-| `notificationTemplate` | string   | Email template for enrollment notifications.                                                       |
-| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                             |
+| Field                  | Type     | Description                                                                                                     |
+| ---------------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `authorizationMode`    | string   | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (Horizon 2.11+).                     |
+| `validationRuleset`    | string   | Required when `authorizationMode` contains `auto-validation`. Ruleset that decides auto-approval.               |
+| `computationRules`     | object[] | Ordered list of computation rules that transform request data before enrollment.                                |
+| `dataSourceFlows`      | object[] | Chained datasource lookups that enrich request data.                                                            |
+| `enrollmentMode`       | string   | `centralized` (Horizon generates key pair) or `decentralized` (CSR-based).                                      |
+| `passwordPolicy`       | string   | (Horizon 2.11+) Password policy name used to generate challenges. Required for `challenge`, rejected otherwise. |
+| `constraints`          | object   | (Horizon 2.11+) `allowedEmailDomains` and `allowedDnsDomains` regexes. On WebRA only profile constraints apply. |
+| `notificationTemplate` | string   | Email template for enrollment notifications.                                                                    |
+| `webhooks`             | object[] | Webhook triggers for lifecycle events.                                                                          |
 
 #### WebRA Authorization Modes
 
@@ -117,6 +155,11 @@ set of configuration options.
 - **`auto-validation-authorized`**: Enrollment tries auto-validation first.
   If the rules reject the request, it falls back to the manual approval queue
   for an authorized operator.
+- **`challenge`** (Horizon 2.11+): A single-use, expiring challenge issued
+  for this profile authorizes the enrollment. The template may be empty: the
+  client then supplies the identity and the profile `constraints` are the only
+  restriction. Template identity fields are enforced. See the WebRA challenge
+  flow in horizon://knowledge/workflows.
 
 See horizon://knowledge/validation-rules for the complete validation rule
 condition syntax (operators, boolean logic, datasource references, resolvesDNS,
@@ -124,35 +167,13 @@ CIDR matching, array quantifiers).
 
 ### ACME Module (`module: "acme"`)
 
-ACME (RFC 8555) profiles support automated certificate issuance via the
-ACME protocol. Horizon acts as an ACME server.
-
-The public Horizon 2.10 API publishes these ACME-specific fields, in addition
-to the shared certificate profile fields. The
-[Horizon 2.8 profile reference](https://docs.evertrust.fr/horizon/2.8/api-ref/certificate_profile_get.html)
-also documents these fields:
-
-| Field                           | Type     | Description                                  |
-| ------------------------------- | -------- | -------------------------------------------- |
-| `timeout`                       | string   | Validation timeout as a finite duration.     |
-| `meta`                          | object   | ACME directory metadata.                     |
-| `authorizationMethods`          | string[] | Allowed ACME authorization methods.          |
-| `http01Port`                    | integer  | HTTP-01 validation port.                     |
-| `tlsAlpn01Port`                 | integer  | TLS-ALPN-01 validation port.                 |
-| `authorizeShortName`            | boolean  | Whether short names are allowed.             |
-| `authorizeEmptyContact`         | boolean  | Whether an empty account contact is allowed. |
-| `defaultContacts`               | string[] | Default account contacts.                    |
-| `verifyRetryCount`              | integer  | Validation retry count.                      |
-| `verifyRetryDelay`              | string   | Delay between validation attempts.           |
-| `requireTermsOfService`         | boolean  | Whether terms of service must be accepted.   |
-| `renewalPeriod`                 | string   | Optional renewal period.                     |
-| `csrDataMapping`                | object   | CSR data mapping expressions.                |
-| `maxCertificatePerHolderPolicy` | object   | Per-holder certificate limit policy.         |
-| `maxDnsName`                    | integer  | Maximum number of DNS names.                 |
-| `proxy`                         | string   | Optional HTTP proxy name.                    |
-
-**Note**: ACME profiles have no `authorizationMode` or `validationRuleset`
-field on Horizon 2.8 or 2.10. Use `authorizationMethods` for ACME validation.
+ACME (RFC 8555) profiles make Horizon an ACME server. Fields: `timeout`,
+`meta`, `authorizationMethods`, `http01Port`, `tlsAlpn01Port`,
+`authorizeShortName`, `authorizeEmptyContact`, `defaultContacts`,
+`verifyRetryCount`, `verifyRetryDelay`, `requireTermsOfService`, `maxDnsName`,
+`proxy`; Horizon 2.11+ adds `excludeRootCA`, `ipIdentifierConstraint` and
+Require EAB. No `authorizationMode` or `validationRuleset`. Details, EAB,
+accounts and orders: horizon://knowledge/acme.
 
 ### SCEP Module (`module: "scep"`)
 
@@ -167,9 +188,6 @@ device enrollment.
 | `challengePasswordMode` | string   | `static` (single password) or `dynamic` (per-request OTP).             |
 | `computationRules`      | object[] | Transformation rules applied to SCEP requests.                         |
 | `caCapabilities`        | string[] | Advertised CA capabilities (`POSTPKIOperation`, `SHA-256`, etc.).      |
-
-These modes also apply to Horizon 2.8. See the public
-[SCEP profile guide](https://docs.evertrust.fr/horizon/2.8/admin-guide/protocols/scep/scep_profile.html).
 
 #### SCEP Authorization Modes
 
@@ -191,14 +209,13 @@ TLS-secured enrollment.
 | `clientCertAuth`      | boolean  | Whether to require client certificate authentication.    |
 | `reenrollmentAllowed` | boolean  | Whether simple re-enrollment is permitted.               |
 
-These modes also apply to Horizon 2.8. See the public
-[EST profile guide](https://docs.evertrust.fr/horizon/2.8/admin-guide/protocols/est/est_profile.html).
-
 #### EST Authorization Modes
 
 - **`x509`**: Client must authenticate with a valid client certificate.
 - **`auto-validation`**: Automatic validation via ruleset.
 - **`authorized`**: Account with enrollment permission authorizes the request.
+  Since Horizon 2.11, `simpleenroll` in this mode also accepts client
+  certificate authentication; before 2.11 it does not.
 - **`challenge`**: Challenge-based authorization.
 
 ### Monitored Module (`module: "monitored"`)
@@ -221,18 +238,18 @@ issue certificates for them.
 
 ## AuthorizationMode Summary by Module
 
-| Module     | Supported `authorizationMode` Values                          | `validationRuleset` Required? |
-| ---------- | ------------------------------------------------------------- | ----------------------------- |
-| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized` | Yes for `auto-validation*`    |
-| ACME       | N/A (inherently automated via ACME challenges)                | Never                         |
-| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`          | Yes for `auto-validation*`    |
-| EST        | `authorized`, `x509`, `challenge`, `auto-validation`          | Yes for `auto-validation*`    |
-| Monitored  | N/A (no enrollment)                                           | Never                         |
-| WCCE       | Windows auto-enrollment (AD integrated)                       | Depends on configuration      |
-| CRMP       | CMP-based authorization                                       | Depends on configuration      |
-| Intune     | MDM-based authorization (Intune SCEP)                         | Depends on configuration      |
-| IntunePKCS | MDM-based authorization (Intune PKCS)                         | Depends on configuration      |
-| Jamf       | MDM-based authorization (Jamf)                                | Depends on configuration      |
+| Module     | Supported `authorizationMode` Values                                               | `validationRuleset` Required? |
+| ---------- | ---------------------------------------------------------------------------------- | ----------------------------- |
+| WebRA      | `authorized`, `auto-validation`, `auto-validation-authorized`, `challenge` (2.11+) | Yes for `auto-validation*`    |
+| ACME       | N/A (inherently automated via ACME challenges)                                     | Never                         |
+| SCEP       | `challenge`, `authorized`, `ndes`, `auto-validation`                               | Yes for `auto-validation*`    |
+| EST        | `authorized`, `x509`, `challenge`, `auto-validation`                               | Yes for `auto-validation*`    |
+| Monitored  | N/A (no enrollment)                                                                | Never                         |
+| WCCE       | Windows auto-enrollment (AD integrated)                                            | Depends on configuration      |
+| CRMP       | CMP-based authorization                                                            | Depends on configuration      |
+| Intune     | MDM-based authorization (Intune SCEP)                                              | Depends on configuration      |
+| IntunePKCS | MDM-based authorization (Intune PKCS)                                              | Depends on configuration      |
+| Jamf       | MDM-based authorization (Jamf)                                                     | Depends on configuration      |
 
 ---
 
@@ -673,18 +690,10 @@ auto-approved." If fewer than `threshold` rules pass, the request either fails
 (in `auto-validation` mode) or falls through to manual approval (in
 `auto-validation-authorized` mode).
 
-```json
-{
-  "validationRuleset": {
-    "rules": ["dn matches \".*\\.example\\.com\"", "keytype contains \"rsa\""],
-    "threshold": 1
-  }
-}
-```
-
-**Important**: Rules are plain strings containing HCQL-style boolean
-expressions, not structured objects. Each rule evaluates to true or false
-against the enrollment request data.
+**Important**: Rules are plain strings containing boolean conditions, not
+structured objects. Inputs come from dictionary entries and can be manipulated
+using computation rules and validation functions and operators. See
+horizon://knowledge/validation-rules for the condition syntax.
 
 ### Threshold Semantics
 
@@ -698,88 +707,22 @@ against the enrollment request data.
 
 ## Composing a Complete Profile (Practical Example)
 
-This example shows how all the documented structures compose in a
-`create_webra_profile` call, creating a WebRA profile with auto-validation,
-centralized key generation, and enforced IDP constraints:
+Use `describe_certificate_profile_schema` with `subtype: "webra"` first.
+Create the profile with `create_certificate_profile`, using these MCP inputs:
 
-```json
-{
-  "module": "webra",
-  "name": "tls-internal-webra",
-  "displayName": "TLS Internal (WebRA)",
-  "description": "Internal TLS certificates via web enrollment",
-  "enabled": true,
-  "pkiConnector": "adcs-prod",
-  "pqcAllowed": false,
-  "thirdPartyDiscoverySync": false,
-  "renewalPeriod": 30,
-  "authorizationMode": "auto-validation-authorized",
-  "validationRuleset": {
-    "rules": [
-      "dn matches \".*\\.internal\\.acme\\.com\"",
-      "keytype contains \"rsa\""
-    ],
-    "threshold": 2
-  },
-  "certificateTemplate": {
-    "subject": [
-      { "type": "CN", "mandatory": true, "editableByRequester": true },
-      {
-        "type": "O",
-        "value": "Acme Corp",
-        "mandatory": true,
-        "editableByRequester": false
-      },
-      {
-        "type": "C",
-        "value": "US",
-        "mandatory": true,
-        "editableByRequester": false
-      }
-    ],
-    "sans": [
-      { "type": "DNSNAME", "editableByRequester": true, "min": 1, "max": 10 }
-    ],
-    "extensions": [],
-    "ownerPolicy": { "editable": true, "required": true, "autoFill": true },
-    "teamPolicy": { "editable": true, "required": false },
-    "contactEmailPolicy": {
-      "editable": true,
-      "required": true,
-      "autoFill": true
-    },
-    "metadataPolicies": [
-      {
-        "key": "environment",
-        "editable": true,
-        "required": true,
-        "regexValidation": "^(prod|staging|dev)$"
-      }
-    ],
-    "labels": [{ "label": "use-case", "value": "tls", "editable": false }]
-  },
-  "authorizationLevels": {
-    "search": { "accessLevel": "authenticated" },
-    "update": { "accessLevel": "authorized" },
-    "requestUpdate": { "accessLevel": "authenticated" },
-    "approveUpdate": { "accessLevel": "authorized" },
-    "enroll": { "accessLevel": "authorized" },
-    "requestEnroll": { "accessLevel": "authenticated" },
-    "approveEnroll": {
-      "accessLevel": "authorized",
-      "enforcedIdentityProviders": [{ "type": "OpenId", "name": "azure-ad" }]
-    },
-    "revoke": { "accessLevel": "authorized" },
-    "requestRevoke": { "accessLevel": "authenticated" },
-    "approveRevoke": { "accessLevel": "authorized" },
-    "renew": { "accessLevel": "authorized" },
-    "requestRenew": { "accessLevel": "authenticated" },
-    "approveRenew": { "accessLevel": "authorized" }
-  },
-  "cryptoPolicy": {
-    "allowedKeyTypes": ["rsa-2048", "rsa-4096"],
-    "defaultKeyType": "rsa-2048"
-  },
-  "gradingPolicies": ["default-tls-grading"]
-}
-```
+- `module: "webra"`, the user-supplied `name`, and `enabled`.
+- `authorization_levels`, `requests_policy`, `self_permissions`, and
+  `crypto_policy`: the required policy objects supplied by the user.
+- `config`: the WebRA fields, using their camelCase API names, including
+  `pkiConnector`, `authorizationMode`, `validationRuleset`,
+  `certificateTemplate`, and any other required fields shown by the schema.
+
+Use `get_certificate_profile` to inspect an existing WebRA profile and
+`describe_certificate_profile_schema` to check the required fields. Complete
+the certificate template, validation ruleset, and policy objects before
+creation. Validation rules use dictionary expressions; see
+horizon://knowledge/validation-rules before writing conditions.
+
+For centralized key generation, configure `crypto_policy` according to the
+schema. On Horizon 2.10+, pass `auto_renewal_policy` and `terms_of_service`
+as separate MCP inputs, rather than inside `config`.
