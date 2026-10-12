@@ -506,6 +506,15 @@ describe('Golden tests', () => {
     }
   });
 
+  it('REST notification private-key guidance matches snapshot', async () => {
+    const result = await client.listTools();
+    const description = result.tools.find(
+      (tool) => tool.name === 'create_rest_notification',
+    )?.description;
+    expect(description).toContain('on_import when the import includes a key');
+    expect(description).toMatchSnapshot();
+  });
+
   it('tool schemas match snapshot', async () => {
     const result = await client.listTools();
     // Sort for deterministic snapshots
@@ -799,7 +808,9 @@ describe('Knowledge field alignment', () => {
       'request.password',
       'request.certificate',
       'previous.certificate',
-      'caller-chosen correlation key',
+      'on_submit_*',
+      'pkcs12.password',
+      'certificate.private_key',
     ]) {
       expect(
         knowledgeText,

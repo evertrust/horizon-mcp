@@ -2,7 +2,7 @@
 
 ## Before Writing a Computation Rule
 
-Use the functions and syntax in the public
+Use the functions and syntax in the
 [computation guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/other/computation_rules.html).
 Call `simulate_computation_rule` with the relevant context before configuring
 an enrollment field. Do not invent function names.
@@ -54,7 +54,8 @@ email templates, webhook URLs, notification bodies, REST API call payloads.
 - The text around `{{ }}` is preserved as-is
 - Simple variables: `{{key}}` resolves to the dictionary value
 - **Functions work inside `{{ }}`**: `{{Upper({{cn}})}}` - note the nested braces
-- Multi-value: `[[key]]` resolves to all values
+- Multi-value: write `{{[[key]]}}`. The values are joined with `, `. A bare `[[key]]` stays as literal text.
+- A key that is not in the context stays as literal text.
 
 **Examples of template strings:**
 
@@ -70,14 +71,14 @@ pass the full text: `rule="Hello {{Upper({{cn}})}}"`.
 
 ### Key Difference
 
-| Aspect              | Computation Rule                             | Template String                          |
-| ------------------- | -------------------------------------------- | ---------------------------------------- |
-| **Purpose**         | Compute a single field value                 | Build a text string with embedded values |
-| **Outer wrapper**   | None - bare expression                       | Free text around `{{ }}` blocks          |
-| **Function syntax** | `Upper({{key}})`                             | `{{Upper({{key}})}}`                     |
-| **Multi-value**     | `[[key]]` returns list                       | `[[key]]` returns comma-separated        |
-| **API field**       | `computationRule`                            | TemplateString fields                    |
-| **Profile usage**   | Certificate template `computationRule` field | Email/webhook/notification templates     |
+| Aspect              | Computation Rule                             | Template String                                |
+| ------------------- | -------------------------------------------- | ---------------------------------------------- |
+| **Purpose**         | Compute a single field value                 | Build a text string with embedded values       |
+| **Outer wrapper**   | None - bare expression                       | Free text around `{{ }}` blocks                |
+| **Function syntax** | `Upper({{key}})`                             | `{{Upper({{key}})}}`                           |
+| **Multi-value**     | `[[key]]` returns list                       | `{{[[key]]}}` returns a comma-separated string |
+| **API field**       | `computationRule`                            | TemplateString fields                          |
+| **Profile usage**   | Certificate template `computationRule` field | Email/webhook/notification templates           |
 
 ### Expression Types
 
@@ -126,16 +127,27 @@ These functions accept single values or lists. `Upper`, `Lower`, `Trim`,
 **Concat with arrays:** `Concat(["a"], ["b"])` → `["a", "b"]` (merges lists).
 `Concat(["string1", "string2", "string3"], "string4")` → `["string1", "string2", "string3", "string4"]`.
 
+### None Values
+
+A missing dictionary key evaluates to None.
+
+- If all `Concat` arguments are single values and one is None, the result is None:
+  `Concat("web-", {{missing}})` -> None.
+- If a `Concat` argument is a list, None values are skipped:
+  `Concat([[csr.san.dnsname]], {{missing}})` -> the DNS SAN values only.
+- `OrElse` skips None and empty values. `OrElse({{missing}}, "")` returns None.
+  Use a non-empty fallback: `Concat(OrElse({{csr.subject.ou.1}}, "default"), "-", {{csr.subject.cn.1}})`.
+
 ### String Functions (accept simpleExpression, return single value)
 
-| Function         | Signature                            | Returns | Description                                        | Example                                              |
-| ---------------- | ------------------------------------ | ------- | -------------------------------------------------- | ---------------------------------------------------- |
-| `Match`          | `Match(simpleExpr, regex)`           | string  | Returns value if it matches regex, None otherwise. | `Match("abcd", "[a-z]+")` → `"abcd"`                 |
-| `DateTimeFormat` | `DateTimeFormat(simpleExpr, format)` | string  | Format date using Java DateTimeFormatter pattern.  | `DateTimeFormat(NOW, "yyyy-MM-dd")` → `"2026-03-17"` |
-| `Get`            | `Get(multiExpr, index)`              | string  | Element at index (0-based). Supports negative.     | `Get(["a","b","c"], -1)` → `"c"`                     |
-| `First`          | `First(multiExpr)`                   | string  | First element.                                     | `First(["a","b"])` → `"a"`                           |
-| `Last`           | `Last(multiExpr)`                    | string  | Last element.                                      | `Last(["a","b"])` → `"b"`                            |
-| `Join`           | `Join(multiExpr, separator)`         | string  | Join list into string.                             | `Join(["a","b"], ".")` → `"a.b"`                     |
+| Function         | Signature                            | Returns | Description                                                       | Example                                                           |
+| ---------------- | ------------------------------------ | ------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `Match`          | `Match(simpleExpr, regex)`           | string  | Returns value if it matches regex, None otherwise.                | `Match("abcd", "[a-z]+")` → `"abcd"`                              |
+| `DateTimeFormat` | `DateTimeFormat(simpleExpr, format)` | string  | Format date using Java DateTimeFormatter pattern.                 | `DateTimeFormat(NOW, "yyyy-MM-dd")` → `"2026-03-17"`              |
+| `Get`            | `Get(multiExpr, index)`              | string  | Element at index (1-based). A negative index counts from the end. | `Get(["a","b","c"], 1)` → `"a"`, `Get(["a","b","c"], -1)` → `"c"` |
+| `First`          | `First(multiExpr)`                   | string  | First element.                                                    | `First(["a","b"])` → `"a"`                                        |
+| `Last`           | `Last(multiExpr)`                    | string  | Last element.                                                     | `Last(["a","b"])` → `"b"`                                         |
+| `Join`           | `Join(multiExpr, separator)`         | string  | Join list into string.                                            | `Join(["a","b"], ".")` → `"a.b"`                                  |
 
 ### List Functions (return multi-value)
 
@@ -144,6 +156,7 @@ These functions accept single values or lists. `Upper`, `Lower`, `Trim`,
 | `Filter` | `Filter(multiExpr, regex)`                                  | list    | Keep items matching regex.                                | `Filter(["string1", "string2", "match"], "[a-z]+")` → `["match"]`                    |
 | `Slice`  | `Slice(multiExpr, start)` or `Slice(multiExpr, start, end)` | list    | Sub-list extraction. Negative indexes count from the end. | `Slice(["string1", "string2", "string3", "string4"], -2)` → `["string3", "string4"]` |
 | `Sort`   | `Sort(multiExpr)`                                           | list    | Alphabetical sort.                                        | `Sort(["b","a"])` → `["a","b"]`                                                      |
+| `Unique` | `Unique(multiExpr)`                                         | list    | Remove duplicate values.                                  | `Unique(["a","b","a"])` → `["a","b"]`                                                |
 | `Split`  | `Split(singleExpr, separator)`                              | list    | Divide string into list.                                  | `Split("a.b", ".")` → `["a","b"]`                                                    |
 
 ### Specialized Parsing Functions
@@ -159,14 +172,19 @@ These functions accept single values or lists. `Upper`, `Lower`, `Trim`,
 
 ### Encoding and Serialization Functions
 
-| Function | Signature            | Returns | Description                                                                                                                                           |
-| -------- | -------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Base64` | `Base64(singleExpr)` | string  | Encode a string as Base64. `Base64("string1")` -> `"c3RyaW5nMQ=="`. **Available since Horizon 2.8.5.**                                                |
-| `Raw`    | `Raw(singleExpr)`    | string  | Extract the raw value from a JSON-encoded string (strips JSON escaping). `Raw("str\"in\ng1==")` -> `str"in\ng1==`. **Available since Horizon 2.8.5.** |
+| Function     | Signature                | Returns | Description                                                                                                                                                                  |
+| ------------ | ------------------------ | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UrlEncode`  | `UrlEncode(singleExpr)`  | string  | URL-encode a value (UTF-8, a space becomes `+`). `UrlEncode("a b&c")` -> `"a+b%26c"`.                                                                                        |
+| `UrlDecode`  | `UrlDecode(singleExpr)`  | string  | Decode a URL-encoded value. `UrlDecode("a+b%26c")` -> `"a b&c"`.                                                                                                             |
+| `EscapeJson` | `EscapeJson(singleExpr)` | string  | Escape quotes, backslashes and line breaks so the value can go inside a JSON string.                                                                                         |
+| `JsonArray`  | `JsonArray(multiExpr)`   | string  | Write a list as a JSON array string. `JsonArray(["a","b"])` -> `["a","b"]`. Values are not escaped.                                                                          |
+| `DerB64`     | `DerB64(singleExpr)`     | string  | Remove the PEM header and footer and return the Base64 body on one line. The PEM must be on one line or use escaped `\n`. A PEM with real line breaks is returned unchanged. |
+| `Base64`     | `Base64(singleExpr)`     | string  | Encode a string as Base64. `Base64("string1")` -> `"c3RyaW5nMQ=="`. **Available since Horizon 2.8.5.**                                                                       |
+| `Raw`        | `Raw(singleExpr)`        | string  | Extract the raw value from a JSON-encoded string (strips JSON escaping). `Raw("str\"in\ng1==")` -> `str"in\ng1==`. **Available since Horizon 2.8.5.**                        |
 
 ---
 
-See the [encoding examples](https://docs.evertrust.fr/horizon/2.8/admin-guide/other/computation_rules.html)
+See the [encoding examples](https://docs.evertrust.fr/horizon/2.11/admin-guide/other/computation_rules.html)
 for `Base64` and `Raw`.
 
 ## Working with Multi-Value Fields
@@ -189,6 +207,20 @@ Use an LDAP mail value, with the authenticated principal's mail as a fallback:
 
 ```text
 OrElse({{ds.1.1.mail}}, {{principal.mail}})
+```
+
+A SAN element whose rule returns a list creates one SAN per value.
+Build DNS SANs from the CSR SANs, the CN and its short name, without duplicates:
+
+```text
+Sort(Unique(Concat([[csr.san.dnsname]], {{csr.subject.cn.1}}, ShortenDNS({{csr.subject.cn.1}}))))
+```
+
+Keep only DNS SANs in one domain. `Filter` and `Match` keep a value only if
+the regex matches the whole value:
+
+```text
+Filter([[csr.san.dnsname]], ".*\.example\.com")
 ```
 
 ---
@@ -497,14 +529,14 @@ The available entries depend on the trigger event.
 
 **Available in:** all notification contexts
 
-| Entry                               | Type   | Computation Rule | Description                                                |
-| ----------------------------------- | ------ | ---------------- | ---------------------------------------------------------- |
-| `profile.name`                      | Single | Yes              | Profile name                                               |
-| `profile.module`                    | Single | Yes              | Module name                                                |
-| `profile.displaynames`              | Single | No               | All display names (not usable in computation rules)        |
-| `profile.descriptions`              | Single | No               | All descriptions (not usable in computation rules)         |
-| `profile.<name>.displayname.<lang>` | Single | No               | Display name in language (not usable in computation rules) |
-| `profile.<name>.description.<lang>` | Single | No               | Description in language (not usable in computation rules)  |
+| Entry                        | Type   | Computation Rule | Description                                                |
+| ---------------------------- | ------ | ---------------- | ---------------------------------------------------------- |
+| `profile.name`               | Single | Yes              | Profile name                                               |
+| `profile.module`             | Single | Yes              | Module name                                                |
+| `profile.displaynames`       | Single | No               | All display names (not usable in computation rules)        |
+| `profile.descriptions`       | Single | No               | All descriptions (not usable in computation rules)         |
+| `profile.displayname.<lang>` | Single | No               | Display name in language (not usable in computation rules) |
+| `profile.description.<lang>` | Single | No               | Description in language (not usable in computation rules)  |
 
 #### License Dictionary
 
@@ -647,8 +679,8 @@ structure before creating or updating the profile.
 
 ## Datasource Flow Chaining
 
-Datasource flows allow profiles to query external data sources (LDAP, HTTP,
-databases) during enrollment and feed results into computation rules.
+Datasource flows allow profiles to query external data sources (DNS, LDAP,
+REST) during enrollment and feed results into computation rules.
 
 ### DataSourceFlowEntry
 
@@ -674,6 +706,14 @@ databases) during enrollment and feed results into computation rules.
 | `ds`            | string  | Name of a configured datasource object.                                          |
 | `stopOnSuccess` | boolean | If `true` and this datasource returns results, skip subsequent entries.          |
 | `inputs`        | array   | List of `{key, value}` pairs mapping datasource parameters to computation rules. |
+| `mandatory`     | boolean | If `true`, stop with an error on `not_found` or `ignored`. Default `false`.      |
+
+A flow returns `not_found` when its query finds no result. For REST, this
+means a response code in `notFoundHttpCodes`. It returns `ignored` when
+required inputs cannot resolve, so no request is sent. A successful REST
+response with an empty body or `{}` can return no keys and still pass
+`mandatory: true`. Use a validation rule such as `{{ds.1.upn}} is not empty`
+if a returned key must have a value.
 
 Datasource flows run in order. Inputs can use outputs from earlier flows.
 Use `simulate_datasource_flow` to inspect the returned dictionary before

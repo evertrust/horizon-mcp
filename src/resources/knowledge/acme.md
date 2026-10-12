@@ -70,8 +70,8 @@ API names) inside `config`. Required fields: `module`,
 Require External Account Binding (Horizon 2.11+): the profile option "Require
 External Account Binding (EAB)" (default false) rejects account registrations
 without valid EAB credentials and advertises `externalAccountRequired` in the
-ACME directory. The public 2.11 profile schema does not name its JSON key:
-set the option in the Horizon UI. Horizon 2.10 profiles carry
+ACME directory. On Horizon 2.11 the ACME profile carries it as the top-level boolean
+`requireEAB` (default `false`); `get_certificate_profile` returns it. Horizon 2.10 profiles carry
 `meta.externalAccountRequired`; the 2.11 public schema no longer lists it.
 
 ACME profiles have no `authorizationMode` and no `validationRuleset`.

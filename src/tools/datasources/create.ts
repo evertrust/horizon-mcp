@@ -22,16 +22,15 @@ import {
 
 /**
  * Post-creation guidance: a datasource is inert until a certificate profile
- * references it in its datasource flow (`profile.dsFlow`), whose looked-up
- * values become available as `ds.<flowIndex>.<key>` during enrollment.
+ * references it in its datasource flow (`profile.dsFlow`), whose results become available during enrollment.
  */
 const DATASOURCE_BIND_NEXT_STEPS =
   'A datasource is not used until a certificate profile references it in its ' +
   'datasource flow. Ask the user which certificate profile(s) should use this ' +
   'datasource and for which request fields, then add a dsFlow entry to each ' +
   'profile via update_certificate_profile (config.dsFlow[] = { ds: "<name>", ' +
-  'inputs, mandatory, stopOnSuccess }); looked-up values are then available as ' +
-  'ds.<flowIndex>.<key>. Do not infer the profiles - ask the user.';
+  'inputs, mandatory, stopOnSuccess }); results use the prefix ' +
+  'ds.<flowIndex>. See the datasource knowledge resource for the per-type keys. Do not infer the profiles - ask the user.';
 
 export function registerCreateDatasourceTools(
   server: McpServer,
@@ -46,7 +45,7 @@ export function registerCreateDatasourceTools(
         'Safety tier: mutating-safe\n' +
         'DNS datasources query DNS servers and return record data (A, AAAA, ' +
         'CNAME, PTR, TXT) used in computation/validation rules via ' +
-        'ds.<flowIndex>.<resultIndex>.<recordType> entries.\n\n' +
+        'ds.<flowIndex>.<lookupIndex>.<recordType> entries (A, AAAA and TXT add a value index: ds.1.1.a.1).\n\n' +
         'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
         'the user for the name before creating.\n\n' +
         'The lookup field is a TemplateString that supports {{key}} syntax for\n' +
@@ -56,7 +55,7 @@ export function registerCreateDatasourceTools(
         '    1. Use test_datasource first to validate your DNS config works\n' +
         '    2. Call this tool to create the datasource\n' +
         "    3. Add the datasource to a profile's dsFlow (via profile configuration)\n" +
-        '    4. Use ds.<flowIndex>.<resultIndex>.<recordType> in computation\n' +
+        '    4. Use ds.<flowIndex>.<lookupIndex>.<recordType> in computation\n' +
         '       rules or validation rule conditions\n\n' +
         'When to use DNS datasources:\n' +
         '    - Validate that a SAN hostname has a specific CNAME target\n' +
@@ -69,7 +68,7 @@ export function registerCreateDatasourceTools(
         '    record_types=["cname"]\n' +
         '    -> After creation, add to profile dsFlow with input mapping:\n' +
         '       {"hostname": "{{csr.san.dnsname.1}}"}\n' +
-        '    -> Reference in validation rule: {{ds.1.1.cname}} matches ".*\\.paas\\.internal$"\n\n' +
+        '    -> Reference in validation rule: {{ds.1.1.cname}} matches ".*\\.paas\\.example\\.com$"\n\n' +
         '    simulate_datasource_flow (test entire flow pipeline),\n' +
         '    list_datasources (verify creation).',
       inputSchema: z.object({
@@ -169,17 +168,18 @@ export function registerCreateDatasourceTools(
         'Create an LDAP datasource that READS/looks up directory attributes during enrollment (for field mapping). Read-only lookup - NOT publishing certificates to LDAP/MSAD (use a third-party connector, type ldappub or msad).\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
         'LDAP datasources query directory servers (AD, OpenLDAP, etc.) and return ' +
-        'user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
+        'user/object attributes via ds.<flowIndex>.<resultIndex>.<attribute> entries (multi: true attributes add a value index: ds.1.1.memberOf.1).\n\n' +
         'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
         'the user for the name before creating.\n\n' +
         'Prerequisites: The referenced credentials object must already exist in\n' +
         'Horizon (type: PasswordCredentials with LDAP bind DN + password).\n\n' +
         'The baseDn and filter fields support TemplateString syntax with {{key}}\n' +
         'for dynamic LDAP queries. Example filter: "(sAMAccountName={{username}})".\n\n' +
-        'Special LDAP attributes are auto-decoded:\n' +
-        '    - objectSid, objectGuid: decoded from binary\n' +
-        '    - userCertificate: parsed as X.509 PEM + subject elements\n' +
-        '    - dn: parsed into subject components (cn, o, ou, etc.)\n\n' +
+        'Some LDAP attributes are converted in the result:\n' +
+        '    - objectSid: SID string; objectGuid: hexadecimal string\n' +
+        '    - userCertificate: PEM, plus parsed certificate fields under the same key\n' +
+        '    - dn: also returned as subject.<rdn>.<n> keys (subject.cn.1, subject.ou.1)\n' +
+        '    - other binary attributes: Base64\n\n' +
         'Typical workflow:\n' +
         '    1. Ensure the PasswordCredentials for LDAP bind already exist\n' +
         '    2. Use test_datasource first to validate LDAP connectivity and filter\n' +
@@ -194,7 +194,7 @@ export function registerCreateDatasourceTools(
         '    - Resolve AD attributes for certificate naming policies\n\n' +
         'Example - Active Directory user enrichment:\n' +
         '    name="corp-ad"\n' +
-        '    hostname="ldaps://dc01.corp.local"\n' +
+        '    hostname="ldaps://dc01.corp.example.com"\n' +
         '    credentials="ad-bind-creds"\n' +
         '    base_dn="OU=Users,DC=corp,DC=local"\n' +
         '    filter="(sAMAccountName={{principal.identifier}})"\n' +
@@ -335,7 +335,7 @@ export function registerCreateDatasourceTools(
         'Create a REST datasource for HTTP API lookups during enrollment.\n\n Ref: horizon://knowledge/datasources.' +
         'Safety tier: mutating-safe\n' +
         'REST datasources call HTTP APIs and return parsed response data via ' +
-        'ds.<flowIndex>.<resultIndex>.<attribute> entries.\n\n' +
+        'ds.<flowIndex>.<jsonPath> entries (no result index; arrays start at 1: ds.1.roles.1).\n\n' +
         'IMPORTANT: Datasource names are IMMUTABLE after creation. Always ask\n' +
         'the user for the name before creating.\n\n' +
         "Prerequisites: When authenticationType is not 'noauth', the referenced\n" +
@@ -347,7 +347,7 @@ export function registerCreateDatasourceTools(
         '    2. Use test_datasource first to validate the API call works\n' +
         '    3. Call this tool to create the datasource\n' +
         "    4. Add the datasource to a profile's dsFlow\n" +
-        '    5. Use ds.<flowIndex>.<resultIndex>.<attribute> in computation rules\n\n' +
+        '    5. Use ds.<flowIndex>.<jsonPath> in computation rules\n\n' +
         'When to use REST datasources:\n' +
         '    - Query a CMDB API for host ownership information\n' +
         '    - Call an internal service to validate hostnames or domains\n' +
@@ -356,7 +356,7 @@ export function registerCreateDatasourceTools(
         'Example - CMDB host ownership lookup:\n' +
         '    name="cmdb-lookup"\n' +
         '    method="GET"\n' +
-        '    url="https://cmdb.corp.local/api/v1/hosts/{{csr.san.dnsname.1}}"\n' +
+        '    url="https://cmdb.corp.example.com/api/v1/hosts/{{csr.san.dnsname.1}}"\n' +
         '    authentication_type="bearer"\n' +
         '    credentials="cmdb-api-token"\n' +
         '    timeout="10s"\n' +

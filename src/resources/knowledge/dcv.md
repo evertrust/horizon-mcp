@@ -73,7 +73,7 @@ domain it contains. Confirm the intended policy before cancelling.
 
 Policy lifecycle statuses are `scheduled`, `disabled`, `running`, `queued`, and
 `enabled`. Domain execution statuses can be `initialized`, `succeeded`,
-`left_over`, `error`, `get_challenge_error`,
+`left_over`, `unexpected_error` (the OpenAPI enum calls it `error`), `get_challenge_error`,
 `challenge_publication_error`, or `dcv_validation_error`.
 
 ## Event stream

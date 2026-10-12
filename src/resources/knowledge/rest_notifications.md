@@ -28,7 +28,7 @@ headers, body, and can chain multiple API calls in sequence.
 3. Each step in the `sequence` array executes in order
 4. Template variables (`{{certificate.serial}}`) are replaced with real values
 5. Each step's response body is parsed and added to the dictionary for the next step
-6. A response code outside `expectedHttpCodes` marks the notification as failed
+6. If a step fails (response code outside `expectedHttpCodes`, or a connection error), Horizon does not call the remaining steps and the notification fails
 
 ### REST Notification vs Other Trigger Types
 
@@ -75,22 +75,26 @@ Content-Type: application/json
       "expectedHttpCodes": [200, 201, 204],
       "proxy": null
     }
-  ]
+  ],
+  "triggers": {
+    "onTriggerError": ["error-notifier"]
+  }
 }
 ```
 
 ### Top-Level Fields
 
-| Field                 | Type         | Required    | Description                                                                                                                                                                         |
-| --------------------- | ------------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                | string       | yes         | Unique identifier (IMMUTABLE - cannot be changed after creation)                                                                                                                    |
-| `type`                | string       | yes         | Must be `"rest"`                                                                                                                                                                    |
-| `events`              | list[string] | yes         | Exactly ONE event - e.g., `["on_enroll"]`                                                                                                                                           |
-| `retries`             | integer      | no          | Number of retries when the notification fails                                                                                                                                       |
-| `runPeriod`           | string       | conditional | Duration string - MANDATORY for `on_expire`, `on_pending_*`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. Examples: `"24h"`, `"7d"`, `"30 days"` |
-| `runOnRenewed`        | boolean      | conditional | MANDATORY for `on_expire` only. If true, fires even if certificate was already renewed                                                                                              |
-| `licenceUsagePercent` | integer      | conditional | MANDATORY for `on_license_usage` only. Threshold 1-100                                                                                                                              |
-| `sequence`            | list[object] | yes         | Ordered list of REST call steps (see below)                                                                                                                                         |
+| Field                     | Type         | Required    | Description                                                                                                                                                                                                                 |
+| ------------------------- | ------------ | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`                    | string       | yes         | Unique identifier (IMMUTABLE - cannot be changed after creation)                                                                                                                                                            |
+| `type`                    | string       | yes         | Must be `"rest"`                                                                                                                                                                                                            |
+| `events`                  | list[string] | yes         | Exactly ONE event - e.g., `["on_enroll"]`                                                                                                                                                                                   |
+| `retries`                 | integer      | no          | Number of retries when the notification fails                                                                                                                                                                               |
+| `runPeriod`               | string       | conditional | Duration string - MANDATORY for `on_expire`, `on_pending_*`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. Examples: `"24h"`, `"7d"`, `"30 days"`                                         |
+| `runOnRenewed`            | boolean      | conditional | MANDATORY for `on_expire` only. If true, fires even if certificate was already renewed                                                                                                                                      |
+| `licenceUsagePercent`     | integer      | conditional | MANDATORY for `on_license_usage` only. Threshold 1-100                                                                                                                                                                      |
+| `sequence`                | list[object] | yes         | Ordered list of REST call steps (see below)                                                                                                                                                                                 |
+| `triggers.onTriggerError` | list[string] | no          | Notification triggers to run when this notification fails ("On execution error" in the UI). Each must use the `on_trigger_error` event; other names are ignored. Not allowed when this notification uses `on_trigger_error` |
 
 ### Sequence Step Fields
 
@@ -180,9 +184,8 @@ Requires a **Certificate** type credential (PKCS#12 store) in Horizon.
 
 ### Custom Authentication (`custom`)
 
-No auth headers are added automatically. Instead, the credential's secret
-values are injected into the template dictionary so you can use them in
-custom headers or the payload body.
+No auth headers are added automatically. The credential values become
+template keys that you can use in headers and in the payload (not in the URL).
 
 ```json
 {
@@ -343,7 +346,7 @@ in draft/pending state, then explicitly activating it.
 1. `POST` to create resource - returns `{"id": "...", "status": "pending"}`
 2. `POST`/`PATCH` to activate endpoint using `{{rest.response.1.id}}`
 
-#### Pattern E: Deploy + Invalidate Cache
+#### Pattern D: Deploy + Invalidate Cache
 
 **When to use:** After deploying a certificate, you need to purge a CDN
 cache, restart a service, or trigger a reload.
@@ -356,7 +359,7 @@ config", or "restart after deploy."
 1. `PUT` certificate to deployment endpoint
 2. `POST` to cache purge or reload endpoint
 
-#### Pattern F: Transactional API (Begin + Commit)
+#### Pattern E: Transactional API (Begin + Commit)
 
 **When to use:** The target system wraps changes in transactions that must
 be explicitly committed.
@@ -403,11 +406,28 @@ from the notification dictionary.
 - Computation rules returning `None`: replaced with an empty string
 - Computation rules returning an array: joined as comma-separated string
 
-### JSON Payloads
+### JSON Escaping
 
-Set the documented `payload` and `headers` fields for the target API. Check
-the rendered payload with `simulate_trigger` and a test endpoint before use.
-This test sends real requests.
+When a step has a `Content-Type: application/json` header, Horizon
+JSON-escapes certificate and request values from the event dictionary before
+substitution. Quotes, backslashes and newlines in `{{certificate.pem}}` stay
+valid inside a JSON string. Write `{ "pem": "{{certificate.pem}}" }` and do
+not escape it again.
+
+This automatic escaping does not cover `rest.response.*` or authentication
+credential values. Use `EscapeJson` when you insert these raw values into a
+JSON string:
+
+```json
+{
+  "owner": "{{EscapeJson({{rest.response.1.owner}})}}",
+  "token": "{{EscapeJson({{credentials.key}})}}"
+}
+```
+
+Horizon 2.10 needs the exact value `application/json`. Horizon 2.11 also
+accepts parameters (`application/json; charset=utf-8`) and `+json` types.
+Other content types get raw values.
 
 ### Available Computation Rules in Templates
 
@@ -479,6 +499,7 @@ Available for events: `on_enroll`, `on_revoke`, `on_update`, `on_recover`,
 | `certificate.friendly_name`         | Friendly name                | `"Production Web Cert"`              |
 | `certificate.owner`                 | Owner principal              | `"john.doe"`                         |
 | `certificate.mail`                  | Contact email                | `"admin@example.com"`                |
+| `certificate.auto_renew`            | Auto-renewal status          | `"true"` or `"false"`                |
 
 **Subject fields** (one per DN element type):
 
@@ -514,6 +535,15 @@ Available for events: `on_enroll`, `on_revoke`, `on_update`, `on_recover`,
 **Team fields:**
 
 - `certificate.team` - team name
+
+**Private key fields** (`on_enroll` and `on_renew`, and `on_import` when the
+import includes the key; only when Horizon has the private key):
+
+- `certificate.private_key` - PEM private key
+- `certificate.private_key_pkcs8` - PKCS#8 PEM
+- `certificate.private_key_pkcs1` - PKCS#1 PEM (RSA only)
+
+`on_recover` and request events do not get these keys.
 
 ### Previous Certificate Dictionary
 
@@ -556,18 +586,27 @@ sub-dictionaries with the same structure as certificate (prefixed with
 When a request contains a certificate (approved enrollment), the full
 certificate dictionary is available under `request.certificate.*`.
 
+**PKCS#12 fields** (`on_approve_enroll`, `on_approve_renew`,
+`on_approve_recover` for WebRA requests, only when Horizon generated the key
+pair):
+
+- `pkcs12` - base64 PKCS#12 bundle
+- `pkcs12.password` - PKCS#12 password
+
+On request events, use `request.certificate.*` for certificate fields.
+
 ### Profile Dictionary
 
 Available in all notification contexts:
 
-| Key                                 | Description                                                |
-| ----------------------------------- | ---------------------------------------------------------- |
-| `profile.name`                      | Technical profile name                                     |
-| `profile.module`                    | Module name                                                |
-| `profile.displaynames`              | All display names formatted                                |
-| `profile.<name>.displayname.<lang>` | Display name of the named profile in the selected language |
-| `profile.descriptions`              | All descriptions formatted                                 |
-| `profile.<name>.description.<lang>` | Description of the named profile in the selected language  |
+| Key                          | Description                                                         |
+| ---------------------------- | ------------------------------------------------------------------- |
+| `profile.name`               | Technical profile name                                              |
+| `profile.module`             | Module name                                                         |
+| `profile.displaynames`       | All display names formatted                                         |
+| `profile.displayname.<lang>` | Display name in one language (for example `profile.displayname.en`) |
+| `profile.descriptions`       | All descriptions formatted                                          |
+| `profile.description.<lang>` | Description in one language                                         |
 
 ### Credentials Dictionary
 
@@ -589,6 +628,8 @@ Available for: `on_license_expiration`, `on_license_usage`
 | `license.expiration_date` | License expiration                                |
 | `license.used`            | Current holder count, only for `on_license_usage` |
 | `license.percent_used`    | Usage percentage, only for `on_license_usage`     |
+| `license.limit`           | Holder limit, only for `on_license_usage`         |
+| `license.available`       | Remaining holders, only for `on_license_usage`    |
 
 ### Trigger Error Dictionary
 
@@ -666,12 +707,23 @@ must contain a single string. To fire on multiple events (e.g., both
 
 ## Event Semantics: Direct Actions vs Request/Approve Workflow
 
-Choose a notification event for the intended certificate or request action.
-Configure the matching hook on the profile. See the
-[notification guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/notifications/rest.html).
+A WebRA request fires `on_approve_<workflow>` when it is approved, and the
+certificate event (`on_enroll`, `on_renew`, ...) when the operation runs.
 
-Use a caller-chosen correlation key in the external system to locate an
-incident in a later notification.
+- Direct action (the user may run it without approval): `on_approve_*`
+  fires at once. `on_submit_*` does not fire.
+- Request workflow: `on_submit_*` fires when the pending request is
+  created. `on_approve_*` fires when an approver approves it.
+
+| Data needed                 | Event                                                               |
+| --------------------------- | ------------------------------------------------------------------- |
+| PEM certificate             | Certificate events; `request.certificate.*` on request events       |
+| PEM private key             | `on_enroll`, `on_renew`; `on_import` when the import includes a key |
+| PKCS#12 bundle and password | `on_approve_enroll`, `on_approve_renew`, `on_approve_recover`       |
+
+Private keys are available when Horizon generated the key pair or an import
+included the key. PKCS#12 fields need a key pair that Horizon generated. See the
+[notification guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/notifications/rest.html).
 
 Use dictionary keys documented for the selected event. `request.password`
 is the PKCS#12 password or challenge value. `request.certificate` contains
@@ -704,10 +756,43 @@ Examples: `"30 seconds"`, `"5m"`, `"24h"`, `"7 days"`, `"30000ms"`
 Trigger results expose `status` (`success` or `failure`), remaining
 `retries`, `nextExecutionDate`, and `nextDelay`.
 
+When a notification fails and `retries` is above 0, Horizon runs it again
+later. Each retry lowers `retries` by one and doubles `nextDelay`. When
+`retries` reaches 0, or is not set, the result stays `failure`.
+
 ### What Counts as Failure
 
 - HTTP response code NOT in `expectedHttpCodes`
 - Connection error (DNS failure, timeout, refused)
 - TLS handshake failure (for mTLS / x509 auth)
+- A failed step in a multi-step sequence (later steps are not called)
+
+### Error Notifications
+
+Set `triggers.onTriggerError` to send an alert when this notification fails:
+
+```json
+{
+  "name": "deploy-cert",
+  "type": "rest",
+  "events": ["on_enroll"],
+  "sequence": [
+    {
+      "url": "https://api.example.com/certificates",
+      "method": "POST",
+      "authenticationType": "noauth",
+      "timeout": "30 seconds",
+      "expectedHttpCodes": [200],
+      "payload": "{{certificate.pem}}"
+    }
+  ],
+  "triggers": { "onTriggerError": ["notify-ops-team"] }
+}
+```
+
+`notify-ops-team` must use the `on_trigger_error` event. It gets the
+`trigger.*` keys. A trigger with the `on_trigger_error` event cannot set
+`triggers`: Horizon rejects it with "triggers cannot be specified on event
+'on_trigger_error'".
 
 ---

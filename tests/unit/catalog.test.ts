@@ -64,13 +64,13 @@ describe('Knowledge configuration guidance', () => {
     );
   });
 
-  it('identifies OIDC role/team mapping availability from Horizon 2.9', () => {
+  it('identifies OIDC role/team mapping availability from Horizon 2.9.2', () => {
     const content = getResourceByUri(
       'horizon://knowledge/integrations',
     )?.content;
 
-    expect(content).toContain('Horizon 2.9+');
-    expect(content).toContain('Horizon 2.8 does not support role/team mapping');
+    expect(content).toContain('Horizon 2.9.2 or later');
+    expect(content).toContain('`identifierClaim`, `emailClaim`, `nameClaim`');
   });
 
   it('explains that Horizon service-account authentication requires a JWT per request', () => {

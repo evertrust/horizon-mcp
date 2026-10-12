@@ -42,20 +42,22 @@ const SIMULATE_COMPUTATION_RULE_CONFIG = {
     'MANDATORY: Before writing ANY computation rule, you MUST read the ' +
     'knowledge resource horizon://knowledge/computation-and-data-flow. ' +
     'It contains the COMPLETE list of available functions, the exact syntax, ' +
-    'and real-world PKI examples. DO NOT invent functions or syntax - only ' +
+    'and examples. DO NOT invent functions or syntax - only ' +
     'use what is documented in that resource.\n\n' +
     'Documented functions:\n' +
     '  String: Upper, Lower, Trim, Substr, Concat, Extract, Replace, OrElse\n' +
-    '  List: Filter, Slice, Sort, Split\n' +
+    '  List: Filter, Slice, Sort, Split, Unique\n' +
     '  Parsing: ShortenDNS, DomainDNS, EmailUser, EmailDomain, SamAccountNameUser, SamAccountNameDomain\n' +
     '  Date: DateTimeFormat\n' +
     '  Access: Get, First, Last, Join, Match\n' +
-    '  Encoding: Base64, Raw (Horizon 2.8.5+)\n' +
+    '  Encoding: UrlEncode, UrlDecode, EscapeJson, JsonArray, DerB64, Base64, Raw (Base64 and Raw: Horizon 2.8.5+)\n' +
     '  Special: NULL, NOW\n\n' +
     'Syntax rules:\n' +
     '  - Dictionary lookups: {{key}} for single, [[key]] for multi\n' +
     '  - Functions wrap lookups: Upper({{cn}}), NOT {{Upper(cn)}}\n' +
     '  - Concat joins strings if all arguments are single values; otherwise, it combines values into an array. An empty result returns None.\n' +
+    '  - When all Concat arguments are single values, a None argument returns None. Guard it with a non-empty fallback: OrElse({{key}}, "default")\n' +
+    '  - Unique removes duplicate values from a list\n' +
     '  - ShortenDNS extracts hostname: ShortenDNS({{fqdn}}) -> first DNS label\n' +
     '  - DomainDNS extracts domain: DomainDNS({{fqdn}}) -> parent domain\n' +
     '  - Sort alphabetically sorts a list\n\n' +
@@ -72,7 +74,9 @@ const SIMULATE_COMPUTATION_RULE_CONFIG = {
       ),
     dictionary: z
       .record(z.string(), z.string())
-      .describe('Key-value pairs available as variables during evaluation.'),
+      .describe(
+        'Key-value pairs available as variables. Pass list values as numbered keys (sans.1, sans.2) and read them with [[sans]].',
+      ),
     mode: z
       .enum(['computation_rule', 'template_string'])
       .default('computation_rule')
