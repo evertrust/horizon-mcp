@@ -74,8 +74,14 @@ request lifecycle.
 
 ### Sync vs. Async Hooks
 
-- **Sync hooks** store trigger names as plain strings in a list.
-- **Async hooks** store trigger references as objects (`{"name": "trigger-name"}`).
+- **Sync hooks** store trigger names as plain strings in a list. They run
+  while Horizon processes the request. A failed trigger does not fail the
+  request.
+- **Async hooks** (`onPending*`, `onExpire`) store trigger references as
+  objects (`{"name": "trigger-name"}`). Horizon runs them on a schedule for
+  pending requests and expiring certificates.
+
+The result of each run is in `triggerResults` on the request or certificate.
 
 ### Attaching Triggers to Profiles
 
@@ -168,15 +174,19 @@ run periods.
 
 | Type      | Description                                      | Key Configuration                            |
 | --------- | ------------------------------------------------ | -------------------------------------------- |
-| `email`   | Send email with optional certificate attachments | `emailTemplate`, 7 attachment flags          |
-| `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of CustomRestTrigger steps        |
+| `email`   | Send email with optional certificate attachments | `emailTemplate`, 6 attachment flags          |
+| `rest`    | Sequential HTTP REST calls with authentication   | `sequence` of RestSequenceStep steps         |
 | `webhook` | Send to Teams / Slack / Mattermost               | `webhookTemplate` with recipient and message |
 
 ### Third-Party Triggers (8 on 2.10, 12 on 2.11)
 
 Third-party triggers push or remove certificates to or from external systems.
-They reference a third-party connector. Call `describe_trigger_schema` for
-its subtype before setting the configuration fields.
+They reference a third-party connector. Horizon sets their `events` from the
+type and returns them on GET; `events`, `runPeriod` and `runOnRenewed` sent
+by the client are ignored. A profile hook skips a trigger whose events do
+not include that hook's event, so attach it only to a matching hook. Call
+`describe_trigger_schema` for the subtype before setting the configuration
+fields.
 
 | Type             | Description                               | Requires              |
 | ---------------- | ----------------------------------------- | --------------------- |
@@ -203,18 +213,18 @@ third-party triggers do not use.
 
 ### Base Fields (All Triggers)
 
-| Field      | Type         | Description                                                        |
-| ---------- | ------------ | ------------------------------------------------------------------ |
-| `name`     | string       | Trigger identifier (unique across the Horizon instance)            |
-| `type`     | string       | One of the types listed above                                      |
-| `triggers` | dict or null | Sub-triggers for error handling (FORBIDDEN for `on_trigger_error`) |
+| Field      | Type           | Description                                                                                                                                                                                                                                                                   |
+| ---------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`     | string         | Trigger identifier (unique across the Horizon instance)                                                                                                                                                                                                                       |
+| `type`     | string         | One of the types listed above                                                                                                                                                                                                                                                 |
+| `triggers` | object or null | Optional. `{"onTriggerError": ["<trigger name>"]}`: notification triggers to run when this trigger fails. The admin UI calls it "On execution error". Only triggers whose events include `on_trigger_error` run. Not allowed when this trigger's event is `on_trigger_error`. |
 
 ### Notification-Specific Fields (email, rest, webhook ONLY)
 
 | Field                 | Type         | Description                              | Constraints                                                                                                                |
 | --------------------- | ------------ | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `events`              | list[string] | Event(s) this trigger subscribes to      | MUST contain EXACTLY 1 event -- multiple events → HTTP 400                                                                 |
-| `retries`             | int or null  | Retry count on error                     | Default: 10                                                                                                                |
+| `retries`             | int or null  | Retry count on error                     | No API default. `create_rest_notification` defaults to 10.                                                                 |
 | `runPeriod`           | string/null  | FiniteDuration (e.g. `"24h"`, `"7d"`)    | MANDATORY for `on_pending_*`, `on_expire`, `on_license_expiration`, `on_credentials_expiration`. FORBIDDEN for all others. |
 | `runOnRenewed`        | bool or null | Keep firing after certificate is renewed | MANDATORY for `on_expire` ONLY. FORBIDDEN for all other events.                                                            |
 | `licenceUsagePercent` | int or null  | Threshold percentage (1-100)             | MANDATORY for `on_license_usage`. FORBIDDEN for all other events.                                                          |
@@ -261,20 +271,20 @@ The workflow events also include `on_in_progress_enroll`,
 DCV events are notification hooks and are available since Horizon 2.10. They
 do not run a DCV policy.
 
-| Event                       | Description                                   | Notes                                                       |
-| --------------------------- | --------------------------------------------- | ----------------------------------------------------------- |
-| `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed`                     |
-| `on_license_expiration`     | Horizon license is approaching expiration     | Requires `runPeriod`                                        |
-| `on_credentials_expiration` | Stored credentials are approaching expiration | Requires `runPeriod`                                        |
-| `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                      |
-| `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                         |
-| `on_trigger_error`          | A trigger execution failed                    | Sub-triggers (`triggers` field) are FORBIDDEN on this event |
-| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                                               |
-| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                                               |
-| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                                               |
-| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                                               |
-| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                                               |
-| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                                               |
+| Event                       | Description                                   | Notes                                                                                                                   |
+| --------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `on_expire`                 | Certificate expiration check fires            | Requires `runPeriod` and `runOnRenewed`                                                                                 |
+| `on_license_expiration`     | Horizon license is approaching expiration     | Requires `runPeriod`                                                                                                    |
+| `on_credentials_expiration` | Stored credentials are approaching expiration | Requires `runPeriod`                                                                                                    |
+| `on_license_usage`          | License usage crosses threshold               | Requires `licenceUsagePercent` (1-100)                                                                                  |
+| `on_test`                   | Manual test fire via simulate                 | Used with `PATCH /api/v1/triggers/`                                                                                     |
+| `on_trigger_error`          | A trigger execution failed                    | Cannot define `triggers` (the API rejects it). Reference this trigger from another trigger's `triggers.onTriggerError`. |
+| `on_dcv_license_usage`      | DCV license usage event                       | Horizon 2.10+                                                                                                           |
+| `on_dcv_policy_start`       | DCV policy run starts                         | Horizon 2.10+                                                                                                           |
+| `on_dcv_policy_end`         | DCV policy run ends                           | Horizon 2.10+                                                                                                           |
+| `on_dcv_validation_success` | Domain validation succeeds                    | Horizon 2.10+                                                                                                           |
+| `on_dcv_validation_failure` | Domain validation fails                       | Horizon 2.10+                                                                                                           |
+| `on_dcv_validation_retry`   | Domain validation retry                       | Horizon 2.10+                                                                                                           |
 
 ---
 
@@ -286,15 +296,23 @@ do not run a DCV policy.
 {
   "emailTemplate": {
     "to": [{ "type": "static", "email": "admin@example.com" }],
+    "cc": [{ "type": "team_contact" }],
+    "bcc": [],
     "from": "horizon@example.com",
     "title": "Certificate issued: {{certificate.subject.cn.1}}",
     "body": "<p>Certificate issued.</p>",
-    "isHtml": true
+    "isHtml": true,
+    "headers": [{ "key": "X-Priority", "value": "1" }]
   },
   "attachPemCertificate": true,
   "attachPkcs7Bundle": false
 }
 ```
+
+`cc` and `bcc` are optional lists of recipient objects, like `to`. `headers`
+is an optional list of `{key, value}` mail headers. The OpenAPI email template
+schema does not list these three fields, but the trigger endpoints accept,
+return and apply them.
 
 **Attachment flags** are nullable booleans:
 `attachPemCertificate`, `attachPemBundle`, `attachDerCertificate`,
@@ -305,18 +323,21 @@ do not run a DCV policy.
 `email` is required for `static` and ignored otherwise. `label` is required
 for `label` and ignored otherwise.
 
-| Type                     | Purpose                         |
-| ------------------------ | ------------------------------- |
-| `static`                 | Send to a fixed email address   |
-| `label`                  | Resolve an address from a label |
-| `certificate_owner`      | Certificate owner's email       |
-| `certificate_rfc822name` | Email from the certificate SAN  |
-| `contact`                | Contact email                   |
-| `approver`               | Request approver                |
-| `requester`              | Request submitter               |
-| `lifecycle_operators`    | Lifecycle operators             |
-| `team_contact`           | Team contact email              |
-| `team_manager`           | Team manager email              |
+| Type                     | Purpose                             |
+| ------------------------ | ----------------------------------- |
+| `static`                 | Send to a fixed email address       |
+| `label`                  | Resolve an address from a label     |
+| `certificate_owner`      | Certificate owner's email           |
+| `certificate_rfc822name` | Email from the certificate SAN      |
+| `contact`                | Contact email                       |
+| `approver`               | Request approver                    |
+| `requester`              | Request submitter                   |
+| `lifecycle_operators`    | Lifecycle operators                 |
+| `team_contact`           | Team contact email                  |
+| `team_manager`           | Team manager email                  |
+| `team_members`           | All members of the certificate team |
+
+`team_members` is accepted by the API although the OpenAPI enum does not list it.
 
 ### Custom REST Notification (`rest`)
 
@@ -376,11 +397,11 @@ a credential name stored in Horizon (`/api/v1/security/credentials`).
 
 ### Third-Party Triggers
 
-Third-party triggers include `name`, `type`, and `connector`. Some subtypes
-also expose `retries` and error-trigger settings. Call `describe_trigger_schema`
+Third-party triggers take `name`, `type`, `connector`, and the optional
+`retries` (retries after an error) and `triggers` (error notifications).
+Every third-party subtype accepts both optional fields. Call `describe_trigger_schema`
 for the chosen subtype and pass its documented fields in `create_trigger`'s
-`config`. The public trigger guides describe retries in case of error; for
-firewall triggers on Horizon 2.11+, the range is 1 to 15.
+`config`. For firewall triggers on Horizon 2.11+, the `retries` range is 1 to 15.
 
 ---
 

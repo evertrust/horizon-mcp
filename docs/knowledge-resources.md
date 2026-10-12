@@ -19,7 +19,7 @@ If the `docs` toolset is enabled and a tool description points to a `horizon://k
 | Resource                  | URI                                             | Contents                                                                                                     |
 | ------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Profiles                  | `horizon://knowledge/profiles`                  | Module types, field reference, authorization modes                                                           |
-| Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, 30+ built-in functions, datasource chaining                                                 |
+| Computation and Data Flow | `horizon://knowledge/computation-and-data-flow` | Template syntax, computation functions including `Unique`, datasource chaining                                                 |
 | Workflows                 | `horizon://knowledge/workflows`                 | 7 lifecycle workflows, authorization levels, request policies                                                |
 | Query Languages           | `horizon://knowledge/query-languages`           | HCQL/HRQL/HEQL/HDQL syntax, fields, operators, examples                                                      |
 | RBAC                      | `horizon://knowledge/rbac`                      | Permission format, 37-pattern catalog, role guidance                                                         |

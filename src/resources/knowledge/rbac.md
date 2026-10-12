@@ -114,6 +114,10 @@ Service accounts authenticate workloads from an external JWT issuer. Grant only
 the roles and permissions explicitly required by the workload. For static JWKS,
 `trustConfig.jwks` is a JSON string when creating or updating an account.
 
+`get_service_account` returns `trustConfig.jwks` as a JSON object. Do not
+send that object back: `update_service_account` converts it to a string when
+it keeps the existing JWKS.
+
 Clients send the service-account name in `X-API-SVA` and the JWT in
 `X-API-TOKEN`. Since Horizon 2.11, the JWT can also be sent as
 `Authorization: Bearer <JWT>`; it is validated the same way. Before 2.11,
@@ -344,6 +348,10 @@ Trusted client-authentication CAs expose these TemplateString mappings:
 
 Set these fields through `create_ca` or `update_ca` using the corresponding
 snake_case inputs: `identifier_mapping`, `name_mapping`, and `email_mapping`.
+
+`identifierMapping` must resolve for the client certificate, or the
+client-certificate login fails. `nameMapping` and `emailMapping` can resolve
+to nothing; the principal then has no display name or email.
 
 ---
 
