@@ -1,3 +1,9 @@
+## [3.1.2](https://github.com/evertrust/horizon-mcp/compare/v3.1.1...v3.1.2) (2026-10-12)
+
+### Bug Fixes
+
+* restore observable behavior in knowledge and correct wrong facts ([#32](https://github.com/evertrust/horizon-mcp/issues/32)) ([0cdbc92](https://github.com/evertrust/horizon-mcp/commit/0cdbc9281fe56512c4e4270c596df803ff1eb4fe))
+
 ## [3.1.1](https://github.com/evertrust/horizon-mcp/compare/v3.1.0...v3.1.1) (2026-10-09)
 
 ### Bug Fixes
