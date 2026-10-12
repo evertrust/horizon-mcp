@@ -44,7 +44,7 @@
   "dependencies": {
     "express": "^5",
     "express-rate-limit": "8.5.2",
-    "undici": "8.7.0",
+    "undici": "8.11.2",
     "zod": "4.3.6",
     "@modelcontextprotocol/server": "2.0.0",
     "@modelcontextprotocol/node": "2.0.0"
@@ -71,7 +71,7 @@
     "@types/express": "^5",
     "@types/node": "25.5.2",
     "@modelcontextprotocol/client": "2.0.0",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "4.1.11",
     "eslint": "10.1.0",
     "eslint-config-prettier": "10.1.8",
     "globals": "17.4.0",
@@ -83,6 +83,6 @@
     "tsx": "4.21.0",
     "typescript": "6.0.2",
     "typescript-eslint": "8.58.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   }
 }
