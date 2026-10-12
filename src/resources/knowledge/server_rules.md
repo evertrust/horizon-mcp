@@ -60,7 +60,8 @@ request.
 
 Special case (Horizon 2.11+): a WebRA challenge enrollment returns the PKCS#12
 only in the `submit_webra_challenge` response, in centralized mode, encrypted
-with the challenge as password. Save it from that response. In a challenge profile's enroll
+with the challenge as password. Horizon does not keep it: `get_request` on that request returns no `pkcs12`
+and no `password`. Save it from that response. In a challenge profile's enroll
 request response, `password` holds the challenge.
 
 ## 6. Lifecycle requests: inspect the template first

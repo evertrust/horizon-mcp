@@ -18,7 +18,7 @@ When a certificate is enrolled or renewed, push it to a load balancer:
       "method": "POST",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
-      "payload": "{\"domain\": \"{{certificate.san.dnsname.1}}\", \"certificate\": \"{{certificate.pem}}\", \"serial\": \"{{certificate.serial}}\"}",
+      "payload": "{\"domain\": \"{{certificate.san.dnsname.1}}\", \"certificate\": \"{{certificate.pem}}\", \"private_key\": \"{{certificate.private_key}}\", \"serial\": \"{{certificate.serial}}\"}",
       "timeout": "30 seconds",
       "expectedHttpCodes": [200, 201]
     }
@@ -28,6 +28,8 @@ When a certificate is enrolled or renewed, push it to a load balancer:
 
 Create a second trigger for `on_renew` with the same sequence to also handle
 renewals.
+
+`{{certificate.private_key}}` is set only when Horizon generated the key pair.
 
 ### Example 2: Multi-Step OAuth + API Call
 
@@ -109,7 +111,7 @@ is submitted. This event uses the request dictionary:
 }
 ```
 
-### Example 5: Notify SIEM on Revocation
+### Example 4: Notify SIEM on Revocation
 
 Push revocation events to a SIEM or log aggregation system:
 
@@ -135,7 +137,7 @@ Push revocation events to a SIEM or log aggregation system:
 }
 ```
 
-### Example 6: Multi-Step - Create Resource Then Activate It
+### Example 5: Multi-Step - Create Resource Then Activate It
 
 Some APIs require creating a resource first, then activating it:
 
@@ -177,7 +179,7 @@ Some APIs require creating a resource first, then activating it:
 1. Step 1 creates the certificate resource and returns `{"id": "cert-abc123", ...}`
 2. Step 2 uses `{{rest.response.1.id}}` in the URL to activate the newly created resource
 
-### Example 7: Expiration Warning to External Ticketing System
+### Example 6: Expiration Warning to External Ticketing System
 
 Create a ticket 30 days before certificate expiration:
 
@@ -322,7 +324,7 @@ about to expire or when the license cap is about to be reached.
       "method": "POST",
       "headers": [{ "name": "Content-Type", "value": "application/json" }],
       "payloadType": "json",
-      "payload": "{\"fields\": {\"project\": {\"key\": \"OPS\"}, \"summary\": \"Horizon license usage at {{license.percent_used}}%\", \"description\": \"License usage has reached {{license.percent_used}}% ({{license.used}} holders). Consider upgrading the license.\", \"issuetype\": {\"name\": \"Task\"}, \"priority\": {\"name\": \"High\"}}}",
+      "payload": "{\"fields\": {\"project\": {\"key\": \"OPS\"}, \"summary\": \"Horizon license usage at {{license.percent_used}}%\", \"description\": \"License usage has reached {{license.percent_used}}% ({{license.used}} / {{license.limit}} holders, {{license.available}} remaining). Consider upgrading the license.\", \"issuetype\": {\"name\": \"Task\"}, \"priority\": {\"name\": \"High\"}}}",
       "timeout": "15 seconds",
       "expectedHttpCodes": [201]
     }
@@ -418,6 +420,16 @@ in the Horizon administration UI or through the profile API. See
 5. Set a timeout that suits the target API.
 6. List each successful response code in `expectedHttpCodes`, including
    `204` if the target returns it.
+7. With a `Content-Type: application/json` header, Horizon JSON-escapes
+   certificate and request values from the event dictionary. Do not escape
+   them again. Chained responses and authentication credentials stay raw.
+   In a JSON string, use `{{EscapeJson({{rest.response.1.owner}})}}` or
+   `{{EscapeJson({{credentials.key}})}}` for these values.
+8. `certificate.private_key*` keys need an available private key. Enrollment
+   with a CSR supplies none. `on_import` can include these keys when the
+   import includes a private key.
+9. Use `triggers.onTriggerError` to send an alert when this notification
+   fails.
 
 ---
 

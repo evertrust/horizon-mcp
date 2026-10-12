@@ -211,16 +211,18 @@ Restrict enrollment to OIDC-authenticated users:
 ```json
 {
   "authorizationLevels": {
-    "enroll": "authenticated",
-    "enrollIdp": ["corporate-oidc"]
+    "enroll": {
+      "accessLevel": "authenticated",
+      "enforcedIdentityProviders": ["corporate-oidc"]
+    }
   }
 }
 ```
 
 ### Claim Mapping
 
-Horizon 2.9+ uses claim expressions and an explicit role/team mapping.
-Horizon 2.8 does not support role/team mapping in the identity-provider API:
+Claim expressions (`identifierClaim`, `emailClaim`, `nameClaim`) exist on all
+supported versions. The role/team `mapping` object needs Horizon 2.9.2 or later:
 
 | Public API Field              | Purpose                                                     |
 | ----------------------------- | ----------------------------------------------------------- |
@@ -508,8 +510,9 @@ The profile's `config.dsFlow` uses the API shape, unlike the simulation tool's
 }
 ```
 
-Use `{{ds.1.1.cn}}` or `{{ds.1.1.mail}}` in certificate-template computation
-rules to reference the selected LDAP attributes.
+Run `test_datasource` or `simulate_datasource_flow` and read the returned
+dictionary keys before writing certificate-template computation rules.
+Use `{{ds.1.1.mail}}` for an LDAP mail value.
 
 ### Set Up ACME with DNS-01 and Expiry Notification
 

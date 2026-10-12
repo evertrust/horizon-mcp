@@ -228,6 +228,10 @@ the certificate immediately. Horizon records the request as `in_progress`
 while certificate issuance is pending. Asynchronous enrollment is available
 for WebRA enroll and renew workflows; ACME, SCEP, and EST remain synchronous.
 
+While the request is `in_progress`, Horizon polls the PKI in the background,
+every 5 minutes by default, with intervals that grow up to one hour. See the
+[PKI guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/pki_admin.html).
+
 ```
 Caller -> submit_request -> in_progress request -> external CA polling -> certificate issued
                                             -> deny_request or cancel_request
@@ -265,8 +269,8 @@ Client    -> submit_webra_challenge (POST /api/v1/challenge/submit) -> certifica
    challenge. `metadata` accepts only `automation_policy`, with a policy
    authorized on the profile.
 4. Response: `certificate` (PEM) and, in centralized mode only, `pkcs12`
-   (DER Base64, encrypted with the challenge as password). Save the bundle
-   from this response.
+   (DER Base64, encrypted with the challenge as password). Horizon does not keep the bundle, and `get_request` cannot return it later.
+   Save it from this response.
 
 Errors: WEBRA-ENROLL-015 (invalid challenge),
 WEBRA-ENROLL-001/009/012 and REQ-002 (400), LIC-003/004 (403),

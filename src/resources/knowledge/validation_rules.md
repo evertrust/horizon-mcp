@@ -41,7 +41,8 @@ a different module, validation rules are not an option.
 
 If you need external data, create the datasource first and add it to the
 profile's dsFlow BEFORE configuring the validation ruleset. The datasource
-flow executes before validation rules, populating the `ds.*` entries.
+flow executes before validation rules. Run `test_datasource` or
+`simulate_datasource_flow` and read the returned dictionary keys.
 
 See horizon://knowledge/datasources for full datasource setup guide.
 
@@ -134,18 +135,18 @@ dictionary entries using computation rule syntax: `{{key}}` for single values,
 These are the EXACT syntaxes accepted by the parser. Using wrong syntax
 (e.g., `startsWith` instead of `starts with`) will cause a parse error.
 
-| Operator    | Aliases | Syntax                                | Description                                                                     |
-| ----------- | ------- | ------------------------------------- | ------------------------------------------------------------------------------- |
-| equals      | `=`     | `{{key}} equals "value"`              | Exact string match (case-sensitive)                                             |
-| matches     | `~`     | `{{key}} matches "regex"`             | Java regex full match (`String.matches`)                                        |
-| contains    | -       | `{{key}} contains "substring"`        | Substring check on single values. On multi-value fields: exact element match    |
-| starts with | -       | `{{key}} starts with "prefix"`        | Starts with prefix. **Two words, not `startsWith`**                             |
-| ends with   | -       | `{{key}} ends with "suffix"`          | Ends with suffix. **Two words, not `endsWith`**                                 |
-| in          | -       | `{{key}} in ["val1", "val2"]`         | Value is one of the listed values. **Use square brackets, NOT parentheses**     |
-| within      | -       | `{{key}} within ["regex1", "regex2"]` | Value matches at least one regex in the list                                    |
-| exists      | -       | `{{key}} exists`                      | Single value is defined, even if empty. A list must contain at least one value. |
-| is empty    | -       | `{{key}} is empty`                    | Key is absent or empty. Negate: `{{key}} is not empty`                          |
-| resolvesDNS | -       | `{{key}} resolvesDNS`                 | Live DNS A/AAAA check. On multi-value: ALL must resolve                         |
+| Operator    | Aliases | Syntax                                | Description                                                                                        |
+| ----------- | ------- | ------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| equals      | `=`     | `{{key}} equals "value"`              | Exact string match (case-sensitive)                                                                |
+| matches     | `~`     | `{{key}} matches "regex"`             | The regex must match the whole value (`"abc" matches "b"` is false). Use `.*` for a partial match. |
+| contains    | -       | `{{key}} contains "substring"`        | Substring check on single values. On multi-value fields: exact element match                       |
+| starts with | -       | `{{key}} starts with "prefix"`        | Starts with prefix. **Two words, not `startsWith`**                                                |
+| ends with   | -       | `{{key}} ends with "suffix"`          | Ends with suffix. **Two words, not `endsWith`**                                                    |
+| in          | -       | `{{key}} in ["val1", "val2"]`         | Value is one of the listed values. **Use square brackets, NOT parentheses**                        |
+| within      | -       | `{{key}} within ["regex1", "regex2"]` | Value matches at least one regex in the list                                                       |
+| exists      | -       | `{{key}} exists`                      | Single value is defined, even if empty. A list must contain at least one value.                    |
+| is empty    | -       | `{{key}} is empty`                    | Key is absent or empty. Negate: `{{key}} is not empty`                                             |
+| resolvesDNS | -       | `{{key}} resolvesDNS`                 | Live DNS A-record lookup. On multi-value: ALL must resolve. An IPv6-only name fails.               |
 
 **Negation**: Operators support inline `not` before the operator keyword:
 `{{key}} not equals "value"`, `{{key}} not matches "regex"`, `{{key}} not in [...]`,
@@ -192,12 +193,12 @@ The parser supports `all of` and `any of` prefixes on multi-value fields
 for most operators. This lets you check conditions across every element
 (or at least one element) of a list.
 
-**Contains quantifiers** (set comparisons):
+**Contains quantifiers**:
 
-| Syntax                              | Description                                 |
-| ----------------------------------- | ------------------------------------------- |
-| `[[key1]] contains any of [[key2]]` | At least one element of key2 exists in key1 |
-| `[[key1]] contains all of [[key2]]` | Every element of key2 exists in key1        |
+| Syntax                              | Description                                                             |
+| ----------------------------------- | ----------------------------------------------------------------------- |
+| `[[key1]] contains any of [[key2]]` | At least one element of key2 exists in key1                             |
+| `[[key1]] contains all of [[key2]]` | The values of key2 appear in key1 next to each other, in the same order |
 
 **Per-element operator quantifiers** (apply an operator to each element):
 
@@ -222,8 +223,11 @@ hostname). Use this for CIDR checks when hostnames may have multiple A records:
 `all of [[ds.1.*.a.*]] in 10.0.0.0/8` checks every resolved IP across all
 hostnames and all their A records.
 
-`contains all of` and `contains any of` test element inclusion.
-An empty right-hand list is always contained.
+`contains all of` is an ordered check. For example,
+`["a", "b", "c"] contains all of ["a", "c"]` is false. To check that every value of key2 is in key1 in any
+order, use `all of [[key2]] in [[key1]]` (false when key2 is empty).
+An empty right-hand list is always contained for `contains all of` and
+`contains any of`.
 
 **resolvesDNS on multi-value**: `[[key]] resolvesDNS` checks that **ALL**
 values in the list resolve. There is no `any of` variant for DNS resolution.
@@ -243,16 +247,16 @@ all entries populated by datasource flows.
 | `{{csr.san.dnsname.1}}`, `{{csr.san.dnsname.2}}` | Individual DNS SANs from CSR    |
 | `[[csr.san.dnsname]]`                            | All DNS SANs from CSR as a list |
 | `{{csr.san.ipaddress.1}}`                        | Individual IP SANs from CSR     |
-| `[[csr.san.dnsname]]`                            | All DNS SANs from CSR           |
 
 ### Datasource Results
 
-| Key                     | Description                                           |
-| ----------------------- | ----------------------------------------------------- |
-| `{{ds.1.1.cname}}`      | CNAME from first datasource flow, first result        |
-| `[[ds.1.*.a]]`          | All A records from first flow (wildcard result index) |
-| `{{ds.1.1.cn}}`         | CN attribute from first LDAP datasource result        |
-| `{{ds.2.1.department}}` | Department from second datasource flow                |
+| Key                     | Description                                               |
+| ----------------------- | --------------------------------------------------------- |
+| `{{ds.1.1.cname}}`      | DNS: CNAME of the first lookup, first flow entry          |
+| `[[ds.1.*.a.*]]`        | DNS: all A records of all lookups, first flow entry       |
+| `{{ds.1.1.cn}}`         | LDAP: `cn` of the first result, first flow entry          |
+| `{{ds.2.1.department}}` | LDAP: `department` of the first result, second flow entry |
+| `{{ds.1.status}}`       | REST: `status` field of the response (no result index)    |
 
 ### Protocol-Specific
 
@@ -273,6 +277,9 @@ and protocol.
 Datasource flows fill the request dictionary. Computation rules and
 validation rules can use this dictionary. See the
 [datasource guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/datasources/introduction.html).
+
+Validation rules read the submitted request values and the datasource
+results. They do not read values that computation rules set.
 
 ---
 
@@ -323,6 +330,8 @@ DN from the `memberOf` list. For example:
 }
 ```
 
+Select `memberOf` with `multi: true` in the datasource attributes.
+
 ### Example 4: IP-Based Access Control
 
 Restrict enrollment to internal networks:
@@ -351,20 +360,7 @@ To check every DNS SAN from the CSR, use this standalone condition:
 }
 ```
 
-### Example 6: Complex Boolean Logic
-
-Combine domain restriction with CNAME validation:
-
-```json
-{
-  "rules": [
-    "({{csr.subject.cn.1}} matches \".*\\.corp\\.example\\.com$\") and ({{ds.1.1.cname}} exists)"
-  ],
-  "threshold": 1
-}
-```
-
-### Example 7: Multi-Criteria with Quorum
+### Example 6: Multi-Criteria with Quorum
 
 Require at least 2 of 3 checks to pass:
 
@@ -372,7 +368,7 @@ Require at least 2 of 3 checks to pass:
 {
   "rules": [
     "{{csr.subject.cn.1}} matches \".*\\.corp\\.example\\.com$\"",
-    "{{ds.1.1.department}} equals \"Engineering\"",
+    "{{csr.san.rfc822name.1}} equals {{ds.1.1.mail}}",
     "{{http.request.ip}} in 10.0.0.0/8"
   ],
   "threshold": 2
@@ -396,6 +392,27 @@ Verify the CSR CN matches the WebRA form CN:
 
 These recipes show the full process from datasource creation through validation
 rule configuration. Each recipe is self-contained.
+
+### Recipe: DNS CNAME Validation for All SANs
+
+1. Create the datasource: `create_dns_datasource(name="san-cname-check",
+lookup="{{hostnames}}", record_types=["cname"])`.
+2. Add it to the dsFlow. `Join` sends all DNS SANs in one entry:
+   `{"ds": "san-cname-check", "inputs": [{"key": "hostnames", "value": "Join([[csr.san.dnsname]], \",\")"}]}`
+3. Configure the ruleset:
+
+   ```json
+   {
+     "rules": [
+       "all of [[csr.san.dnsname]] matches \".*\\.app\\.example\\.com$\"",
+       "[[csr.san.dnsname]] resolvesDNS",
+       "all of [[ds.1.*.cname]] matches \".*\\.paas\\.example\\.com$\""
+     ],
+     "threshold": 3
+   }
+   ```
+
+Rule 3 skips SANs that have no CNAME. See Limitations.
 
 ### Recipe: LDAP Group Membership Gate for SCEP Enrollment
 
@@ -436,18 +453,8 @@ rule configuration. Each recipe is self-contained.
 
 3. Set SCEP authorizationMode to `auto-validation`.
 
-4. Use `test_datasource` to inspect the multivalued `memberOf` output.
-   Configure `validationRuleset` with the full group DN from that output:
-   ```json
-   {
-     "validationRuleset": {
-       "rules": [
-         "[[ds.1.1.memberOf]] contains \"CN=Certificate-Issuers,OU=Groups,DC=example,DC=com\""
-       ],
-       "threshold": 1
-     }
-   }
-   ```
+4. Use `test_datasource` to inspect `memberOf`. Configure `validationRuleset`
+   with the full group DN and `threshold: 1`. See Example 3 for the rule syntax.
 
 ### Recipe: Network + Domain Combined Validation for EST
 
@@ -475,13 +482,20 @@ Set EST authorizationMode to `auto-validation`.
 
 - Validate the datasource output with `simulate_datasource_flow` before
   using it in an enrollment condition.
-- Use `exists` and `is empty` to check dictionary values. The public
-  validation guide defines these checks for single values and arrays.
+- Use `exists` and `is empty` to check dictionary values. Both work on
+  single values and arrays.
 - `resolvesDNS` checks resolution for each value in an array. An empty
   array returns `false`.
 - Use `and` and `or` within a rule for combined conditions.
-- WebRA supports `auto-validation-authorized`. SCEP and EST expose
-  `auto-validation` in their public authorization-mode enums.
+- `all of` checks only the values that exist. A SAN without a CNAME adds no
+  `ds.1.N.cname` key, so `all of [[ds.1.*.cname]] matches "..."` still
+  passes. If no value exists, `all of` returns `false`. Add
+  `[[csr.san.dnsname]] resolvesDNS` and, when direct A records are possible,
+  `all of [[ds.1.*.a.*]] in <cidr>`.
+- There is no count or length function. You cannot compare the number of
+  values of two keys.
+- WebRA supports `auto-validation-authorized`. SCEP and EST support
+  `auto-validation` only: a failed ruleset rejects the request.
 
 See the public
 [validation guide](https://docs.evertrust.fr/horizon/2.11/admin-guide/protocols/autovalidation.html).

@@ -372,10 +372,12 @@ export function registerTriggerTools(
         '    - proxy: Name of HTTP proxy in Horizon\n\n' +
         'Template variables available in URL, headers, and payload:\n' +
         '    - Certificate: {{certificate.pem}}, {{certificate.serial}}, {{certificate.subject.cn.1}},\n' +
-        '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, {{certificate.private_key}}, etc.\n' +
+        '      {{certificate.san.dnsname.1}}, {{certificate.thumbprint}}, etc.\n' +
+        '    - Private key (on_enroll/on_renew when Horizon generated the key pair; on_import when the import includes a key): {{certificate.private_key}},\n' +
+        '      {{certificate.private_key_pkcs8}}, {{certificate.private_key_pkcs1}} (RSA only)\n' +
         '    - Request: {{request.id}}, {{request.workflow}}, {{request.requester}}, etc.\n' +
         '    - Previous cert (on_renew only): {{previous.certificate.serial}}, etc.\n' +
-        '    - Credentials (custom auth): {{credentials.key}}, {{credentials.login}}, {{credentials.password}}\n' +
+        '    - Credentials (custom auth, headers and payload only): {{credentials.key}} (raw), {{credentials.login}}, {{credentials.password}} (password)\n' +
         '    - Response chaining: {{rest.response.1.field}}, {{rest.response.2.field.nested}}, etc.\n' +
         '    - Computation rules: {{Upper({{certificate.subject.cn.1}})}}, {{Base64(Raw({{certificate.pem}}))}}, etc.\n\n' +
         'See horizon://knowledge/rest-notifications for the complete dictionary reference\n' +
@@ -411,7 +413,9 @@ export function registerTriggerTools(
           .number()
           .int()
           .default(10)
-          .describe('Number of retries when the notification fails.'),
+          .describe(
+            'Number of retries when the notification fails. Each retry doubles the delay.',
+          ),
         run_period: z
           .string()
           .optional()
@@ -438,7 +442,9 @@ export function registerTriggerTools(
         on_trigger_error: z
           .array(z.string())
           .optional()
-          .describe('Names of triggers to fire if this notification fails.'),
+          .describe(
+            'Names of notification triggers (event on_trigger_error) to run if this notification fails. Not allowed when event is on_trigger_error.',
+          ),
       }),
     },
     async ({
@@ -614,6 +620,7 @@ export function registerTriggerTools(
       description:
         'Test-fire an existing trigger. Sends real notifications or external requests ' +
         'and returns the execution result. Repeated calls can send repeated notifications.\n' +
+        'The test sends no certificate or request context: dictionary keys such as {{certificate.serial}} get no certificate values.\n' +
         'Safety tier: mutating-destructive\n' +
         'Inspect the trigger with get_trigger before running this test. ' +
         'Ref: horizon://knowledge/rest-notifications.',

@@ -86,6 +86,29 @@ describe('trigger CRUD gap-fill', () => {
     });
   });
 
+  it('returns self-contained REST and error-notification definitions', async () => {
+    const result = await client.callTool({
+      name: 'describe_trigger_schema',
+      arguments: { subtype: 'rest' },
+    });
+    const content = result.content as Array<{ type: string; text: string }>;
+    const schema = JSON.parse(content[0]!.text).jsonSchema;
+
+    expect(schema.$defs.ErrorTriggerRefs).toMatchObject({
+      type: 'object',
+      properties: { onTriggerError: { type: 'array' } },
+    });
+    expect(schema.$defs.RestSequenceStep).toMatchObject({
+      type: 'object',
+      properties: { url: { type: 'string' } },
+    });
+    for (const ref of JSON.stringify(schema).matchAll(
+      /#\/\$defs\/([^"\s]+)/g,
+    )) {
+      expect(schema.$defs, ref[0]).toHaveProperty(ref[1]!);
+    }
+  });
+
   it('describes the DCV lifecycle events for notification configuration', async () => {
     const result = await client.callTool({
       name: 'describe_trigger_schema',
@@ -144,6 +167,16 @@ describe('trigger CRUD gap-fill', () => {
         'panos_panorama',
       ]),
     );
+    for (const { $ref } of described.jsonSchema.oneOf) {
+      const subtype = described.jsonSchema.$defs[$ref.split('/').at(-1)];
+      expect(
+        subtype.properties.triggers,
+        subtype.properties.type.const,
+      ).toEqual({
+        allOf: [{ $ref: '#/$defs/ErrorTriggerRefs' }],
+        nullable: true,
+      });
+    }
     expect(described.jsonSchema.$defs.PanoramaTrigger.required).toEqual([
       'name',
       'type',
