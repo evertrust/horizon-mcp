@@ -264,7 +264,9 @@ describe('Knowledge field alignment', () => {
       'request.password',
       'request.certificate',
       'previous.certificate',
-      'caller-chosen correlation key',
+      'on_submit_*',
+      'pkcs12.password',
+      'certificate.private_key',
     ]) {
       expect(
         knowledgeText,

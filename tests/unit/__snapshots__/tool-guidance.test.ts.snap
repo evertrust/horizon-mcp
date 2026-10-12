@@ -89,6 +89,7 @@ Safety tier: read-only",
   },
   {
     "description": "Test-fire an existing trigger. Sends real notifications or external requests and returns the execution result. Repeated calls can send repeated notifications.
+The test sends no certificate or request context: dictionary keys such as {{certificate.serial}} get no certificate values.
 Safety tier: mutating-destructive
 Inspect the trigger with get_trigger before running this test. Ref: horizon://knowledge/rest-notifications.
 [when: caller explicitly wants to fire a trigger test; it sends real notifications | not: caller wants a dry run, or wants to create/update/delete the trigger | pre: confirm the intent and use a test recipient]",

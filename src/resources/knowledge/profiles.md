@@ -13,8 +13,8 @@ Horizon supports two categories of profiles:
 | **Managed**   | WebRA, ACME, SCEP, EST, WCCE, CRMP, Intune, IntunePKCS, Jamf | Horizon controls the full lifecycle: enrollment, renewal, revocation, recovery. |
 | **Monitored** | Monitored                                                    | Horizon _observes_ externally-issued certificates but does not issue them.      |
 
-Each profile is accessed via `GET /api/v1/certificate/profiles/{name}` (read)
-or `PUT /api/v1/certificate/profiles/` with the name in the JSON body (update),
+Each profile is read with `GET /api/v1/certificate/profiles/{name}` and updated
+with `PUT /api/v1/certificate/profiles/`, with the name in the JSON body.
 The profile uses a top-level `module` discriminator. Protocol-specific
 fields are top-level API properties.
 
@@ -44,6 +44,10 @@ Inspect the selected subtype with `describe_certificate_profile_schema`.
 | `maxCertificatePerHolderPolicy` | object                         | Limit on concurrent active certificates per holder identity.                                                |
 | `renewalPeriod`                 | finite-duration string or null | Duration before expiry when renewal becomes available.                                                      |
 | `thirdPartyDiscoverySync`       | boolean                        | Whether certificates discovered by third-party sources are synced into this profile.                        |
+
+Post-quantum key types (for example `mldsa-65`, `slhdsa-sha2-128s`) and composite
+key types are accepted in `cryptoPolicy` only on WebRA, EST, and monitored
+profiles. Other modules reject them.
 
 ---
 
@@ -112,8 +116,7 @@ set of configuration options.
 
 Datasource flows use `dsFlow`. Configure computation rules on
 certificate-template fields. Key-generation settings are in `cryptoPolicy`,
-and notification hooks are in `triggers`. Use `passwordPolicy` for the
-protocol modes that expose it.
+and notification hooks are in `triggers`.
 
 #### WebRA Authorization Modes
 
@@ -153,11 +156,11 @@ device enrollment.
 | `authorizationMode` | string                       | `challenge`, `authorized`, `ndes`, or `auto-validation`.        |
 | `validationRuleset` | object (`ValidationRuleset`) | Ruleset for auto-validation modes.                              |
 | `caps`              | string[]                     | Advertised CA capabilities (`AES`, `SHA-256`, `Renewal`, etc.). |
+| `passwordPolicy`    | string                       | Password policy name used to generate challenges.               |
 
 Datasource flows use `dsFlow`. Configure computation rules on
 certificate-template fields. Key-generation settings are in `cryptoPolicy`,
-and notification hooks are in `triggers`. Use `passwordPolicy` for the
-protocol modes that expose it.
+and notification hooks are in `triggers`.
 
 #### SCEP Authorization Modes
 
@@ -175,11 +178,11 @@ TLS-secured enrollment.
 | ------------------- | ---------------------------- | -------------------------------------------------------- |
 | `authorizationMode` | string                       | `authorized`, `x509`, `challenge`, or `auto-validation`. |
 | `validationRuleset` | object (`ValidationRuleset`) | Ruleset for auto-validation modes.                       |
+| `passwordPolicy`    | string                       | Password policy name used to generate challenges.        |
 
 Datasource flows use `dsFlow`. Configure computation rules on
 certificate-template fields. Key-generation settings are in `cryptoPolicy`,
-and notification hooks are in `triggers`. Use `passwordPolicy` for the
-protocol modes that expose it.
+and notification hooks are in `triggers`.
 
 #### EST Authorization Modes
 
@@ -192,18 +195,11 @@ protocol modes that expose it.
 
 ### Monitored Module (`module: "monitored"`)
 
-Monitored profiles do not issue certificates. They define a _bucket_ for
-certificates discovered or imported from external sources.
-
 Monitored profiles expose `authorizationLevels`, `requestsPolicy`,
 `cryptoPolicy`, `selfPermissions`, `certificateTemplate`, `triggers`, and
-`gradingPolicies`. They have no `pkiConnector` or `authorizationMode`.
-Use the monitored profile's crypto policy for key
-escrow and recovery settings.
-
-**Note**: Monitored profiles have no `pkiConnector`, no `authorizationMode`,
-no `computationRules`, and no `keyEscrowPolicy` -- because Horizon does not
-issue certificates for them.
+`gradingPolicies`. They have no `pkiConnector`, `authorizationMode`,
+`validationRuleset`, or `dsFlow`, because Horizon does not issue their
+certificates. Their `cryptoPolicy` controls key escrow and PKCS#12 recovery.
 
 ---
 
@@ -226,9 +222,10 @@ issue certificates for them.
 
 ## CSR Data Mapping
 
-CSR data mapping remains available. Defining a certificate template disables
-CSR data mapping. Configure computation rules on the documented
-certificate-template fields.
+The API field is `csrDataMapping`, an object with string values. With a
+template, Horizon fills the template fields from the CSR and rejects a CSR
+with unexpected fields. Configure computation rules on certificate-template
+fields when you need to transform their values.
 
 ---
 
@@ -291,8 +288,8 @@ Never send a partial object -- the PUT replaces the entire profile.
 | Require human approval                   | `authorizationMode: "authorized"`                                       |
 | Auto-approve all requests via rules      | `authorizationMode: "auto-validation"` + `validationRuleset`            |
 | Auto-approve with fallback to manual     | `authorizationMode: "auto-validation-authorized"` + `validationRuleset` |
-| Server-side key generation               | `cryptoPolicy.mode: "centralized"`                                      |
-| Client generates CSR                     | `cryptoPolicy.mode: "decentralized"`                                    |
+| Server-side key generation               | `cryptoPolicy.centralized: true`                                        |
+| Client generates CSR                     | `cryptoPolicy.decentralized: true`                                      |
 
 ---
 
@@ -416,7 +413,7 @@ ownership, team assignment, metadata, labels, and contact email fields.
       },
       {
         "type": "OU",
-        "computationRule": "{{ datasource.department }}",
+        "computationRule": "{{ds.1.1.department}}",
         "mandatory": false,
         "editableByRequester": false
       }
@@ -578,23 +575,31 @@ The `cryptoPolicy` object differs between managed and monitored profiles.
 Controls what key types the profile accepts during enrollment and how keys are
 generated/escrowed.
 
-| Field             | Type         | Required | Description                                                           |
-| ----------------- | ------------ | -------- | --------------------------------------------------------------------- |
-| `allowedKeyTypes` | list[string] | yes      | Accepted key type specs, e.g., `["rsa-2048", "rsa-4096", "ec-p256"]`. |
-| `defaultKeyType`  | string\|null | no       | Default if requester does not specify a key type.                     |
+| Field                     | Type            | Required | Description                                                                |
+| ------------------------- | --------------- | -------- | -------------------------------------------------------------------------- |
+| `authorizedKeyTypes`      | list[string]    | yes      | Accepted key type specs, e.g., `["rsa-2048", "rsa-4096", "ec-secp256r1"]`. |
+| `defaultKeyType`          | string\|null    | no       | Default if requester does not specify a key type.                          |
+| `centralized`             | boolean or null | no       | Allow Horizon to generate key pairs. Default `false`.                      |
+| `decentralized`           | boolean or null | no       | Allow enrollment with a CSR. Default `false`.                              |
+| `preferredEnrollmentMode` | string or null  | no       | Preferred mode when both are allowed: `centralized` or `decentralized`.    |
 
 ```json
 {
   "cryptoPolicy": {
-    "allowedKeyTypes": ["rsa-2048", "rsa-4096", "ec-p256", "ec-p384"],
+    "authorizedKeyTypes": [
+      "rsa-2048",
+      "rsa-4096",
+      "ec-secp256r1",
+      "ec-secp384r1"
+    ],
     "defaultKeyType": "rsa-2048"
   }
 }
 ```
 
 **Key type format**: Algorithm family + size/curve, lowercase with hyphen.
-Common values: `rsa-2048`, `rsa-3072`, `rsa-4096`, `ec-p256`, `ec-p384`,
-`ec-p521`, `ed25519`.
+Common values: `rsa-2048`, `rsa-3072`, `rsa-4096`, `ec-secp256r1`, `ec-secp384r1`,
+`ec-secp521r1`, `ed-25519`.
 
 ### MonitoredCryptoPolicy (Monitored profiles)
 

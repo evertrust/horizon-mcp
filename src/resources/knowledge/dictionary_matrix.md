@@ -164,12 +164,16 @@ Information from the HTTP request that initiated enrollment.
 
 ### Datasource Result Entries
 
-Populated by datasource flow execution at enrollment time.
+Populated by datasource flow execution at enrollment time. `<flowIndex>` is
+the 1-based position in the profile's dsFlow.
 
-| Pattern                              | Description                                 | Type   |
-| ------------------------------------ | ------------------------------------------- | ------ |
-| `ds.<flowIndex>.<resultIndex>.<key>` | Specific result attribute (1-based indexes) | Varies |
-| `ds.<flowIndex>.*.<key>`             | Wildcard over all results                   | Multi  |
+| Datasource | Key pattern                                                | Example                            |
+| ---------- | ---------------------------------------------------------- | ---------------------------------- |
+| DNS        | `ds.<flowIndex>.<lookupIndex>.<recordType>[.<valueIndex>]` | `ds.1.1.cname`, `ds.1.1.a.1`       |
+| LDAP       | `ds.<flowIndex>.<resultIndex>.<attribute>[.<valueIndex>]`  | `ds.1.1.mail`, `ds.1.1.memberOf.2` |
+| REST       | `ds.<flowIndex>.<jsonPath>` (no result index)              | `ds.1.owner.email`, `ds.1.roles.1` |
+
+In `[[...]]`, `*` replaces one key element: `[[ds.1.*.mail]]`.
 
 ---
 
@@ -273,14 +277,14 @@ Available for: on_credentials_expiration
 
 ### Profile Dictionary
 
-| Key                                 | Description                     | In Computation Rule |
-| ----------------------------------- | ------------------------------- | :-----------------: |
-| `profile.name`                      | Technical name                  |         Yes         |
-| `profile.module`                    | Module                          |         Yes         |
-| `profile.displaynames`              | Display names (comma-separated) |         No          |
-| `profile.descriptions`              | Descriptions (comma-separated)  |         No          |
-| `profile.<name>.displayname.<lang>` | Display name in language        |         No          |
-| `profile.<name>.description.<lang>` | Description in language         |         No          |
+| Key                          | Description                     | In Computation Rule |
+| ---------------------------- | ------------------------------- | :-----------------: |
+| `profile.name`               | Technical name                  |         Yes         |
+| `profile.module`             | Module                          |         Yes         |
+| `profile.displaynames`       | Display names (comma-separated) |         No          |
+| `profile.descriptions`       | Descriptions (comma-separated)  |         No          |
+| `profile.displayname.<lang>` | Display name in language        |         No          |
+| `profile.description.<lang>` | Description in language         |         No          |
 
 ### License Dictionary
 

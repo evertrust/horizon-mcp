@@ -285,7 +285,7 @@ const EXPORT_REQUESTS_CSV_CONFIG = {
         'CSV columns to include, as camelCase API column names (SearchResult ' +
           'columns) - NOT the lowercase HRQL query fields. Examples: profile, ' +
           'requestType, status, contactEmail, registrationDate. Prefix ' +
-          'families: label.<key>, metadata.<key>.',
+          'families: label.<key>, metadata.<key>. An invalid name returns an error that lists the usable fields.',
       ),
     sorted_by: z
       .string()

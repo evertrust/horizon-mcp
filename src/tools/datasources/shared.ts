@@ -43,7 +43,9 @@ export const dsAttributeSchema = z
       multi: z.boolean().describe('Whether the attribute has multiple values.'),
       selected: z
         .boolean()
-        .describe('Whether to select the attribute on future fetches.'),
+        .describe(
+          'Whether to return this attribute. LDAP requests only selected attributes.',
+        ),
     }),
   )
   .optional()

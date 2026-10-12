@@ -103,7 +103,7 @@ const EXPORT_CERTIFICATES_CSV_CONFIG = {
           'columns) - NOT the lowercase HCQL query fields. Examples: dn, ' +
           'serial, contactEmail, autoRenew, module, profile, notAfter. Prefix ' +
           'families: label.<key>, metadata.<key>, grade.<policy>, ' +
-          'team.displayname.<lang>.',
+          'team.displayname.<lang>. An invalid name returns an error that lists the usable fields.',
       ),
     sorted_by: z
       .string()
