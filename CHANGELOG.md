@@ -1,3 +1,9 @@
+## [2.1.2](https://github.com/evertrust/horizon-mcp/compare/v2.1.1...v2.1.2) (2026-10-12)
+
+### Bug Fixes
+
+* bump undici and vitest and restrict the ci token to read access ([92b185b](https://github.com/evertrust/horizon-mcp/commit/92b185bfa0a93bef4a2066ef9ab983e0cbc59554))
+
 ## [2.1.1](https://github.com/evertrust/horizon-mcp/compare/v2.1.0...v2.1.1) (2026-10-12)
 
 ### Bug Fixes
