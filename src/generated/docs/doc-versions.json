@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T09:12:46.131Z",
+  "generatedAt": "2026-10-17T05:09:14.757Z",
   "products": {
     "horizon": {
       "product": "horizon",
@@ -38,8 +38,8 @@
     },
     "horizon-issuer": {
       "product": "horizon-issuer",
-      "latest": "1",
-      "versions": ["1"],
+      "latest": "2",
+      "versions": ["1", "2"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Official Evertrust documentation sitemap"
     },
