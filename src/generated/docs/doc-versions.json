@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-08T09:12:46.131Z",
+  "generatedAt": "2026-10-31T05:06:34.766Z",
   "products": {
     "horizon": {
       "product": "horizon",
@@ -31,15 +31,24 @@
     },
     "horizon-cli": {
       "product": "horizon-cli",
-      "latest": "1.18",
-      "versions": ["1.12", "1.13", "1.14", "1.15", "1.16", "1.17", "1.18"],
+      "latest": "1.19",
+      "versions": [
+        "1.12",
+        "1.13",
+        "1.14",
+        "1.15",
+        "1.16",
+        "1.17",
+        "1.18",
+        "1.19"
+      ],
       "defaultPolicy": "latest-indexed",
       "provenance": "Official Evertrust documentation sitemap"
     },
     "horizon-issuer": {
       "product": "horizon-issuer",
-      "latest": "1",
-      "versions": ["1"],
+      "latest": "2",
+      "versions": ["1", "2"],
       "defaultPolicy": "latest-indexed",
       "provenance": "Official Evertrust documentation sitemap"
     },
