@@ -1,11 +1,5 @@
 # E2E Test Coverage
 
-Last full run: 2026-07-02 against a Horizon 2.10 QA snapshot. 300 of 301 tests
-completed successfully. The remaining CSV export test timed out; its test
-timeout was subsequently raised above the tool's 120-second CSV timeout, but a
-post-fix 301/301 full run is not recorded here. This is a point-in-time QA result,
-not a blanket support guarantee for every Horizon 2.10 deployment.
-
 ## Suite layout (Vitest, tests/e2e/)
 
 40 test files, ~333 tests, run with `bun run test:e2e` (source `.env.local`
