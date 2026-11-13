@@ -135,6 +135,24 @@ describe('describe_thirdparty_connector_schema', () => {
     );
   });
 
+  it('describes the Horizon 2.12 AKV withChain field', async () => {
+    const { client } = await setup();
+    const out = parse(
+      await client.callTool({
+        name: 'describe_thirdparty_connector_schema',
+        arguments: {},
+      }),
+    );
+    const defs = (out['jsonSchema'] as Record<string, unknown>)[
+      '$defs'
+    ] as Record<string, { properties: Record<string, unknown> }>;
+    expect(defs['AzureKeyVaultConnector']!.properties['withChain']).toEqual({
+      type: ['boolean', 'null'],
+      default: false,
+      description: expect.stringMatching(/^Horizon 2\.12\+\. /),
+    });
+  });
+
   it('echoes the requested subtype', async () => {
     const { client } = await setup();
     const res = await client.callTool({
@@ -343,6 +361,26 @@ describe('create_thirdparty_connector', () => {
     });
     expect(isError(res)).toBe(false);
     expect(mc.post).toHaveBeenCalledOnce();
+  });
+
+  it('accepts akv withChain', async () => {
+    const res = await client.callTool({
+      name: 'create_thirdparty_connector',
+      arguments: {
+        type: 'akv',
+        name: 'akv',
+        throttle_duration: '5 seconds',
+        config: {
+          throttleParallelism: 1,
+          azureTenant: 'example.onmicrosoft.com',
+          credentials: 'akv-creds',
+          vaultBaseUrl: 'https://vault.example.com',
+          withChain: true,
+        },
+      },
+    });
+    expect(isError(res)).toBe(false);
+    expect(mc.post.mock.calls[0]![1]).toMatchObject({ withChain: true });
   });
 
   it('accepts f5client persistConfiguration', async () => {
