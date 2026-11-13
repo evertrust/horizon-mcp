@@ -53,6 +53,8 @@ unavailable.
   needs the `openssl` command to build its CSR.
 - `config-211-types.test.ts`: the live legs skip when the instance is older
   than Horizon 2.11.
+- `config-pki-connectors.test.ts`: the `digicert_one` case skips when the
+  instance is older than Horizon 2.12.
 
 ## Infrastructure gaps (cannot be fully E2E-tested)
 
