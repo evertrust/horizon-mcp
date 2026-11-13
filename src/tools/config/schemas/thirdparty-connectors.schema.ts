@@ -141,6 +141,12 @@ export const thirdpartyConnectorRequestSchema = {
         },
         vaultBaseUrl: { type: 'string' },
         prefix: { type: ['string', 'null'] },
+        withChain: {
+          type: ['boolean', 'null'],
+          default: false,
+          description:
+            'Horizon 2.12+. When true, Horizon pushes the CA chain to the Key Vault certificate with the leaf certificate and its private key.',
+        },
       },
     },
     F5AS3Connector: {

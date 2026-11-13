@@ -1,7 +1,7 @@
 /**
  * Live-QA E2E CRUD test for the Horizon "pki_connectors" config object.
  *
- * PKI connectors are polymorphic (22 subtypes discriminated by the lowercase
+ * PKI connectors are polymorphic (24 subtypes discriminated by the lowercase
  * `type` field). We exercise the SIMPLEST subtype that has no external
  * dependency on a standard QA instance: `integrated` (the Evertrust built-in
  * Integrated CA backend). Unlike `stream` (needs a reachable endPoint + a real
@@ -18,8 +18,12 @@
  *
  * No prerequisite deps are created: `integrated` references no CA, queue,
  * proxy, or credentials object, so the suite is fully self-contained.
+ *
+ * On Horizon 2.12 or later, a second block creates, reads and deletes a
+ * `digicert_one` connector. It creates the raw credentials the connector
+ * references and deletes them afterwards. On older versions it skips.
  */
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   E2E_CONFIGURED,
@@ -27,6 +31,8 @@ import {
   ToolError,
   callTool,
   callToolRaw,
+  getHorizonClient,
+  isHorizonAtLeast,
   setupE2EStack,
 } from './setup.js';
 
@@ -132,5 +138,72 @@ describe.skipIf(!E2E_CONFIGURED)('pki_connectors CRUD E2E (live QA)', () => {
     expect(r.deleted).toBe(true);
     expect(r.name).toBe(name);
     created = false; // already gone; skip afterAll re-delete
+  });
+
+  describe('Horizon 2.12 digicert_one connector', () => {
+    const connector = `${E2E_PREFIX}-digicert-one`;
+    const credentials = `${E2E_PREFIX}-digicert-one-creds`;
+    let is212 = false;
+
+    beforeAll(async () => {
+      is212 = await isHorizonAtLeast(2, 12);
+      if (!is212) return;
+      await getHorizonClient().post('/api/v1/security/credentials', {
+        name: credentials,
+        type: 'raw',
+        secret: { value: 'example-api-key' },
+        targets: ['pkiconnector'],
+      });
+    });
+
+    beforeEach((ctx) => {
+      if (!is212) ctx.skip();
+    });
+
+    afterAll(async () => {
+      if (!is212) return;
+      try {
+        await callTool('delete_pki_connector', {
+          name: connector,
+          expected_name: connector,
+        });
+      } catch {
+        // Already deleted by the test, or never created.
+      }
+      try {
+        await getHorizonClient().delete(
+          `/api/v1/security/credentials/${encodeURIComponent(credentials)}`,
+        );
+      } catch {
+        // Never created.
+      }
+    });
+
+    it('creates, reads and deletes a digicert_one connector', async () => {
+      const seat = { type: 'static', id: 'server-seat' };
+      const created = await callTool('create_pki_connector', {
+        name: connector,
+        type: 'digicert_one',
+        config: {
+          baseUrl: 'https://digicert-one.example.com/',
+          apiCredentials: credentials,
+          profileId: '36f011b7-5fa1-4c6d-83f3-ee59c4d54bb0',
+          seat,
+          retryInterval: '5 seconds',
+        },
+      });
+      expect(created.status).toBe('created');
+
+      const read = await callTool('get_pki_connector', { name: connector });
+      expect(read.type).toBe('digicert_one');
+      expect(read.apiCredentials).toBe(credentials);
+      expect(read.seat).toEqual(seat);
+
+      const deleted = await callTool('delete_pki_connector', {
+        name: connector,
+        expected_name: connector,
+      });
+      expect(deleted.deleted).toBe(true);
+    });
   });
 });

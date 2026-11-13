@@ -3,7 +3,7 @@
  *
  * This JSON file is the embedded, resolved schema derived from the bundled
  * Horizon OpenAPI. Polymorphic union discriminated by the
- * lowercase 'type' field (22 subtypes). Surfaced verbatim through
+ * lowercase 'type' field (24 subtypes). Surfaced verbatim through
  * describe_pki_connector_schema so the model never guesses the per-subtype
  * structure.
  *
