@@ -108,34 +108,37 @@ metadata with no enrichment or lifecycle control.
 
 ---
 
-## PKI Connector Types (21 on 2.10, 22 on 2.11)
+## PKI Connector Types (21 on 2.10, 22 on 2.11, 24 on 2.12)
 
-| Type         | CA / Protocol                    |
-| ------------ | -------------------------------- |
-| `stream`     | Stream CA (generic)              |
-| `acmeenroll` | ACME enrollment connector        |
-| `acmerevoke` | ACME revocation connector        |
-| `evtadcs`    | Evertrust ADCS connector         |
-| `ejbca_rest` | EJBCA REST                       |
-| `awsacmpca`  | AWS ACM Private CA               |
-| `certeurope` | CertEurope CA                    |
-| `cmp`        | Certificate Management Protocol  |
-| `digicert`   | DigiCert CertCentral             |
-| `ejbca`      | EJBCA                            |
-| `gcp`        | Google Cloud CAS (Horizon 2.11+) |
-| `idca`       | IDCA                             |
-| `integrated` | Integrated CA (built-in)         |
-| `fcms`       | FCMS                             |
-| `gsatlas`    | GlobalSign Atlas                 |
-| `gsmssl`     | GlobalSign MSSL                  |
-| `otpki`      | OpenTrust PKI                    |
-| `metapki`    | MetaPKI                          |
-| `nameshield` | Nameshield                       |
-| `nexuscm`    | Nexus Certificate Manager        |
-| `sectigo`    | Sectigo                          |
-| `swisssign`  | SwissSign                        |
+| Type                | CA / Protocol                      |
+| ------------------- | ---------------------------------- |
+| `stream`            | Stream CA (generic)                |
+| `acmeenroll`        | ACME enrollment connector          |
+| `acmerevoke`        | ACME revocation connector          |
+| `evtadcs`           | Evertrust ADCS connector           |
+| `ejbca_rest`        | EJBCA REST                         |
+| `awsacmpca`         | AWS ACM Private CA                 |
+| `certeurope`        | CertEurope CA                      |
+| `cmp`               | Certificate Management Protocol    |
+| `digicert`          | DigiCert CertCentral               |
+| `digicert_one`      | DigiCert ONE (Horizon 2.12+)       |
+| `ejbca`             | EJBCA                              |
+| `entrust_cagateway` | Entrust CA Gateway (Horizon 2.12+) |
+| `gcp`               | Google Cloud CAS (Horizon 2.11+)   |
+| `idca`              | IDCA                               |
+| `integrated`        | Integrated CA (built-in)           |
+| `fcms`              | FCMS                               |
+| `gsatlas`           | GlobalSign Atlas                   |
+| `gsmssl`            | GlobalSign MSSL                    |
+| `otpki`             | OpenTrust PKI                      |
+| `metapki`           | MetaPKI                            |
+| `nameshield`        | Nameshield                         |
+| `nexuscm`           | Nexus Certificate Manager          |
+| `sectigo`           | Sectigo                            |
+| `swisssign`         | SwissSign                          |
 
-`gcp` exists only on Horizon 2.11+; see the Google Cloud CAS section of
+`gcp` exists only on Horizon 2.11+; `digicert_one` and `entrust_cagateway`
+exist only on Horizon 2.12+. See the matching sections of
 `horizon://knowledge/integrations`.
 
 ---

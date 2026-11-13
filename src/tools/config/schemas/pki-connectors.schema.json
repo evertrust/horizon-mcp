@@ -29,10 +29,16 @@
       "$ref": "#/$defs/DigiCertConnector"
     },
     {
+      "$ref": "#/$defs/DigiCertOneConnector"
+    },
+    {
       "$ref": "#/$defs/EJBCAConnector"
     },
     {
       "$ref": "#/$defs/EJBCARESTConnector"
+    },
+    {
+      "$ref": "#/$defs/EntrustCAGatewayConnector"
     },
     {
       "$ref": "#/$defs/IDCAConnector"
@@ -732,6 +738,118 @@
         "organizationId"
       ]
     },
+    "DigiCertOneConnector": {
+      "title": "DigiCert ONE",
+      "description": "Horizon 2.12+. DigiCert ONE connector. Asynchronous: retryInterval is required.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/ConnectorName"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["digicert_one"]
+        },
+        "baseUrl": {
+          "type": "string",
+          "description": "Base URL of the DigiCert ONE instance.",
+          "example": "https://one.digicert.com/"
+        },
+        "apiCredentials": {
+          "type": "string",
+          "description": "Name of the raw credentials that hold the DigiCert ONE API key."
+        },
+        "profileId": {
+          "type": "string",
+          "format": "uuid",
+          "description": "Identifier of the DigiCert ONE certificate profile used to issue certificates.",
+          "example": "36f011b7-5fa1-4c6d-83f3-ee59c4d54bb0"
+        },
+        "seat": {
+          "description": "DigiCert ONE seat that certificates are enrolled on. A static seat is one existing seat shared by all certificates (recommended). A dynamic seat makes Horizon create one seat per certificate, named after the requested common name, and reuse it if it exists.",
+          "oneOf": [
+            {
+              "title": "Static seat",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["static"]
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Identifier of an existing DigiCert ONE seat.",
+                  "example": "my-server-seat"
+                }
+              },
+              "required": ["type", "id"]
+            },
+            {
+              "title": "Dynamic seat",
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": ["dynamic"]
+                },
+                "businessUnitId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "description": "Identifier of the DigiCert ONE business unit the seats are created in.",
+                  "example": "d9a50dbf-a6fc-423b-9cff-10c03df61cc5"
+                },
+                "seatType": {
+                  "type": "string",
+                  "enum": [
+                    "USER_SEAT",
+                    "DEVICE_SEAT",
+                    "SERVER_SEAT",
+                    "ORGANIZATION_SEAT",
+                    "CERTIFICATE_MANAGEMENT_SEAT"
+                  ],
+                  "description": "Type of the created seats."
+                }
+              },
+              "required": ["type", "businessUnitId", "seatType"]
+            }
+          ]
+        },
+        "validity": {
+          "$ref": "#/$defs/FiniteDuration",
+          "description": "Overrides the validity of the issued certificates. When not set, the DigiCert ONE profile validity applies. The value is sent in minutes, so precision below the minute is truncated.",
+          "example": "365 days"
+        },
+        "retryInterval": {
+          "$ref": "#/$defs/PositiveFiniteDuration",
+          "description": "Interval between two polls of a pending certificate request."
+        },
+        "timeout": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FiniteDuration"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "proxy": {
+          "type": ["string", "null"]
+        },
+        "queue": {
+          "type": ["string", "null"]
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "baseUrl",
+        "apiCredentials",
+        "profileId",
+        "seat",
+        "retryInterval"
+      ]
+    },
     "EJBCAConnector": {
       "title": "EJBCA",
       "type": "object",
@@ -821,6 +939,66 @@
         "endPoint",
         "profile",
         "caName",
+        "authenticationCredentials"
+      ]
+    },
+    "EntrustCAGatewayConnector": {
+      "title": "Entrust CA Gateway",
+      "description": "Horizon 2.12+. Entrust CA Gateway connector.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/ConnectorName"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["entrust_cagateway"]
+        },
+        "endPoint": {
+          "type": "string",
+          "description": "Base URL of the Entrust CA Gateway, without the /v1 API version.",
+          "example": "https://cagateway.example.com/cagw"
+        },
+        "caId": {
+          "type": "string",
+          "description": "Identifier of the CA on the Entrust CA Gateway."
+        },
+        "profileId": {
+          "type": "string",
+          "description": "Identifier of the CA Gateway profile used to enroll certificates."
+        },
+        "validityPeriod": {
+          "type": "string",
+          "description": "Overrides the validity of the issued certificates, as an ISO 8601 duration or interval that the Entrust CA Gateway accepts. The profile must allow the override. Forms: a duration (P1Y3M10DT0H0M), start/expiry (2018-07-06T13:00Z/2019-07-06T13:00:00Z), start/duration (2018-07-06T13:00Z/P1Y3M0DT0H0M), or duration/expiry (P0Y3M0DT0H0M/2018-12-31T00:00Z).",
+          "example": "P0Y0M30DT0H0M"
+        },
+        "authenticationCredentials": {
+          "type": "string",
+          "description": "Name of the certificate credentials used to authenticate on the Entrust CA Gateway."
+        },
+        "customConnectorDataMapping": {
+          "type": "object",
+          "description": "Enrollment request properties, each mapped to the name of the label whose value is sent.",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "timeout": {
+          "$ref": "#/$defs/FiniteDuration"
+        },
+        "proxy": {
+          "type": "string"
+        },
+        "queue": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "type",
+        "endPoint",
+        "caId",
+        "profileId",
         "authenticationCredentials"
       ]
     },
@@ -1482,6 +1660,12 @@
         "productUuid": {
           "type": "string",
           "example": "pma-533143cc-5v11-4b0d-7634-c69g93c02e63"
+        },
+        "validity": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Horizon 2.12+. Overrides the default validity of the bound SwissSign product. The product defines the unit and the accepted values.",
+          "example": 1
         },
         "timeout": {
           "$ref": "#/$defs/FiniteDuration"
