@@ -321,8 +321,7 @@ to them outside of Horizon are not updated.
 Since Horizon 2.12, the `f5client` fields `sslParent` and `cipherGroup`
 accept the `/Common/<name>` syntax, for example `/Common/clientssl`, to
 reference an object in the Common partition. A short name such as
-`clientssl` refers to the managed partition (`partition`). Before 2.12, both
-always refer to the managed partition.
+`clientssl` refers to the managed partition (`partition`).
 
 ---
 
