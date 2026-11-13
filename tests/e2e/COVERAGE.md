@@ -2,7 +2,7 @@
 
 ## Suite layout (Vitest, tests/e2e/)
 
-36 test files, 330 tests, run with `bun run test:e2e` (source the env file of
+36 test files, 331 tests, run with `bun run test:e2e` (source the env file of
 the target instance first). Most suites use `HORIZON_E2E_URL` /
 `HORIZON_E2E_API_ID` / `HORIZON_E2E_API_KEY`; `service-account.e2e.test.ts`
 instead uses `HORIZON_E2E_URL` / `HORIZON_E2E_SVA` with
@@ -15,7 +15,7 @@ and skip on older versions.
 | Area                                                                              | Files                         | Tests | Notes                                                                                                                                                                                                                                                                                                                                                      |
 | --------------------------------------------------------------------------------- | ----------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Core domains (lifecycle, search, exports, dashboards, discovery, reports, assist) | `horizon.test.ts`             | 131   | Includes CRUD lifecycles with cleanup                                                                                                                                                                                                                                                                                                                      |
-| Config CRUD domains                                                               | `config-*.test.ts` (27 files) | 163   | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
+| Config CRUD domains                                                               | `config-*.test.ts` (27 files) | 164   | One file per domain: teams, roles, CAs, profiles, labels, DCV, PKI connectors/queues, storages, triggers, proxies, password policies, execution/automation policies, scheduled tasks, terms of service, WCCE forests, archives, grading, identity providers, service accounts, system configuration, third-party connectors, polymorphic subtypes, binding |
 | Horizon 2.11 config types                                                         | `config-211-types.test.ts`    | 13    | FortiGate, FortiManager, PAN-OS firewall and Panorama connectors and triggers, ACME `excludeRootCA`. Live legs skip before 2.11                                                                                                                                                                                                                            |
 | Horizon 2.11 DCV provider                                                         | `config-211-dcv.test.ts`      | 1     | sectigo DCV provider create, read and delete. Skips before 2.11                                                                                                                                                                                                                                                                                            |
 | DCV lifecycle (Horizon 2.10+)                                                     | `dcv.e2e.test.ts`             | 3     | Policy status list and get, one isolated domain run and policy-run cancel                                                                                                                                                                                                                                                                                  |
@@ -61,6 +61,8 @@ contains the opt-in live tool-selection runner, invoked with
   OAuth client settings.
 - `acme.e2e.test.ts`, `config-211-types.test.ts`, `config-211-dcv.test.ts`:
   skip when the instance is older than Horizon 2.11.
+- `config-pki-connectors.test.ts`: the `digicert_one` case skips when the
+  instance is older than Horizon 2.12.
 
 ## Infrastructure gaps (cannot be fully E2E-tested)
 

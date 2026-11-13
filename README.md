@@ -8,12 +8,12 @@ An [MCP](https://modelcontextprotocol.io/) server for [Evertrust Horizon](https:
 
 ## Why knowledge-first?
 
-Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **125 knowledge URIs**: **19 core knowledge guides**, **4 curated integration playbooks**, and **102 generated section resources** for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, DCV, ACME, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
+Most MCP servers hand an LLM a list of tools and leave it to figure out the domain. horizon-mcp ships **128 knowledge URIs**: **19 core knowledge guides**, **4 curated integration playbooks**, and **105 generated section resources** for the longest operational guides. Together they cover Horizon's query languages, profile modules, computation engine, workflows, RBAC model, discovery system, external datasources, validation rules, dictionary entries, REST notification connectors, DCV, ACME, and deterministic tool-selection guidance for smaller models. MCP clients can read these resources to ground tool selection and payload construction, but the server does not force a preload step or guarantee that every client will read them before acting.
 
 ## Features
 
 - **241 tools across 13 domains**, each annotated with a safety tier (`read-only`, `mutating-safe`, `mutating-destructive`).
-- **Knowledge catalog**: 125 registered topic URIs: 19 core guides, 4 curated playbooks, and 102 section URIs derived from the H2 headings of the longest guides.
+- **Knowledge catalog**: 128 registered topic URIs: 19 core guides, 4 curated playbooks, and 105 section URIs derived from the H2 headings of the longest guides.
 - **Three credential types**: Horizon API key (`X-API-ID` / `X-API-KEY`), service-account JWT (`X-API-SVA` / `X-API-TOKEN`, Horizon 2.10+), and TLS client certificate (PEM or PKCS12/PFX). In HTTP mode, each caller supplies a credential.
 - **Service JWT renewal**: The server can use OAuth `client_credentials` to fetch and renew a short-lived stdio or HTTP caller JWT.
 - **HQL helpers**: validators and natural-language translators for HCQL (certificates), HRQL (requests), HEQL (events), and HDQL (discovery events). On Horizon 2.11+, `validate_hql` also accepts HAQL (ACME accounts) and HEABQL (ACME External Account Bindings).
@@ -481,7 +481,7 @@ PRs welcome. Before opening a pull request, run `bun run validate:ci` (it runs f
 | [Authentication](docs/authentication.md)          | Supported credential types with environment variable reference                 |
 | [Client setup](docs/client-setup.md)              | Claude Desktop, Claude Code, Cursor, Codex, OpenCode, MCP Inspector            |
 | [Tool reference](docs/tools-reference.md)         | All 241 tools by domain with safety tiers                                      |
-| [Knowledge resources](docs/knowledge-resources.md)| 19 core URIs, 4 curated playbooks, 102 generated section resources             |
+| [Knowledge resources](docs/knowledge-resources.md)| 19 core URIs, 4 curated playbooks, 105 generated section resources             |
 | [Development](docs/development.md)                | Dev setup, tests, linting                                                      |
 
 ## License

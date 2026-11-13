@@ -1,10 +1,10 @@
 # Knowledge resources
 
-The server exposes 125 registered knowledge resources at `horizon://knowledge/*`:
+The server exposes 128 registered knowledge resources at `horizon://knowledge/*`:
 
 - 19 core resource URIs backed by the main Horizon knowledge guides
 - 4 curated playbooks for smaller-model usability and integration recipes
-- 102 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`, `acme`)
+- 105 generated section resources for the longest operational guides (`query-languages`, `datasources`, `discovery-workflows`, `integrations`, `dcv`, `validation-rules`, `rest-notifications`, `acme`)
 
 MCP clients can read these resources to ground tool choice and payload construction, but the server does not guarantee that every client will preload them before issuing tool calls.
 
@@ -26,7 +26,7 @@ For clients with weak or missing MCP resource support, the same content is reach
 | Discovery | `horizon://knowledge/discovery` | Concepts, campaigns, data structures, search patterns |
 | Discovery Workflows | `horizon://knowledge/discovery-workflows` | CLI commands for netscan, localscan, netimport, importscan, localimport |
 | Automation | `horizon://knowledge/automation` | Trigger types, event hooks, execution policies |
-| Integrations | `horizon://knowledge/integrations` | End-to-end patterns: ACME, MDM, LDAP, OIDC, cloud vaults |
+| Integrations | `horizon://knowledge/integrations` | End-to-end patterns: ACME, MDM, LDAP, OIDC, cloud vaults, PKI connectors |
 | Dashboards | `horizon://knowledge/dashboards` | Dashboard and chart structure, saved query types |
 | REST Notifications | `horizon://knowledge/rest-notifications` | Custom REST connectors, multi-step chaining, auth types, template dictionary, real-world deployment patterns |
 | System Admin | `horizon://knowledge/system-admin` | Licensing, analytics sync, report management |

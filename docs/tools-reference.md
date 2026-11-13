@@ -208,7 +208,7 @@ a `describe_<obj>_schema` read tool that must be called before create/update.
 | Certificate labels | `list/get/create/update/delete_certificate_label` | read-only + mutating |
 | Certificate grading policies | `list_certificate_grading_policies` `get_certificate_grading_policy` | read-only (no write API) |
 | Certificate grading rulesets | `list_certificate_grading_rulesets` `get_certificate_grading_ruleset` | read-only (no write API) |
-| PKI connectors (22 subtypes, gcp needs Horizon 2.11+) | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector` | read-only + mutating |
+| PKI connectors (24 subtypes, gcp needs Horizon 2.11+, digicert_one and entrust_cagateway need Horizon 2.12+) | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector` | read-only + mutating |
 | PKI queues | `list/get/create/update/delete_pki_queue` | read-only + mutating |
 
 ### Configuration: RBAC (22 tools)

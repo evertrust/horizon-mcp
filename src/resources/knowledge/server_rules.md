@@ -166,6 +166,12 @@ connectors, GCP CAS, Sectigo DCV), call `get_license_info` to read the
 Horizon version. On an older version, tell the user the feature is not
 available instead of calling the tool.
 
+Before using a Horizon 2.12+ feature (DigiCert ONE or Entrust CA Gateway PKI
+connectors, the SwissSign `validity` override, the AKV `withChain` option,
+F5 `/Common/<name>` references for SSL parent or cipher group), call
+`get_license_info` to read the Horizon version. On an older version, tell the
+user the feature is not available, and do not set these types or fields.
+
 ---
 
 ## Service-account identity and durable ownership

@@ -31,7 +31,8 @@ Check the version with `get_license_info` before using asynchronous enrollment.
 
 The following PKI connector types use asynchronous enrollment and accept a
 `retryInterval`: `digicert`, `acmeenroll`, `integrated`, `gsmssl`, `gsatlas`,
-`awsacmpca`, `certeurope`, `sectigo`, and `nameshield`. Set it to a positive
+`awsacmpca`, `certeurope`, `sectigo`, `nameshield`, and `digicert_one`
+(Horizon 2.12+, where it is required). Set it to a positive
 finite duration such as `"6 seconds"` when creating or updating the connector.
 
 Horizon keeps a request in `in_progress` while it waits for an external CA.
@@ -255,6 +256,10 @@ consumption.
 | Third-Party Connector | `akv`             | Publishes to Azure Key Vault |
 | Trigger               | `thirdparty`      | Fires on enrollment/renewal  |
 
+Since Horizon 2.12, the `akv` connector accepts `withChain` (default `false`).
+When it is `true`, Horizon imports the CA chain in the Key Vault certificate
+with the leaf certificate and its private key.
+
 ### AWS Secrets Manager / ACM
 
 | Object                | Type            | Purpose                     |
@@ -312,6 +317,11 @@ the connector prefix. On the first push after the upgrade, chains are pushed
 under the new name and the client SSL profiles managed by Horizon are bound
 to them. Chains pushed by earlier versions stay in place; SSL profiles bound
 to them outside of Horizon are not updated.
+
+Since Horizon 2.12, the `f5client` fields `sslParent` and `cipherGroup`
+accept the `/Common/<name>` syntax, for example `/Common/clientssl`, to
+reference an object in the Common partition. A short name such as
+`clientssl` refers to the managed partition (`partition`).
 
 ---
 
@@ -393,6 +403,72 @@ certificates, so a healthy connector does not prove that enrollment works.
 Limits: subject DN keeps only CN, C, O, OU, L, ST, STREET (single-valued);
 SANs keep only DNS, URI, RFC822Name and IP address. Extensions come from the
 CA pool or template.
+
+---
+
+## DigiCert ONE PKI Connector (Horizon 2.12+)
+
+Check the version with `get_license_info` first. Use case: Issue
+certificates from DigiCert ONE Trust Lifecycle. PKI connector type
+`digicert_one`. It is a different type from `digicert` (DigiCert
+CertCentral, see `horizon://knowledge/digicert-integration`).
+
+| Field            | Required | Meaning                                                                                      |
+| ---------------- | -------- | -------------------------------------------------------------------------------------------- |
+| `baseUrl`        | yes      | DigiCert ONE API base URL of the target environment, for example `https://one.digicert.com/` |
+| `apiCredentials` | yes      | `raw` credential holding the API key of a DigiCert ONE service user                          |
+| `profileId`      | yes      | UUID of the DigiCert ONE certificate profile                                                 |
+| `seat`           | yes      | Seat mode, see below                                                                         |
+| `retryInterval`  | yes      | Poll interval of pending requests: the connector is asynchronous                             |
+| `validity`       | no       | Finite duration such as `"365 days"`; sent in minutes; the profile must allow the override   |
+
+Every enrollment references a seat:
+
+- Static (recommended): `{"type": "static", "id": "<seat id>"}`. All
+  certificates use one existing seat.
+- Dynamic: `{"type": "dynamic", "businessUnitId": "<uuid>", "seatType": "SERVER_SEAT"}`.
+  The connector creates one seat per certificate, named after the common
+  name, or reuses it. `seatType` is `USER_SEAT`, `DEVICE_SEAT`,
+  `SERVER_SEAT`, `ORGANIZATION_SEAT` or `CERTIFICATE_MANAGEMENT_SEAT`. The
+  business unit must be the one of the certificate profile.
+
+The service user needs the Trust Lifecycle permissions
+`CREATE_EM_CERTIFICATE`, `RENEW_EM_CERTIFICATE`, `REVOKE_EM_CERTIFICATE`,
+and `MANAGE_EM_SEAT` for a dynamic seat. Limits: subject DN keeps only CN, O,
+OU, L, ST, C and E; SANs keep only DNS, IP address, RFC822Name, URI, UPN and
+registered ID.
+
+---
+
+## Entrust CA Gateway PKI Connector (Horizon 2.12+)
+
+Check the version with `get_license_info` first. Use case: Issue
+certificates through an Entrust CA Gateway. PKI connector type
+`entrust_cagateway`. The connector is synchronous: it takes no
+`retryInterval`.
+
+| Field                        | Required | Meaning                                                                                         |
+| ---------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `endPoint`                   | yes      | CA Gateway base URL without `/v1`, for example `https://cagateway.example.com/cagw`             |
+| `caId`                       | yes      | ID of the CA on the CA Gateway                                                                  |
+| `profileId`                  | yes      | ID of the CA Gateway profile used to enroll                                                     |
+| `authenticationCredentials`  | yes      | `certificate` credential for mutual TLS authentication                                          |
+| `validityPeriod`             | no       | ISO 8601 duration or interval, for example `P0Y0M30DT0H0M`; the profile must allow the override |
+| `customConnectorDataMapping` | no       | Map of enrollment request property name to Horizon label name                                   |
+
+Limits: the subject DN is sent as the subject variables that the CA Gateway
+profile requires; other DN elements are not sent. SANs keep only DNS, IP
+address, RFC822Name, URI and registered ID. CA specific operations (reissue,
+renew) are not supported.
+
+---
+
+## SwissSign Validity Override (Horizon 2.12+)
+
+Since Horizon 2.12, the `swisssign` PKI connector accepts an optional
+`validity` integer (minimum 1) that overrides the default validity of the
+selected product. The product defines the unit and the accepted values. When
+it is not set, the product default applies.
 
 ---
 
