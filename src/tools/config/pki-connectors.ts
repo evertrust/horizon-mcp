@@ -5,7 +5,7 @@
  * Body fields per the Horizon OpenAPI.
  *
  * The request body is a polymorphic union discriminated by the lowercase 'type'
- * field (21 subtypes). Because the per-subtype shape is large and varies wildly,
+ * field (22 subtypes). Because the per-subtype shape is large and varies wildly,
  * create/update take the two common mandatory params (name + type) as typed Zod
  * fields plus a validated `config` object holding the subtype-specific keys. The
  * model is expected to call describe_pki_connector_schema first to learn the
