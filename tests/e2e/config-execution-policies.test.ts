@@ -23,7 +23,7 @@
  * No prerequisite dependencies. Execution policies are a standard config
  * object, so create is expected to succeed; the create
  * assertion is nonetheless tolerant of a clean Horizon validation/license
- * rejection (asserted as a ToolError surfacing a real ExecutionPolicy* server
+ * rejection (asserted as a ToolError surfacing a real EXECUTION-POLICY-* server
  * code, not a tool/client bug) so the suite stays robust on a constrained
  * instance.
  *
@@ -84,10 +84,10 @@ describe.skipIf(!E2E_CONFIGURED)('execution_policy CRUD E2E (live QA)', () => {
       expect(data?.['name']).toBe(name);
     } catch (err) {
       // Tolerant path: accept a clean Horizon validation/license rejection
-      // (a real ExecutionPolicy* server code), but never a tool/client bug.
+      // (a real EXECUTION-POLICY-* server code), but never a tool/client bug.
       expect(err).toBeInstanceOf(ToolError);
       expect((err as ToolError).message).toMatch(
-        /ExecutionPolicy|license|not licensed|forbidden|unauthorized/i,
+        /EXECUTION-POLICY-|license|not licensed|forbidden|unauthorized/i,
       );
     }
   });
