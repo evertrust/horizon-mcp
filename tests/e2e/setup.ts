@@ -86,15 +86,18 @@ export function getHorizonClient(): HorizonClient {
   return horizonClient;
 }
 
-/** True when GET /api/v1/licenses reports Horizon 2.11 or later. */
-export async function isHorizon211OrLater(): Promise<boolean> {
+/** True when GET /api/v1/licenses reports Horizon major.minor or later. */
+export async function isHorizonAtLeast(
+  major: number,
+  minor: number,
+): Promise<boolean> {
   const license =
     await getHorizonClient().get<Record<string, unknown>>('/api/v1/licenses');
   const version = String(license['version'] ?? '');
   const match = /^(\d+)\.(\d+)/.exec(version);
   if (!match) throw new Error(`Unexpected Horizon version: "${version}"`);
-  const [major, minor] = [Number(match[1]), Number(match[2])];
-  return major > 2 || (major === 2 && minor >= 11);
+  const [actualMajor, actualMinor] = [Number(match[1]), Number(match[2])];
+  return actualMajor > major || (actualMajor === major && actualMinor >= minor);
 }
 
 // ---------------------------------------------------------------------------

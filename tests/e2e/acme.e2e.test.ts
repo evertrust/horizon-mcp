@@ -14,7 +14,7 @@ import {
   E2E_CONFIGURED,
   E2E_PREFIX,
   callTool,
-  isHorizon211OrLater,
+  isHorizonAtLeast,
   setupE2EStack,
 } from './setup.js';
 
@@ -32,7 +32,7 @@ describe.skipIf(!E2E_CONFIGURED)('ACME read tools E2E', () => {
   let accountWithOrders = '';
 
   beforeAll(async () => {
-    is211 = await isHorizon211OrLater();
+    is211 = await isHorizonAtLeast(2, 11);
     if (!is211) {
       console.warn('[acme] Skipping: the instance is older than Horizon 2.11.');
       return;
@@ -132,7 +132,7 @@ describe.skipIf(!E2E_CONFIGURED)('ACME EAB lifecycle E2E', () => {
   let firstMacKey = '';
 
   beforeAll(async () => {
-    is211 = await isHorizon211OrLater();
+    is211 = await isHorizonAtLeast(2, 11);
   });
 
   beforeEach((ctx) => {

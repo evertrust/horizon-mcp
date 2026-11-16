@@ -250,9 +250,7 @@ describe.skipIf(!E2E_CONFIGURED)('Horizon E2E', () => {
             campaign_name: feedCampaignName,
           });
         } catch (exc) {
-          // The feed endpoint may lag behind the campaigns endpoint.
-          // Some Horizon versions require additional time or have
-          // separate internal caches for the discovery feed module.
+          // Skip when the discovery feed session cannot be started.
           console.log(`SKIP: start_discovery_feed_session failed: ${exc}`);
           return;
         }

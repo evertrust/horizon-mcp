@@ -219,7 +219,7 @@ before you create or update the object.
 | Certificate labels                          | `list/get/create/update/delete_certificate_label`                                         | read-only + mutating     |
 | Certificate grading policies                | `list_certificate_grading_policies` `get_certificate_grading_policy`                      | read-only (no write API) |
 | Certificate grading rulesets                | `list_certificate_grading_rulesets` `get_certificate_grading_ruleset`                     | read-only (no write API) |
-| PKI connectors (22 subtypes)                | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector`             | read-only + mutating     |
+| PKI connectors (24 subtypes)                | `describe_pki_connector_schema` `list/get/create/update/delete_pki_connector`             | read-only + mutating     |
 | PKI queues                                  | `list/get/create/update/delete_pki_queue`                                                 | read-only + mutating     |
 
 ### Configuration: RBAC (22 tools)

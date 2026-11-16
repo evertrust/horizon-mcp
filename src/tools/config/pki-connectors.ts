@@ -5,7 +5,7 @@
  * Body fields per the Horizon OpenAPI.
  *
  * The request body is a polymorphic union discriminated by the lowercase 'type'
- * field (22 subtypes). Because the per-subtype shape is large and varies wildly,
+ * field (24 subtypes). Because the per-subtype shape is large and varies wildly,
  * create/update take the two common mandatory params (name + type) as typed Zod
  * fields plus a validated `config` object holding the subtype-specific keys. The
  * model is expected to call describe_pki_connector_schema first to learn the
@@ -53,8 +53,10 @@ const CONNECTOR_TYPES = [
   'certeurope',
   'cmp',
   'digicert',
+  'digicert_one',
   'ejbca',
   'ejbca_rest',
+  'entrust_cagateway',
   'idca',
   'integrated',
   'fcms',
@@ -79,6 +81,7 @@ const ASYNC_CONNECTOR_TYPES = [
   'certeurope',
   'sectigo',
   'nameshield',
+  'digicert_one',
 ] as const;
 
 const ASYNC_CONNECTOR_TYPE_SET = new Set<string>(ASYNC_CONNECTOR_TYPES);
@@ -189,6 +192,11 @@ const KNOWN_KEYS = [
   'customerUri',
   'mpkiCredentials',
   'productUuid',
+  'profileId',
+  'seat',
+  'validity',
+  'caId',
+  'validityPeriod',
 ] as const;
 
 const GCP_REQUIRED_KEYS = pkiConnectorRequestSchema.$defs.GCPConnector.required;
@@ -211,7 +219,8 @@ const typeSchema = z
   .enum(CONNECTOR_TYPES)
   .describe(
     'Connector subtype discriminator (lowercase). Determines which fields are ' +
-      'required in `config`. Cannot change after creation. gcp (Google Cloud CAS) requires Horizon 2.11+.',
+      'required in `config`. Cannot change after creation. gcp (Google Cloud CAS) requires Horizon 2.11+. ' +
+      'digicert_one (DigiCert ONE) and entrust_cagateway (Entrust CA Gateway) require Horizon 2.12+.',
   );
 
 /** Merge the typed mandatory params with the subtype config into one body. */

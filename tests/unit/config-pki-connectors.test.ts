@@ -43,6 +43,13 @@ function parse(result: unknown): Record<string, unknown> {
   };
   return JSON.parse(r.content[0]!.text) as Record<string, unknown>;
 }
+interface SchemaDef {
+  description?: string;
+  required?: string[];
+  enum?: string[];
+  oneOf?: SchemaDef[];
+  properties: Record<string, SchemaDef>;
+}
 function isError(result: unknown): boolean {
   return (result as { isError?: boolean }).isError === true;
 }
@@ -103,6 +110,53 @@ describe('describe_pki_connector_schema', () => {
     expect(definitions['PositiveFiniteDuration']).toMatchObject({
       type: 'string',
       description: 'A positive finite duration string.',
+    });
+  });
+
+  it('describes the Horizon 2.12 connector types and fields', async () => {
+    const { client } = await setup();
+    const out = parse(
+      await client.callTool({
+        name: 'describe_pki_connector_schema',
+        arguments: {},
+      }),
+    );
+    expect(out['subtypes']).toEqual(
+      expect.arrayContaining(['digicert_one', 'entrust_cagateway']),
+    );
+    const defs = (out['jsonSchema'] as { $defs: Record<string, SchemaDef> })
+      .$defs;
+
+    const digicertOne = defs['DigiCertOneConnector']!;
+    expect(digicertOne.description).toMatch(/^Horizon 2\.12\+\. /);
+    expect(digicertOne.required).toEqual(
+      expect.arrayContaining(['profileId', 'seat', 'retryInterval']),
+    );
+    const seatBranches = digicertOne.properties['seat']!.oneOf!;
+    expect(seatBranches.map((b) => b.properties!['type']!.enum)).toEqual([
+      ['static'],
+      ['dynamic'],
+    ]);
+    expect(seatBranches.map((b) => b.required)).toEqual([
+      ['type', 'id'],
+      ['type', 'businessUnitId', 'seatType'],
+    ]);
+
+    const entrust = defs['EntrustCAGatewayConnector']!;
+    expect(entrust.description).toMatch(/^Horizon 2\.12\+\. /);
+    expect(entrust.properties).not.toHaveProperty('retryInterval');
+    expect(entrust.required).toEqual(
+      expect.arrayContaining([
+        'caId',
+        'profileId',
+        'authenticationCredentials',
+      ]),
+    );
+
+    expect(defs['SwissSignConnector']!.properties['validity']).toMatchObject({
+      type: 'integer',
+      minimum: 1,
+      description: expect.stringMatching(/^Horizon 2\.12\+\. /),
     });
   });
 
@@ -233,8 +287,87 @@ describe('create_pki_connector', () => {
     expect(mc.post).not.toHaveBeenCalled();
   });
 
+  it('creates a DigiCert ONE connector with a static seat', async () => {
+    const config = {
+      baseUrl: 'https://one.digicert.example.com/',
+      apiCredentials: 'digicert-one-api-key',
+      profileId: '36f011b7-5fa1-4c6d-83f3-ee59c4d54bb0',
+      seat: { type: 'static', id: 'server-seat' },
+      retryInterval: '5 seconds',
+      validity: '365 days',
+    };
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: { name: 'digicert-one', type: 'digicert_one', config },
+    });
+
+    expect(isError(res)).toBe(false);
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      ...config,
+      name: 'digicert-one',
+      type: 'digicert_one',
+    });
+  });
+
+  it('creates an Entrust CA Gateway connector', async () => {
+    const config = {
+      endPoint: 'https://cagateway.example.com/cagw',
+      caId: 'issuing-ca',
+      profileId: 'tls-server',
+      authenticationCredentials: 'cagw-client-cert',
+      validityPeriod: 'P0Y0M30DT0H0M',
+      customConnectorDataMapping: { requesterEmail: 'contact-email' },
+    };
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: { name: 'entrust-cagw', type: 'entrust_cagateway', config },
+    });
+
+    expect(isError(res)).toBe(false);
+    expect(mc.post).toHaveBeenCalledWith('/api/v1/pki/connectors', {
+      ...config,
+      name: 'entrust-cagw',
+      type: 'entrust_cagateway',
+    });
+  });
+
+  it('accepts a SwissSign validity override', async () => {
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'swisssign',
+        type: 'swisssign',
+        config: {
+          mpkiCredentials: 'swisssign-creds',
+          endPoint: 'https://api.swisssign.example.com',
+          productUuid: 'product-uuid',
+          validity: 1,
+        },
+      },
+    });
+
+    expect(isError(res)).toBe(false);
+    expect(mc.post.mock.calls[0]![1]).toMatchObject({ validity: 1 });
+  });
+
+  it('rejects a nested seat field sent at the top level', async () => {
+    const res = await client.callTool({
+      name: 'create_pki_connector',
+      arguments: {
+        name: 'digicert-one',
+        type: 'digicert_one',
+        config: { seatType: 'SERVER_SEAT' },
+      },
+    });
+
+    expect(isError(res)).toBe(true);
+    expect(errorText(res)).toContain('seatType');
+    expect(mc.post).not.toHaveBeenCalled();
+  });
+
   it.each([
     'digicert',
+    'digicert_one',
     'acmeenroll',
     'integrated',
     'gsmssl',
@@ -265,6 +398,7 @@ describe('create_pki_connector', () => {
     'cmp',
     'ejbca',
     'ejbca_rest',
+    'entrust_cagateway',
     'evtadcs',
     'fcms',
     'gcp',
@@ -286,7 +420,7 @@ describe('create_pki_connector', () => {
 
     expect(isError(res)).toBe(true);
     expect(errorText(res)).toContain(
-      'digicert, acmeenroll, integrated, gsmssl, gsatlas, awsacmpca, certeurope, sectigo, nameshield',
+      'digicert, acmeenroll, integrated, gsmssl, gsatlas, awsacmpca, certeurope, sectigo, nameshield, digicert_one',
     );
     expect(mc.post).not.toHaveBeenCalled();
   });

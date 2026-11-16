@@ -4,9 +4,8 @@
  * against /api/v1/system/configuration.
  *
  * Tool surface: describe_system_config_schema / list_system_configs /
- * get_system_config / update_system_config. idField = `type`. There is NO
- * create (POST /api/v1/system/configuration returns 404 - confirmed against
- * live QA; the 4 entries are server-bootstrapped) and NO delete.
+ * get_system_config / update_system_config. idField = `type`. The public API
+ * defines list and upsert operations, with no create or delete operation.
  *
  * This object is a TENANT-WIDE singleton keyed by `type`, NOT isolatable per
  * run. To stay non-destructive we only READ, and exercise the real PUT-upsert

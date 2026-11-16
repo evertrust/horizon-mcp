@@ -21,7 +21,7 @@ import {
   E2E_PREFIX,
   callTool,
   getHorizonClient,
-  isHorizon211OrLater,
+  isHorizonAtLeast,
   setupE2EStack,
 } from './setup.js';
 
@@ -109,7 +109,7 @@ describe.skipIf(!E2E_CONFIGURED)(
     const createdCreds: string[] = [];
 
     beforeAll(async () => {
-      is211 = await isHorizon211OrLater();
+      is211 = await isHorizonAtLeast(2, 11);
       if (!is211) {
         console.warn(
           '[config-211-types] Skipping live legs: the instance is older than Horizon 2.11.',
