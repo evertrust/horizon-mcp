@@ -244,7 +244,7 @@ export HORIZON_API_KEY=your-api-key
 bunx @modelcontextprotocol/inspector bunx @evertrust/horizon-mcp
 ```
 
-Opens a browser UI showing all 241 tools and the full knowledge resource catalog (19 core URIs + 4 curated playbooks + 102 generated section URIs).
+Opens a browser UI showing all 241 tools and the full knowledge resource catalog (19 core URIs + 4 curated playbooks + 105 generated section URIs).
 
 ## Connecting over streamable HTTP (remote server)
 

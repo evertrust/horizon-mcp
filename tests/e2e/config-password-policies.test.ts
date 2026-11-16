@@ -18,7 +18,7 @@
  * are a standard config object on a QA instance, so create is expected to
  * succeed; the create assertion is nonetheless tolerant of a clean Horizon
  * validation / license rejection (asserted as a ToolError surfacing a real
- * PasswordPolicy* server code, not a tool/client bug) so the suite stays
+ * PASSWORD-POLICY-* server code, not a tool/client bug) so the suite stays
  * robust on a constrained instance.
  *
  * Gated on E2E_CONFIGURED so it is skipped without QA credentials.
@@ -73,10 +73,10 @@ describe.skipIf(!E2E_CONFIGURED)('password_policy CRUD E2E (live QA)', () => {
       expect(data?.['minUpChar']).toBe(4);
     } catch (err) {
       // Tolerant path: accept a clean Horizon validation/license rejection
-      // (a real PasswordPolicy* server code), but never a tool/client bug.
+      // (a real PASSWORD-POLICY-* server code), but never a tool/client bug.
       expect(err).toBeInstanceOf(ToolError);
       expect((err as ToolError).message).toMatch(
-        /PasswordPolicy|license|not licensed|forbidden|unauthorized/i,
+        /PASSWORD-POLICY-|license|not licensed|forbidden|unauthorized/i,
       );
     }
   });

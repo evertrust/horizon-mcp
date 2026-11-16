@@ -226,9 +226,8 @@ export function registerSystemConfigTools(
 
   // No create tool: the 4 system configuration entries (license,
   // internal_monitor, interface_customization, storage) are bootstrapped by the
-  // server and there is no POST endpoint (POST /api/v1/system/configuration
-  // returns 404 - confirmed against live QA). Entries are set/changed via the
-  // PUT upsert below (update_system_config).
+  // server and the public API defines no POST on /api/v1/system/configuration.
+  // Entries are set/changed via the PUT upsert below (update_system_config).
   registerUpdateTool(server, client, SPEC, {
     description:
       'Update (upsert) a system configuration entry. The 4 entries are ' +
